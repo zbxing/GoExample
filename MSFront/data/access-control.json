@@ -1,0 +1,58 @@
+{
+  "supportedPermissions": [
+    "auth:self",
+    "example:read",
+    "example:write",
+    "example:manage",
+    "system:read"
+  ],
+  "permissionCatalog": [
+    {
+      "id": "auth:self",
+      "title": "Self auth access",
+      "description": "Allow a user to read and manage their own authentication surface."
+    },
+    {
+      "id": "example:read",
+      "title": "Example read",
+      "description": "Allow read-only access to example module resources."
+    },
+    {
+      "id": "example:write",
+      "title": "Example write",
+      "description": "Allow write access to example module resources."
+    },
+    {
+      "id": "example:manage",
+      "title": "Example manage",
+      "description": "Allow admin-level management actions in the example module."
+    },
+    {
+      "id": "system:read",
+      "title": "System read",
+      "description": "Allow access to system diagnostics and operational status endpoints."
+    }
+  ],
+  "defaultRoles": [
+    {
+      "id": "admin",
+      "name": "Administrator",
+      "description": "Platform-wide admin role for management, diagnostics, and mutation workflows.",
+      "permissions": [
+        "auth:self",
+        "example:read",
+        "example:write",
+        "example:manage",
+        "system:read"
+      ],
+      "locked": true
+    },
+    {
+      "id": "user",
+      "name": "Standard User",
+      "description": "Default application role with self-service auth and read-only example access.",
+      "permissions": ["auth:self", "example:read"],
+      "locked": true
+    }
+  ]
+}

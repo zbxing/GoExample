@@ -1,0 +1,48 @@
+{
+  "name": "@goexample/msfront",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@1.22.22",
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run && node ../__test__/contract/msfront-route-authorization.mjs",
+    "test:unit": "vitest run",
+    "migrate": "node scripts/migrate.mjs",
+    "typegen": "next typegen .",
+    "typecheck": "next typegen . && tsc --noEmit"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
+    "jose": "^6.2.8",
+    "lucide-react": "^0.511.0",
+    "next": "^16.3.1",
+    "pg": "^8.20.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "4.4.3"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.10.1",
+    "@types/pg": "^8.21.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "^16.3.1",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0",
+    "vitest": "^4.0.0"
+  }
+}

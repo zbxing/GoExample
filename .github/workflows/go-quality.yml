@@ -1,0 +1,134 @@
+name: Framework and Go projects quality
+
+on:
+  push:
+    paths:
+      - "Framework/**"
+      - "Proj/**"
+      - "docs/openapi/**"
+      - "go.work"
+      - "go.work.sum"
+      - "scripts/go-project.mjs"
+      - "package.json"
+      - ".github/workflows/go-quality.yml"
+  pull_request:
+    paths:
+      - "Framework/**"
+      - "Proj/**"
+      - "docs/openapi/**"
+      - "go.work"
+      - "go.work.sum"
+      - "scripts/go-project.mjs"
+      - "package.json"
+      - ".github/workflows/go-quality.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.workspace.outputs.modules }}
+      projects: ${{ steps.workspace.outputs.projects }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: Framework/go.mod
+          cache: false
+
+      - name: Discover workspace modules
+        id: workspace
+        shell: bash
+        run: |
+          workspace="$(go work edit -json)"
+          modules="$(jq -c '[.Use[].DiskPath]' <<<"${workspace}")"
+          projects="$(jq -c '[.Use[].DiskPath | select(startswith("./Proj/"))]' <<<"${workspace}")"
+          test "$(jq 'length' <<<"${modules}")" -gt 0
+          test "$(jq 'length' <<<"${projects}")" -gt 0
+          echo "modules=${modules}" >> "${GITHUB_OUTPUT}"
+          echo "projects=${projects}" >> "${GITHUB_OUTPUT}"
+
+  module-quality:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.discover.outputs.modules) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: Framework/go.mod
+          cache-dependency-path: ${{ matrix.module }}/go.sum
+
+      - name: Test
+        run: go -C "${{ matrix.module }}" test ./...
+
+      - name: Verify downloaded modules
+        run: go -C "${{ matrix.module }}" mod verify
+
+      - name: Race detector
+        run: go -C "${{ matrix.module }}" test -race ./...
+
+      - name: Vet
+        run: go -C "${{ matrix.module }}" vet ./...
+
+      - name: Vulnerability scan
+        run: go -C "${{ matrix.module }}" run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+
+  project-build:
+    needs: [discover, module-quality]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.discover.outputs.projects) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: Framework/go.mod
+          cache-dependency-path: ${{ matrix.project }}/go.sum
+
+      - name: Build
+        run: go -C "${{ matrix.project }}" build -trimpath -o "${RUNNER_TEMP}/server" ./cmd/server
+
+      - name: Docker build and health smoke
+        if: ${{ hashFiles(format('{0}/Dockerfile', matrix.project)) != '' }}
+        shell: bash
+        run: |
+          image="goexample-smoke:${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker build -f "${{ matrix.project }}/Dockerfile" -t "${image}" .
+          container="$(docker run --detach --publish 127.0.0.1:3001:3001 "${image}")"
+          cleanup() {
+            docker logs "${container}" || true
+            docker rm --force "${container}" || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3001/livez >/dev/null; then
+              break
+            fi
+            if [ "${attempt}" -eq 30 ]; then
+              exit 1
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:3001/readyz >/dev/null

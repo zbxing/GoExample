@@ -1,0 +1,151 @@
+{
+  "apis": [
+    {
+      "id": "api-1",
+      "path": "/api/auth/me",
+      "method": "GET",
+      "apiGroup": "auth",
+      "description": "当前登录用户"
+    },
+    {
+      "id": "api-2",
+      "path": "/api/auth/logout",
+      "method": "POST",
+      "apiGroup": "auth",
+      "description": "登出"
+    },
+    {
+      "id": "api-10",
+      "path": "/api/system/menus",
+      "method": "GET",
+      "apiGroup": "system",
+      "description": "菜单列表"
+    },
+    {
+      "id": "api-11",
+      "path": "/api/system/menus/async",
+      "method": "GET",
+      "apiGroup": "system",
+      "description": "异步菜单"
+    },
+    {
+      "id": "api-12",
+      "path": "/api/system/menus",
+      "method": "POST",
+      "apiGroup": "system",
+      "description": "创建菜单"
+    },
+    {
+      "id": "api-13",
+      "path": "/api/system/menus",
+      "method": "PUT",
+      "apiGroup": "system",
+      "description": "更新菜单"
+    },
+    {
+      "id": "api-14",
+      "path": "/api/system/menus",
+      "method": "DELETE",
+      "apiGroup": "system",
+      "description": "删除菜单"
+    },
+    {
+      "id": "api-20",
+      "path": "/api/system/users",
+      "method": "GET",
+      "apiGroup": "system",
+      "description": "用户列表"
+    },
+    {
+      "id": "api-21",
+      "path": "/api/system/users",
+      "method": "POST",
+      "apiGroup": "system",
+      "description": "创建用户"
+    },
+    {
+      "id": "api-22",
+      "path": "/api/system/users",
+      "method": "PUT",
+      "apiGroup": "system",
+      "description": "更新用户"
+    },
+    {
+      "id": "api-23",
+      "path": "/api/system/users",
+      "method": "DELETE",
+      "apiGroup": "system",
+      "description": "删除用户"
+    },
+    {
+      "id": "api-30",
+      "path": "/api/system/roles",
+      "method": "GET",
+      "apiGroup": "system",
+      "description": "角色列表"
+    },
+    {
+      "id": "api-31",
+      "path": "/api/system/roles",
+      "method": "POST",
+      "apiGroup": "system",
+      "description": "创建角色"
+    },
+    {
+      "id": "api-32",
+      "path": "/api/system/roles",
+      "method": "PUT",
+      "apiGroup": "system",
+      "description": "更新角色"
+    },
+    {
+      "id": "api-33",
+      "path": "/api/system/roles",
+      "method": "DELETE",
+      "apiGroup": "system",
+      "description": "删除角色"
+    },
+    {
+      "id": "api-40",
+      "path": "/api/system/apis",
+      "method": "GET",
+      "apiGroup": "system",
+      "description": "API 列表"
+    },
+    {
+      "id": "api-41",
+      "path": "/api/system/apis",
+      "method": "POST",
+      "apiGroup": "system",
+      "description": "创建 API"
+    },
+    {
+      "id": "api-42",
+      "path": "/api/system/apis",
+      "method": "PUT",
+      "apiGroup": "system",
+      "description": "更新 API"
+    },
+    {
+      "id": "api-43",
+      "path": "/api/system/apis",
+      "method": "DELETE",
+      "apiGroup": "system",
+      "description": "删除 API"
+    },
+    {
+      "id": "api-50",
+      "path": "/api/system/casbin",
+      "method": "GET",
+      "apiGroup": "system",
+      "description": "策略列表"
+    },
+    {
+      "id": "api-51",
+      "path": "/api/system/casbin",
+      "method": "PUT",
+      "apiGroup": "system",
+      "description": "更新策略"
+    }
+  ]
+}

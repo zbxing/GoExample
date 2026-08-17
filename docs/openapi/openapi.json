@@ -1,0 +1,394 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GoExample Example Fiber API",
+    "version": "1.0.0",
+    "summary": "Framework platform endpoints and the Example project API",
+    "description": "The demo authentication operations are registered only when GOEXAMPLE_DEMO_AUTH_ENABLED is enabled. Internal bearer protection for metrics is mandatory in production configuration."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Local Example server"
+    }
+  ],
+  "tags": [
+    { "name": "platform" },
+    { "name": "health" },
+    { "name": "auth" },
+    { "name": "example" },
+    { "name": "project" }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "getServiceIndex",
+        "tags": ["platform"],
+        "summary": "Read service identity and advertised endpoints",
+        "responses": {
+          "200": {
+            "description": "Service identity",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Envelope" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "getPrometheusMetrics",
+        "tags": ["platform"],
+        "summary": "Read Prometheus metrics",
+        "security": [{ "internalBearer": [] }],
+        "responses": {
+          "200": {
+            "description": "Prometheus text exposition",
+            "content": {
+              "text/plain": { "schema": { "type": "string" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/livez": {
+      "get": {
+        "operationId": "getLiveness",
+        "tags": ["health"],
+        "responses": { "200": { "$ref": "#/components/responses/Health" } }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "getReadiness",
+        "tags": ["health"],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Health" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/startupz": {
+      "get": {
+        "operationId": "getStartup",
+        "tags": ["health"],
+        "responses": { "200": { "$ref": "#/components/responses/Health" } }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "getApiLiveness",
+        "tags": ["health"],
+        "responses": { "200": { "$ref": "#/components/responses/Health" } }
+      }
+    },
+    "/api/health/ready": {
+      "get": {
+        "operationId": "getApiReadiness",
+        "tags": ["health"],
+        "responses": {
+          "200": { "$ref": "#/components/responses/Health" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/health/startup": {
+      "get": {
+        "operationId": "getApiStartup",
+        "tags": ["health"],
+        "responses": { "200": { "$ref": "#/components/responses/Health" } }
+      }
+    },
+    "/api/system/info": {
+      "get": {
+        "operationId": "getSystemInfo",
+        "tags": ["platform"],
+        "responses": {
+          "200": {
+            "description": "Build and runtime identity",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "login",
+        "tags": ["auth"],
+        "summary": "Issue a demo bearer token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/LoginRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token issued",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "operationId": "getCurrentUser",
+        "tags": ["auth"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Authenticated user",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/example/hello": {
+      "get": {
+        "operationId": "getHello",
+        "tags": ["example"],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Greeting",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/example/echo": {
+      "post": {
+        "operationId": "postEcho",
+        "tags": ["example"],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "type": "object", "additionalProperties": true }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Echoed object",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/api/v1/example/validate": {
+      "post": {
+        "operationId": "validateProfile",
+        "tags": ["example"],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/ProfileRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validated profile",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/api/v1/example/delay": {
+      "get": {
+        "operationId": "getDelayedResponse",
+        "tags": ["example"],
+        "parameters": [
+          {
+            "name": "ms",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 0, "maximum": 5000, "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delay completed",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "408": { "$ref": "#/components/responses/RequestTimeout" }
+        }
+      }
+    },
+    "/api/v1/example/private": {
+      "get": {
+        "operationId": "getPrivateExample",
+        "tags": ["example"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Private example response",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/project": {
+      "get": {
+        "operationId": "getProjectInfo",
+        "tags": ["project"],
+        "responses": {
+          "200": {
+            "description": "Example project identity",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Demo JWT access token; replace this authentication module for production use."
+      },
+      "internalBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Dedicated token for internal diagnostics endpoints."
+      }
+    },
+    "parameters": {
+      "IdempotencyKey": {
+        "name": "X-Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "description": "Required as a 36-character key when idempotency middleware is enabled.",
+        "schema": { "type": "string", "minLength": 36, "maxLength": 36 }
+      }
+    },
+    "schemas": {
+      "Envelope": {
+        "type": "object",
+        "required": ["code", "data", "msg"],
+        "properties": {
+          "code": { "type": "integer" },
+          "data": true,
+          "msg": { "type": "string" }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "required": ["code", "data", "msg"],
+        "properties": {
+          "code": { "type": "integer", "minimum": 400, "maximum": 599 },
+          "data": { "type": "null" },
+          "msg": { "type": "string" }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["username", "password"],
+        "properties": {
+          "username": { "type": "string", "minLength": 3, "maxLength": 64 },
+          "password": { "type": "string", "minLength": 6, "maxLength": 128 }
+        }
+      },
+      "ProfileRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "email", "age"],
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "maxLength": 80 },
+          "email": { "type": "string", "format": "email", "maxLength": 254 },
+          "age": { "type": "integer", "minimum": 18, "maximum": 130 }
+        }
+      }
+    },
+    "responses": {
+      "Health": {
+        "description": "Health state",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+        }
+      },
+      "BadRequest": {
+        "description": "Malformed or invalid request",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "Unauthorized": {
+        "description": "Authentication required or rejected",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "RequestTimeout": {
+        "description": "Request deadline exceeded",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "UnsupportedMediaType": {
+        "description": "JSON media type required",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Rate limit exceeded",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "Unavailable": {
+        "description": "Service is not ready",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+        }
+      }
+    }
+  }
+}

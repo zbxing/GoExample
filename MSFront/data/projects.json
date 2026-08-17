@@ -1,0 +1,268 @@
+{
+  "projects": [
+    {
+      "id": "goexample-local",
+      "name": "GoExample Local",
+      "code": "GO-LOCAL",
+      "description": "当前仓库的本地全栈示例，用于联调 Next.js 管理台与 Fiber 服务。",
+      "owner": "Platform Team",
+      "environment": "development",
+      "status": "healthy",
+      "region": "Local",
+      "baseUrl": "http://localhost:3000",
+      "apiBaseUrl": "http://localhost:3001",
+      "probeBaseUrl": "http://localhost:3001",
+      "tags": ["local", "current-repo", "full-stack"],
+      "version": "v1.0.0-local",
+      "lastDeployedAt": "2026-05-24T05:20:00.000Z",
+      "activeUsers": 12,
+      "requestPerMinute": 320,
+      "errorRate": 0.12,
+      "servers": [
+        {
+          "id": "local-api-01",
+          "name": "Local API",
+          "region": "Developer Machine",
+          "host": "127.0.0.1",
+          "environment": "development",
+          "status": "healthy",
+          "cpuUsage": 24,
+          "memoryUsage": 39,
+          "responseTimeMs": 84
+        },
+        {
+          "id": "local-worker-01",
+          "name": "Local Worker",
+          "region": "Developer Machine",
+          "host": "127.0.0.1",
+          "environment": "development",
+          "status": "healthy",
+          "cpuUsage": 18,
+          "memoryUsage": 31,
+          "responseTimeMs": 65
+        }
+      ],
+      "services": [
+        {
+          "id": "svc-api",
+          "name": "Local API",
+          "category": "api",
+          "uptime": "99.9%",
+          "status": "healthy"
+        },
+        {
+          "id": "svc-worker",
+          "name": "Local Worker",
+          "category": "worker",
+          "uptime": "99.8%",
+          "status": "healthy"
+        },
+        {
+          "id": "svc-db",
+          "name": "Local Database",
+          "category": "database",
+          "uptime": "99.7%",
+          "status": "healthy"
+        }
+      ]
+    },
+    {
+      "id": "goexample-prod-cn",
+      "name": "GoExample Production CN",
+      "code": "GO-CN-PROD",
+      "description": "中国区主生产环境，承载核心管理接口与业务调度。",
+      "owner": "Platform Team",
+      "environment": "production",
+      "status": "healthy",
+      "region": "Shanghai",
+      "baseUrl": "https://admin-cn.example.com",
+      "apiBaseUrl": "https://api-cn.example.com",
+      "probeBaseUrl": null,
+      "tags": ["primary", "china", "k8s"],
+      "version": "v2.8.4",
+      "lastDeployedAt": "2026-05-23T20:30:00.000Z",
+      "activeUsers": 1280,
+      "requestPerMinute": 28600,
+      "errorRate": 0.14,
+      "servers": [
+        {
+          "id": "cn-api-01",
+          "name": "CN API 01",
+          "region": "Shanghai A",
+          "host": "10.20.1.31",
+          "environment": "production",
+          "status": "healthy",
+          "cpuUsage": 42,
+          "memoryUsage": 61,
+          "responseTimeMs": 112
+        },
+        {
+          "id": "cn-worker-01",
+          "name": "CN Worker 01",
+          "region": "Shanghai B",
+          "host": "10.20.1.52",
+          "environment": "production",
+          "status": "healthy",
+          "cpuUsage": 36,
+          "memoryUsage": 57,
+          "responseTimeMs": 96
+        }
+      ],
+      "services": [
+        {
+          "id": "svc-api",
+          "name": "API Gateway",
+          "category": "api",
+          "uptime": "99.99%",
+          "status": "healthy"
+        },
+        {
+          "id": "svc-queue",
+          "name": "Queue Workers",
+          "category": "queue",
+          "uptime": "99.92%",
+          "status": "healthy"
+        },
+        {
+          "id": "svc-db",
+          "name": "Primary Database",
+          "category": "database",
+          "uptime": "99.98%",
+          "status": "healthy"
+        }
+      ]
+    },
+    {
+      "id": "goexample-staging-global",
+      "name": "GoExample Staging Global",
+      "code": "GO-GLOBAL-STG",
+      "description": "面向预发布验证与外部联调的全局 Staging 集群。",
+      "owner": "Release Team",
+      "environment": "staging",
+      "status": "warning",
+      "region": "Singapore",
+      "baseUrl": "https://admin-staging.example.com",
+      "apiBaseUrl": "https://api-staging.example.com",
+      "probeBaseUrl": null,
+      "tags": ["staging", "global", "preview"],
+      "version": "v2.9.0-rc.2",
+      "lastDeployedAt": "2026-05-24T01:10:00.000Z",
+      "activeUsers": 186,
+      "requestPerMinute": 4300,
+      "errorRate": 0.92,
+      "servers": [
+        {
+          "id": "sg-api-01",
+          "name": "SG API 01",
+          "region": "Singapore A",
+          "host": "10.40.8.11",
+          "environment": "staging",
+          "status": "warning",
+          "cpuUsage": 73,
+          "memoryUsage": 76,
+          "responseTimeMs": 244
+        },
+        {
+          "id": "sg-worker-01",
+          "name": "SG Worker 01",
+          "region": "Singapore A",
+          "host": "10.40.8.34",
+          "environment": "staging",
+          "status": "healthy",
+          "cpuUsage": 48,
+          "memoryUsage": 55,
+          "responseTimeMs": 120
+        }
+      ],
+      "services": [
+        {
+          "id": "svc-api",
+          "name": "API Gateway",
+          "category": "api",
+          "uptime": "99.12%",
+          "status": "warning"
+        },
+        {
+          "id": "svc-storage",
+          "name": "Object Storage",
+          "category": "storage",
+          "uptime": "99.95%",
+          "status": "healthy"
+        },
+        {
+          "id": "svc-worker",
+          "name": "Background Worker",
+          "category": "worker",
+          "uptime": "99.60%",
+          "status": "healthy"
+        }
+      ]
+    },
+    {
+      "id": "client-ops-dev",
+      "name": "Client Ops Development",
+      "code": "CLIENT-OPS-DEV",
+      "description": "面向客户运维项目的独立开发环境，用于功能验证与租户扩展。",
+      "owner": "Solutions Team",
+      "environment": "development",
+      "status": "critical",
+      "region": "Shenzhen",
+      "baseUrl": "https://client-ops-dev.example.com",
+      "apiBaseUrl": "https://api-client-ops-dev.example.com",
+      "probeBaseUrl": null,
+      "tags": ["client", "development", "multi-tenant"],
+      "version": "v1.7.2-dev.14",
+      "lastDeployedAt": "2026-05-22T16:20:00.000Z",
+      "activeUsers": 54,
+      "requestPerMinute": 980,
+      "errorRate": 2.48,
+      "servers": [
+        {
+          "id": "sz-api-01",
+          "name": "SZ API 01",
+          "region": "Shenzhen A",
+          "host": "10.51.0.15",
+          "environment": "development",
+          "status": "critical",
+          "cpuUsage": 88,
+          "memoryUsage": 92,
+          "responseTimeMs": 438
+        },
+        {
+          "id": "sz-db-01",
+          "name": "SZ DB 01",
+          "region": "Shenzhen A",
+          "host": "10.51.0.21",
+          "environment": "development",
+          "status": "warning",
+          "cpuUsage": 66,
+          "memoryUsage": 84,
+          "responseTimeMs": 301
+        }
+      ],
+      "services": [
+        {
+          "id": "svc-api",
+          "name": "Admin API",
+          "category": "api",
+          "uptime": "96.81%",
+          "status": "critical"
+        },
+        {
+          "id": "svc-db",
+          "name": "Tenant Database",
+          "category": "database",
+          "uptime": "98.03%",
+          "status": "warning"
+        },
+        {
+          "id": "svc-queue",
+          "name": "Notification Queue",
+          "category": "queue",
+          "uptime": "98.92%",
+          "status": "warning"
+        }
+      ]
+    }
+  ]
+}

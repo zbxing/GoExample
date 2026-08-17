@@ -1,0 +1,35 @@
+{
+  "name": "@goexample/workspace-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@1.22.22",
+  "scripts": {
+    "env": "node scripts/environment.mjs",
+    "test": "yarn test:node && yarn test:server && yarn test:front",
+    "test:node": "node --test __test__/node/script-guards.test.mjs __test__/node/go-download.test.mjs",
+    "install:front": "node scripts/msfront.mjs install",
+    "dev": "node scripts/msfront.mjs dev",
+    "dev:front": "node scripts/msfront.mjs dev",
+    "build": "node scripts/msfront.mjs build",
+    "build:front": "node scripts/msfront.mjs build",
+    "start:front": "node scripts/msfront.mjs start",
+    "lint": "node scripts/msfront.mjs lint",
+    "lint:front": "node scripts/msfront.mjs lint",
+    "typecheck": "node scripts/msfront.mjs typecheck",
+    "typecheck:front": "node scripts/msfront.mjs typecheck",
+    "test:front": "node scripts/msfront.mjs test",
+    "migrate:front": "node scripts/msfront.mjs migrate",
+    "dev:server": "node scripts/go-project.mjs run",
+    "test:server": "node scripts/go-project.mjs test",
+    "cover:server": "node scripts/go-project.mjs cover",
+    "bench:server": "node scripts/go-project.mjs bench",
+    "race:server": "node scripts/go-project.mjs race",
+    "vuln:server": "node scripts/go-project.mjs vuln",
+    "vet:server": "node scripts/go-project.mjs vet",
+    "build:server": "node scripts/go-project.mjs build"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

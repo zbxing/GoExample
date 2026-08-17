@@ -1,0 +1,1783 @@
+/* ===== GVA exact parity layer ===== */
+.theme-gva {
+  --accent-primary: #2264f2;
+  --gva-sidebar: #191a23;
+  --gva-sidebar-text: #a3a6b4;
+  --gva-sidebar-active: #2264f2;
+  --el-color-primary: #2264f2;
+  --el-border-color: #dcdfe6;
+  --el-border-color-light: #e4e7ed;
+  --el-border-color-lighter: #ebeef5;
+  --el-text-color-regular: #606266;
+  --el-text-color-primary: #303133;
+  --el-text-color-secondary: #909399;
+  --el-fill-color-blank: #ffffff;
+  --el-bg-color-page: #f0f2f5;
+}
+
+/* ---- Login (match GVA index.vue) ---- */
+.gvaUserLayout {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: #fff;
+}
+
+.gvaLoginBanner.banner-oblique {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: none;
+  width: 56%;
+  overflow: hidden;
+  background: #2264f2;
+  clip-path: polygon(22% 0, 100% 0, 100% 100%, 4% 100%);
+}
+
+.gvaLoginCoverImg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: auto;
+  max-width: none;
+}
+
+.gvaLoginLeft {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.gvaLoginCard {
+  width: 80%;
+  max-width: 24rem;
+}
+
+.gvaEntryBrand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 36px;
+}
+
+.gvaEntryLogo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+
+.gvaEntryTitle {
+  margin: 16px 0 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #1f2937;
+}
+
+.gvaLoginLogoMark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  flex: 0 0 auto;
+  background: linear-gradient(135deg, #2264f2, #4f8cff);
+  box-shadow: 0 8px 18px rgba(34, 100, 242, 0.35);
+}
+
+.gvaLoginForm {
+  display: grid;
+}
+
+.gvaLoginFormItem {
+  margin-bottom: 24px;
+}
+
+.gvaElInput {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  background: #fff;
+  transition: border-color 0.2s;
+}
+
+.gvaElInput:focus-within {
+  border-color: #2264f2;
+}
+
+.gvaElInputLarge {
+  min-height: 44px;
+}
+
+.gvaElInput input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 0 40px 0 15px;
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+}
+
+.gvaElInputSuffix {
+  position: absolute;
+  right: 12px;
+  color: #a8abb2;
+  display: inline-flex;
+}
+
+.gvaElInputSuffixBtn {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.gvaBtnPrimary,
+.gvaBtnHollow,
+.elButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 15px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.gvaBtnLarge {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+.gvaBtnBlock {
+  width: 100%;
+}
+
+.gvaBtnPrimary {
+  border: 1px solid #2264f2;
+  background: #2264f2;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(34, 100, 242, 0.28);
+  letter-spacing: 0.2em;
+}
+
+.gvaBtnPrimary:hover {
+  background: #6493f6;
+  border-color: #6493f6;
+}
+
+.gvaBtnPrimary:active {
+  background: #1b50c2;
+  border-color: #1b50c2;
+}
+
+.gvaBtnPrimary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.gvaBtnHollow {
+  border: 1px solid #2264f2;
+  background: transparent;
+  color: #2264f2;
+}
+
+.gvaBtnHollow:hover:not(:disabled) {
+  background: #ecf2ff;
+}
+
+.gvaBtnHollow:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.gvaLoginError {
+  margin: -8px 0 16px;
+  color: #f56c6c;
+  font-size: 13px;
+}
+
+.gvaLoginInfo {
+  margin: -8px 0 16px;
+  color: #2264f2;
+  font-size: 13px;
+}
+
+.gvaBottomInfo,
+.gvaLoginFooter.login-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.gvaBottomInfo .text-center,
+.gvaLoginFooter .text-center {
+  margin: 0;
+}
+
+.gvaBottomInfo a,
+.gvaLoginFooter a {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 400;
+}
+
+.gvaBottomInfo .text-center:first-child a,
+.gvaLoginFooter .text-center:first-child a {
+  color: #2264f2;
+}
+
+.gvaLoginFooterLinks {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.gvaLoginFooterLinks .footer-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.gvaLoginFooterLinks a:hover {
+  opacity: 0.85;
+}
+
+.gvaLayoutFooter {
+  padding: 16px 0 24px;
+}
+
+@media (min-width: 768px) {
+  .gvaLoginBanner.banner-oblique {
+    display: block;
+  }
+
+  .gvaLoginLeft {
+    width: 50%;
+  }
+
+  .gvaLoginCard {
+    width: 24rem;
+  }
+
+  .gvaLoginFooterLinks {
+    display: flex;
+  }
+}
+
+/* ---- Shell (GVA normal layout) ---- */
+.gvaAppShell,
+.theme-gva .gvaAppShell {
+  display: flex !important;
+  flex-direction: column;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  /* 必须给明确 height，否则子项 flex:1 + min-height:0 会把侧栏/内容高度塌成 0 */
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #f5f7fb;
+}
+
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] {
+  grid-template-columns: none !important;
+}
+
+/* 顶栏参与文档流（sticky），避免 fixed + padding-top 叠出空白带 */
+.gvaTopbar,
+.theme-gva .topbar.gvaTopbar,
+.theme-gva .gvaTopbar {
+  position: sticky !important;
+  top: 0;
+  inset: auto;
+  z-index: 30;
+  flex: 0 0 64px;
+  width: 100%;
+  height: 64px !important;
+  min-height: 64px !important;
+  max-height: 64px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  background: #fff;
+  border-bottom: 0;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  border-radius: 0 !important;
+}
+
+.theme-gva .gvaTopbarMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  height: 64px;
+  padding: 0 8px;
+}
+
+.theme-gva .gvaTopbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.theme-gva .gvaTopbarActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.theme-gva .gvaHeaderBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 12rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.theme-gva .gvaHeaderLogo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.theme-gva .gvaHeaderBrand strong {
+  font-size: 22px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.theme-gva .gvaMobileMenuBtn {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #606266;
+  cursor: pointer;
+}
+
+.theme-gva .gvaBreadcrumb {
+  margin-left: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #909399;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theme-gva .gvaBreadcrumbCurrent {
+  color: #303133;
+}
+
+.theme-gva .gvaBreadcrumbSep {
+  margin: 0 6px;
+  opacity: 0.55;
+  font-weight: 400;
+}
+
+.theme-gva .gvaHeaderTools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 12px;
+}
+
+.theme-gva .gvaHeaderDivider {
+  width: 1px;
+  height: 24px;
+  background: #e4e7ed;
+}
+
+.theme-gva .gvaToolSlotHidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-gva .gvaMorphBtn,
+.theme-gva .gvaIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--gva-radius, 0.5rem);
+  background: transparent;
+  color: #909399;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.theme-gva .gvaMorphBtn:hover,
+.theme-gva .gvaIconButton:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #303133;
+}
+
+.theme-gva .gvaMorphInner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-gva .gvaMorphIconCol,
+.theme-gva .gvaMorphLabelCol {
+  display: grid;
+  transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-gva .gvaMorphIconCol {
+  grid-template-columns: 1fr;
+}
+
+.theme-gva .gvaMorphIconCol.is-collapsed {
+  grid-template-columns: 0fr;
+}
+
+.theme-gva .gvaMorphLabelCol {
+  grid-template-columns: 0fr;
+}
+
+.theme-gva .gvaMorphLabelCol.is-expanded {
+  grid-template-columns: 1fr;
+}
+
+.theme-gva .gvaMorphIconClip,
+.theme-gva .gvaMorphLabelClip {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.theme-gva .gvaMorphIconFace {
+  display: inline-flex;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-gva .gvaMorphIconFace.is-out {
+  transform: translateX(-24px);
+  opacity: 0;
+}
+
+.theme-gva .gvaMorphLabelFace {
+  display: inline-flex;
+  padding: 0 4px;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  transform: translateX(24px);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-gva .gvaMorphLabelFace.is-in {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.theme-gva .gvaSpin {
+  display: inline-flex;
+  animation: gva-spin 0.8s linear infinite;
+}
+
+@keyframes gva-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.theme-gva .gvaUserTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--gva-radius, 0.5rem);
+  background: transparent;
+  cursor: pointer;
+  color: #606266;
+  transition: background-color 0.2s;
+}
+
+.theme-gva .gvaUserTrigger:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.theme-gva .gvaUserName {
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.theme-gva .gvaUserCaret {
+  color: #909399;
+  transition: transform 0.2s ease;
+}
+
+.theme-gva .gvaUserAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #ecf2ff;
+  color: #2264f2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.theme-gva .gvaUserMenu {
+  position: relative;
+}
+
+.theme-gva .gvaUserDropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 224px;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 10px;
+  box-shadow: 2px 0 8px 0 rgba(29, 35, 41, 0.05), 0 8px 24px rgba(0, 0, 0, 0.08);
+  padding: 6px;
+  z-index: 40;
+}
+
+.theme-gva .gvaUserDropdownMeta {
+  padding: 10px 12px 12px;
+  border-bottom: 1px solid #ebeef5;
+  margin-bottom: 4px;
+}
+
+.theme-gva .gvaUserDropdownMeta strong {
+  display: block;
+  font-size: 15px;
+}
+
+.theme-gva .gvaUserDropdownMeta p {
+  margin: 4px 0 0;
+  color: #909399;
+  font-size: 13px;
+}
+
+.theme-gva .gvaUserDropdown button {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #606266;
+}
+
+.theme-gva .gvaUserDropdown button:hover {
+  background: #f5f7fa;
+  color: #2264f2;
+}
+
+.theme-gva .gvaUserDropdown button.danger:hover {
+  color: #f56c6c;
+  background: #fef0f0;
+}
+
+.gvaBody,
+.theme-gva .gvaBody {
+  display: flex !important;
+  flex: 1 1 0 !important;
+  align-items: stretch;
+  min-height: 0 !important;
+  /* 不要用 height:100%：在 flex 列布局里会算成整页高度，再被 overflow 裁掉后侧栏/内容像“消失” */
+  height: auto !important;
+  /* 顶栏已在文档流中，不再额外 padding-top，否则仪表盘上方会出现空白带 */
+  padding-top: 0 !important;
+  box-sizing: border-box;
+  overflow: hidden;
+  width: 100%;
+}
+
+.theme-gva .sidebar.gvaSidebar,
+.theme-gva .gvaSidebar,
+.gvaSidebar {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  inset: auto !important;
+  z-index: 10;
+  display: flex !important;
+  flex-direction: column;
+  width: 256px !important;
+  flex: 0 0 256px !important;
+  align-self: stretch !important;
+  height: auto !important;
+  min-height: 100% !important;
+  max-height: none !important;
+  background: #fff !important;
+  color: #606266 !important;
+  box-shadow: 2px 0 8px 0 rgba(29, 35, 41, 0.05);
+  transition: width 0.3s ease, flex-basis 0.3s ease;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden;
+  transform: none !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaSidebar {
+  width: 80px !important;
+  flex-basis: 80px !important;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] {
+  background: #191a23;
+  color: #a3a6b4;
+}
+
+.theme-gva .gvaNav {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+  gap: 2px;
+  display: flex;
+  flex-direction: column;
+}
+
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaNav {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.theme-gva .gvaSidebar .navItem,
+.theme-gva .gvaSidebar .gvaMenuItem {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  height: 48px;
+  margin: 0;
+  padding-right: 12px;
+  border: 0 !important;
+  border-radius: var(--gva-radius, 0.5rem);
+  color: #303133 !important;
+  background: transparent !important;
+  justify-content: flex-start;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: none !important;
+  box-shadow: none !important;
+  transition: background-color 0.2s, color 0.2s;
+  appearance: none;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.theme-gva .gvaSidebar .gvaMenuItem:hover {
+  color: #303133 !important;
+  background: #f5f7fa !important;
+}
+
+.theme-gva .gvaSidebar .gvaMenuItem.is-active {
+  color: #fff !important;
+  background: #2264f2 !important;
+}
+
+.theme-gva .gvaSidebar .gvaMenuItem.is-branch-active {
+  color: #2264f2 !important;
+  background: transparent !important;
+  font-weight: 500;
+}
+
+.theme-gva .gvaSidebar .gvaMenuItem.is-branch-active:hover {
+  background: #f5f7fa !important;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem {
+  color: #a3a6b4 !important;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem.is-active {
+  color: #fff !important;
+  background: #2264f2 !important;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem.is-branch-active {
+  color: #6493f6 !important;
+  background: transparent !important;
+}
+
+.theme-gva .gvaMenuIcon {
+  flex: 0 0 auto;
+}
+
+.theme-gva .gvaMenuTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.theme-gva .gvaMenuChevron {
+  flex: 0 0 auto;
+  margin-left: auto;
+  opacity: 0.65;
+  transition: transform 0.2s ease;
+}
+
+.theme-gva .gvaMenuChevron.is-open {
+  transform: rotate(180deg);
+}
+
+.theme-gva .gvaMenuChildren {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.2s ease-out;
+}
+
+.theme-gva .gvaMenuChildrenInner {
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.theme-gva .gvaMenuChildren.is-open {
+  grid-template-rows: 1fr;
+}
+
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaMenuItem {
+  justify-content: center;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaMenuTitle,
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaMenuChevron,
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaMenuChildren {
+  display: none !important;
+}
+
+.theme-gva .gvaMenuCaret {
+  display: none;
+}
+
+.theme-gva .gvaCollapseBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  flex: 0 0 40px;
+  border: 0;
+  border-top: 1px solid #ebeef5;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.theme-gva .gvaCollapseBar:hover {
+  background: #f5f7fa;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaCollapseBar {
+  border-top-color: rgba(255, 255, 255, 0.08);
+  color: #a3a6b4;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaCollapseBar:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.theme-gva .gvaSidebar .sidebarCollapseToggle,
+.theme-gva .gvaSidebar .sidebarFooterCard,
+.theme-gva .gvaSidebar .sidebarSummary,
+.theme-gva .gvaSidebar .gvaSidebarLogo {
+  display: none !important;
+}
+
+.gvaMainColumn,
+.theme-gva .gvaMainColumn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gvaAppContent,
+.theme-gva .gvaAppContent,
+.theme-gva .appContent.gvaAppContent {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 8px !important;
+  margin: 0 !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  background: transparent;
+}
+
+.theme-gva .gvaPageContent,
+.theme-gva .pageContent.gvaPageContent {
+  max-width: none;
+  margin: 0;
+  padding: 8px 4px 16px !important;
+  background: transparent;
+}
+
+/* ---- Tabs (match GVA page-tab chrome/button/slider) ---- */
+.gvaTagsView {
+  --gva-primary: 34, 100, 242;
+  --gva-primary-50: 236, 242, 255;
+  --gva-base-text: 48, 49, 51;
+  --gva-border: 228, 231, 237;
+  display: flex;
+  align-items: flex-end;
+  flex: 0 0 44px;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  width: 100%;
+  padding: 6px 12px 0;
+  margin: 0;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 21, 41, 0.08);
+  overflow-x: auto;
+  isolation: isolate;
+}
+
+.gvaTabs-button {
+  align-items: center;
+  gap: 6px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.gvaTabs-chrome {
+  align-items: flex-end;
+  gap: 0;
+}
+
+.gvaTabs-slider {
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.gvaChromeDefs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.gvaTagsScroll {
+  display: flex;
+  align-items: inherit;
+  gap: inherit;
+  overflow: visible;
+  width: 100%;
+  height: 100%;
+}
+
+.gvaTagsView::-webkit-scrollbar,
+.gvaTagsScroll::-webkit-scrollbar {
+  height: 0;
+}
+
+.gvaPageTab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  color: rgb(var(--gva-base-text));
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.gvaPageTabLabel {
+  color: inherit;
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.gvaPageTabIcon {
+  flex: 0 0 auto;
+}
+
+.gvaPageTabClose {
+  margin-left: 2px;
+  margin-right: -4px;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #909399;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex: 0 0 auto;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.gvaPageTabClose:hover {
+  background: rgba(144, 147, 153, 0.2);
+  color: #303133;
+}
+
+/* chrome */
+.gvaPageTab-chrome {
+  z-index: 0;
+  margin-right: -18px;
+  padding: 0 24px;
+  gap: 8px;
+}
+
+.gvaPageTab-chrome:hover {
+  z-index: 9;
+}
+
+.gvaPageTab-chrome.is-active {
+  z-index: 10;
+  color: #2264f2;
+}
+
+.gvaChromeBg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  color: transparent;
+}
+
+.gvaPageTab-chrome.is-active .gvaChromeBg {
+  color: rgb(var(--gva-primary-50));
+}
+
+.gvaChromeSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.gvaChromeHover {
+  position: absolute;
+  inset: 5px 12px;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 8px;
+  background: rgba(34, 100, 242, 0.08);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.gvaPageTab-chrome:not(.is-active):hover .gvaChromeHover {
+  opacity: 1;
+}
+
+.gvaChromeDivider {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  width: 1px;
+  height: 14px;
+  transform: translateY(-50%);
+  background: rgb(var(--gva-border));
+}
+
+.gvaPageTab-chrome:hover .gvaChromeDivider,
+.gvaPageTab-chrome.is-active .gvaChromeDivider,
+.gvaPageTab-chrome:has(+ .gvaPageTab-chrome:hover) .gvaChromeDivider,
+.gvaPageTab-chrome:has(+ .gvaPageTab-chrome.is-active) .gvaChromeDivider {
+  opacity: 0;
+}
+
+/* button */
+.gvaPageTab-button {
+  height: 36px;
+  margin-bottom: 4px;
+  padding: 0 14px;
+  border-radius: var(--gva-radius, 0.5rem);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 14px;
+  gap: 6px;
+}
+
+.gvaPageTab-button:hover {
+  color: #2264f2;
+  background: rgba(34, 100, 242, 0.08);
+}
+
+.gvaPageTab-button.is-active {
+  color: #2264f2;
+  background: rgba(34, 100, 242, 0.12);
+  font-weight: 500;
+}
+
+.gvaPageTab-button .gvaPageTabLabel {
+  font-size: 14px;
+}
+
+/* slider */
+.gvaPageTab-slider {
+  gap: 6px;
+  padding: 4px 12px;
+  border-bottom: 2px solid transparent;
+}
+
+.gvaPageTab-slider:hover {
+  color: #2264f2;
+}
+
+.gvaPageTab-slider.is-active {
+  color: #2264f2;
+  background: #f5f7fa;
+  border-bottom-color: #2264f2;
+}
+
+.gvaTagsMenuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  border: 0;
+  background: transparent;
+}
+
+.gvaTagsContextMenu {
+  position: fixed;
+  z-index: 91;
+  min-width: 120px;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px 0;
+  display: grid;
+  overflow: hidden;
+}
+
+.gvaTagsContextMenu button {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  min-height: 32px;
+  padding: 6px 16px;
+  cursor: pointer;
+  color: #303133;
+  font-size: 13px;
+}
+
+.gvaTagsContextMenu button:hover {
+  background: #f5f7fa;
+}
+
+/* ---- Settings drawer / command ---- */
+.gvaDrawerRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+
+.gvaDrawerMask {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.gvaDrawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(420px, 100vw);
+  height: 100%;
+  background: #fff;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+.gvaDrawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 0 16px;
+  border-bottom: 1px solid #ebeef5;
+  font-size: 16px;
+}
+
+.gvaDrawerHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gvaDrawerBody {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px 32px;
+}
+
+.gvaDrawerTabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 auto 20px;
+  background: #f5f7fa;
+  border-radius: 10px;
+}
+
+.gvaDrawerTabs button {
+  min-width: 64px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #909399;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gvaDrawerTabs button.active {
+  background: #2264f2;
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(34, 100, 242, 0.35);
+}
+
+.gvaDrawerSection {
+  display: grid;
+  gap: 14px;
+}
+
+.gvaDrawerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  color: #303133;
+  font-size: 14px;
+}
+
+.gvaDrawerLabel {
+  font-size: 13px;
+  color: #909399;
+}
+
+.gvaDrawerChipGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gvaDrawerChipGroup button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  color: #606266;
+}
+
+.gvaDrawerChipGroup button.active {
+  border-color: #2264f2;
+  color: #2264f2;
+  background: #ecf2ff;
+}
+
+.gvaDrawerHint {
+  margin: 0;
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.gvaCommandOverlay.commandPaletteOverlay {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+
+.gvaCommandPanel.commandPalettePanel {
+  width: min(420px, calc(100vw - 32px));
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.gvaCommandHeader {
+  padding: 16px 16px 8px;
+}
+
+.gvaQuickInput {
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  outline: none;
+  font-size: 16px;
+  background: transparent;
+}
+
+.gvaCommandFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px 16px;
+  border-top: 1px solid #ebeef5;
+}
+
+@media (min-width: 921px) {
+  .theme-gva .sidebar.gvaSidebar,
+  .theme-gva .gvaSidebar,
+  .gvaSidebar {
+    position: relative !important;
+    inset: auto !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    width: 256px !important;
+    flex: 0 0 256px !important;
+    height: auto !important;
+    min-height: 100% !important;
+    z-index: 10 !important;
+  }
+
+  .theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaSidebar {
+    width: 80px !important;
+    flex-basis: 80px !important;
+  }
+}
+
+@media (max-width: 920px) {
+  .theme-gva .gvaMobileMenuBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .theme-gva .gvaHeaderBrand {
+    display: none;
+  }
+
+  .theme-gva .gvaBreadcrumb {
+    margin-left: 0;
+  }
+
+  .theme-gva .sidebar.gvaSidebar,
+  .theme-gva .gvaSidebar {
+    position: fixed !important;
+    top: 64px !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: auto !important;
+    width: 256px !important;
+    transform: translateX(-105%) !important;
+    z-index: 25 !important;
+  }
+
+  .theme-gva .gvaAppShell[data-sidebar-open='true'] .sidebar.gvaSidebar[data-mobile-open='true'],
+  .theme-gva .gvaAppShell[data-sidebar-open='true'] .gvaSidebar[data-mobile-open='true'] {
+    transform: translateX(0) !important;
+  }
+}
+
+/* ---- System pages / Element-like ---- */
+.theme-gva .gvaPageContent {
+  padding: 8px 4px 16px;
+  background: transparent;
+}
+
+.gvaSystemPage {
+  display: grid;
+  gap: 12px;
+}
+
+.gvaWarningBar {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #fdf6ec;
+  border: 1px solid #faecd8;
+  color: #e6a23c;
+  font-size: 13px;
+}
+
+.gvaSearchBox {
+  background: #fff;
+  border: 0;
+  border-radius: 12px;
+  padding: 16px 16px 4px;
+  margin: 8px 0;
+}
+
+.gvaSystemCard {
+  background: #fff;
+  border: 0;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 8px 0;
+}
+
+.gvaSystemCard .gvaTableToolbar {
+  margin-top: 0;
+}
+
+.gvaTableBox .adminTableWrap,
+.gvaTableBox.gvaSystemCard .gvaTableBox {
+  border: 0;
+}
+
+.gvaFormDrawerRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+
+.gvaFormDrawerMask {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.gvaFormDrawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(480px, 100vw);
+  height: 100%;
+  background: #fff;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  animation: gva-drawer-in 0.2s ease-out;
+}
+
+@keyframes gva-drawer-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.gvaFormDrawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 16px;
+  border-bottom: 1px solid #ebeef5;
+  font-size: 16px;
+}
+
+.gvaFormDrawerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gvaFormDrawerBody {
+  flex: 1;
+  overflow: auto;
+  padding: 20px 16px 32px;
+}
+
+.theme-gva .elButtonIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.gvaSearchFormInline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+}
+
+.gvaSearchFields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  flex: 1;
+}
+
+.gvaSearchActions {
+  display: flex;
+  gap: 8px;
+}
+
+.gvaFieldInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: auto;
+  margin: 0;
+}
+
+.gvaFieldLabel {
+  color: #606266;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.gvaFieldControl {
+  display: inline-flex;
+}
+
+.gvaFieldControl input,
+.gvaFieldControl select,
+.gvaDialogForm input,
+.gvaDialogForm select,
+.gvaDialogForm textarea {
+  min-height: 32px;
+  min-width: 200px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 0 11px;
+  background: #fff;
+  color: #606266;
+}
+
+.gvaDialogForm {
+  display: grid;
+  gap: 18px;
+}
+
+.gvaDialogForm .gvaField,
+.gvaFormDrawerBody .gvaField {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.gvaDialogForm .gvaField > span:first-child,
+.gvaFormDrawerBody .gvaField > span:first-child {
+  padding-top: 6px;
+  text-align: right;
+  color: #606266;
+  font-size: 14px;
+}
+
+.gvaDialogForm .gvaField > *:last-child,
+.gvaFormDrawerBody .gvaField > *:last-child {
+  min-width: 0;
+}
+
+.gvaFormDrawerBody .gvaField input,
+.gvaFormDrawerBody .gvaField select,
+.gvaFormDrawerBody .gvaField textarea,
+.gvaDialogForm input,
+.gvaDialogForm select,
+.gvaDialogForm textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.gvaTableToolbar {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.gvaTableBox {
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  overflow: auto;
+}
+
+.gvaElTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.gvaElTable th,
+.gvaElTable td {
+  border-bottom: 1px solid #ebeef5;
+  padding: 12px;
+  text-align: left;
+  color: #606266;
+}
+
+.gvaElTable th {
+  background: #fafafa;
+  color: #909399;
+  font-weight: 500;
+}
+
+.gvaElTable tr:hover td {
+  background: #f5f7fa;
+}
+
+.gvaElTableStripe tr.is-striped td {
+  background: #fafafa;
+}
+
+.gvaElTableStripe tr.is-striped:hover td {
+  background: #f5f7fa;
+}
+
+.gvaRowActions {
+  display: inline-flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.gvaLinkButton {
+  border: 0;
+  background: transparent;
+  color: #2264f2;
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+}
+
+.gvaLinkButton.danger {
+  color: #f56c6c;
+}
+
+.gvaLinkButton:disabled {
+  color: #c0c4cc;
+  cursor: not-allowed;
+}
+
+.theme-gva .elButton {
+  border: 1px solid #dcdfe6;
+  background: #fff;
+  color: #606266;
+  padding: 0 15px;
+  gap: 6px;
+}
+
+.theme-gva .elButton:hover {
+  color: #2264f2;
+  border-color: #c6d9ff;
+  background: #ecf2ff;
+}
+
+.theme-gva .elButtonPrimary {
+  background: #2264f2;
+  border-color: #2264f2;
+  color: #fff;
+}
+
+.theme-gva .elButtonPrimary:hover {
+  background: #6493f6;
+  border-color: #6493f6;
+  color: #fff;
+}
+
+.theme-gva .adminDialogFooter {
+  justify-content: flex-end;
+  gap: 0;
+  padding: 0 16px 16px 0;
+}
+
+.theme-gva .adminDialogFooter .elButton + .elButton {
+  margin-left: 30px;
+}
+
+.theme-gva .adminDialogFooter .elButton {
+  padding: 0 24px;
+}
+
+.theme-gva .adminDialogHeader {
+  padding: 16px 16px 10px;
+  border-bottom: 0;
+}
+
+.theme-gva .adminDialogBody {
+  padding: 10px 16px 16px;
+}
+
+.gvaConfirmMessage {
+  margin: 8px 0;
+  color: #606266;
+}
+
+.gvaInlineActions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.gvaInlineActions input {
+  flex: 1;
+}
+
+.gvaSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.gvaSwitchCore {
+  width: 40px;
+  height: 20px;
+  border-radius: 999px;
+  background: #dcdfe6;
+  position: relative;
+  transition: 0.2s;
+}
+
+.gvaSwitchCore::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #fff;
+  transition: 0.2s;
+}
+
+.gvaSwitch.is-on .gvaSwitchCore {
+  background: #2264f2;
+}
+
+.gvaSwitch.is-on .gvaSwitchCore::after {
+  left: 22px;
+}
+
+.gvaSwitchLabel {
+  font-size: 12px;
+  color: #606266;
+}
+
+.gvaMessage {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  padding: 10px 16px;
+  border-radius: 4px;
+  background: #fff;
+  border: 1px solid #ebeef5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  color: #606266;
+  font-size: 14px;
+}
+
+.gvaMessageIcon {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.gvaMessage-success .gvaMessageIcon {
+  background: #67c23a;
+}
+
+.gvaMessage-error .gvaMessageIcon {
+  background: #f56c6c;
+}
+
+.gvaMessage-warning .gvaMessageIcon {
+  background: #e6a23c;
+}
+
+.gvaPagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  color: #606266;
+  font-size: 13px;
+}
+
+.gvaPagination select {
+  min-height: 28px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 0 8px;
+}
+
+.authLayout {
+  min-height: 100vh;
+  background: #fff;
+}
+
+@media (max-width: 920px) {
+  .theme-gva .gvaAppShell,
+  .theme-gva .gvaAppShell[data-sidebar-collapsed='true'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

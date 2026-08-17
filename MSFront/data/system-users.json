@@ -1,0 +1,32 @@
+{
+  "users": [
+    {
+      "id": "u-admin",
+      "username": "admin",
+      "passwordHash": "msfront-seed-salt-v1:00e570cd936aeb5137d6ee6332a6f226f62406c5d3bb009a9fe2d5fc7aea113ce7a9fc1e9829f25052cb0de889e68b9d9101f7e18d3684cf6e57ec246a135af1",
+      "displayName": "超级管理员",
+      "email": "admin@goexample.local",
+      "phone": "",
+      "status": "active",
+      "roleIds": [
+        "888"
+      ],
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "u-operator",
+      "username": "operator",
+      "passwordHash": "msfront-seed-salt-v1:4cd5a5c32ae8a50651b3c41e19f65537e4b5c7cfb1e3af0ab089beac7267427658ad921453a66979ca24bd41521eb3b842b865250d6bf279a1c77a56abafc24e",
+      "displayName": "运维人员",
+      "email": "operator@msfront.local",
+      "phone": "",
+      "status": "active",
+      "roleIds": [
+        "9528"
+      ],
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}
