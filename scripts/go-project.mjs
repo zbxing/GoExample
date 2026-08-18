@@ -32,6 +32,7 @@ if (!existsSync(path.join(projectRoot, 'go.mod'))) {
 const projectPattern = `./Proj/${projectName}/...`;
 const frameworkPattern = './Framework/...';
 const outputRoot = path.join(repositoryRoot, '.temp');
+const transportEvidenceRoot = path.join(outputRoot, 'transport-benchmark');
 const workspace = readFileSync(path.join(repositoryRoot, 'go.work'), 'utf8');
 const workspacePackage = JSON.parse(readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'));
 const toolchainMatch = workspace.match(/^toolchain\s+go(\d+\.\d+\.\d+)$/m);
@@ -87,6 +88,40 @@ const taskDefinitions = {
       './Framework/health',
     ],
   },
+  'bench-transports': {
+    commands: [
+      {
+        cwd: repositoryRoot,
+        args: [
+          'test',
+          '-v',
+          '-run=^TestProjectTransport',
+          '-bench=^BenchmarkProjectTransportTCP',
+          '-benchmem',
+          '-count=5',
+          './Proj/Example/internal/projectapi',
+        ],
+      },
+      ...(process.platform === 'linux'
+        ? [
+            {
+              cwd: repositoryRoot,
+              args: [
+                'test',
+                '-run=^$',
+                '-bench=^BenchmarkProjectTransportTCP',
+                '-benchtime=3s',
+                '-count=1',
+                `-outputdir=${transportEvidenceRoot}`,
+                '-cpuprofile=transport.cpu.pprof',
+                '-memprofile=transport.heap.pprof',
+                './Proj/Example/internal/projectapi',
+              ],
+            },
+          ]
+        : []),
+    ],
+  },
   race: { cwd: repositoryRoot, args: ['test', '-race', frameworkPattern, projectPattern] },
   vuln: {
     commands: [
@@ -122,6 +157,7 @@ if (!(task in taskDefinitions)) {
 
 mkdirSync(path.join(outputRoot, 'bin'), { recursive: true });
 mkdirSync(path.join(outputRoot, 'coverage'), { recursive: true });
+mkdirSync(transportEvidenceRoot, { recursive: true });
 const goTemporaryRoot = process.env.GOTMPDIR?.trim() || path.join(outputRoot, 'go-tmp');
 mkdirSync(goTemporaryRoot, { recursive: true });
 const goEnvironment = { ...process.env, GOTMPDIR: goTemporaryRoot };
@@ -142,6 +178,49 @@ const goEnvironmentWithPath = {
     ? `${goCommandDirectory}${path.delimiter}${executablePath}`
     : executablePath,
 };
+
+function commandIsAvailable(command) {
+  if (!command) {
+    return false;
+  }
+  const result = spawnSync(command, ['--version'], {
+    cwd: repositoryRoot,
+    env: goEnvironmentWithPath,
+    encoding: 'utf8',
+    shell: false,
+  });
+  return result.status === 0;
+}
+
+function findWindowsGcc() {
+  const configuredRoot = process.env.GCC_ROOT?.trim();
+  const candidates = [
+    process.env.CC?.trim(),
+    configuredRoot ? path.join(configuredRoot, 'bin', 'gcc.exe') : null,
+    configuredRoot ? path.join(configuredRoot, 'mingw64', 'bin', 'gcc.exe') : null,
+    'E:\\DevTools\\GCC\\mingw64\\bin\\gcc.exe',
+    'C:\\mingw64\\bin\\gcc.exe',
+    'gcc',
+  ].filter(Boolean);
+  return candidates.find(commandIsAvailable) ?? null;
+}
+
+if (task === 'race') {
+  goEnvironmentWithPath.CGO_ENABLED = '1';
+  if (process.platform === 'win32') {
+    const gccCommand = findWindowsGcc();
+    if (!gccCommand) {
+      console.error(
+        'yarn race:server requires GCC on Windows. Set CC or GCC_ROOT, or install GCC under E:\\DevTools\\GCC.',
+      );
+      process.exit(1);
+    }
+    const gccDirectory = path.dirname(path.resolve(gccCommand));
+    goEnvironmentWithPath.CC = gccCommand;
+    goEnvironmentWithPath[pathEnvironmentKey] =
+      `${gccDirectory}${path.delimiter}${goEnvironmentWithPath[pathEnvironmentKey]}`;
+  }
+}
 const definition = taskDefinitions[task];
 const commands = definition.commands ?? [definition];
 

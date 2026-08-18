@@ -1,0 +1,86 @@
+groups:
+  - name: goexample.sli
+    interval: 30s
+    rules:
+      - record: goexample:http_requests:rate5m
+        expr: sum(rate(goexample_http_requests_total[5m]))
+      - record: goexample:sli:admission_rejection_rate5m
+        expr: rate(goexample_http_admission_rejections_total[5m])
+      - record: goexample:sli:draining_rejection_rate5m
+        expr: rate(goexample_http_draining_rejections_total[5m])
+      - record: goexample:http_requests:rate30m
+        expr: sum(rate(goexample_http_requests_total[30m]))
+      - record: goexample:http_requests:rate1h
+        expr: sum(rate(goexample_http_requests_total[1h]))
+      - record: goexample:http_requests:rate6h
+        expr: sum(rate(goexample_http_requests_total[6h]))
+      - record: goexample:http_requests:rate3d
+        expr: sum(rate(goexample_http_requests_total[3d]))
+      - record: goexample:sli:availability_ratio5m
+        expr: sum(rate(goexample_http_requests_total{status!~"5.."}[5m])) / sum(rate(goexample_http_requests_total[5m]))
+      - record: goexample:sli:availability_ratio30m
+        expr: sum(rate(goexample_http_requests_total{status!~"5.."}[30m])) / sum(rate(goexample_http_requests_total[30m]))
+      - record: goexample:sli:availability_ratio1h
+        expr: sum(rate(goexample_http_requests_total{status!~"5.."}[1h])) / sum(rate(goexample_http_requests_total[1h]))
+      - record: goexample:sli:availability_ratio6h
+        expr: sum(rate(goexample_http_requests_total{status!~"5.."}[6h])) / sum(rate(goexample_http_requests_total[6h]))
+      - record: goexample:sli:availability_ratio3d
+        expr: sum(rate(goexample_http_requests_total{status!~"5.."}[3d])) / sum(rate(goexample_http_requests_total[3d]))
+      - record: goexample:sli:availability_error_ratio5m
+        expr: 1 - goexample:sli:availability_ratio5m
+      - record: goexample:sli:availability_error_ratio30m
+        expr: 1 - goexample:sli:availability_ratio30m
+      - record: goexample:sli:availability_error_ratio1h
+        expr: 1 - goexample:sli:availability_ratio1h
+      - record: goexample:sli:availability_error_ratio6h
+        expr: 1 - goexample:sli:availability_ratio6h
+      - record: goexample:sli:availability_error_ratio3d
+        expr: 1 - goexample:sli:availability_ratio3d
+      - record: goexample:sli:latency_le_250ms_ratio5m
+        expr: sum(rate(goexample_http_request_duration_seconds_bucket{le="0.25",status!~"5.."}[5m])) / sum(rate(goexample_http_request_duration_seconds_count{status!~"5.."}[5m]))
+      - record: goexample:sli:latency_p95_seconds5m
+        expr: histogram_quantile(0.95, sum by (le) (rate(goexample_http_request_duration_seconds_bucket{status!~"5.."}[5m])))
+      - record: goexample:slo:availability_burn_rate5m
+        expr: goexample:sli:availability_error_ratio5m / 0.001
+      - record: goexample:slo:availability_burn_rate30m
+        expr: goexample:sli:availability_error_ratio30m / 0.001
+      - record: goexample:slo:availability_burn_rate1h
+        expr: goexample:sli:availability_error_ratio1h / 0.001
+      - record: goexample:slo:availability_burn_rate6h
+        expr: goexample:sli:availability_error_ratio6h / 0.001
+      - record: goexample:slo:availability_burn_rate3d
+        expr: goexample:sli:availability_error_ratio3d / 0.001
+
+  - name: goexample.slo.alerts
+    interval: 30s
+    rules:
+      - alert: GoExampleAvailabilityBurnRateCritical
+        expr: goexample:slo:availability_burn_rate1h > 14.4 and goexample:slo:availability_burn_rate5m > 14.4
+        for: 5m
+        labels:
+          service: goexample
+          severity: critical
+        annotations:
+          summary: GoExample availability error budget is burning rapidly
+          description: The 1h and 5m error-budget burn rates exceed 14.4x for 5m.
+          runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+      - alert: GoExampleAvailabilityBurnRateWarning
+        expr: goexample:slo:availability_burn_rate6h > 6 and goexample:slo:availability_burn_rate30m > 6
+        for: 15m
+        labels:
+          service: goexample
+          severity: warning
+        annotations:
+          summary: GoExample availability error budget is burning above warning threshold
+          description: The 6h and 30m error-budget burn rates exceed 6x for 15m.
+          runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+      - alert: GoExampleLatencySLOViolation
+        expr: goexample:sli:latency_p95_seconds5m > 0.25
+        for: 10m
+        labels:
+          service: goexample
+          severity: warning
+        annotations:
+          summary: GoExample p95 latency is above 250ms
+          description: The request p95 latency SLI has exceeded the 250ms objective for 10m.
+          runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md

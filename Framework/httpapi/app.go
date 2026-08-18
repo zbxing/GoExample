@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"log/slog"
 	"runtime/debug"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/earlydata"
 	"github.com/gofiber/fiber/v3/middleware/etag"
 	"github.com/gofiber/fiber/v3/middleware/helmet"
+	"github.com/gofiber/fiber/v3/middleware/idempotency"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 
@@ -34,10 +36,13 @@ type Options struct {
 	AllowCredentials    bool
 	TrustedProxies      []string
 	BodyLimit           int
+	ReadBufferSize      int
 	ReadTimeout         time.Duration
 	WriteTimeout        time.Duration
 	IdleTimeout         time.Duration
+	MaxConnections      int
 	RequestTimeout      time.Duration
+	MaxInFlight         int
 	HealthCheckTimeout  time.Duration
 	HealthCacheTTL      time.Duration
 	RateLimitMax        int
@@ -45,22 +50,27 @@ type Options struct {
 	AuthRateLimitMax    int
 	IdempotencyEnabled  bool
 	IdempotencyLifetime time.Duration
-	MetricsToken        string
-	PprofEnabled        bool
-	PprofToken          string
-	SystemInfoDetailed  bool
-	Auth                *auth.Service
-	Health              *health.Checker
-	Metrics             *observability.Metrics
-	Validator           fiber.StructValidator
-	Logger              *slog.Logger
-	Now                 func() time.Time
-	Endpoints           []string
-	RegisterRoutes      RouteRegistrar
+	// SharedStorage and IdempotencyLock are optional in development/test.
+	// External mode requires storage and, when idempotency is enabled, a lock.
+	SharedStorage      fiber.Storage
+	IdempotencyLock    idempotency.Locker
+	MetricsToken       string
+	PprofEnabled       bool
+	PprofToken         string
+	SystemInfoDetailed bool
+	Auth               *auth.Service
+	Health             *health.Checker
+	Metrics            *observability.Metrics
+	Validator          fiber.StructValidator
+	Logger             *slog.Logger
+	Now                func() time.Time
+	Endpoints          []string
+	RegisterRoutes     RouteRegistrar
 }
 
 func New(options Options) *fiber.App {
 	options = withDefaults(options)
+	applicationContext, cancelApplication := context.WithCancel(context.Background())
 	helmetConfig := helmet.Config{
 		ContentSecurityPolicy:     "default-src 'none'; frame-ancestors 'none'",
 		XFrameOptions:             "DENY",
@@ -76,9 +86,11 @@ func New(options Options) *fiber.App {
 	app := fiber.New(fiber.Config{
 		AppName:            options.Name,
 		BodyLimit:          options.BodyLimit,
+		ReadBufferSize:     options.ReadBufferSize,
 		ReadTimeout:        options.ReadTimeout,
 		WriteTimeout:       options.WriteTimeout,
 		IdleTimeout:        options.IdleTimeout,
+		Concurrency:        options.MaxConnections,
 		TrustProxy:         len(options.TrustedProxies) > 0,
 		TrustProxyConfig:   fiber.TrustProxyConfig{Proxies: options.TrustedProxies},
 		ProxyHeader:        fiber.HeaderXForwardedFor,
@@ -86,18 +98,31 @@ func New(options Options) *fiber.App {
 		StructValidator:    options.Validator,
 		ErrorHandler:       errorHandler,
 	})
+	app.Hooks().OnPreShutdown(func() error {
+		cancelApplication()
+		return nil
+	})
 
 	app.Use(requestid.New())
+	app.Use(observability.TraceMiddleware)
 	app.Use(observability.RequestLogger(options.Logger, options.LogSkipPaths...))
 	app.Use(options.Metrics.Middleware)
 	app.Use(recover.New(recover.Config{
 		EnableStackTrace: true,
 		StackTraceHandler: func(c fiber.Ctx, recovered any) {
-			options.Logger.Error("panic_recovered",
+			logContext := c.Context()
+			if logContext == nil {
+				logContext = context.Background()
+			}
+			attributes := []any{
 				"request_id", requestid.FromContext(c),
 				"panic", recovered,
 				"stack", string(debug.Stack()),
-			)
+			}
+			if trace, ok := observability.FromContext(c.Context()); ok {
+				attributes = append(attributes, "trace_id", trace.TraceID, "span_id", trace.SpanID)
+			}
+			options.Logger.ErrorContext(logContext, "panic_recovered", attributes...)
 		},
 	}))
 	app.Use(helmet.New(helmetConfig))
@@ -117,9 +142,10 @@ func New(options Options) *fiber.App {
 			fiber.HeaderAuthorization,
 			fiber.HeaderContentType,
 			fiber.HeaderXRequestID,
+			observability.TraceparentHeader,
 			"X-Idempotency-Key",
 		},
-		ExposeHeaders:    []string{fiber.HeaderXRequestID, "X-Idempotency-Replayed", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"},
+		ExposeHeaders:    []string{fiber.HeaderXRequestID, observability.TraceparentHeader, fiber.HeaderRetryAfter, "X-Idempotency-Replayed", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"},
 		AllowCredentials: options.AllowCredentials,
 		MaxAge:           300,
 	}))
@@ -127,7 +153,7 @@ func New(options Options) *fiber.App {
 	app.Use("/api/v1", etag.New(etag.Config{Weak: true}))
 	app.Use("/api/v1", compress.New(compress.Config{Level: compress.LevelBestSpeed}))
 
-	registerRoutes(app, options)
+	registerRoutes(app, options, applicationContext)
 	return app
 }
 
@@ -153,6 +179,9 @@ func withDefaults(options Options) Options {
 	if options.BodyLimit <= 0 {
 		options.BodyLimit = fiber.DefaultBodyLimit
 	}
+	if options.ReadBufferSize <= 0 {
+		options.ReadBufferSize = 16 * 1024
+	}
 	if options.ReadTimeout <= 0 {
 		options.ReadTimeout = 10 * time.Second
 	}
@@ -162,8 +191,14 @@ func withDefaults(options Options) Options {
 	if options.IdleTimeout <= 0 {
 		options.IdleTimeout = 60 * time.Second
 	}
+	if options.MaxConnections <= 0 {
+		options.MaxConnections = 4096
+	}
 	if options.RequestTimeout <= 0 {
 		options.RequestTimeout = 8 * time.Second
+	}
+	if options.MaxInFlight <= 0 {
+		options.MaxInFlight = 256
 	}
 	if options.HealthCheckTimeout <= 0 {
 		options.HealthCheckTimeout = 2 * time.Second

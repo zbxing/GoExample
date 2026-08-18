@@ -78,6 +78,15 @@ func (c *Checker) SetDraining(draining bool) {
 	c.invalidateCache()
 }
 
+// Draining reports whether the instance is refusing new business work during
+// graceful shutdown. It is a lock-free snapshot for admission middleware.
+func (c *Checker) Draining() bool {
+	if c == nil {
+		return false
+	}
+	return c.draining.Load()
+}
+
 func (c *Checker) Readiness(ctx context.Context) Report {
 	if ctx == nil {
 		ctx = context.Background()

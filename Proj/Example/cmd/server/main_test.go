@@ -75,43 +75,58 @@ func TestRunServesAndShutsDownOnContextCancellation(t *testing.T) {
 	}
 }
 
+func TestRunRejectsProductionWithoutExternalSharedState(t *testing.T) {
+	setServerTestEnvironment(t, 3001)
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("JWT_SECRET", "production-secret-with-at-least-32-characters")
+	t.Setenv("METRICS_TOKEN", "production-metrics-token-32-characters")
+	t.Setenv("SHARED_STATE_MODE", "external")
+
+	err := run(context.Background(), &bytes.Buffer{})
+	if err == nil || !strings.Contains(err.Error(), "shared storage implementation") {
+		t.Fatalf("run() error = %v", err)
+	}
+}
+
 func setServerTestEnvironment(t *testing.T, port int) {
 	t.Helper()
 	values := map[string]string{
-		"APP_NAME":               "GoExample Test API",
-		"APP_ENV":                "development",
-		"LOG_LEVEL":              "info",
-		"LOG_FORMAT":             "json",
-		"LOG_SKIP_PATHS":         "/livez,/readyz,/startupz,/metrics",
-		"HTTP_HOST":              "127.0.0.1",
-		"HTTP_PORT":              strconv.Itoa(port),
-		"CORS_ALLOW_ORIGINS":     "http://localhost:3000",
-		"CORS_ALLOW_CREDENTIALS": "false",
-		"TRUSTED_PROXIES":        "",
-		"HTTP_BODY_LIMIT":        "4194304",
-		"HTTP_READ_TIMEOUT":      "1s",
-		"HTTP_WRITE_TIMEOUT":     "1s",
-		"HTTP_IDLE_TIMEOUT":      "1s",
-		"HTTP_REQUEST_TIMEOUT":   "100ms",
-		"HEALTH_CHECK_TIMEOUT":   "100ms",
-		"HEALTH_CACHE_TTL":       "100ms",
-		"SHUTDOWN_TIMEOUT":       "2s",
-		"SHUTDOWN_DRAIN_DELAY":   "0s",
-		"RATE_LIMIT_MAX":         "1000",
-		"RATE_LIMIT_WINDOW":      "1m",
-		"AUTH_RATE_LIMIT_MAX":    "100",
-		"IDEMPOTENCY_ENABLED":    "true",
-		"IDEMPOTENCY_LIFETIME":   "1m",
-		"METRICS_TOKEN":          "",
-		"PPROF_ENABLED":          "false",
-		"PPROF_TOKEN":            "",
-		"SYSTEM_INFO_DETAILED":   "false",
-		"DEMO_AUTH_ENABLED":      "false",
-		"DEMO_USERNAME":          "demo",
-		"DEMO_PASSWORD":          "demo123",
-		"JWT_SECRET":             "goexample-development-jwt-secret-change-me",
-		"JWT_ISSUER":             "goexample-test",
-		"JWT_TTL":                "1h",
+		"APP_NAME":                     "GoExample Test API",
+		"APP_ENV":                      "development",
+		"LOG_LEVEL":                    "info",
+		"LOG_FORMAT":                   "json",
+		"LOG_SKIP_PATHS":               "/livez,/readyz,/startupz,/metrics",
+		"HTTP_HOST":                    "127.0.0.1",
+		"HTTP_PORT":                    strconv.Itoa(port),
+		"CORS_ALLOW_ORIGINS":           "http://localhost:3000",
+		"CORS_ALLOW_CREDENTIALS":       "false",
+		"TRUSTED_PROXIES":              "",
+		"HTTP_BODY_LIMIT":              "4194304",
+		"HTTP_READ_TIMEOUT":            "1s",
+		"HTTP_WRITE_TIMEOUT":           "1s",
+		"HTTP_IDLE_TIMEOUT":            "1s",
+		"HTTP_REQUEST_TIMEOUT":         "100ms",
+		"HEALTH_CHECK_TIMEOUT":         "100ms",
+		"HEALTH_CACHE_TTL":             "100ms",
+		"SHUTDOWN_TIMEOUT":             "2s",
+		"SHUTDOWN_DRAIN_DELAY":         "0s",
+		"RATE_LIMIT_MAX":               "1000",
+		"RATE_LIMIT_WINDOW":            "1m",
+		"AUTH_RATE_LIMIT_MAX":          "100",
+		"IDEMPOTENCY_ENABLED":          "true",
+		"IDEMPOTENCY_LIFETIME":         "1m",
+		"SHARED_STATE_MODE":            "memory",
+		"ALLOW_IN_MEMORY_SHARED_STATE": "false",
+		"METRICS_TOKEN":                "",
+		"PPROF_ENABLED":                "false",
+		"PPROF_TOKEN":                  "",
+		"SYSTEM_INFO_DETAILED":         "false",
+		"DEMO_AUTH_ENABLED":            "false",
+		"DEMO_USERNAME":                "demo",
+		"DEMO_PASSWORD":                "demo123",
+		"JWT_SECRET":                   "goexample-development-jwt-secret-change-me",
+		"JWT_ISSUER":                   "goexample-test",
+		"JWT_TTL":                      "1h",
 	}
 	for key, value := range values {
 		t.Setenv(key, value)

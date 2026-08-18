@@ -49,13 +49,33 @@ type metricSnapshot struct {
 }
 
 type Metrics struct {
-	startedAt time.Time
-	inFlight  atomic.Int64
-	requests  sync.Map
+	startedAt         time.Time
+	inFlight          atomic.Int64
+	admissionRejected atomic.Uint64
+	drainingRejected  atomic.Uint64
+	requests          sync.Map
 }
 
 func NewMetrics() *Metrics {
 	return &Metrics{startedAt: time.Now()}
+}
+
+// RecordAdmissionRejected records a request rejected by the bounded
+// concurrency guard. It intentionally has no labels to keep cardinality low.
+func (m *Metrics) RecordAdmissionRejected() {
+	if m == nil {
+		return
+	}
+	m.admissionRejected.Add(1)
+}
+
+// RecordDrainingRejected records a request rejected because the instance is
+// leaving service. It intentionally has no labels to keep cardinality low.
+func (m *Metrics) RecordDrainingRejected() {
+	if m == nil {
+		return
+	}
+	m.drainingRejected.Add(1)
 }
 
 func (m *Metrics) Middleware(c fiber.Ctx) error {
@@ -124,6 +144,12 @@ func (m *Metrics) Render() string {
 	builder.WriteString("# HELP goexample_http_requests_in_flight Current HTTP requests.\n")
 	builder.WriteString("# TYPE goexample_http_requests_in_flight gauge\n")
 	fmt.Fprintf(&builder, "goexample_http_requests_in_flight %d\n", m.inFlight.Load())
+	builder.WriteString("# HELP goexample_http_admission_rejections_total Requests rejected because API admission capacity was exhausted.\n")
+	builder.WriteString("# TYPE goexample_http_admission_rejections_total counter\n")
+	fmt.Fprintf(&builder, "goexample_http_admission_rejections_total %d\n", m.admissionRejected.Load())
+	builder.WriteString("# HELP goexample_http_draining_rejections_total Requests rejected because the instance is draining.\n")
+	builder.WriteString("# TYPE goexample_http_draining_rejections_total counter\n")
+	fmt.Fprintf(&builder, "goexample_http_draining_rejections_total %d\n", m.drainingRejected.Load())
 	builder.WriteString("# HELP goexample_http_requests_total Total HTTP requests.\n")
 	builder.WriteString("# TYPE goexample_http_requests_total counter\n")
 	builder.WriteString("# HELP goexample_http_request_duration_seconds HTTP request duration histogram.\n")

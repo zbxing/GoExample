@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -109,6 +110,40 @@ func TestHealthAndSecurityHeaders(t *testing.T) {
 	defer hello.Body.Close()
 	if hello.Header.Get(fiber.HeaderETag) == "" {
 		t.Fatal("business response ETag is empty")
+	}
+}
+
+func TestPanicLogIncludesTraceCorrelation(t *testing.T) {
+	var output bytes.Buffer
+	options := testOptions()
+	options.Logger = observability.NewLogger("json", "error", &output)
+	options.RegisterRoutes = func(v1 fiber.Router) {
+		v1.Get("/panic", func(fiber.Ctx) error {
+			panic("test panic")
+		})
+	}
+	app := New(options)
+	response, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/panic", http.NoBody))
+	if err != nil {
+		t.Fatalf("panic request error = %v", err)
+	}
+	response.Body.Close()
+	if response.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("panic status = %d", response.StatusCode)
+	}
+
+	var panicRecord map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(output.String()), "\n") {
+		var record map[string]any
+		if err := json.Unmarshal([]byte(line), &record); err == nil && record["msg"] == "panic_recovered" {
+			panicRecord = record
+			break
+		}
+	}
+	for _, field := range []string{"trace_id", "span_id"} {
+		if value, ok := panicRecord[field].(string); !ok || value == "" {
+			t.Fatalf("panic log field %q = %#v; output=%s", field, panicRecord[field], output.String())
+		}
 	}
 }
 

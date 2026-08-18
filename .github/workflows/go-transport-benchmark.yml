@@ -1,0 +1,83 @@
+name: Go transport benchmark evidence
+
+on:
+  pull_request:
+    paths:
+      - "Framework/**"
+      - "Proj/Example/**"
+      - "scripts/go-project.mjs"
+      - "scripts/evidence-manifest.mjs"
+      - "package.json"
+      - "go.work"
+      - "go.work.sum"
+      - ".github/workflows/go-transport-benchmark.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-transport-benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  transport-benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: Framework/go.mod
+          cache-dependency-path: |
+            Framework/go.sum
+            Proj/Example/go.sum
+
+      - name: Capture runner environment
+        shell: bash
+        run: |
+          mkdir -p .temp/transport-benchmark
+          {
+            echo "captured_at=$(date --utc --iso-8601=seconds)"
+            echo "commit=$(git rev-parse HEAD)"
+            echo "runner_image=${ImageOS:-unknown}-${ImageVersion:-unknown}"
+            uname -a
+            cat /etc/os-release
+            lscpu
+            go version
+            go env GOOS GOARCH GOVERSION
+            yarn --version
+          } | tee .temp/transport-benchmark/environment.txt
+
+      - name: Run real-TCP transport contract and five benchmark rounds
+        shell: bash
+        run: |
+          set +e
+          GOMAXPROCS=2 /usr/bin/time -v yarn bench:transports 2>&1 \
+            | tee .temp/transport-benchmark/transport-benchmark.txt
+          benchmark_status=${PIPESTATUS[0]}
+          printf 'exit_code=%s\n' "${benchmark_status}" \
+            | tee .temp/transport-benchmark/benchmark-status.txt
+          exit "${benchmark_status}"
+
+      - name: Generate evidence manifest
+        if: always()
+        shell: bash
+        run: yarn evidence:manifest --output .temp/transport-benchmark/manifest.json
+
+      - name: Upload raw benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: go-transport-benchmark-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/transport-benchmark
+          if-no-files-found: error
+          retention-days: 30

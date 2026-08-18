@@ -27,9 +27,16 @@ func TestReadinessChecksAndDraining(t *testing.T) {
 	}
 
 	checker.SetDraining(true)
+	if !checker.Draining() {
+		t.Fatal("Draining() = false after SetDraining(true)")
+	}
 	report = checker.Readiness(context.Background())
 	if report.Ready || report.Checks["lifecycle"] != "draining" {
 		t.Fatalf("draining report = %#v", report)
+	}
+	checker.SetDraining(false)
+	if checker.Draining() {
+		t.Fatal("Draining() = true after SetDraining(false)")
 	}
 }
 

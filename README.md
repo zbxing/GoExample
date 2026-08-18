@@ -16,7 +16,7 @@ docs/           评估、优化与项目文档
 go.work         Go 多 module 工作区
 ```
 
-Framework 与项目工程分离：Framework 提供 HTTP、中间件、健康检查、指标、验证、认证示例和生命周期；`Proj/Example` 持有可执行入口、项目路由、环境配置和镜像。新增 `Proj/Other` 后可通过 `GO_PROJECT=Other` 使用同一套根命令。
+Framework 与项目工程分离：Framework 提供 HTTP、中间件、健康检查、指标、验证、认证示例和生命周期；`Proj/Example` 持有可执行入口、transport adapter、`internal/projectapp` application use case、环境配置和镜像。新增 `Proj/Other` 后可通过 `GO_PROJECT=Other` 使用同一套根命令。
 
 ## 环境要求
 
@@ -55,6 +55,8 @@ yarn dev:server
 - 指标：`/metrics`
 - Example 项目信息：`/api/v1/project`
 
+服务默认对 `/api/v1` 启用有界并发和 draining 保护（`HTTP_MAX_IN_FLIGHT=256`），并将 transport 连接并发限制为 `HTTP_MAX_CONNECTIONS=4096`、请求头读取预算限制为 `HTTP_READ_BUFFER_SIZE=16384`。达到在途请求上限或实例开始停机摘流时返回 `503` 和 `Retry-After: 1`；超出连接容量由 transport 返回 `503` 并关闭连接，超出请求头预算返回 `431`，已有业务请求继续完成，探针不占用应用 admission slot。
+
 ## 根目录命令
 
 | 命令 | 作用 |
@@ -67,15 +69,21 @@ yarn dev:server
 | `yarn build`、`yarn build:front` | 构建 MSFront |
 | `yarn lint`、`yarn typecheck` | 检查 MSFront |
 | `yarn test:front` | 执行 MSFront 单元测试和 Route Handler 授权契约 |
+| `yarn test:e2e` | 使用隔离数据运行 MSFront 桌面/移动浏览器 E2E 与 axe 可访问性门禁 |
+| `yarn test:database` | 使用已配置 PostgreSQL 执行 migration 并发、幂等和约束集成测试；未配置时跳过 |
 | `yarn migrate:front` | 对 MSFront PostgreSQL 执行带锁、checksum 和事务的 schema 迁移 |
 | `yarn dev:server` | 启动目标 Go 项目 |
 | `yarn test:server` | 测试 Framework 和目标项目 |
 | `yarn cover:server` | 生成组合覆盖率 |
 | `yarn bench:server` | 执行 Framework 基准 |
+| `yarn bench:transports` | 在 Linux 目标环境使用真实 TCP 对照 Fiber 与 `net/http`；非 Linux 平台跳过可比 benchmark，但仍运行 TCP 契约测试 |
+| `yarn evidence:manifest` | 将当前 `.temp` 证据、输入文件 SHA-256、Git 和 toolchain 元数据归档为机器可读 manifest；未运行的生产边界会标为 `not_recorded` |
 | `yarn race:server` | 执行 Framework 和目标项目 race |
 | `yarn vuln:server` | 执行 govulncheck |
 | `yarn vet:server` | 执行 go vet |
 | `yarn build:server` | 构建目标项目到 `.temp/bin` |
+
+Windows 执行 `yarn race:server` 需要 GCC。runner 会依次检查 `CC`、`GCC_ROOT`、`E:\DevTools\GCC\mingw64\bin\gcc.exe` 和常见 MinGW 路径，并自动为 race 子进程启用 CGO。
 
 Go 编排脚本是 [scripts/go-project.mjs](./scripts/go-project.mjs)。默认目标为 Example；切换项目：
 
@@ -118,7 +126,8 @@ builder 与 distroless runtime 都固定到 OCI digest。根 `.dockerignore` 只
 
 - `docs/openapi/openapi.json` 是 Example Fiber API 与 MSFront API inventory 的 OpenAPI 3.1 单一事实源；Go 测试会把它与 Fiber 实际路由表比较。
 - `yarn migrate:front --dry-run` 可在不连接数据库时检查迁移顺序与 SHA-256；正式执行需要 `MSFRONT_DATABASE_URL` 或 `DATABASE_URL`。
-- `supply-chain.yml` 使用固定 commit SHA 的 Syft/Anchore action 生成 CycloneDX SBOM，并以 High 为失败阈值运行 Grype。只有远端 workflow 成功记录才能作为交付证据。
+- `supply-chain.yml` 使用固定 commit SHA 的 Syft/Anchore action 生成 CycloneDX SBOM，并以 High 为失败阈值运行 Grype。`security-analysis.yml` 对 Go 与 JavaScript/TypeScript 执行 CodeQL，PR 还会执行 dependency review。
+- 根 Node 契约禁止 workflow action 和 service image 使用可变 tag。只有远端 workflow 成功记录才能作为交付证据。
 
 ## 文档
 
@@ -126,7 +135,11 @@ builder 与 distroless runtime 都固定到 OCI digest。根 `.dockerignore` 只
 - [Example](./Proj/Example/README.md)
 - [MSFront](./MSFront/README.md)
 - [架构与性能评估](./docs/评估/项目架构与性能评估.md)
+- [HTTP transport 选择 ADR](./docs/adr/0001-http-framework-selection.md)
 - [待优化 V4](./docs/待优化/待优化V4.md)
 - [待优化 V5](./docs/待优化/待优化V5.md)
 - [待优化 V6](./docs/待优化/待优化V6.md)
+- [待优化 V7](./docs/待优化/待优化V7.md)
+- [待优化 V8](./docs/待优化/待优化V8.md)
+- [待优化 V9](./docs/待优化/待优化V9.md)
 - [Tools](./tools/README.md)

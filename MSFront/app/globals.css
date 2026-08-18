@@ -3412,7 +3412,7 @@ body {
 .referenceEyebrow,
 .referenceRailLabel {
   display: block;
-  color: #86909c;
+  color: #5f6b7a;
   font-size: 0.72rem;
   letter-spacing: 0.08em;
 }
@@ -3427,7 +3427,7 @@ body {
 
 .referenceWelcome p {
   margin: 0;
-  color: #86909c;
+  color: #5f6b7a;
   font-size: 0.84rem;
 }
 
@@ -3481,7 +3481,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  color: #00b42a;
+  color: #06752f;
   font-size: 0.78rem;
 }
 
@@ -3582,7 +3582,7 @@ body {
 .referenceChartGrid span {
   display: flex;
   align-items: start;
-  color: #c1c5cd;
+  color: #64748b;
   font-size: 0.7rem;
 }
 
@@ -3618,12 +3618,17 @@ body {
   justify-content: space-between;
   gap: 8px;
   padding-top: 8px;
-  color: #86909c;
+  color: #5f6b7a;
   font-size: 0.7rem;
 }
 
 .referenceTableWrap {
   overflow-x: auto;
+}
+
+.referenceTableWrap:focus-visible {
+  outline: 2px solid #2468f2;
+  outline-offset: 2px;
 }
 
 .referenceTable {
@@ -3644,7 +3649,7 @@ body {
 }
 
 .referenceTable th {
-  color: #86909c;
+  color: #5f6b7a;
   font-size: 0.72rem;
   font-weight: 500;
 }
@@ -3656,7 +3661,7 @@ body {
 
 .referenceTable td:last-child {
   width: 17%;
-  color: #86909c;
+  color: #5f6b7a;
   white-space: nowrap;
 }
 
@@ -3730,12 +3735,12 @@ body {
 }
 
 .referenceExternalLink svg {
-  color: #86909c;
+  color: #5f6b7a;
 }
 
 .referenceExternalLink small {
   flex: 0 0 auto;
-  color: #86909c;
+  color: #5f6b7a;
   font-size: 0.7rem;
 }
 
@@ -3782,7 +3787,7 @@ body {
 }
 
 .referenceNotice span:not(.referenceNoticeDot) {
-  color: #86909c;
+  color: #5f6b7a;
   font-size: 0.7rem;
 }
 
@@ -3794,7 +3799,7 @@ body {
 }
 
 .referenceNotice time {
-  color: #c1c5cd;
+  color: #64748b;
   font-size: 0.7rem;
   white-space: nowrap;
 }
@@ -3828,7 +3833,7 @@ body {
 
 .referenceDocLink svg:last-child {
   margin-left: auto;
-  color: #c1c5cd;
+  color: #64748b;
 }
 
 .referenceDocLink:hover {
@@ -3858,7 +3863,7 @@ body {
 
 .referenceLicenseCard p {
   margin: 0;
-  color: #86909c;
+  color: #5f6b7a;
   font-size: 0.76rem;
   line-height: 1.55;
 }

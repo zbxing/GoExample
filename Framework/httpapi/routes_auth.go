@@ -18,10 +18,12 @@ func registerAuthRoutes(v1 fiber.Router, options Options) {
 
 	authGroup := v1.Group("/auth")
 	authLimiter := rateLimiter(
+		"auth",
 		options.AuthRateLimitMax,
 		options.RateLimitWindow,
 		"authentication rate limit exceeded",
 		nil,
+		options.SharedStorage,
 	)
 	authGroup.Post("/login", authLimiter, requireJSON, func(c fiber.Ctx) error {
 		var request loginRequest

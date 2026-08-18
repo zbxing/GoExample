@@ -1,8 +1,12 @@
 package httpapi
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"context"
 
-func registerRoutes(app *fiber.App, options Options) {
+	"github.com/gofiber/fiber/v3"
+)
+
+func registerRoutes(app *fiber.App, options Options, applicationContext context.Context) {
 	app.Get("/", func(c fiber.Ctx) error {
 		return success(c, fiber.Map{
 			"name":        options.Name,
@@ -17,17 +21,21 @@ func registerRoutes(app *fiber.App, options Options) {
 	api := app.Group("/api")
 	registerHealthRoutes(app, api, options)
 	registerSystemRoutes(api, options)
+	api.Use(requestDeadline(applicationContext, options.RequestTimeout))
 	api.Use(rateLimiter(
+		"api",
 		options.RateLimitMax,
 		options.RateLimitWindow,
 		"request rate limit exceeded",
 		func(c fiber.Ctx) bool {
 			return c.Method() == fiber.MethodPost && c.Path() == "/api/v1/auth/login"
 		},
+		options.SharedStorage,
 	))
-	api.Use(requestDeadline(options.RequestTimeout))
 
 	v1 := api.Group("/v1")
+	v1.Use(rejectWhenDraining(options.Health, options.Metrics))
+	v1.Use(boundedConcurrency(options.MaxInFlight, options.Metrics))
 	if options.RegisterRoutes != nil {
 		options.RegisterRoutes(v1)
 		return

@@ -1,0 +1,64 @@
+name: CodeQL security analysis
+
+on:
+  push:
+    paths:
+      - "Framework/**"
+      - "Proj/**"
+      - "MSFront/**"
+      - "scripts/**"
+      - "tools/**"
+      - "go.work"
+      - "package.json"
+      - ".github/workflows/security-analysis.yml"
+  pull_request:
+    paths:
+      - "Framework/**"
+      - "Proj/**"
+      - "MSFront/**"
+      - "scripts/**"
+      - "tools/**"
+      - "go.work"
+      - "package.json"
+      - ".github/workflows/security-analysis.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: go
+            build-mode: autobuild
+          - language: javascript-typescript
+            build-mode: none
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Autobuild compiled language
+        if: matrix.build-mode == 'autobuild'
+        uses: github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          category: /language:${{ matrix.language }}

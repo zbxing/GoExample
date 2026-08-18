@@ -49,20 +49,36 @@ func RequestLogger(logger *slog.Logger, skipPaths ...string) fiber.Handler {
 			"response_bytes", len(c.Response().Body()),
 			"client_ip", c.IP(),
 		}
+		if trace, ok := FromContext(c.Context()); ok {
+			attributes = append(attributes,
+				"trace_id", trace.TraceID,
+				"span_id", trace.SpanID,
+			)
+			if trace.ParentSpanID != "" {
+				attributes = append(attributes, "parent_span_id", trace.ParentSpanID)
+			}
+		}
 		if err != nil {
 			attributes = append(attributes, "error", err.Error())
 		}
 
 		switch {
 		case status >= fiber.StatusInternalServerError:
-			logger.ErrorContext(context.Background(), "http_request", attributes...)
+			logger.ErrorContext(requestContext(c), "http_request", attributes...)
 		case status >= fiber.StatusBadRequest:
-			logger.WarnContext(context.Background(), "http_request", attributes...)
+			logger.WarnContext(requestContext(c), "http_request", attributes...)
 		default:
-			logger.InfoContext(context.Background(), "http_request", attributes...)
+			logger.InfoContext(requestContext(c), "http_request", attributes...)
 		}
 		return err
 	}
+}
+
+func requestContext(c fiber.Ctx) context.Context {
+	if ctx := c.Context(); ctx != nil {
+		return ctx
+	}
+	return context.Background()
 }
 
 func parseLevel(value string) slog.Level {

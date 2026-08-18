@@ -31,13 +31,15 @@ func TestRegisterAddsProjectRoute(t *testing.T) {
 	var envelope struct {
 		Code int `json:"code"`
 		Data struct {
-			Name string `json:"name"`
+			Name        string `json:"name"`
+			Environment string `json:"environment"`
+			Version     string `json:"version"`
 		} `json:"data"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&envelope); err != nil {
 		t.Fatalf("decode project response: %v", err)
 	}
-	if envelope.Code != 0 || envelope.Data.Name != options.Name {
+	if envelope.Code != 0 || envelope.Data.Name != options.Name || envelope.Data.Environment != options.Environment || envelope.Data.Version != options.Version {
 		t.Fatalf("project response = %#v", envelope)
 	}
 }

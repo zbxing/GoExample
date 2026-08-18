@@ -70,8 +70,12 @@ export function LoginPageContent() {
             }}
           >
             <div className="gvaLoginFormItem">
+              <label className="srOnly" htmlFor="login-username">
+                用户名
+              </label>
               <div className="gvaElInput gvaElInputLarge">
                 <input
+                  id="login-username"
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
                   autoComplete="username"
@@ -84,8 +88,12 @@ export function LoginPageContent() {
             </div>
 
             <div className="gvaLoginFormItem">
+              <label className="srOnly" htmlFor="login-password">
+                密码
+              </label>
               <div className="gvaElInput gvaElInputLarge">
                 <input
+                  id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
@@ -103,8 +111,8 @@ export function LoginPageContent() {
               </div>
             </div>
 
-            {error ? <p className="gvaLoginError">{error}</p> : null}
-            {info ? <p className="gvaLoginInfo">{info}</p> : null}
+            {error ? <p className="gvaLoginError" role="alert">{error}</p> : null}
+            {info ? <p className="gvaLoginInfo" role="status">{info}</p> : null}
 
             <div className="gvaLoginFormItem">
               <button

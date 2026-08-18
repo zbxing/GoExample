@@ -6,7 +6,8 @@
 
 ```text
 cmd/server/                 配置和依赖组装入口
-internal/projectapi/        Example 自有路由注册
+internal/projectapi/        Example Fiber transport adapter、契约与真实 TCP benchmark
+internal/projectapp/        不依赖 HTTP 框架的 typed application use case
 .env.example                项目运行配置
 Dockerfile                  多 module 镜像构建
 go.mod / go.sum             独立 module 依赖
@@ -21,6 +22,7 @@ yarn dev:server
 yarn test:server
 yarn cover:server
 yarn bench:server
+yarn bench:transports
 yarn race:server
 yarn vuln:server
 yarn vet:server
@@ -41,6 +43,8 @@ go test ./Framework/... ./Proj/Example/...
 - 结构化 `slog` 请求日志、Request ID、panic 恢复和统一错误 envelope。
 - Helmet、安全头、TLS Early Data 防重放、显式 CORS、ETag 和压缩。
 - 请求体、读写、空闲和业务 deadline 限制。
+- `/api/v1` 有界并发 admission；达到 `HTTP_MAX_IN_FLIGHT` 或实例进入 draining 时快速返回 `503`，并在 metrics 中分别累计无标签拒绝计数，健康探针不受影响，已有请求继续完成。
+- transport 连接并发由 `HTTP_MAX_CONNECTIONS=4096` 限制；容量耗尽由 Fiber/fasthttp 在应用 middleware 前返回 `503` 并关闭连接，不计入应用 admission counter。
 - API 与登录独立限流、选定写接口幂等重放。
 - JSON 和 `application/*+json` media type 契约与结构验证。
 - 演示 HS256 JWT 和 Bearer 中间件。
@@ -86,9 +90,13 @@ $env:CORS_ALLOW_CREDENTIALS = "false"
 $env:TRUSTED_PROXIES = "10.0.0.0/8"
 $env:DEMO_AUTH_ENABLED = "false"
 $env:SHUTDOWN_DRAIN_DELAY = "5s"
+$env:HTTP_MAX_IN_FLIGHT = "256"
+$env:HTTP_MAX_CONNECTIONS = "4096"
+$env:HTTP_READ_BUFFER_SIZE = "16384"
+$env:SHARED_STATE_MODE = "external"
 ```
 
-`DEMO_AUTH_ENABLED` 和内置凭据只用于模板验证，不替代正式用户存储、密码哈希、OIDC、令牌撤销和 RBAC。多实例部署还必须把 limiter/idempotency 的进程内 Storage 和 Lock 迁移到共享设施。
+`DEMO_AUTH_ENABLED` 和内置凭据只用于模板验证，不替代正式用户存储、密码哈希、OIDC、令牌撤销和 RBAC。`SHARED_STATE_MODE=external` 要求 composition root 注入共享 Storage 与分布式 Locker；生产入口在依赖缺失时 fail fast。只有明确设置 `ALLOW_IN_MEMORY_SHARED_STATE=true` 才允许生产降级到单实例内存语义。
 
 ## 健康检查与停机
 

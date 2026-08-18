@@ -23,6 +23,10 @@ yarn test
 
 也可以分别运行 `yarn test:node`、`yarn test:server` 和 `yarn test:front`。
 
+数据库集成测试位于 `integration/msfront/database-migration.mjs`。本地设置 `MSFRONT_DATABASE_URL` 后运行 `yarn test:database`；未设置连接时会明确报告跳过，CI 使用 PostgreSQL service 强制执行。
+
+浏览器端到端测试位于 `e2e/msfront/`。先完成 MSFront production build，再运行 `yarn test:e2e`；启动器会复制演示数据到系统临时目录，并在结束后清理，不会改写 `MSFront/data`。测试覆盖桌面和移动 Chromium、登录/退出/404 恢复、横向溢出以及 critical/serious 级 WCAG 违规，报告写入 `reports/playwright/`。
+
 ## 约束
 
 - `node/` 测试根 Node 项目的 `scripts/` 和 `tools/`，不放 MSFront 单元测试。

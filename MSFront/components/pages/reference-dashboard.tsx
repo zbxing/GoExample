@@ -81,7 +81,7 @@ export function ReferenceDashboard() {
 
           <section className="referencePanel">
             <ReferencePanelTitle title="最新插件" />
-            <div className="referenceTableWrap">
+            <div className="referenceTableWrap" role="region" aria-label="最新插件表格" tabIndex={0}>
               <table className="referenceTable">
                 <thead>
                   <tr><th>插件标题</th><th>简介</th><th>价格</th></tr>
@@ -97,7 +97,7 @@ export function ReferenceDashboard() {
 
           <section className="referencePanel">
             <ReferencePanelTitle title="最新更新" />
-            <div className="referenceTableWrap">
+            <div className="referenceTableWrap" role="region" aria-label="最新更新表格" tabIndex={0}>
               <table className="referenceTable">
                 <thead>
                   <tr><th>项目</th><th>更新内容</th><th>更新时间</th></tr>

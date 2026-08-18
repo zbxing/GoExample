@@ -19,11 +19,15 @@
     "typecheck": "node scripts/msfront.mjs typecheck",
     "typecheck:front": "node scripts/msfront.mjs typecheck",
     "test:front": "node scripts/msfront.mjs test",
+    "test:e2e": "node scripts/e2e-msfront.mjs",
+    "test:database": "node scripts/msfront.mjs test:database",
     "migrate:front": "node scripts/msfront.mjs migrate",
     "dev:server": "node scripts/go-project.mjs run",
     "test:server": "node scripts/go-project.mjs test",
     "cover:server": "node scripts/go-project.mjs cover",
     "bench:server": "node scripts/go-project.mjs bench",
+    "bench:transports": "node scripts/go-project.mjs bench-transports",
+    "evidence:manifest": "node scripts/evidence-manifest.mjs",
     "race:server": "node scripts/go-project.mjs race",
     "vuln:server": "node scripts/go-project.mjs vuln",
     "vet:server": "node scripts/go-project.mjs vet",
@@ -31,5 +35,10 @@
   },
   "engines": {
     "node": ">=20.19.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.62.1",
+    "playwright-core": "1.62.1"
   }
 }

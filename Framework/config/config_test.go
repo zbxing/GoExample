@@ -18,10 +18,13 @@ var configEnvironmentKeys = []string{
 	"CORS_ALLOW_CREDENTIALS",
 	"TRUSTED_PROXIES",
 	"HTTP_BODY_LIMIT",
+	"HTTP_READ_BUFFER_SIZE",
 	"HTTP_READ_TIMEOUT",
 	"HTTP_WRITE_TIMEOUT",
 	"HTTP_IDLE_TIMEOUT",
+	"HTTP_MAX_CONNECTIONS",
 	"HTTP_REQUEST_TIMEOUT",
+	"HTTP_MAX_IN_FLIGHT",
 	"HEALTH_CHECK_TIMEOUT",
 	"HEALTH_CACHE_TTL",
 	"SHUTDOWN_TIMEOUT",
@@ -31,6 +34,8 @@ var configEnvironmentKeys = []string{
 	"AUTH_RATE_LIMIT_MAX",
 	"IDEMPOTENCY_ENABLED",
 	"IDEMPOTENCY_LIFETIME",
+	"SHARED_STATE_MODE",
+	"ALLOW_IN_MEMORY_SHARED_STATE",
 	"METRICS_TOKEN",
 	"PPROF_ENABLED",
 	"PPROF_TOKEN",
@@ -65,11 +70,20 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.BodyLimit != 4*1024*1024 {
 		t.Fatalf("BodyLimit = %d", cfg.BodyLimit)
 	}
+	if cfg.ReadBufferSize != 16*1024 {
+		t.Fatalf("ReadBufferSize = %d", cfg.ReadBufferSize)
+	}
 	if cfg.ReadTimeout != 10*time.Second || cfg.WriteTimeout != 10*time.Second || cfg.IdleTimeout != time.Minute {
 		t.Fatalf("HTTP timeouts = %s/%s/%s", cfg.ReadTimeout, cfg.WriteTimeout, cfg.IdleTimeout)
 	}
+	if cfg.MaxConnections != 4096 {
+		t.Fatalf("MaxConnections = %d", cfg.MaxConnections)
+	}
 	if cfg.RequestTimeout != 8*time.Second || cfg.HealthCheckTimeout != 2*time.Second || cfg.HealthCacheTTL != time.Second || cfg.ShutdownTimeout != 20*time.Second {
 		t.Fatalf("request/health/cache/shutdown timeouts = %s/%s/%s/%s", cfg.RequestTimeout, cfg.HealthCheckTimeout, cfg.HealthCacheTTL, cfg.ShutdownTimeout)
+	}
+	if cfg.MaxInFlight != 256 {
+		t.Fatalf("MaxInFlight = %d", cfg.MaxInFlight)
 	}
 	if cfg.ShutdownDrainDelay != 0 {
 		t.Fatalf("ShutdownDrainDelay = %s", cfg.ShutdownDrainDelay)
@@ -79,6 +93,9 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if !cfg.IdempotencyEnabled || cfg.IdempotencyLifetime != 30*time.Minute {
 		t.Fatalf("idempotency defaults = %t/%s", cfg.IdempotencyEnabled, cfg.IdempotencyLifetime)
+	}
+	if cfg.SharedStateMode != "memory" || cfg.AllowInMemorySharedState {
+		t.Fatalf("shared state defaults = %q/%t", cfg.SharedStateMode, cfg.AllowInMemorySharedState)
 	}
 	if cfg.MetricsToken != "" || cfg.PprofEnabled || cfg.PprofToken != "" {
 		t.Fatalf("diagnostics defaults = %q/%t/%q", cfg.MetricsToken, cfg.PprofEnabled, cfg.PprofToken)
@@ -104,7 +121,10 @@ func TestLoadParsesValues(t *testing.T) {
 	t.Setenv("CORS_ALLOW_CREDENTIALS", "true")
 	t.Setenv("TRUSTED_PROXIES", "127.0.0.1,10.0.0.0/8")
 	t.Setenv("HTTP_BODY_LIMIT", "1048576")
+	t.Setenv("HTTP_READ_BUFFER_SIZE", "8192")
 	t.Setenv("HTTP_REQUEST_TIMEOUT", "3s")
+	t.Setenv("HTTP_MAX_CONNECTIONS", "32")
+	t.Setenv("HTTP_MAX_IN_FLIGHT", "12")
 	t.Setenv("HEALTH_CHECK_TIMEOUT", "500ms")
 	t.Setenv("HEALTH_CACHE_TTL", "250ms")
 	t.Setenv("SHUTDOWN_DRAIN_DELAY", "2s")
@@ -113,6 +133,7 @@ func TestLoadParsesValues(t *testing.T) {
 	t.Setenv("AUTH_RATE_LIMIT_MAX", "4")
 	t.Setenv("IDEMPOTENCY_ENABLED", "false")
 	t.Setenv("IDEMPOTENCY_LIFETIME", "10m")
+	t.Setenv("SHARED_STATE_MODE", "external")
 	t.Setenv("METRICS_TOKEN", "01234567890123456789012345678901")
 	t.Setenv("PPROF_ENABLED", "true")
 	t.Setenv("PPROF_TOKEN", "abcdefghijklmnopqrstuvwxyz012345")
@@ -139,6 +160,15 @@ func TestLoadParsesValues(t *testing.T) {
 	if cfg.BodyLimit != 1048576 || cfg.RequestTimeout != 3*time.Second || cfg.HealthCheckTimeout != 500*time.Millisecond || cfg.HealthCacheTTL != 250*time.Millisecond {
 		t.Fatalf("parsed limits = %d/%s/%s/%s", cfg.BodyLimit, cfg.RequestTimeout, cfg.HealthCheckTimeout, cfg.HealthCacheTTL)
 	}
+	if cfg.ReadBufferSize != 8192 {
+		t.Fatalf("ReadBufferSize = %d", cfg.ReadBufferSize)
+	}
+	if cfg.MaxInFlight != 12 {
+		t.Fatalf("MaxInFlight = %d", cfg.MaxInFlight)
+	}
+	if cfg.MaxConnections != 32 {
+		t.Fatalf("MaxConnections = %d", cfg.MaxConnections)
+	}
 	if cfg.ShutdownDrainDelay != 2*time.Second {
 		t.Fatalf("ShutdownDrainDelay = %s", cfg.ShutdownDrainDelay)
 	}
@@ -150,6 +180,9 @@ func TestLoadParsesValues(t *testing.T) {
 	}
 	if cfg.IdempotencyEnabled || cfg.IdempotencyLifetime != 10*time.Minute {
 		t.Fatalf("parsed idempotency = %t/%s", cfg.IdempotencyEnabled, cfg.IdempotencyLifetime)
+	}
+	if cfg.SharedStateMode != "external" {
+		t.Fatalf("parsed shared state mode = %q", cfg.SharedStateMode)
 	}
 	if cfg.MetricsToken == "" || !cfg.PprofEnabled || cfg.PprofToken == "" {
 		t.Fatalf("parsed diagnostics = %q/%t/%q", cfg.MetricsToken, cfg.PprofEnabled, cfg.PprofToken)
@@ -178,6 +211,9 @@ func TestLoadAcceptsHardenedProductionConfig(t *testing.T) {
 	if cfg.Environment != "production" {
 		t.Fatalf("Environment = %q", cfg.Environment)
 	}
+	if cfg.SharedStateMode != "external" || cfg.AllowInMemorySharedState {
+		t.Fatalf("production shared state defaults = %q/%t", cfg.SharedStateMode, cfg.AllowInMemorySharedState)
+	}
 }
 
 func TestLoadRejectsInvalidValues(t *testing.T) {
@@ -196,8 +232,14 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{name: "proxy IP", key: "TRUSTED_PROXIES", value: "not-an-ip", wantInError: "TRUSTED_PROXIES"},
 		{name: "proxy CIDR", key: "TRUSTED_PROXIES", value: "10.0.0.0/99", wantInError: "TRUSTED_PROXIES"},
 		{name: "body limit", key: "HTTP_BODY_LIMIT", value: "512", wantInError: "HTTP_BODY_LIMIT"},
+		{name: "read buffer syntax", key: "HTTP_READ_BUFFER_SIZE", value: "large", wantInError: "HTTP_READ_BUFFER_SIZE"},
+		{name: "read buffer range", key: "HTTP_READ_BUFFER_SIZE", value: "2048", wantInError: "HTTP_READ_BUFFER_SIZE"},
 		{name: "duration syntax", key: "HTTP_REQUEST_TIMEOUT", value: "soon", wantInError: "HTTP_REQUEST_TIMEOUT"},
 		{name: "request exceeds write", key: "HTTP_REQUEST_TIMEOUT", value: "10s", wantInError: "HTTP_REQUEST_TIMEOUT"},
+		{name: "in-flight syntax", key: "HTTP_MAX_IN_FLIGHT", value: "many", wantInError: "HTTP_MAX_IN_FLIGHT"},
+		{name: "in-flight range", key: "HTTP_MAX_IN_FLIGHT", value: "0", wantInError: "HTTP_MAX_IN_FLIGHT"},
+		{name: "connections syntax", key: "HTTP_MAX_CONNECTIONS", value: "many", wantInError: "HTTP_MAX_CONNECTIONS"},
+		{name: "connections range", key: "HTTP_MAX_CONNECTIONS", value: "0", wantInError: "HTTP_MAX_CONNECTIONS"},
 		{name: "health cache", key: "HEALTH_CACHE_TTL", value: "0s", wantInError: "HEALTH_CACHE_TTL"},
 		{name: "drain delay", key: "SHUTDOWN_DRAIN_DELAY", value: "-1s", wantInError: "SHUTDOWN_DRAIN_DELAY"},
 		{name: "drain delay exceeds shutdown", key: "SHUTDOWN_DRAIN_DELAY", value: "20s", wantInError: "SHUTDOWN_DRAIN_DELAY"},
@@ -207,6 +249,8 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{name: "auth rate", key: "AUTH_RATE_LIMIT_MAX", value: "0", wantInError: "AUTH_RATE_LIMIT_MAX"},
 		{name: "boolean", key: "DEMO_AUTH_ENABLED", value: "sometimes", wantInError: "DEMO_AUTH_ENABLED"},
 		{name: "idempotency boolean", key: "IDEMPOTENCY_ENABLED", value: "sometimes", wantInError: "IDEMPOTENCY_ENABLED"},
+		{name: "shared state mode", key: "SHARED_STATE_MODE", value: "redis", wantInError: "SHARED_STATE_MODE"},
+		{name: "shared state downgrade boolean", key: "ALLOW_IN_MEMORY_SHARED_STATE", value: "sometimes", wantInError: "ALLOW_IN_MEMORY_SHARED_STATE"},
 		{name: "metrics token", key: "METRICS_TOKEN", value: "too-short", wantInError: "METRICS_TOKEN"},
 		{name: "pprof boolean", key: "PPROF_ENABLED", value: "sometimes", wantInError: "PPROF_ENABLED"},
 		{name: "pprof token", key: "PPROF_ENABLED", value: "true", wantInError: "PPROF_TOKEN"},
@@ -282,6 +326,28 @@ func TestLoadRequiresMetricsTokenInProduction(t *testing.T) {
 	_, err := Load()
 	if err == nil || !strings.Contains(err.Error(), "METRICS_TOKEN") {
 		t.Fatalf("Load() error = %v", err)
+	}
+}
+
+func TestLoadRequiresExplicitProductionMemoryDowngrade(t *testing.T) {
+	clearConfigEnvironment(t)
+	t.Setenv("APP_ENV", "production")
+	t.Setenv("JWT_SECRET", "production-secret-with-at-least-32-characters")
+	t.Setenv("METRICS_TOKEN", "production-metrics-token-32-characters")
+	t.Setenv("SHARED_STATE_MODE", "memory")
+
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "ALLOW_IN_MEMORY_SHARED_STATE") {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	t.Setenv("ALLOW_IN_MEMORY_SHARED_STATE", "true")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() explicit downgrade error = %v", err)
+	}
+	if cfg.SharedStateMode != "memory" || !cfg.AllowInMemorySharedState {
+		t.Fatalf("explicit downgrade = %q/%t", cfg.SharedStateMode, cfg.AllowInMemorySharedState)
 	}
 }
 

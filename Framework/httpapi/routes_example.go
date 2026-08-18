@@ -19,7 +19,7 @@ func registerExampleRoutes(v1 fiber.Router, options Options) {
 	example := v1.Group("/example")
 	registerMutation := func(path string, handler fiber.Handler) {
 		if options.IdempotencyEnabled {
-			example.Post(path, requireJSON, idempotencyMiddleware(options.IdempotencyLifetime), handler)
+			example.Post(path, requireJSON, idempotencyMiddleware(path, options.IdempotencyLifetime, options.SharedStorage, options.IdempotencyLock), handler)
 			return
 		}
 		example.Post(path, requireJSON, handler)

@@ -57,6 +57,10 @@ yarn dev
 
 数据库首次使用前从仓库根目录执行 `yarn migrate:front`。迁移文件位于 `MSFront/database/migrations/`，runner 使用 advisory lock、SHA-256 和单文件事务；`yarn migrate:front --status` 查看状态，`--dry-run` 可离线检查迁移清单。
 
+配置 `MSFRONT_DATABASE_URL` 后可执行 `yarn test:database`，验证两个并发 migration runner、重复执行、状态记录、业务表和大小写不敏感项目 code 唯一约束。MSFront CI 使用固定 digest 的 PostgreSQL 16 service 执行该测试。
+
+从仓库根目录先执行 `yarn build:front`，再执行 `yarn test:e2e`，可运行 production server 上的桌面/移动 Chromium 登录、退出、404 恢复、横向溢出和 axe 可访问性门禁。运行器使用系统临时目录中的数据副本，不会修改 `MSFront/data`。
+
 管理台会在生产环境签发或校验会话前拒绝缺失、默认占位或少于 32 字符的 `MSFRONT_JWT_SECRET`。会话 Cookie 使用 HttpOnly、Secure（生产）、SameSite=Lax 和 Path=/；Proxy 只做乐观校验，Route Handler 仍通过服务端仓储执行会话与权限检查。
 
 所有使用 Cookie 身份的写请求都会校验 `Origin`。生产探针默认只访问 `NEXT_PUBLIC_MSFRONT_API_BASE_URL` 的 Origin；部署在反向代理或需要探测其他服务时，应使用上述 allowlist 显式放行，且仍需用网络出口策略限制 DNS rebinding 与私有网段访问。

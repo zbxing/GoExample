@@ -76,3 +76,21 @@ func TestMetricsMapsDeadlineToRequestTimeout(t *testing.T) {
 		t.Fatalf("deadline metric status = %s", output)
 	}
 }
+
+func TestMetricsRenderAdmissionRejections(t *testing.T) {
+	metrics := NewMetrics()
+	metrics.RecordAdmissionRejected()
+	metrics.RecordAdmissionRejected()
+	metrics.RecordDrainingRejected()
+	output := metrics.Render()
+	if !strings.Contains(output, "# TYPE goexample_http_admission_rejections_total counter") {
+		t.Fatal("admission rejection metric type is missing")
+	}
+	if !strings.Contains(output, "goexample_http_admission_rejections_total 2") {
+		t.Fatalf("admission rejection metric = %s", output)
+	}
+	if !strings.Contains(output, "# TYPE goexample_http_draining_rejections_total counter") ||
+		!strings.Contains(output, "goexample_http_draining_rejections_total 1") {
+		t.Fatalf("draining rejection metric = %s", output)
+	}
+}

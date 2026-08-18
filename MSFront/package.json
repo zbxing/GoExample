@@ -12,6 +12,7 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run && node ../__test__/contract/msfront-route-authorization.mjs",
     "test:unit": "vitest run",
+    "test:database": "node ../__test__/integration/msfront/database-migration.mjs",
     "migrate": "node scripts/migrate.mjs",
     "typegen": "next typegen .",
     "typecheck": "next typegen . && tsc --noEmit"

@@ -29,11 +29,26 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16@sha256:e17e86066e5ef83e0952a9347f5c792b7ece00972e2aa787a6986f471b3dd3d5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: msfront-ci-password
+          POSTGRES_DB: msfront_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d msfront_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     defaults:
       run:
         working-directory: MSFront
     env:
       MSFRONT_JWT_SECRET: ci-only-msfront-jwt-secret-32-characters
+      MSFRONT_DATABASE_URL: postgres://postgres:msfront-ci-password@localhost:5432/msfront_ci
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -47,6 +62,9 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile --non-interactive
+
+      - name: PostgreSQL migration integration
+        run: yarn test:database
 
       - name: Audit production dependencies
         run: yarn audit --registry https://registry.npmjs.org --groups dependencies --level high

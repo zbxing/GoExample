@@ -67,10 +67,13 @@ func run(ctx context.Context, output io.Writer) error {
 		AllowCredentials:    cfg.AllowCredentials,
 		TrustedProxies:      cfg.TrustedProxies,
 		BodyLimit:           cfg.BodyLimit,
+		ReadBufferSize:      cfg.ReadBufferSize,
 		ReadTimeout:         cfg.ReadTimeout,
 		WriteTimeout:        cfg.WriteTimeout,
 		IdleTimeout:         cfg.IdleTimeout,
+		MaxConnections:      cfg.MaxConnections,
 		RequestTimeout:      cfg.RequestTimeout,
+		MaxInFlight:         cfg.MaxInFlight,
 		HealthCheckTimeout:  cfg.HealthCheckTimeout,
 		HealthCacheTTL:      cfg.HealthCacheTTL,
 		RateLimitMax:        cfg.RateLimitMax,
@@ -91,6 +94,16 @@ func run(ctx context.Context, output io.Writer) error {
 	apiOptions.Endpoints = projectapi.Endpoints(authService.Enabled())
 	apiOptions.RegisterRoutes = func(v1 fiber.Router) {
 		projectapi.Register(v1, apiOptions)
+	}
+	if err := httpapi.ValidateSharedState(
+		cfg.Environment,
+		cfg.SharedStateMode,
+		cfg.AllowInMemorySharedState,
+		cfg.IdempotencyEnabled,
+		apiOptions.SharedStorage,
+		apiOptions.IdempotencyLock,
+	); err != nil {
+		return fmt.Errorf("validate shared state: %w", err)
 	}
 	app := httpapi.New(apiOptions)
 

@@ -23,6 +23,32 @@ describe('OpenAPI inventory parser', () => {
     ]);
   });
 
+  it('keeps every OpenAPI reference and security scheme resolvable', async () => {
+    const content = await readFile(
+      path.resolve(process.cwd(), '..', 'docs', 'openapi', 'openapi.json'),
+      'utf8',
+    );
+    const document = JSON.parse(content) as Record<string, unknown>;
+    const references = collectReferences(document);
+    const securitySchemeNames = new Set(
+      Object.keys(
+        (document.components as { securitySchemes?: Record<string, unknown> }).securitySchemes ?? {},
+      ),
+    );
+
+    for (const reference of references) {
+      expect(resolveReference(document, reference), reference).toBeDefined();
+    }
+
+    for (const operation of collectOperations(document)) {
+      for (const requirement of operation.security ?? []) {
+        for (const schemeName of Object.keys(requirement)) {
+          expect(securitySchemeNames.has(schemeName), schemeName).toBe(true);
+        }
+      }
+    }
+  });
+
   it('honors document and operation security requirements', () => {
     const inventory = parseApiInventoryDocument({
       openapi: '3.1.0',
@@ -47,3 +73,51 @@ describe('OpenAPI inventory parser', () => {
     expect(parseApiInventoryDocument({ openapi: '3.1.0' })).toBeNull();
   });
 });
+
+function collectReferences(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(collectReferences);
+  }
+
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+
+  return Object.entries(value).flatMap(([key, entry]) => [
+    ...(key === '$ref' && typeof entry === 'string' ? [entry] : []),
+    ...collectReferences(entry),
+  ]);
+}
+
+function resolveReference(document: Record<string, unknown>, reference: string) {
+  if (!reference.startsWith('#/')) {
+    return undefined;
+  }
+
+  return reference
+    .slice(2)
+    .split('/')
+    .reduce<unknown>((current, segment) => {
+      if (!current || typeof current !== 'object') {
+        return undefined;
+      }
+      return (current as Record<string, unknown>)[segment.replaceAll('~1', '/').replaceAll('~0', '~')];
+    }, document);
+}
+
+function collectOperations(document: Record<string, unknown>) {
+  const paths = document.paths;
+  if (!paths || typeof paths !== 'object') {
+    return [];
+  }
+
+  return Object.values(paths).flatMap((pathItem) => {
+    if (!pathItem || typeof pathItem !== 'object') {
+      return [];
+    }
+    return Object.values(pathItem).filter(
+      (operation): operation is { security?: Array<Record<string, unknown>> } =>
+        Boolean(operation && typeof operation === 'object' && 'responses' in operation),
+    );
+  });
+}

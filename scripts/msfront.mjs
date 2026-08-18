@@ -14,6 +14,7 @@ const scriptTasks = new Set([
   'lint',
   'lint:fix',
   'test',
+  'test:database',
   'migrate',
   'typegen',
   'typecheck',

@@ -17,40 +17,45 @@ const (
 )
 
 type Config struct {
-	Name                string
-	Environment         string
-	LogLevel            string
-	LogFormat           string
-	LogSkipPaths        []string
-	Host                string
-	Port                int
-	AllowedOrigins      []string
-	AllowCredentials    bool
-	TrustedProxies      []string
-	BodyLimit           int
-	ReadTimeout         time.Duration
-	WriteTimeout        time.Duration
-	IdleTimeout         time.Duration
-	RequestTimeout      time.Duration
-	HealthCheckTimeout  time.Duration
-	HealthCacheTTL      time.Duration
-	ShutdownTimeout     time.Duration
-	ShutdownDrainDelay  time.Duration
-	RateLimitMax        int
-	RateLimitWindow     time.Duration
-	AuthRateLimitMax    int
-	IdempotencyEnabled  bool
-	IdempotencyLifetime time.Duration
-	MetricsToken        string
-	PprofEnabled        bool
-	PprofToken          string
-	SystemInfoDetailed  bool
-	DemoAuthEnabled     bool
-	DemoUsername        string
-	DemoPassword        string
-	JWTSecret           string
-	JWTIssuer           string
-	JWTTTL              time.Duration
+	Name                     string
+	Environment              string
+	LogLevel                 string
+	LogFormat                string
+	LogSkipPaths             []string
+	Host                     string
+	Port                     int
+	AllowedOrigins           []string
+	AllowCredentials         bool
+	TrustedProxies           []string
+	BodyLimit                int
+	ReadBufferSize           int
+	ReadTimeout              time.Duration
+	WriteTimeout             time.Duration
+	IdleTimeout              time.Duration
+	MaxConnections           int
+	RequestTimeout           time.Duration
+	MaxInFlight              int
+	HealthCheckTimeout       time.Duration
+	HealthCacheTTL           time.Duration
+	ShutdownTimeout          time.Duration
+	ShutdownDrainDelay       time.Duration
+	RateLimitMax             int
+	RateLimitWindow          time.Duration
+	AuthRateLimitMax         int
+	IdempotencyEnabled       bool
+	IdempotencyLifetime      time.Duration
+	SharedStateMode          string
+	AllowInMemorySharedState bool
+	MetricsToken             string
+	PprofEnabled             bool
+	PprofToken               string
+	SystemInfoDetailed       bool
+	DemoAuthEnabled          bool
+	DemoUsername             string
+	DemoPassword             string
+	JWTSecret                string
+	JWTIssuer                string
+	JWTTTL                   time.Duration
 }
 
 func Load() (Config, error) {
@@ -58,40 +63,49 @@ func Load() (Config, error) {
 	if !oneOf(environment, "development", "test", "production") {
 		return Config{}, fmt.Errorf("APP_ENV must be one of development, test, production")
 	}
+	sharedStateMode := "memory"
+	if environment == "production" {
+		sharedStateMode = "external"
+	}
 	cfg := Config{
-		Name:                valueOrDefault("APP_NAME", defaultName),
-		Environment:         environment,
-		LogLevel:            strings.ToLower(valueOrDefault("LOG_LEVEL", "info")),
-		LogFormat:           strings.ToLower(valueOrDefault("LOG_FORMAT", "json")),
-		LogSkipPaths:        csvValues("LOG_SKIP_PATHS", []string{"/livez", "/readyz", "/startupz", "/metrics"}),
-		Host:                valueOrDefault("HTTP_HOST", defaultHost),
-		AllowedOrigins:      csvValues("CORS_ALLOW_ORIGINS", []string{"http://localhost:3000"}),
-		AllowCredentials:    false,
-		TrustedProxies:      csvValues("TRUSTED_PROXIES", nil),
-		BodyLimit:           4 * 1024 * 1024,
-		ReadTimeout:         10 * time.Second,
-		WriteTimeout:        10 * time.Second,
-		IdleTimeout:         60 * time.Second,
-		RequestTimeout:      8 * time.Second,
-		HealthCheckTimeout:  2 * time.Second,
-		HealthCacheTTL:      time.Second,
-		ShutdownTimeout:     20 * time.Second,
-		ShutdownDrainDelay:  0,
-		RateLimitMax:        120,
-		RateLimitWindow:     time.Minute,
-		AuthRateLimitMax:    10,
-		IdempotencyEnabled:  true,
-		IdempotencyLifetime: 30 * time.Minute,
-		MetricsToken:        strings.TrimSpace(os.Getenv("METRICS_TOKEN")),
-		PprofEnabled:        false,
-		PprofToken:          strings.TrimSpace(os.Getenv("PPROF_TOKEN")),
-		SystemInfoDetailed:  !strings.EqualFold(environment, "production"),
-		DemoAuthEnabled:     !strings.EqualFold(environment, "production"),
-		DemoUsername:        valueOrDefault("DEMO_USERNAME", "demo"),
-		DemoPassword:        valueOrDefault("DEMO_PASSWORD", "demo123"),
-		JWTSecret:           valueOrDefault("JWT_SECRET", "goexample-development-jwt-secret-change-me"),
-		JWTIssuer:           valueOrDefault("JWT_ISSUER", "goexample"),
-		JWTTTL:              time.Hour,
+		Name:                     valueOrDefault("APP_NAME", defaultName),
+		Environment:              environment,
+		LogLevel:                 strings.ToLower(valueOrDefault("LOG_LEVEL", "info")),
+		LogFormat:                strings.ToLower(valueOrDefault("LOG_FORMAT", "json")),
+		LogSkipPaths:             csvValues("LOG_SKIP_PATHS", []string{"/livez", "/readyz", "/startupz", "/metrics"}),
+		Host:                     valueOrDefault("HTTP_HOST", defaultHost),
+		AllowedOrigins:           csvValues("CORS_ALLOW_ORIGINS", []string{"http://localhost:3000"}),
+		AllowCredentials:         false,
+		TrustedProxies:           csvValues("TRUSTED_PROXIES", nil),
+		BodyLimit:                4 * 1024 * 1024,
+		ReadBufferSize:           16 * 1024,
+		ReadTimeout:              10 * time.Second,
+		WriteTimeout:             10 * time.Second,
+		IdleTimeout:              60 * time.Second,
+		MaxConnections:           4096,
+		RequestTimeout:           8 * time.Second,
+		MaxInFlight:              256,
+		HealthCheckTimeout:       2 * time.Second,
+		HealthCacheTTL:           time.Second,
+		ShutdownTimeout:          20 * time.Second,
+		ShutdownDrainDelay:       0,
+		RateLimitMax:             120,
+		RateLimitWindow:          time.Minute,
+		AuthRateLimitMax:         10,
+		IdempotencyEnabled:       true,
+		IdempotencyLifetime:      30 * time.Minute,
+		SharedStateMode:          strings.ToLower(valueOrDefault("SHARED_STATE_MODE", sharedStateMode)),
+		AllowInMemorySharedState: false,
+		MetricsToken:             strings.TrimSpace(os.Getenv("METRICS_TOKEN")),
+		PprofEnabled:             false,
+		PprofToken:               strings.TrimSpace(os.Getenv("PPROF_TOKEN")),
+		SystemInfoDetailed:       !strings.EqualFold(environment, "production"),
+		DemoAuthEnabled:          !strings.EqualFold(environment, "production"),
+		DemoUsername:             valueOrDefault("DEMO_USERNAME", "demo"),
+		DemoPassword:             valueOrDefault("DEMO_PASSWORD", "demo123"),
+		JWTSecret:                valueOrDefault("JWT_SECRET", "goexample-development-jwt-secret-change-me"),
+		JWTIssuer:                valueOrDefault("JWT_ISSUER", "goexample"),
+		JWTTTL:                   time.Hour,
 	}
 
 	var err error
@@ -124,6 +138,12 @@ func Load() (Config, error) {
 	if cfg.BodyLimit < 1024 || cfg.BodyLimit > 64*1024*1024 {
 		return Config{}, fmt.Errorf("HTTP_BODY_LIMIT must be between 1024 and 67108864 bytes")
 	}
+	if cfg.ReadBufferSize, err = intValue("HTTP_READ_BUFFER_SIZE", cfg.ReadBufferSize); err != nil {
+		return Config{}, err
+	}
+	if cfg.ReadBufferSize < 4*1024 || cfg.ReadBufferSize > 1024*1024 {
+		return Config{}, fmt.Errorf("HTTP_READ_BUFFER_SIZE must be between 4096 and 1048576 bytes")
+	}
 	if cfg.ReadTimeout, err = durationValue("HTTP_READ_TIMEOUT", cfg.ReadTimeout); err != nil {
 		return Config{}, err
 	}
@@ -133,11 +153,23 @@ func Load() (Config, error) {
 	if cfg.IdleTimeout, err = durationValue("HTTP_IDLE_TIMEOUT", cfg.IdleTimeout); err != nil {
 		return Config{}, err
 	}
+	if cfg.MaxConnections, err = intValue("HTTP_MAX_CONNECTIONS", cfg.MaxConnections); err != nil {
+		return Config{}, err
+	}
+	if cfg.MaxConnections < 1 || cfg.MaxConnections > 1000000 {
+		return Config{}, fmt.Errorf("HTTP_MAX_CONNECTIONS must be between 1 and 1000000")
+	}
 	if cfg.RequestTimeout, err = durationValue("HTTP_REQUEST_TIMEOUT", cfg.RequestTimeout); err != nil {
 		return Config{}, err
 	}
 	if cfg.RequestTimeout >= cfg.WriteTimeout {
 		return Config{}, fmt.Errorf("HTTP_REQUEST_TIMEOUT must be less than HTTP_WRITE_TIMEOUT")
+	}
+	if cfg.MaxInFlight, err = intValue("HTTP_MAX_IN_FLIGHT", cfg.MaxInFlight); err != nil {
+		return Config{}, err
+	}
+	if cfg.MaxInFlight < 1 || cfg.MaxInFlight > 100000 {
+		return Config{}, fmt.Errorf("HTTP_MAX_IN_FLIGHT must be between 1 and 100000")
 	}
 	if cfg.HealthCheckTimeout, err = durationValue("HEALTH_CHECK_TIMEOUT", cfg.HealthCheckTimeout); err != nil {
 		return Config{}, err
@@ -177,6 +209,15 @@ func Load() (Config, error) {
 	}
 	if cfg.IdempotencyLifetime, err = durationValue("IDEMPOTENCY_LIFETIME", cfg.IdempotencyLifetime); err != nil {
 		return Config{}, err
+	}
+	if !oneOf(cfg.SharedStateMode, "memory", "external") {
+		return Config{}, fmt.Errorf("SHARED_STATE_MODE must be either memory or external")
+	}
+	if cfg.AllowInMemorySharedState, err = boolValue("ALLOW_IN_MEMORY_SHARED_STATE", cfg.AllowInMemorySharedState); err != nil {
+		return Config{}, err
+	}
+	if cfg.Environment == "production" && cfg.SharedStateMode == "memory" && !cfg.AllowInMemorySharedState {
+		return Config{}, fmt.Errorf("production SHARED_STATE_MODE=memory requires ALLOW_IN_MEMORY_SHARED_STATE=true")
 	}
 	if cfg.MetricsToken != "" && len(cfg.MetricsToken) < 32 {
 		return Config{}, fmt.Errorf("METRICS_TOKEN must contain at least 32 characters when set")
