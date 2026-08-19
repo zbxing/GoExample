@@ -3,7 +3,7 @@
     {
       "id": "u-admin",
       "username": "admin",
-      "passwordHash": "msfront-seed-salt-v1:00e570cd936aeb5137d6ee6332a6f226f62406c5d3bb009a9fe2d5fc7aea113ce7a9fc1e9829f25052cb0de889e68b9d9101f7e18d3684cf6e57ec246a135af1",
+      "passwordHash": "scrypt$1$131072$8$1$79b18877f88e6da549ad1ab2a5ca0985$32bcbf79b5f7b9301d43bc643435a9fe7ed40c678e087bae07ac029b518faee64fc7da3ee37c71e567252bb3a54bcf0ce2fbdc4eb7032bcfda66fae849884e69",
       "displayName": "超级管理员",
       "email": "admin@goexample.local",
       "phone": "",
@@ -12,7 +12,7 @@
         "888"
       ],
       "createdAt": "2026-01-01T00:00:00.000Z",
-      "updatedAt": "2026-01-01T00:00:00.000Z"
+      "updatedAt": "2026-08-18T12:02:55.923Z"
     },
     {
       "id": "u-operator",

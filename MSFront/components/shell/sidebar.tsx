@@ -14,6 +14,8 @@ interface SidebarProps {
   isCollapsed: boolean;
   isMobileOpen: boolean;
   darkSider: boolean;
+  menuTheme: 'design' | 'light' | 'group';
+  showCollapseButton: boolean;
   onClose: () => void;
   onToggleCollapse: () => void;
 }
@@ -38,6 +40,8 @@ export function Sidebar({
   isCollapsed,
   isMobileOpen,
   darkSider,
+  menuTheme,
+  showCollapseButton,
   onClose,
   onToggleCollapse,
 }: SidebarProps) {
@@ -51,6 +55,7 @@ export function Sidebar({
       data-collapsed={isCollapsed ? 'true' : 'false'}
       data-mobile-open={isMobileOpen ? 'true' : 'false'}
       data-dark={darkSider ? 'true' : 'false'}
+      data-menu-theme={menuTheme}
       aria-label="侧边导航"
     >
       <div className="sidebarMobileHeader">
@@ -68,15 +73,17 @@ export function Sidebar({
         onNavigate={onClose}
       />
 
-      <button
-        type="button"
-        className="gvaCollapseBar"
-        aria-label={isCollapsed ? '展开侧边栏' : '收起侧边栏'}
-        aria-expanded={!isCollapsed}
-        onClick={onToggleCollapse}
-      >
-        {isCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
-      </button>
+      {showCollapseButton ? (
+        <button
+          type="button"
+          className="gvaCollapseBar"
+          aria-label={isCollapsed ? '展开侧边栏' : '收起侧边栏'}
+          aria-expanded={!isCollapsed}
+          onClick={onToggleCollapse}
+        >
+          {isCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+        </button>
+      ) : null}
     </aside>
   );
 }

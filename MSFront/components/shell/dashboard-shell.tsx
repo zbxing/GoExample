@@ -14,13 +14,15 @@ import { Sidebar } from '@/components/shell/sidebar';
 import { TagsView } from '@/components/shell/tags-view';
 import { Topbar } from '@/components/shell/topbar';
 import { BottomInfo } from '@/components/shell/bottom-info';
+import { GvaPageTransition } from '@/components/shell/gva-page-transition';
 import {
+  applyGvaShellCss,
   getGvaShellSettingsServerSnapshot,
   readGvaShellSettings,
   subscribeGvaShellSettings,
   writeGvaShellSettings,
   type GvaShellSettings,
-} from '@/components/shell/gva-setting-drawer';
+} from '@/lib/utils/gva-shell-settings';
 import { useAuth } from '@/providers/auth-provider';
 import { collectLeafPaths } from '@/lib/utils/menu-access';
 
@@ -39,6 +41,10 @@ export function DashboardShell({ children }: PropsWithChildren) {
     getGvaShellSettingsServerSnapshot,
   );
   const previousPathnameRef = useRef(pathname);
+
+  useEffect(() => {
+    applyGvaShellCss(shellSettings);
+  }, [shellSettings]);
 
   function closeMobileSidebar() {
     setIsMobileSidebarOpen(false);
@@ -123,7 +129,10 @@ export function DashboardShell({ children }: PropsWithChildren) {
       className="appShell gvaAppShell"
       data-sidebar-collapsed={isSidebarCollapsed ? 'true' : 'false'}
       data-sidebar-open={isMobileSidebarOpen ? 'true' : 'false'}
-      data-dark-sider={shellSettings.darkSider ? 'true' : 'false'}
+      data-dark-sider={shellSettings.menu.darkSider ? 'true' : 'false'}
+      data-menu-theme={shellSettings.menu.theme}
+      data-layout={shellSettings.layout.mode}
+      data-card-mode={shellSettings.card.mode}
     >
       <Topbar
         sidebarId={sidebarId}
@@ -137,26 +146,43 @@ export function DashboardShell({ children }: PropsWithChildren) {
           sidebarId={sidebarId}
           isCollapsed={isSidebarCollapsed}
           isMobileOpen={isMobileSidebarOpen}
-          darkSider={shellSettings.darkSider}
+          darkSider={shellSettings.menu.darkSider}
+          menuTheme={shellSettings.menu.theme}
+          showCollapseButton={shellSettings.header.collapseButton.visible}
           onClose={closeMobileSidebar}
           onToggleCollapse={toggleSidebarCollapse}
         />
         <div className="gvaMainColumn">
-          <TagsView
-            tabMode={shellSettings.tabMode}
-            showTabIcon={shellSettings.showTabIcon}
-          />
+          {shellSettings.tab.visible ? (
+            <TagsView
+              tabMode={shellSettings.tab.mode}
+              showTabIcon={shellSettings.tab.showIcon}
+            />
+          ) : null}
           {isMobileSidebarOpen ? (
             <div className="sidebarBackdrop" role="presentation" onClick={closeMobileSidebar} />
           ) : null}
           <div className="appContent gvaAppContent">
             <main className="pageContent gvaPageContent">
-              {isLoading ? <div className="adminLoading">加载中…</div> : children}
+              {isLoading ? (
+                <div className="adminLoading">加载中…</div>
+              ) : (
+                <GvaPageTransition key={pathname} name={shellSettings.page.transition}>
+                  {children}
+                </GvaPageTransition>
+              )}
             </main>
             <BottomInfo className="gvaLayoutFooter" />
           </div>
         </div>
       </div>
+      {shellSettings.watermark.visible ? (
+        <div className="gvaWatermark" aria-hidden="true">
+          {Array.from({ length: 24 }, (_, index) => (
+            <span key={index}>Gin-Vue-Admin</span>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

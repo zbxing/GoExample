@@ -96,7 +96,12 @@ export function Topbar({
   }
 
   function toggleTheme() {
-    setTheme(isDark ? 'gva' : 'graphite');
+    const nextDark = !isDark;
+    setTheme(nextDark ? 'graphite' : 'gva');
+    onShellSettingsChange({
+      ...shellSettings,
+      themeScheme: nextDark ? 'dark' : 'light',
+    });
   }
 
   function handleRefresh() {
@@ -144,7 +149,7 @@ export function Topbar({
               <strong>Gin-Vue-Admin</strong>
             </Link>
 
-            <nav className="gvaBreadcrumb" aria-label="面包屑">
+            <nav className="gvaBreadcrumb" aria-label="面包屑" hidden={!shellSettings.header.breadcrumb.visible}>
               {crumbs.map((crumb, index) => (
                 <span key={`${crumb}-${index}`} className="gvaBreadcrumbItem">
                   {index > 0 ? <span className="gvaBreadcrumbSep">/</span> : null}
@@ -158,22 +163,26 @@ export function Topbar({
 
           <div className="gvaTopbarActions">
             <div className="gvaHeaderTools">
-              <GvaMorphButton
-                icon={<Search size={18} />}
-                label="搜索"
-                onClick={() => setCommandOpenSignal((value) => value + 1)}
-              />
+              {shellSettings.header.search.visible ? (
+                <GvaMorphButton
+                  icon={<Search size={18} />}
+                  label="搜索"
+                  onClick={() => setCommandOpenSignal((value) => value + 1)}
+                />
+              ) : null}
               <GvaMorphButton
                 icon={<Settings size={18} />}
                 label="设置"
                 onClick={() => setSettingsOpen(true)}
               />
-              <GvaMorphButton
-                icon={<RefreshCw size={18} />}
-                label="刷新"
-                spinning={refreshSpin}
-                onClick={handleRefresh}
-              />
+              {shellSettings.header.refresh.visible ? (
+                <GvaMorphButton
+                  icon={<RefreshCw size={18} />}
+                  label="刷新"
+                  spinning={refreshSpin}
+                  onClick={handleRefresh}
+                />
+              ) : null}
               <GvaMorphButton
                 icon={isDark ? <Sun size={18} /> : <Moon size={18} />}
                 label="主题"
