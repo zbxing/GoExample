@@ -1,10 +1,17 @@
-import { jsonFail, requireSession } from '@/lib/server/auth-request';
-import { jsonOk } from '@/lib/server/auth-request';
+import {
+  jsonFail,
+  jsonOk,
+  requireSession,
+} from '@/lib/server/auth-request';
+import { buildClearAuthCookie } from '@/lib/server/auth-token';
+import { disableResponseCaching } from '@/lib/server/response-security';
 
 export async function GET(request: Request) {
   const { session, error } = await requireSession(request);
   if (error || !session) {
-    return error ?? jsonFail('未登录', 401);
+    const response = disableResponseCaching(error ?? jsonFail('未登录', 401));
+    response.headers.set('Set-Cookie', buildClearAuthCookie());
+    return response;
   }
-  return jsonOk({ user: session });
+  return disableResponseCaching(jsonOk({ user: session }));
 }

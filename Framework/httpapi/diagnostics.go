@@ -16,7 +16,7 @@ func registerDiagnostics(app *fiber.App, options Options) {
 }
 
 func noStore(c fiber.Ctx) error {
-	c.Set(fiber.HeaderCacheControl, "no-store")
+	setNoStoreHeaders(c)
 	return c.Next()
 }
 

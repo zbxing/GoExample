@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -22,6 +24,13 @@ type Config struct {
 	LogLevel                 string
 	LogFormat                string
 	LogSkipPaths             []string
+	TraceExporter            string
+	OTLPEndpoint             string
+	TraceSampleRatio         float64
+	TraceExportTimeout       time.Duration
+	TraceBatchTimeout        time.Duration
+	TraceMaxQueueSize        int
+	TraceMaxExportBatchSize  int
 	Host                     string
 	Port                     int
 	AllowedOrigins           []string
@@ -55,6 +64,7 @@ type Config struct {
 	DemoPassword             string
 	JWTSecret                string
 	JWTIssuer                string
+	JWTAudience              string
 	JWTTTL                   time.Duration
 }
 
@@ -73,6 +83,13 @@ func Load() (Config, error) {
 		LogLevel:                 strings.ToLower(valueOrDefault("LOG_LEVEL", "info")),
 		LogFormat:                strings.ToLower(valueOrDefault("LOG_FORMAT", "json")),
 		LogSkipPaths:             csvValues("LOG_SKIP_PATHS", []string{"/livez", "/readyz", "/startupz", "/metrics"}),
+		TraceExporter:            strings.ToLower(valueOrDefault("OTEL_TRACES_EXPORTER", "none")),
+		OTLPEndpoint:             strings.TrimSpace(os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
+		TraceSampleRatio:         0.1,
+		TraceExportTimeout:       3 * time.Second,
+		TraceBatchTimeout:        5 * time.Second,
+		TraceMaxQueueSize:        2048,
+		TraceMaxExportBatchSize:  512,
 		Host:                     valueOrDefault("HTTP_HOST", defaultHost),
 		AllowedOrigins:           csvValues("CORS_ALLOW_ORIGINS", []string{"http://localhost:3000"}),
 		AllowCredentials:         false,
@@ -105,6 +122,7 @@ func Load() (Config, error) {
 		DemoPassword:             valueOrDefault("DEMO_PASSWORD", "demo123"),
 		JWTSecret:                valueOrDefault("JWT_SECRET", "goexample-development-jwt-secret-change-me"),
 		JWTIssuer:                valueOrDefault("JWT_ISSUER", "goexample"),
+		JWTAudience:              valueOrDefault("JWT_AUDIENCE", "goexample-api"),
 		JWTTTL:                   time.Hour,
 	}
 
@@ -114,6 +132,42 @@ func Load() (Config, error) {
 	}
 	if !oneOf(cfg.LogFormat, "json", "text") {
 		return Config{}, fmt.Errorf("LOG_FORMAT must be either json or text")
+	}
+	if !oneOf(cfg.TraceExporter, "none", "otlp") {
+		return Config{}, fmt.Errorf("OTEL_TRACES_EXPORTER must be either none or otlp")
+	}
+	if cfg.TraceSampleRatio, err = floatValue("OTEL_TRACES_SAMPLER_ARG", cfg.TraceSampleRatio); err != nil {
+		return Config{}, err
+	}
+	if math.IsNaN(cfg.TraceSampleRatio) || math.IsInf(cfg.TraceSampleRatio, 0) || cfg.TraceSampleRatio < 0 || cfg.TraceSampleRatio > 1 {
+		return Config{}, fmt.Errorf("OTEL_TRACES_SAMPLER_ARG must be between 0 and 1")
+	}
+	if cfg.TraceExportTimeout, err = millisecondDurationValue("OTEL_BSP_EXPORT_TIMEOUT", cfg.TraceExportTimeout); err != nil {
+		return Config{}, err
+	}
+	if cfg.TraceBatchTimeout, err = millisecondDurationValue("OTEL_BSP_SCHEDULE_DELAY", cfg.TraceBatchTimeout); err != nil {
+		return Config{}, err
+	}
+	if cfg.TraceMaxQueueSize, err = intValue("OTEL_BSP_MAX_QUEUE_SIZE", cfg.TraceMaxQueueSize); err != nil {
+		return Config{}, err
+	}
+	if cfg.TraceMaxQueueSize < 1 || cfg.TraceMaxQueueSize > 1000000 {
+		return Config{}, fmt.Errorf("OTEL_BSP_MAX_QUEUE_SIZE must be between 1 and 1000000")
+	}
+	if cfg.TraceMaxExportBatchSize, err = intValue("OTEL_BSP_MAX_EXPORT_BATCH_SIZE", cfg.TraceMaxExportBatchSize); err != nil {
+		return Config{}, err
+	}
+	if cfg.TraceMaxExportBatchSize < 1 || cfg.TraceMaxExportBatchSize > cfg.TraceMaxQueueSize {
+		return Config{}, fmt.Errorf("OTEL_BSP_MAX_EXPORT_BATCH_SIZE must be between 1 and OTEL_BSP_MAX_QUEUE_SIZE")
+	}
+	if cfg.TraceExporter == "otlp" {
+		endpoint, parseErr := url.Parse(cfg.OTLPEndpoint)
+		if parseErr != nil || (endpoint.Scheme != "http" && endpoint.Scheme != "https") || endpoint.Host == "" {
+			return Config{}, fmt.Errorf("OTEL_EXPORTER_OTLP_ENDPOINT must be an absolute http or https URL")
+		}
+		if endpoint.User != nil || endpoint.RawQuery != "" || endpoint.Fragment != "" {
+			return Config{}, fmt.Errorf("OTEL_EXPORTER_OTLP_ENDPOINT must not contain credentials, query, or fragment")
+		}
 	}
 	if cfg.Port, err = intValue("HTTP_PORT", defaultPort); err != nil {
 		return Config{}, err
@@ -129,7 +183,7 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("CORS_ALLOW_ORIGINS cannot contain * when credentialed requests are enabled")
 		}
 	}
-	if err := validateTrustedProxies(cfg.TrustedProxies); err != nil {
+	if err := validateTrustedProxies(cfg.TrustedProxies, cfg.Environment == "production"); err != nil {
 		return Config{}, err
 	}
 	if cfg.BodyLimit, err = intValue("HTTP_BODY_LIMIT", cfg.BodyLimit); err != nil {
@@ -165,6 +219,12 @@ func Load() (Config, error) {
 	if cfg.RequestTimeout >= cfg.WriteTimeout {
 		return Config{}, fmt.Errorf("HTTP_REQUEST_TIMEOUT must be less than HTTP_WRITE_TIMEOUT")
 	}
+	if cfg.ReadTimeout > cfg.IdleTimeout {
+		return Config{}, fmt.Errorf("HTTP_READ_TIMEOUT must not exceed HTTP_IDLE_TIMEOUT")
+	}
+	if cfg.WriteTimeout > cfg.IdleTimeout {
+		return Config{}, fmt.Errorf("HTTP_WRITE_TIMEOUT must not exceed HTTP_IDLE_TIMEOUT")
+	}
 	if cfg.MaxInFlight, err = intValue("HTTP_MAX_IN_FLIGHT", cfg.MaxInFlight); err != nil {
 		return Config{}, err
 	}
@@ -188,6 +248,12 @@ func Load() (Config, error) {
 	}
 	if cfg.ShutdownDrainDelay+cfg.RequestTimeout >= cfg.ShutdownTimeout {
 		return Config{}, fmt.Errorf("SHUTDOWN_DRAIN_DELAY plus HTTP_REQUEST_TIMEOUT must be less than SHUTDOWN_TIMEOUT")
+	}
+	if cfg.ShutdownDrainDelay+cfg.ReadTimeout >= cfg.ShutdownTimeout {
+		return Config{}, fmt.Errorf("SHUTDOWN_DRAIN_DELAY plus HTTP_READ_TIMEOUT must be less than SHUTDOWN_TIMEOUT")
+	}
+	if cfg.ShutdownDrainDelay+cfg.WriteTimeout >= cfg.ShutdownTimeout {
+		return Config{}, fmt.Errorf("SHUTDOWN_DRAIN_DELAY plus HTTP_WRITE_TIMEOUT must be less than SHUTDOWN_TIMEOUT")
 	}
 	if cfg.RateLimitMax, err = intValue("RATE_LIMIT_MAX", cfg.RateLimitMax); err != nil {
 		return Config{}, err
@@ -247,6 +313,12 @@ func Load() (Config, error) {
 		if cfg.JWTSecret == "goexample-development-jwt-secret-change-me" {
 			return Config{}, fmt.Errorf("JWT_SECRET must be changed in production")
 		}
+		if cfg.MetricsToken == cfg.JWTSecret {
+			return Config{}, fmt.Errorf("METRICS_TOKEN must differ from JWT_SECRET in production")
+		}
+		if cfg.PprofEnabled && (cfg.PprofToken == cfg.MetricsToken || cfg.PprofToken == cfg.JWTSecret) {
+			return Config{}, fmt.Errorf("PPROF_TOKEN must differ from METRICS_TOKEN and JWT_SECRET in production")
+		}
 		if cfg.DemoAuthEnabled && (cfg.DemoUsername == "demo" || cfg.DemoPassword == "demo123") {
 			return Config{}, fmt.Errorf("demo credentials must be changed when DEMO_AUTH_ENABLED is true in production")
 		}
@@ -277,6 +349,33 @@ func intValue(key string, fallback int) (int, error) {
 		return 0, fmt.Errorf("%s must be an integer: %w", key, err)
 	}
 	return value, nil
+}
+
+func floatValue(key string, fallback float64) (float64, error) {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback, nil
+	}
+	value, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a number: %w", key, err)
+	}
+	return value, nil
+}
+
+func millisecondDurationValue(key string, fallback time.Duration) (time.Duration, error) {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback, nil
+	}
+	milliseconds, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be an integer number of milliseconds: %w", key, err)
+	}
+	if milliseconds <= 0 || milliseconds > int64((10*time.Minute)/time.Millisecond) {
+		return 0, fmt.Errorf("%s must be between 1 and 600000 milliseconds", key)
+	}
+	return time.Duration(milliseconds) * time.Millisecond, nil
 }
 
 func durationValue(key string, fallback time.Duration) (time.Duration, error) {
@@ -358,11 +457,16 @@ func oneOf(value string, allowed ...string) bool {
 	return false
 }
 
-func validateTrustedProxies(values []string) error {
+func validateTrustedProxies(values []string, production bool) error {
 	for _, value := range values {
 		if strings.Contains(value, "/") {
-			if _, _, err := net.ParseCIDR(value); err != nil {
+			_, network, err := net.ParseCIDR(value)
+			if err != nil {
 				return fmt.Errorf("TRUSTED_PROXIES contains invalid CIDR %q", value)
+			}
+			prefixLength, _ := network.Mask.Size()
+			if production && prefixLength == 0 {
+				return fmt.Errorf("TRUSTED_PROXIES must not contain catch-all CIDR %q in production", value)
 			}
 			continue
 		}

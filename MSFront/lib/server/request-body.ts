@@ -1,6 +1,6 @@
 import 'server-only';
-import { NextResponse } from 'next/server';
 import { type ZodType, type infer as Infer } from 'zod';
+import { privateJson } from '@/lib/server/response-security';
 
 const defaultMaxJsonBodyBytes = 1024 * 1024;
 const maxReportedIssues = 10;
@@ -73,7 +73,7 @@ export async function readJsonBody<Schema extends ZodType>(
 
 export function apiErrorResponse(error: unknown, fallbackMessage: string, status = 500) {
   if (error instanceof RequestBodyError) {
-    return NextResponse.json(
+    return privateJson(
       {
         message: error.message,
         error: {
@@ -86,7 +86,7 @@ export function apiErrorResponse(error: unknown, fallbackMessage: string, status
   }
 
   console.error(fallbackMessage, error);
-  return NextResponse.json({ message: fallbackMessage }, { status });
+  return privateJson({ message: fallbackMessage }, { status });
 }
 
 async function readLimitedBody(body: ReadableStream<Uint8Array> | null, maxBytes: number) {

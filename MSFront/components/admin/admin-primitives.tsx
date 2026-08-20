@@ -14,7 +14,8 @@ export function AdminPage({
 }
 
 export function AdminCard({ children }: PropsWithChildren) {
-  return <div className="gvaSystemCard gvaTableBox">{children}</div>;
+  // 对齐 GVA gva-table-box：仅表面容器，不要叠加 gvaTableBox（会把圆角盖成 4px）
+  return <div className="gvaSystemCard">{children}</div>;
 }
 
 export function AdminWarningBar({ title }: { title: string }) {

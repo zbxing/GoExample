@@ -36,6 +36,14 @@ func registerRoutes(app *fiber.App, options Options, applicationContext context.
 	v1 := api.Group("/v1")
 	v1.Use(rejectWhenDraining(options.Health, options.Metrics))
 	v1.Use(boundedConcurrency(options.MaxInFlight, options.Metrics))
+	if len(options.ApplicationQueries) > 0 && options.RegisterRoutes != nil {
+		panic("ApplicationQueries and RegisterRoutes cannot be configured together")
+	}
+	if len(options.ApplicationQueries) > 0 {
+		RegisterDefaultRoutes(v1, options)
+		registerApplicationQueries(v1, options.ApplicationQueries)
+		return
+	}
 	if options.RegisterRoutes != nil {
 		options.RegisterRoutes(v1)
 		return

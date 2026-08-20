@@ -59,6 +59,9 @@ func TestMetricsRecordsNormalizedRoute(t *testing.T) {
 	if metricsResponse.Header.Get(fiber.HeaderCacheControl) != "no-store" {
 		t.Fatalf("metrics Cache-Control = %q", metricsResponse.Header.Get(fiber.HeaderCacheControl))
 	}
+	if metricsResponse.Header.Get(fiber.HeaderPragma) != "no-cache" {
+		t.Fatalf("metrics Pragma = %q", metricsResponse.Header.Get(fiber.HeaderPragma))
+	}
 }
 
 func TestMetricsMapsDeadlineToRequestTimeout(t *testing.T) {
@@ -79,10 +82,15 @@ func TestMetricsMapsDeadlineToRequestTimeout(t *testing.T) {
 
 func TestMetricsRenderAdmissionRejections(t *testing.T) {
 	metrics := NewMetrics()
+	metrics.RecordRequestIDReplaced()
+	metrics.RecordRequestIDReplaced()
 	metrics.RecordAdmissionRejected()
 	metrics.RecordAdmissionRejected()
 	metrics.RecordDrainingRejected()
 	output := metrics.Render()
+	if !strings.Contains(output, "goexample_http_request_id_replacements_total 2") {
+		t.Fatalf("request ID replacement counter = %s", output)
+	}
 	if !strings.Contains(output, "# TYPE goexample_http_admission_rejections_total counter") {
 		t.Fatal("admission rejection metric type is missing")
 	}

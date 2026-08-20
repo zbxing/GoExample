@@ -1,5 +1,10 @@
 import type { NextConfig } from 'next';
+import { PHASE_PRODUCTION_SERVER } from 'next/constants';
 import path from 'node:path';
+import {
+  validateAuthTokenConfiguration,
+  validateTrustedMutationOrigins,
+} from './lib/server/runtime-config';
 
 const securityHeaders = [
   { key: 'Content-Security-Policy', value: "base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'" },
@@ -24,4 +29,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default function configure(phase: string): NextConfig {
+  if (phase === PHASE_PRODUCTION_SERVER) {
+    validateAuthTokenConfiguration();
+    validateTrustedMutationOrigins();
+  }
+
+  return nextConfig;
+}

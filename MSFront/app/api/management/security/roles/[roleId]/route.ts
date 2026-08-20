@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
 import { deleteManagedRole, saveManagedRole } from '@/lib/server/access-management-repository';
 import { requireApiAccess } from '@/lib/server/auth-request';
 import { apiErrorResponse, readJsonBody } from '@/lib/server/request-body';
 import { managedRoleUpdateSchema } from '@/lib/server/request-schemas';
+import { privateJson } from '@/lib/server/response-security';
 
 export async function PUT(
   request: Request,
@@ -25,7 +25,7 @@ export async function PUT(
       permissions: body.permissions,
     });
 
-    return NextResponse.json(role);
+    return privateJson(role);
   } catch (error) {
     return apiErrorResponse(error, 'Failed to save the managed role.', 400);
   }
@@ -46,7 +46,7 @@ export async function DELETE(
     const { roleId } = await context.params;
     await deleteManagedRole(roleId);
 
-    return NextResponse.json({ deleted: true, roleId });
+    return privateJson({ deleted: true, roleId });
   } catch (error) {
     return apiErrorResponse(error, 'Failed to delete the managed role.', 400);
   }

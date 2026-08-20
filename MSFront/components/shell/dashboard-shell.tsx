@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  Suspense,
   type PropsWithChildren,
 } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -15,6 +16,8 @@ import { TagsView } from '@/components/shell/tags-view';
 import { Topbar } from '@/components/shell/topbar';
 import { BottomInfo } from '@/components/shell/bottom-info';
 import { GvaPageTransition } from '@/components/shell/gva-page-transition';
+import { GvaRouteLoadingEffects } from '@/components/shell/gva-page-loading';
+import { resetGvaPageLeave } from '@/lib/utils/gva-page-leave';
 import {
   applyGvaShellCss,
   getGvaShellSettingsServerSnapshot,
@@ -45,6 +48,23 @@ export function DashboardShell({ children }: PropsWithChildren) {
   useEffect(() => {
     applyGvaShellCss(shellSettings);
   }, [shellSettings]);
+
+  // 「顶部导航」布局会隐藏侧栏；若本地误存成 head，自动恢复经典布局以露出侧栏
+  useEffect(() => {
+    if (shellSettings.layout.mode !== 'head') {
+      return;
+    }
+    writeGvaShellSettings({
+      ...shellSettings,
+      layout: { ...shellSettings.layout, mode: 'normal' },
+    });
+  }, [shellSettings]);
+
+  // 仅在壳层挂载/卸载时清理残留离场层；不要在 pathname 变化时清，否则会掐断离场动画
+  useEffect(() => {
+    resetGvaPageLeave();
+    return () => resetGvaPageLeave();
+  }, []);
 
   function closeMobileSidebar() {
     setIsMobileSidebarOpen(false);
@@ -163,15 +183,21 @@ export function DashboardShell({ children }: PropsWithChildren) {
             <div className="sidebarBackdrop" role="presentation" onClick={closeMobileSidebar} />
           ) : null}
           <div className="appContent gvaAppContent">
-            <main className="pageContent gvaPageContent">
-              {isLoading ? (
-                <div className="adminLoading">加载中…</div>
-              ) : (
-                <GvaPageTransition key={pathname} name={shellSettings.page.transition}>
-                  {children}
-                </GvaPageTransition>
-              )}
-            </main>
+            {/* 对齐 GVA：#gva-base-load-dom + .gva-body-h，页脚在其外，切换时不上跳 */}
+            <div id="gva-base-load-dom" className="gvaBodyH">
+              <GvaRouteLoadingEffects />
+              <main className="pageContent gvaPageContent">
+                {isLoading && !user ? (
+                  <div className="adminLoading">加载中…</div>
+                ) : (
+                  <GvaPageTransition pageKey={pathname} name={shellSettings.page.transition}>
+                    <Suspense fallback={<div className="adminLoading">加载中…</div>}>
+                      {children}
+                    </Suspense>
+                  </GvaPageTransition>
+                )}
+              </main>
+            </div>
             <BottomInfo className="gvaLayoutFooter" />
           </div>
         </div>

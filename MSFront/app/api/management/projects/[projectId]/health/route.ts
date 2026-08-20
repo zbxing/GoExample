@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import { getProjectHealth } from '@/lib/api/management';
 import { requireApiAccess } from '@/lib/server/auth-request';
+import { privateJson } from '@/lib/server/response-security';
 
 export async function GET(
   request: Request,
@@ -13,8 +13,8 @@ export async function GET(
   const health = await getProjectHealth(projectId);
 
   if (!health) {
-    return NextResponse.json({ message: 'Project not found.' }, { status: 404 });
+    return privateJson({ message: 'Project not found.' }, { status: 404 });
   }
 
-  return NextResponse.json(health);
+  return privateJson(health);
 }

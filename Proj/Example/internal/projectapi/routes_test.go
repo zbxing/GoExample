@@ -1,24 +1,26 @@
 package projectapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gofiber/fiber/v3"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"github.com/zbxing/goexample/Framework/httpapi"
 )
 
-func TestRegisterAddsProjectRoute(t *testing.T) {
-	app := fiber.New()
+func TestQueriesAddProjectRoute(t *testing.T) {
 	options := httpapi.Options{
 		Name:        "Example Test API",
 		Environment: "test",
 		Version:     "test-version",
 	}
-	Register(app.Group("/api/v1"), options)
+	options.ApplicationQueries = Queries(options)
+	app := httpapi.New(options)
 
 	response, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/project", http.NoBody))
 	if err != nil {
@@ -41,6 +43,45 @@ func TestRegisterAddsProjectRoute(t *testing.T) {
 	}
 	if envelope.Code != 0 || envelope.Data.Name != options.Name || envelope.Data.Environment != options.Environment || envelope.Data.Version != options.Version {
 		t.Fatalf("project response = %#v", envelope)
+	}
+}
+
+func TestProjectRouteCreatesChildApplicationSpan(t *testing.T) {
+	recorder := tracetest.NewSpanRecorder()
+	provider := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithSpanProcessor(recorder),
+	)
+	t.Cleanup(func() { _ = provider.Shutdown(context.Background()) })
+	options := httpapi.Options{
+		Name:           "Example Test API",
+		Environment:    "test",
+		Version:        "test-version",
+		TracerProvider: provider,
+	}
+	options.ApplicationQueries = Queries(options)
+	app := httpapi.New(options)
+
+	response, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/project", http.NoBody))
+	if err != nil {
+		t.Fatalf("project request error = %v", err)
+	}
+	response.Body.Close()
+
+	var serverSpan, applicationSpan sdktrace.ReadOnlySpan
+	for _, span := range recorder.Ended() {
+		switch span.Name() {
+		case "GET /api/v1/project":
+			serverSpan = span
+		case "project.get":
+			applicationSpan = span
+		}
+	}
+	if serverSpan == nil || applicationSpan == nil {
+		t.Fatalf("route spans = %#v", recorder.Ended())
+	}
+	if applicationSpan.SpanContext().TraceID() != serverSpan.SpanContext().TraceID() || applicationSpan.Parent().SpanID() != serverSpan.SpanContext().SpanID() {
+		t.Fatalf("application parent/trace = %s/%s, server = %s/%s", applicationSpan.Parent().SpanID(), applicationSpan.SpanContext().TraceID(), serverSpan.SpanContext().SpanID(), serverSpan.SpanContext().TraceID())
 	}
 }
 

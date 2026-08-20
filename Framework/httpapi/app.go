@@ -11,11 +11,11 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/compress"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/earlydata"
-	"github.com/gofiber/fiber/v3/middleware/etag"
 	"github.com/gofiber/fiber/v3/middleware/helmet"
 	"github.com/gofiber/fiber/v3/middleware/idempotency"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/zbxing/goexample/Framework/auth"
 	"github.com/zbxing/goexample/Framework/health"
@@ -61,10 +61,12 @@ type Options struct {
 	Auth               *auth.Service
 	Health             *health.Checker
 	Metrics            *observability.Metrics
+	TracerProvider     trace.TracerProvider
 	Validator          fiber.StructValidator
 	Logger             *slog.Logger
 	Now                func() time.Time
 	Endpoints          []string
+	ApplicationQueries []ApplicationQuery
 	RegisterRoutes     RouteRegistrar
 }
 
@@ -103,8 +105,9 @@ func New(options Options) *fiber.App {
 		return nil
 	})
 
+	app.Use(requestIDBoundary(options.Metrics))
 	app.Use(requestid.New())
-	app.Use(observability.TraceMiddleware)
+	app.Use(observability.TraceMiddlewareWithProvider(options.TracerProvider))
 	app.Use(observability.RequestLogger(options.Logger, options.LogSkipPaths...))
 	app.Use(options.Metrics.Middleware)
 	app.Use(recover.New(recover.Config{
@@ -143,14 +146,27 @@ func New(options Options) *fiber.App {
 			fiber.HeaderContentType,
 			fiber.HeaderXRequestID,
 			observability.TraceparentHeader,
+			observability.TracestateHeader,
 			"X-Idempotency-Key",
 		},
-		ExposeHeaders:    []string{fiber.HeaderXRequestID, observability.TraceparentHeader, fiber.HeaderRetryAfter, "X-Idempotency-Replayed", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"},
+		ExposeHeaders: []string{
+			fiber.HeaderXRequestID,
+			fiber.HeaderWWWAuthenticate,
+			observability.TraceparentHeader,
+			fiber.HeaderRetryAfter,
+			deprecationHeader,
+			sunsetHeader,
+			linkHeader,
+			"X-Idempotency-Replayed",
+			"X-RateLimit-Limit",
+			"X-RateLimit-Remaining",
+			"X-RateLimit-Reset",
+		},
 		AllowCredentials: options.AllowCredentials,
 		MaxAge:           300,
 	}))
 	registerDiagnostics(app, options)
-	app.Use("/api/v1", etag.New(etag.Config{Weak: true}))
+	app.Use("/api/v1", streamSafeETag())
 	app.Use("/api/v1", compress.New(compress.Config{Level: compress.LevelBestSpeed}))
 
 	registerRoutes(app, options, applicationContext)

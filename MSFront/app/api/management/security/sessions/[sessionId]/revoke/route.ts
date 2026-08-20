@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
 import { revokeManagedSession } from '@/lib/server/access-management-repository';
 import { requireApiAccess } from '@/lib/server/auth-request';
 import { apiErrorResponse } from '@/lib/server/request-body';
+import { privateJson } from '@/lib/server/response-security';
 
 export async function POST(
   request: Request,
@@ -18,7 +18,7 @@ export async function POST(
     const { sessionId } = await context.params;
     const result = await revokeManagedSession(sessionId);
 
-    return NextResponse.json(result);
+    return privateJson(result);
   } catch (error) {
     return apiErrorResponse(error, 'Failed to revoke the managed session.', 400);
   }

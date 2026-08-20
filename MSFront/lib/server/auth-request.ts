@@ -8,21 +8,22 @@ import {
 import { isPathAllowedForRoles } from '@/lib/server/system-casbin-repository';
 import { isTrustedMutationOrigin } from '@/lib/server/request-security';
 import { RequestBodyError } from '@/lib/server/request-body';
+import { disableResponseCaching, privateJson } from '@/lib/server/response-security';
 import type { AuthSessionUser } from '@/lib/types/system';
 
 export { AUTH_COOKIE_NAME } from '@/lib/server/auth-token';
 
 export function jsonOk<T>(data: T, init?: ResponseInit) {
-  return NextResponse.json({ code: 0, data, msg: 'success' }, init);
+  return privateJson({ code: 0, data, msg: 'success' }, init);
 }
 
 export function jsonFail(message: string, status = 400) {
-  return NextResponse.json({ code: status, data: null, msg: message }, { status });
+  return privateJson({ code: status, data: null, msg: message }, { status });
 }
 
 export function jsonApiError(error: unknown, fallbackMessage: string, status = 500) {
   if (error instanceof RequestBodyError) {
-    return NextResponse.json(
+    return disableResponseCaching(NextResponse.json(
       {
         code: error.status,
         data: null,
@@ -33,7 +34,7 @@ export function jsonApiError(error: unknown, fallbackMessage: string, status = 5
         },
       },
       { status: error.status },
-    );
+    ));
   }
   console.error(fallbackMessage, error);
   return jsonFail(fallbackMessage, status);

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
   type ReactNode,
@@ -31,6 +32,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AuthSessionUser | null>(null);
   const [menus, setMenus] = useState<SystemMenuTreeNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const hasSessionRef = useRef(false);
+
+  useEffect(() => {
+    hasSessionRef.current = user !== null;
+  }, [user]);
 
   const refresh = useCallback(async () => {
     if (pathname === '/login') {
@@ -42,9 +48,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     setIsLoading(true);
     try {
-      const me = await apiFetch<{ user: AuthSessionUser }>('/api/auth/me');
+      const me = await apiFetch<{ user: AuthSessionUser }>('/api/auth/me', {
+        donNotShowLoading: true,
+      });
       const menuPayload = await apiFetch<{ menus: SystemMenuTreeNode[] }>(
         '/api/system/menus/async',
+        { donNotShowLoading: true },
       );
       setUser(me.data.user);
       setMenus(menuPayload.data.menus);
@@ -72,14 +81,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      if (!cancelled) {
+      // 已登录后的路由切换只做静默校验，不要 isLoading 卸掉整页（否则掐断离场动画）
+      const softRefresh = hasSessionRef.current;
+      if (!cancelled && !softRefresh) {
         setIsLoading(true);
       }
 
       try {
-        const me = await apiFetch<{ user: AuthSessionUser }>('/api/auth/me');
+        const me = await apiFetch<{ user: AuthSessionUser }>('/api/auth/me', {
+          donNotShowLoading: true,
+        });
         const menuPayload = await apiFetch<{ menus: SystemMenuTreeNode[] }>(
           '/api/system/menus/async',
+          { donNotShowLoading: true },
         );
         if (cancelled) {
           return;
@@ -110,7 +124,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const logout = useCallback(async () => {
     try {
-      await apiFetch('/api/auth/logout', { method: 'POST' });
+      await apiFetch('/api/auth/logout', { method: 'POST', donNotShowLoading: true });
     } finally {
       setUser(null);
       setMenus([]);

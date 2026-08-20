@@ -2,7 +2,29 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
 
-import { isTrustedMutationOrigin } from '@/lib/server/request-security';
+import {
+  isTrustedMutationOrigin,
+  validateTrustedMutationOrigins,
+} from '@/lib/server/request-security';
+import { disableResponseCaching, privateJson } from '@/lib/server/response-security';
+
+describe('disableResponseCaching', () => {
+  it('sets shared-store and legacy proxy cache prevention headers', () => {
+    const response = disableResponseCaching(Response.json({ ok: true }));
+
+    expect(response.headers.get('cache-control')).toBe('no-store, no-transform');
+    expect(response.headers.get('pragma')).toBe('no-cache');
+  });
+
+  it('creates private JSON responses with the shared cache policy', async () => {
+    const response = privateJson({ ok: true }, { status: 202 });
+
+    expect(response.status).toBe(202);
+    expect(response.headers.get('cache-control')).toBe('no-store, no-transform');
+    expect(response.headers.get('pragma')).toBe('no-cache');
+    expect(await response.json()).toEqual({ ok: true });
+  });
+});
 
 describe('isTrustedMutationOrigin', () => {
   it('does not require Origin for safe methods', () => {
@@ -35,5 +57,17 @@ describe('isTrustedMutationOrigin', () => {
       ...options,
       headers: { origin: 'https://attacker.example' },
     }))).toBe(false);
+  });
+});
+
+describe('validateTrustedMutationOrigins', () => {
+  it('rejects malformed configured origins before serving requests', () => {
+    expect(() => validateTrustedMutationOrigins('https://console.example.com,not-an-origin'))
+      .toThrow();
+  });
+
+  it('accepts HTTP(S) origins without credentials', () => {
+    expect(() => validateTrustedMutationOrigins('https://console.example.com,http://internal:3000'))
+      .not.toThrow();
   });
 });

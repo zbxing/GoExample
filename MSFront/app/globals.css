@@ -3446,6 +3446,14 @@ body {
   font-size: 0.82rem;
 }
 
+.referenceWelcome .primaryButton {
+  background: #1d4ed8;
+}
+
+.referenceWelcome .primaryButton:hover {
+  background: #1e40af;
+}
+
 .referenceMetricGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3465,7 +3473,7 @@ body {
 }
 
 .referenceMetricCard strong {
-  color: #4e5969;
+  color: #1d2129;
   font-size: 0.84rem;
   font-weight: 500;
 }
@@ -3481,7 +3489,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  color: #06752f;
+  color: #075e2b;
   font-size: 0.78rem;
 }
 
@@ -3582,7 +3590,7 @@ body {
 .referenceChartGrid span {
   display: flex;
   align-items: start;
-  color: #64748b;
+  color: #1d2129;
   font-size: 0.7rem;
 }
 
@@ -4657,6 +4665,15 @@ html.theme-gva body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .gvaPage-fade.is-enter,
+  .gvaPage-fade.is-leave,
+  .gvaPage-slide.is-enter,
+  .gvaPage-slide.is-leave,
+  .gvaPage-zoom.is-enter,
+  .gvaPage-zoom.is-leave {
+    animation-duration: 0.01ms !important;
+  }
+
   .routeStateSpinner {
     animation: none;
   }

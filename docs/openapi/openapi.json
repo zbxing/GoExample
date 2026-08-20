@@ -50,7 +50,7 @@
               "text/plain": { "schema": { "type": "string" } }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "401": { "$ref": "#/components/responses/BearerUnauthorized" }
         }
       }
     },
@@ -82,16 +82,28 @@
       "get": {
         "operationId": "getApiLiveness",
         "tags": ["health"],
-        "responses": { "200": { "$ref": "#/components/responses/Health" } }
+        "summary": "Deprecated compatibility alias for /livez",
+        "deprecated": true,
+        "externalDocs": {
+          "description": "Health endpoint migration",
+          "url": "./health-endpoint-migration.md"
+        },
+        "responses": { "200": { "$ref": "#/components/responses/DeprecatedHealth" } }
       }
     },
     "/api/health/ready": {
       "get": {
         "operationId": "getApiReadiness",
         "tags": ["health"],
+        "summary": "Deprecated compatibility alias for /readyz",
+        "deprecated": true,
+        "externalDocs": {
+          "description": "Health endpoint migration",
+          "url": "./health-endpoint-migration.md"
+        },
         "responses": {
-          "200": { "$ref": "#/components/responses/Health" },
-          "503": { "$ref": "#/components/responses/Unavailable" }
+          "200": { "$ref": "#/components/responses/DeprecatedHealth" },
+          "503": { "$ref": "#/components/responses/DeprecatedUnavailable" }
         }
       }
     },
@@ -99,7 +111,13 @@
       "get": {
         "operationId": "getApiStartup",
         "tags": ["health"],
-        "responses": { "200": { "$ref": "#/components/responses/Health" } }
+        "summary": "Deprecated compatibility alias for /startupz",
+        "deprecated": true,
+        "externalDocs": {
+          "description": "Health endpoint migration",
+          "url": "./health-endpoint-migration.md"
+        },
+        "responses": { "200": { "$ref": "#/components/responses/DeprecatedHealth" } }
       }
     },
     "/api/system/info": {
@@ -153,7 +171,7 @@
               "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "401": { "$ref": "#/components/responses/BearerUnauthorized" }
         }
       }
     },
@@ -265,7 +283,7 @@
               "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "401": { "$ref": "#/components/responses/BearerUnauthorized" }
         }
       }
     },
@@ -346,9 +364,34 @@
         }
       }
     },
+    "headers": {
+      "Deprecation": {
+        "description": "RFC 9745 deprecation date as a Structured Field Date.",
+        "schema": { "type": "string", "const": "@1787184000" }
+      },
+      "Sunset": {
+        "description": "RFC 8594 date after which the compatibility route may be removed.",
+        "schema": { "type": "string", "const": "Sat, 20 Feb 2027 00:00:00 GMT" }
+      },
+      "SuccessorLink": {
+        "description": "RFC 8288 link to the canonical health endpoint with rel=successor-version.",
+        "schema": { "type": "string", "pattern": "^<\\/[^>]+>; rel=\\\"successor-version\\\"$" }
+      }
+    },
     "responses": {
       "Health": {
         "description": "Health state",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+        }
+      },
+      "DeprecatedHealth": {
+        "description": "Health state from a deprecated compatibility route",
+        "headers": {
+          "Deprecation": { "$ref": "#/components/headers/Deprecation" },
+          "Sunset": { "$ref": "#/components/headers/Sunset" },
+          "Link": { "$ref": "#/components/headers/SuccessorLink" }
+        },
         "content": {
           "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
         }
@@ -361,6 +404,18 @@
       },
       "Unauthorized": {
         "description": "Authentication required or rejected",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "BearerUnauthorized": {
+        "description": "Bearer access token is required or rejected",
+        "headers": {
+          "WWW-Authenticate": {
+            "description": "RFC 6750 Bearer challenge; invalid tokens include error=\"invalid_token\".",
+            "schema": { "type": "string", "pattern": "^Bearer(?: .*)?$" }
+          }
+        },
         "content": {
           "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
         }
@@ -385,6 +440,17 @@
       },
       "Unavailable": {
         "description": "Service is not ready",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+        }
+      },
+      "DeprecatedUnavailable": {
+        "description": "Service is not ready and the compatibility route is deprecated",
+        "headers": {
+          "Deprecation": { "$ref": "#/components/headers/Deprecation" },
+          "Sunset": { "$ref": "#/components/headers/Sunset" },
+          "Link": { "$ref": "#/components/headers/SuccessorLink" }
+        },
         "content": {
           "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
         }

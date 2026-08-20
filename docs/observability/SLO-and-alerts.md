@@ -25,10 +25,10 @@ The alert rules aggregate route-template labels before calculating service ratio
 ## Operating procedure
 
 1. Confirm the alert is not caused by a scrape, deployment, or edge outage by checking `goexample_process_uptime_seconds`, `goexample_http_requests_in_flight`, `goexample_http_admission_rejections_total`, `goexample_http_draining_rejections_total`, and the application logs. A rising admission counter means the API limit is being exhausted; a rising draining counter is expected during rollout and should be correlated with readiness and deployment events.
-2. Use the `traceparent` response value and the `trace_id`/`span_id` JSON log fields to correlate an affected request. Trace export is not installed yet, so this correlation is local to the process logs.
+2. Use the `traceparent` response value and the `trace_id`/`span_id` JSON log fields to correlate an affected request. The Go service can export sampled server and use-case spans through its bounded OTLP/HTTP batch exporter, but a real collector and trace backend have not been deployed or verified in the target environment.
 3. Check the route, status, latency bucket, goroutine, heap, and GC metrics before changing limits or rolling back.
 4. Record the time range, affected route, customer impact, and mitigation. Close the incident only after the burn rate returns below the alert threshold and a follow-up action is filed.
 
 ## Evidence boundary
 
-The repository tests the metric names, label normalization, trace propagation, and rule presence. It does not yet run `promtool`, provision a Prometheus/Alertmanager pair, export OTLP spans, or perform a controlled paging drill. Those are required before declaring the observability objective production-complete.
+The repository tests the metric names, label normalization, official OpenTelemetry server/use-case spans, trace propagation, rule presence, and the OTLP/HTTP protobuf wire contract against a local fake collector. It also verifies that a slow collector does not block an HTTP request and that provider shutdown flushes queued spans. It does not yet run `promtool`, provision or validate a real OpenTelemetry Collector and trace backend, provision a Prometheus/Alertmanager pair, instrument outbound HTTP/database calls, or perform a controlled paging drill. Those are required before declaring the observability objective production-complete.

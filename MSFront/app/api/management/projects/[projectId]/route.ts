@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
 import { getManagedProject } from '@/lib/api/management';
 import { deleteProject, updateProject } from '@/lib/server/project-repository';
 import { requireApiAccess } from '@/lib/server/auth-request';
 import { apiErrorResponse, readJsonBody } from '@/lib/server/request-body';
 import { managedProjectDraftSchema } from '@/lib/server/request-schemas';
+import { privateJson } from '@/lib/server/response-security';
 
 export async function GET(
   request: Request,
@@ -17,10 +17,10 @@ export async function GET(
     const project = await getManagedProject(projectId);
 
     if (!project) {
-      return NextResponse.json({ message: 'Project not found.' }, { status: 404 });
+      return privateJson({ message: 'Project not found.' }, { status: 404 });
     }
 
-    return NextResponse.json(project);
+    return privateJson(project);
   } catch (error) {
     return apiErrorResponse(error, 'Failed to load project.');
   }
@@ -39,10 +39,10 @@ export async function PUT(
     const project = await updateProject(projectId, body);
 
     if (!project) {
-      return NextResponse.json({ message: 'Project not found.' }, { status: 404 });
+      return privateJson({ message: 'Project not found.' }, { status: 404 });
     }
 
-    return NextResponse.json(project);
+    return privateJson(project);
   } catch (error) {
     return apiErrorResponse(error, 'Failed to update project.', 400);
   }
@@ -60,10 +60,10 @@ export async function DELETE(
     const deleted = await deleteProject(projectId);
 
     if (!deleted) {
-      return NextResponse.json({ message: 'Project not found.' }, { status: 404 });
+      return privateJson({ message: 'Project not found.' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true });
+    return privateJson({ success: true });
   } catch (error) {
     return apiErrorResponse(error, 'Failed to delete project.');
   }

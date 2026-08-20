@@ -7,7 +7,7 @@
   "scripts": {
     "env": "node scripts/environment.mjs",
     "test": "yarn test:node && yarn test:server && yarn test:front",
-    "test:node": "node --test __test__/node/script-guards.test.mjs __test__/node/go-download.test.mjs",
+    "test:node": "node --test __test__/node/script-guards.test.mjs __test__/node/go-download.test.mjs __test__/node/openapi-compat.test.mjs",
     "install:front": "node scripts/msfront.mjs install",
     "dev": "node scripts/msfront.mjs dev",
     "dev:front": "node scripts/msfront.mjs dev",
@@ -27,6 +27,7 @@
     "cover:server": "node scripts/go-project.mjs cover",
     "bench:server": "node scripts/go-project.mjs bench",
     "bench:transports": "node scripts/go-project.mjs bench-transports",
+    "openapi:compat": "node scripts/openapi-compat.mjs",
     "evidence:manifest": "node scripts/evidence-manifest.mjs",
     "race:server": "node scripts/go-project.mjs race",
     "vuln:server": "node scripts/go-project.mjs vuln",

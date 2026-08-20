@@ -123,6 +123,11 @@ function SidebarNav({
 
   return (
     <nav className="sidebarNav gvaNav">
+      {menus.length === 0 ? (
+        <div className="gvaMenuEmpty" role="status">
+          暂无菜单
+        </div>
+      ) : null}
       {menus.map((menu) => (
         <MenuNode
           key={menu.id}

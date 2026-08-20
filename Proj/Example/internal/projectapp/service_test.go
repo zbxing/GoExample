@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 func TestGetProjectReturnsTypedResult(t *testing.T) {
@@ -15,6 +18,24 @@ func TestGetProjectReturnsTypedResult(t *testing.T) {
 	}
 	if project.Name != "Example" || project.Environment != "test" || project.Version != "v1" {
 		t.Fatalf("project = %#v", project)
+	}
+}
+
+func TestGetProjectCreatesApplicationSpan(t *testing.T) {
+	recorder := tracetest.NewSpanRecorder()
+	provider := sdktrace.NewTracerProvider(
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithSpanProcessor(recorder),
+	)
+	t.Cleanup(func() { _ = provider.Shutdown(context.Background()) })
+	service := NewService(Project{Name: "Example"}, WithTracerProvider(provider))
+
+	if _, err := service.GetProject(context.Background(), GetProjectQuery{}); err != nil {
+		t.Fatalf("GetProject() error = %v", err)
+	}
+	spans := recorder.Ended()
+	if len(spans) != 1 || spans[0].Name() != "project.get" {
+		t.Fatalf("application spans = %#v", spans)
 	}
 }
 

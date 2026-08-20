@@ -6,6 +6,7 @@ on:
       - "scripts/**"
       - "tools/**"
       - "__test__/node/**"
+      - "docs/openapi/**"
       - "package.json"
       - "yarn.lock"
       - ".github/workflows/node-tools-quality.yml"
@@ -14,6 +15,7 @@ on:
       - "scripts/**"
       - "tools/**"
       - "__test__/node/**"
+      - "docs/openapi/**"
       - "package.json"
       - "yarn.lock"
       - ".github/workflows/node-tools-quality.yml"
@@ -32,6 +34,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -45,3 +49,9 @@ jobs:
 
       - name: Test root Node tools
         run: yarn test:node
+
+      - name: Reject breaking OpenAPI changes
+        if: github.event_name == 'pull_request'
+        env:
+          OPENAPI_BASE_REF: ${{ github.event.pull_request.base.sha }}
+        run: yarn openapi:compat --base-ref "${OPENAPI_BASE_REF}"

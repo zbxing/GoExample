@@ -257,7 +257,7 @@ const manifest = {
     },
     otelCollector: {
       status: 'not_recorded',
-      reason: 'no running OpenTelemetry collector/exporter evidence was found',
+      reason: 'no real OpenTelemetry collector or trace backend target-environment evidence was found',
     },
     postgresRecovery: {
       status: 'not_recorded',
@@ -266,6 +266,14 @@ const manifest = {
     signedRelease: {
       status: 'not_recorded',
       reason: 'no signature or provenance attestation artifact was found',
+    },
+    targetEdge: {
+      status: 'not_recorded',
+      reason: 'no target edge HTTP/2 or HTTP/3 protocol and lifecycle contract artifact was found',
+    },
+    kubernetesDrill: {
+      status: 'not_recorded',
+      reason: 'no target Kubernetes or equivalent orchestration rollout and recovery drill artifact was found',
     },
   },
 };

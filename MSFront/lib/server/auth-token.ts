@@ -1,5 +1,9 @@
 import 'server-only';
 import { SignJWT, jwtVerify } from 'jose';
+import {
+  resolveAuthTokenSecret,
+  validateAuthTokenConfiguration,
+} from '@/lib/server/runtime-config';
 import type { AuthTokenPayload } from '@/lib/types/system';
 
 export const AUTH_COOKIE_NAME = 'msfront_token';
@@ -7,25 +11,20 @@ export const AUTH_COOKIE_NAME = 'msfront_token';
 const tokenIssuer = 'msfront';
 const tokenAudience = 'msfront-admin';
 const tokenTtl = '12h';
-const developmentSecret = 'msfront-dev-jwt-secret-change-me';
-const rejectedProductionSecrets = new Set([
-  developmentSecret,
-  'replace-this-secret-outside-local-development',
-]);
+const maxSubjectLength = 128;
+const maxUsernameLength = 128;
+const maxRoleCount = 100;
+const maxRoleIdLength = 128;
+
+function isBoundedNonEmptyString(value: unknown, maxLength: number): value is string {
+  return typeof value === 'string' && value.trim().length > 0 && value.length <= maxLength;
+}
 
 function getJwtSecret() {
-  const configuredSecret = process.env.MSFRONT_JWT_SECRET?.trim() ?? '';
-  if (
-    process.env.NODE_ENV === 'production' &&
-    (configuredSecret.length < 32 || rejectedProductionSecrets.has(configuredSecret))
-  ) {
-    throw new Error(
-      'MSFRONT_JWT_SECRET must be a non-default value with at least 32 characters in production.',
-    );
-  }
-  const secret = configuredSecret || developmentSecret;
-  return new TextEncoder().encode(secret);
+  return new TextEncoder().encode(resolveAuthTokenSecret());
 }
+
+export { validateAuthTokenConfiguration };
 
 export async function signAuthToken(payload: AuthTokenPayload) {
   return new SignJWT({
@@ -47,20 +46,29 @@ export async function verifyAuthToken(token: string): Promise<AuthTokenPayload |
       algorithms: ['HS256'],
       issuer: tokenIssuer,
       audience: tokenAudience,
+      requiredClaims: ['sub', 'iat', 'exp'],
+      maxTokenAge: tokenTtl,
     });
 
     const sub = result.payload.sub;
     const username = result.payload.username;
     const roleIds = result.payload.roleIds;
 
-    if (typeof sub !== 'string' || typeof username !== 'string' || !Array.isArray(roleIds)) {
+    if (
+      !isBoundedNonEmptyString(sub, maxSubjectLength) ||
+      !isBoundedNonEmptyString(username, maxUsernameLength) ||
+      !Array.isArray(roleIds) ||
+      roleIds.length < 1 ||
+      roleIds.length > maxRoleCount ||
+      !roleIds.every((roleId) => isBoundedNonEmptyString(roleId, maxRoleIdLength))
+    ) {
       return null;
     }
 
     return {
       sub,
       username,
-      roleIds: roleIds.filter((item): item is string => typeof item === 'string'),
+      roleIds,
     };
   } catch {
     return null;

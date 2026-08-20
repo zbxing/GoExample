@@ -12,6 +12,13 @@ var configEnvironmentKeys = []string{
 	"LOG_LEVEL",
 	"LOG_FORMAT",
 	"LOG_SKIP_PATHS",
+	"OTEL_TRACES_EXPORTER",
+	"OTEL_EXPORTER_OTLP_ENDPOINT",
+	"OTEL_TRACES_SAMPLER_ARG",
+	"OTEL_BSP_EXPORT_TIMEOUT",
+	"OTEL_BSP_SCHEDULE_DELAY",
+	"OTEL_BSP_MAX_QUEUE_SIZE",
+	"OTEL_BSP_MAX_EXPORT_BATCH_SIZE",
 	"HTTP_HOST",
 	"HTTP_PORT",
 	"CORS_ALLOW_ORIGINS",
@@ -45,6 +52,7 @@ var configEnvironmentKeys = []string{
 	"DEMO_PASSWORD",
 	"JWT_SECRET",
 	"JWT_ISSUER",
+	"JWT_AUDIENCE",
 	"JWT_TTL",
 }
 
@@ -63,6 +71,12 @@ func TestLoadDefaults(t *testing.T) {
 	}
 	if len(cfg.LogSkipPaths) != 4 || cfg.LogSkipPaths[0] != "/livez" {
 		t.Fatalf("LogSkipPaths = %#v", cfg.LogSkipPaths)
+	}
+	if cfg.TraceExporter != "none" || cfg.OTLPEndpoint != "" || cfg.TraceSampleRatio != 0.1 {
+		t.Fatalf("trace defaults = %q/%q/%f", cfg.TraceExporter, cfg.OTLPEndpoint, cfg.TraceSampleRatio)
+	}
+	if cfg.TraceExportTimeout != 3*time.Second || cfg.TraceBatchTimeout != 5*time.Second || cfg.TraceMaxQueueSize != 2048 || cfg.TraceMaxExportBatchSize != 512 {
+		t.Fatalf("trace batch defaults = %s/%s/%d/%d", cfg.TraceExportTimeout, cfg.TraceBatchTimeout, cfg.TraceMaxQueueSize, cfg.TraceMaxExportBatchSize)
 	}
 	if cfg.AllowCredentials {
 		t.Fatal("AllowCredentials = true")
@@ -106,8 +120,8 @@ func TestLoadDefaults(t *testing.T) {
 	if !cfg.DemoAuthEnabled || cfg.DemoUsername != "demo" || cfg.DemoPassword != "demo123" {
 		t.Fatalf("demo auth defaults = %t/%q/%q", cfg.DemoAuthEnabled, cfg.DemoUsername, cfg.DemoPassword)
 	}
-	if len(cfg.JWTSecret) < 32 || cfg.JWTIssuer != "goexample" || cfg.JWTTTL != time.Hour {
-		t.Fatalf("JWT defaults = secret length %d, issuer %q, ttl %s", len(cfg.JWTSecret), cfg.JWTIssuer, cfg.JWTTTL)
+	if len(cfg.JWTSecret) < 32 || cfg.JWTIssuer != "goexample" || cfg.JWTAudience != "goexample-api" || cfg.JWTTTL != time.Hour {
+		t.Fatalf("JWT defaults = secret length %d, issuer %q, audience %q, ttl %s", len(cfg.JWTSecret), cfg.JWTIssuer, cfg.JWTAudience, cfg.JWTTTL)
 	}
 }
 
@@ -116,6 +130,13 @@ func TestLoadParsesValues(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "DEBUG")
 	t.Setenv("LOG_FORMAT", "TEXT")
 	t.Setenv("LOG_SKIP_PATHS", "/livez,/metrics")
+	t.Setenv("OTEL_TRACES_EXPORTER", "otlp")
+	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector.example:4318/tenant")
+	t.Setenv("OTEL_TRACES_SAMPLER_ARG", "0.25")
+	t.Setenv("OTEL_BSP_EXPORT_TIMEOUT", "1500")
+	t.Setenv("OTEL_BSP_SCHEDULE_DELAY", "750")
+	t.Setenv("OTEL_BSP_MAX_QUEUE_SIZE", "256")
+	t.Setenv("OTEL_BSP_MAX_EXPORT_BATCH_SIZE", "64")
 	t.Setenv("HTTP_PORT", "8080")
 	t.Setenv("CORS_ALLOW_ORIGINS", "http://localhost:3000, https://console.example.com, http://localhost:3000")
 	t.Setenv("CORS_ALLOW_CREDENTIALS", "true")
@@ -139,6 +160,7 @@ func TestLoadParsesValues(t *testing.T) {
 	t.Setenv("PPROF_TOKEN", "abcdefghijklmnopqrstuvwxyz012345")
 	t.Setenv("SYSTEM_INFO_DETAILED", "false")
 	t.Setenv("DEMO_AUTH_ENABLED", "false")
+	t.Setenv("JWT_AUDIENCE", "example-management-api")
 	t.Setenv("JWT_TTL", "20m")
 
 	cfg, err := Load()
@@ -156,6 +178,12 @@ func TestLoadParsesValues(t *testing.T) {
 	}
 	if len(cfg.LogSkipPaths) != 2 {
 		t.Fatalf("LogSkipPaths = %#v", cfg.LogSkipPaths)
+	}
+	if cfg.TraceExporter != "otlp" || cfg.OTLPEndpoint != "http://collector.example:4318/tenant" || cfg.TraceSampleRatio != 0.25 {
+		t.Fatalf("parsed trace config = %q/%q/%f", cfg.TraceExporter, cfg.OTLPEndpoint, cfg.TraceSampleRatio)
+	}
+	if cfg.TraceExportTimeout != 1500*time.Millisecond || cfg.TraceBatchTimeout != 750*time.Millisecond || cfg.TraceMaxQueueSize != 256 || cfg.TraceMaxExportBatchSize != 64 {
+		t.Fatalf("parsed trace batch = %s/%s/%d/%d", cfg.TraceExportTimeout, cfg.TraceBatchTimeout, cfg.TraceMaxQueueSize, cfg.TraceMaxExportBatchSize)
 	}
 	if cfg.BodyLimit != 1048576 || cfg.RequestTimeout != 3*time.Second || cfg.HealthCheckTimeout != 500*time.Millisecond || cfg.HealthCacheTTL != 250*time.Millisecond {
 		t.Fatalf("parsed limits = %d/%s/%s/%s", cfg.BodyLimit, cfg.RequestTimeout, cfg.HealthCheckTimeout, cfg.HealthCacheTTL)
@@ -175,8 +203,8 @@ func TestLoadParsesValues(t *testing.T) {
 	if cfg.RateLimitMax != 25 || cfg.AuthRateLimitMax != 4 || cfg.RateLimitWindow != 30*time.Second {
 		t.Fatalf("parsed rate limits = %d/%d/%s", cfg.RateLimitMax, cfg.AuthRateLimitMax, cfg.RateLimitWindow)
 	}
-	if cfg.DemoAuthEnabled || cfg.JWTTTL != 20*time.Minute {
-		t.Fatalf("parsed auth values = %t/%s", cfg.DemoAuthEnabled, cfg.JWTTTL)
+	if cfg.DemoAuthEnabled || cfg.JWTAudience != "example-management-api" || cfg.JWTTTL != 20*time.Minute {
+		t.Fatalf("parsed auth values = %t/%q/%s", cfg.DemoAuthEnabled, cfg.JWTAudience, cfg.JWTTTL)
 	}
 	if cfg.IdempotencyEnabled || cfg.IdempotencyLifetime != 10*time.Minute {
 		t.Fatalf("parsed idempotency = %t/%s", cfg.IdempotencyEnabled, cfg.IdempotencyLifetime)
@@ -197,6 +225,9 @@ func TestLoadAcceptsHardenedProductionConfig(t *testing.T) {
 	t.Setenv("APP_ENV", "Production")
 	t.Setenv("JWT_SECRET", "production-secret-with-at-least-32-characters")
 	t.Setenv("METRICS_TOKEN", "production-metrics-token-32-characters")
+	t.Setenv("TRUSTED_PROXIES", "10.0.0.0/8")
+	t.Setenv("PPROF_ENABLED", "true")
+	t.Setenv("PPROF_TOKEN", "production-pprof-token-with-32-characters")
 
 	cfg, err := Load()
 	if err != nil {
@@ -211,8 +242,31 @@ func TestLoadAcceptsHardenedProductionConfig(t *testing.T) {
 	if cfg.Environment != "production" {
 		t.Fatalf("Environment = %q", cfg.Environment)
 	}
+	if len(cfg.TrustedProxies) != 1 || cfg.TrustedProxies[0] != "10.0.0.0/8" {
+		t.Fatalf("TrustedProxies = %#v", cfg.TrustedProxies)
+	}
 	if cfg.SharedStateMode != "external" || cfg.AllowInMemorySharedState {
 		t.Fatalf("production shared state defaults = %q/%t", cfg.SharedStateMode, cfg.AllowInMemorySharedState)
+	}
+	if !cfg.PprofEnabled || cfg.PprofToken == "" {
+		t.Fatalf("production pprof config = %t/%q", cfg.PprofEnabled, cfg.PprofToken)
+	}
+}
+
+func TestLoadRejectsCatchAllTrustedProxiesInProduction(t *testing.T) {
+	for _, proxy := range []string{"0.0.0.0/0", "::/0"} {
+		t.Run(proxy, func(t *testing.T) {
+			clearConfigEnvironment(t)
+			t.Setenv("APP_ENV", "production")
+			t.Setenv("JWT_SECRET", "production-secret-with-at-least-32-characters")
+			t.Setenv("METRICS_TOKEN", "production-metrics-token-32-characters")
+			t.Setenv("TRUSTED_PROXIES", proxy)
+
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), "catch-all CIDR") {
+				t.Fatalf("Load() error = %v", err)
+			}
+		})
 	}
 }
 
@@ -227,6 +281,13 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{name: "port range", key: "HTTP_PORT", value: "70000", wantInError: "HTTP_PORT"},
 		{name: "log level", key: "LOG_LEVEL", value: "trace", wantInError: "LOG_LEVEL"},
 		{name: "log format", key: "LOG_FORMAT", value: "yaml", wantInError: "LOG_FORMAT"},
+		{name: "trace exporter", key: "OTEL_TRACES_EXPORTER", value: "stdout", wantInError: "OTEL_TRACES_EXPORTER"},
+		{name: "trace sample syntax", key: "OTEL_TRACES_SAMPLER_ARG", value: "often", wantInError: "OTEL_TRACES_SAMPLER_ARG"},
+		{name: "trace sample range", key: "OTEL_TRACES_SAMPLER_ARG", value: "1.1", wantInError: "OTEL_TRACES_SAMPLER_ARG"},
+		{name: "trace sample NaN", key: "OTEL_TRACES_SAMPLER_ARG", value: "NaN", wantInError: "OTEL_TRACES_SAMPLER_ARG"},
+		{name: "trace export timeout", key: "OTEL_BSP_EXPORT_TIMEOUT", value: "0", wantInError: "OTEL_BSP_EXPORT_TIMEOUT"},
+		{name: "trace queue", key: "OTEL_BSP_MAX_QUEUE_SIZE", value: "0", wantInError: "OTEL_BSP_MAX_QUEUE_SIZE"},
+		{name: "trace batch", key: "OTEL_BSP_MAX_EXPORT_BATCH_SIZE", value: "4096", wantInError: "OTEL_BSP_MAX_EXPORT_BATCH_SIZE"},
 		{name: "environment", key: "APP_ENV", value: "prod", wantInError: "APP_ENV"},
 		{name: "CORS credentials boolean", key: "CORS_ALLOW_CREDENTIALS", value: "sometimes", wantInError: "CORS_ALLOW_CREDENTIALS"},
 		{name: "proxy IP", key: "TRUSTED_PROXIES", value: "not-an-ip", wantInError: "TRUSTED_PROXIES"},
@@ -236,6 +297,8 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{name: "read buffer range", key: "HTTP_READ_BUFFER_SIZE", value: "2048", wantInError: "HTTP_READ_BUFFER_SIZE"},
 		{name: "duration syntax", key: "HTTP_REQUEST_TIMEOUT", value: "soon", wantInError: "HTTP_REQUEST_TIMEOUT"},
 		{name: "request exceeds write", key: "HTTP_REQUEST_TIMEOUT", value: "10s", wantInError: "HTTP_REQUEST_TIMEOUT"},
+		{name: "read exceeds idle", key: "HTTP_READ_TIMEOUT", value: "61s", wantInError: "HTTP_READ_TIMEOUT"},
+		{name: "write exceeds idle", key: "HTTP_WRITE_TIMEOUT", value: "61s", wantInError: "HTTP_WRITE_TIMEOUT"},
 		{name: "in-flight syntax", key: "HTTP_MAX_IN_FLIGHT", value: "many", wantInError: "HTTP_MAX_IN_FLIGHT"},
 		{name: "in-flight range", key: "HTTP_MAX_IN_FLIGHT", value: "0", wantInError: "HTTP_MAX_IN_FLIGHT"},
 		{name: "connections syntax", key: "HTTP_MAX_CONNECTIONS", value: "many", wantInError: "HTTP_MAX_CONNECTIONS"},
@@ -244,6 +307,8 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		{name: "drain delay", key: "SHUTDOWN_DRAIN_DELAY", value: "-1s", wantInError: "SHUTDOWN_DRAIN_DELAY"},
 		{name: "drain delay exceeds shutdown", key: "SHUTDOWN_DRAIN_DELAY", value: "20s", wantInError: "SHUTDOWN_DRAIN_DELAY"},
 		{name: "insufficient shutdown budget", key: "SHUTDOWN_DRAIN_DELAY", value: "12s", wantInError: "SHUTDOWN_DRAIN_DELAY"},
+		{name: "read exceeds shutdown budget", key: "HTTP_READ_TIMEOUT", value: "20s", wantInError: "HTTP_READ_TIMEOUT"},
+		{name: "write exceeds shutdown budget", key: "HTTP_WRITE_TIMEOUT", value: "20s", wantInError: "HTTP_WRITE_TIMEOUT"},
 		{name: "duration range", key: "RATE_LIMIT_WINDOW", value: "0s", wantInError: "RATE_LIMIT_WINDOW"},
 		{name: "request rate", key: "RATE_LIMIT_MAX", value: "0", wantInError: "RATE_LIMIT_MAX"},
 		{name: "auth rate", key: "AUTH_RATE_LIMIT_MAX", value: "0", wantInError: "AUTH_RATE_LIMIT_MAX"},
@@ -265,6 +330,20 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 			_, err := Load()
 			if err == nil || !strings.Contains(err.Error(), test.wantInError) {
 				t.Fatalf("Load() error = %v, want error containing %q", err, test.wantInError)
+			}
+		})
+	}
+}
+
+func TestLoadValidatesOTLPEndpoint(t *testing.T) {
+	for _, endpoint := range []string{"", "collector:4318", "ftp://collector.example", "https://user:secret@collector.example", "https://collector.example?token=secret"} {
+		t.Run(endpoint, func(t *testing.T) {
+			clearConfigEnvironment(t)
+			t.Setenv("OTEL_TRACES_EXPORTER", "otlp")
+			t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", endpoint)
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), "OTEL_EXPORTER_OTLP_ENDPOINT") {
+				t.Fatalf("Load() error = %v", err)
 			}
 		})
 	}
@@ -316,6 +395,55 @@ func TestLoadRejectsUnsafeProductionSecrets(t *testing.T) {
 			t.Fatalf("Load() error = %v", err)
 		}
 	})
+}
+
+func TestLoadRejectsReusedProductionSecrets(t *testing.T) {
+	const jwtSecret = "production-secret-with-at-least-32-characters"
+	const metricsToken = "production-metrics-token-32-characters"
+
+	tests := []struct {
+		name         string
+		metricsToken string
+		pprofEnabled string
+		pprofToken   string
+		wantInError  string
+	}{
+		{
+			name:         "metrics token reuses JWT secret",
+			metricsToken: jwtSecret,
+			wantInError:  "METRICS_TOKEN must differ from JWT_SECRET",
+		},
+		{
+			name:         "pprof token reuses metrics token",
+			metricsToken: metricsToken,
+			pprofEnabled: "true",
+			pprofToken:   metricsToken,
+			wantInError:  "PPROF_TOKEN must differ",
+		},
+		{
+			name:         "pprof token reuses JWT secret",
+			metricsToken: metricsToken,
+			pprofEnabled: "true",
+			pprofToken:   jwtSecret,
+			wantInError:  "PPROF_TOKEN must differ",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			clearConfigEnvironment(t)
+			t.Setenv("APP_ENV", "production")
+			t.Setenv("JWT_SECRET", jwtSecret)
+			t.Setenv("METRICS_TOKEN", test.metricsToken)
+			t.Setenv("PPROF_ENABLED", test.pprofEnabled)
+			t.Setenv("PPROF_TOKEN", test.pprofToken)
+
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), test.wantInError) {
+				t.Fatalf("Load() error = %v, want error containing %q", err, test.wantInError)
+			}
+		})
+	}
 }
 
 func TestLoadRequiresMetricsTokenInProduction(t *testing.T) {

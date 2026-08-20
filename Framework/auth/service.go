@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -13,6 +14,12 @@ import (
 var (
 	ErrDisabled     = errors.New("demo authentication is disabled")
 	ErrInvalidToken = errors.New("invalid or expired access token")
+)
+
+const (
+	maxClaimStringLength = 128
+	maxRoleCount         = 100
+	jwtClockLeeway       = 5 * time.Second
 )
 
 type User struct {
@@ -60,6 +67,7 @@ type Config struct {
 	Password string
 	Secret   string
 	Issuer   string
+	Audience string
 	TTL      time.Duration
 	Now      func() time.Time
 }
@@ -70,6 +78,7 @@ type Service struct {
 	password string
 	secret   []byte
 	issuer   string
+	audience string
 	ttl      time.Duration
 	now      func() time.Time
 }
@@ -79,12 +88,17 @@ func NewService(config Config) *Service {
 	if now == nil {
 		now = time.Now
 	}
+	audience := strings.TrimSpace(config.Audience)
+	if audience == "" {
+		audience = "goexample-api"
+	}
 	return &Service{
 		enabled:  config.Enabled,
 		username: config.Username,
 		password: config.Password,
 		secret:   []byte(config.Secret),
 		issuer:   config.Issuer,
+		audience: audience,
 		ttl:      config.TTL,
 		now:      now,
 	}
@@ -139,6 +153,7 @@ func (s *Service) Issue(user User) (string, time.Time, error) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    s.issuer,
 			Subject:   user.ID,
+			Audience:  jwt.ClaimStrings{s.audience},
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			NotBefore: jwt.NewNumericDate(now),
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -170,15 +185,50 @@ func (s *Service) Verify(rawToken string) (Claims, error) {
 		},
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 		jwt.WithIssuer(s.issuer),
+		jwt.WithAudience(s.audience),
 		jwt.WithExpirationRequired(),
+		jwt.WithNotBeforeRequired(),
 		jwt.WithIssuedAt(),
-		jwt.WithLeeway(5*time.Second),
+		jwt.WithLeeway(jwtClockLeeway),
 		jwt.WithTimeFunc(s.now),
 	)
 	if err != nil || !token.Valid {
 		return Claims{}, ErrInvalidToken
 	}
+	if !validClaims(*claims, s.now().UTC(), s.ttl) {
+		return Claims{}, ErrInvalidToken
+	}
 	return *claims, nil
+}
+
+func validClaims(claims Claims, now time.Time, ttl time.Duration) bool {
+	if !boundedNonEmpty(claims.Subject) || !boundedNonEmpty(claims.ID) ||
+		!boundedNonEmpty(claims.Username) || !boundedNonEmpty(claims.DisplayName) ||
+		!boundedNonEmpty(claims.Email) || len(claims.RoleIDs) == 0 || len(claims.RoleIDs) > maxRoleCount ||
+		len(claims.RoleNames) == 0 || len(claims.RoleNames) > maxRoleCount ||
+		len(claims.RoleIDs) != len(claims.RoleNames) {
+		return false
+	}
+	for _, roleID := range claims.RoleIDs {
+		if !boundedNonEmpty(roleID) {
+			return false
+		}
+	}
+	for _, roleName := range claims.RoleNames {
+		if !boundedNonEmpty(roleName) {
+			return false
+		}
+	}
+	if claims.IssuedAt == nil || ttl <= 0 {
+		return false
+	}
+	issuedAt := claims.IssuedAt.Time
+	return !issuedAt.After(now.Add(jwtClockLeeway)) && !now.After(issuedAt.Add(ttl+jwtClockLeeway))
+}
+
+func boundedNonEmpty(value string) bool {
+	trimmed := strings.TrimSpace(value)
+	return trimmed != "" && len(value) <= maxClaimStringLength
 }
 
 func randomID() (string, error) {

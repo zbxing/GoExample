@@ -1,13 +1,18 @@
 import { getSystemAdapter } from '@/lib/api/get-system-adapter';
-import { jsonApiError, jsonFail, jsonOk } from '@/lib/server/auth-request';
+import {
+  jsonApiError,
+  jsonFail,
+  jsonOk,
+} from '@/lib/server/auth-request';
 import { buildAuthCookie, signAuthToken } from '@/lib/server/auth-token';
 import { isTrustedMutationOrigin } from '@/lib/server/request-security';
+import { disableResponseCaching } from '@/lib/server/response-security';
 import { readJsonBody } from '@/lib/server/request-body';
 import { loginRequestSchema } from '@/lib/server/request-schemas';
 
 export async function POST(request: Request) {
   if (!isTrustedMutationOrigin(request)) {
-    return jsonFail('请求来源不受信任', 403);
+    return disableResponseCaching(jsonFail('请求来源不受信任', 403));
   }
 
   try {
@@ -16,7 +21,7 @@ export async function POST(request: Request) {
     const adapter = getSystemAdapter();
     const session = await adapter.login(username, password);
     if (!session) {
-      return jsonFail('用户名或密码错误', 401);
+      return disableResponseCaching(jsonFail('用户名或密码错误', 401));
     }
 
     const token = await signAuthToken({
@@ -27,8 +32,8 @@ export async function POST(request: Request) {
 
     const response = jsonOk({ user: session });
     response.headers.set('Set-Cookie', buildAuthCookie(token));
-    return response;
+    return disableResponseCaching(response);
   } catch (error) {
-    return jsonApiError(error, '登录服务暂时不可用');
+    return disableResponseCaching(jsonApiError(error, '登录服务暂时不可用'));
   }
 }

@@ -51,6 +51,7 @@ type metricSnapshot struct {
 type Metrics struct {
 	startedAt         time.Time
 	inFlight          atomic.Int64
+	requestIDReplaced atomic.Uint64
 	admissionRejected atomic.Uint64
 	drainingRejected  atomic.Uint64
 	requests          sync.Map
@@ -58,6 +59,15 @@ type Metrics struct {
 
 func NewMetrics() *Metrics {
 	return &Metrics{startedAt: time.Now()}
+}
+
+// RecordRequestIDReplaced records an untrusted request ID that was replaced.
+// It intentionally has no labels and never records the rejected value.
+func (m *Metrics) RecordRequestIDReplaced() {
+	if m == nil {
+		return
+	}
+	m.requestIDReplaced.Add(1)
 }
 
 // RecordAdmissionRejected records a request rejected by the bounded
@@ -109,6 +119,7 @@ func (m *Metrics) Middleware(c fiber.Ctx) error {
 func (m *Metrics) Handler(c fiber.Ctx) error {
 	c.Set(fiber.HeaderContentType, "text/plain; version=0.0.4; charset=utf-8")
 	c.Set(fiber.HeaderCacheControl, "no-store")
+	c.Set(fiber.HeaderPragma, "no-cache")
 	return c.SendString(m.Render())
 }
 
@@ -144,6 +155,9 @@ func (m *Metrics) Render() string {
 	builder.WriteString("# HELP goexample_http_requests_in_flight Current HTTP requests.\n")
 	builder.WriteString("# TYPE goexample_http_requests_in_flight gauge\n")
 	fmt.Fprintf(&builder, "goexample_http_requests_in_flight %d\n", m.inFlight.Load())
+	builder.WriteString("# HELP goexample_http_request_id_replacements_total Untrusted request IDs replaced by the server.\n")
+	builder.WriteString("# TYPE goexample_http_request_id_replacements_total counter\n")
+	fmt.Fprintf(&builder, "goexample_http_request_id_replacements_total %d\n", m.requestIDReplaced.Load())
 	builder.WriteString("# HELP goexample_http_admission_rejections_total Requests rejected because API admission capacity was exhausted.\n")
 	builder.WriteString("# TYPE goexample_http_admission_rejections_total counter\n")
 	fmt.Fprintf(&builder, "goexample_http_admission_rejections_total %d\n", m.admissionRejected.Load())

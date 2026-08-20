@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
 import { getManagedProjectCatalog, getManagedProjectSummaries, getManagedProjects } from '@/lib/api/management';
 import { createProject } from '@/lib/server/project-repository';
 import { requireApiAccess } from '@/lib/server/auth-request';
+import { privateJson } from '@/lib/server/response-security';
 import { apiErrorResponse, readJsonBody } from '@/lib/server/request-body';
 import { managedProjectDraftSchema } from '@/lib/server/request-schemas';
 
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const view = url.searchParams.get('view');
 
     if (view === 'catalog') {
-      return NextResponse.json(await getManagedProjectCatalog());
+      return privateJson(await getManagedProjectCatalog());
     }
 
     if (view === 'summary' || url.searchParams.has('page')) {
@@ -26,10 +26,10 @@ export async function GET(request: Request) {
         status: (url.searchParams.get('status') ?? 'all') as 'all' | 'healthy' | 'warning' | 'critical',
         sort: (url.searchParams.get('sort') ?? 'risk') as 'risk' | 'traffic' | 'deploy' | 'name',
       });
-      return NextResponse.json(result);
+      return privateJson(result);
     }
 
-    return NextResponse.json(await getManagedProjects());
+    return privateJson(await getManagedProjects());
   } catch (error) {
     return apiErrorResponse(error, 'Failed to load projects.');
   }
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   try {
     const body = await readJsonBody(request, managedProjectDraftSchema);
     const project = await createProject(body);
-    return NextResponse.json(project, { status: 201 });
+    return privateJson(project, { status: 201 });
   } catch (error) {
     return apiErrorResponse(error, 'Failed to create project.', 400);
   }

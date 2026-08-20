@@ -17,6 +17,10 @@ func registerAuthRoutes(v1 fiber.Router, options Options) {
 	}
 
 	authGroup := v1.Group("/auth")
+	authGroup.Use(func(c fiber.Ctx) error {
+		setNoStoreHeaders(c)
+		return c.Next()
+	})
 	authLimiter := rateLimiter(
 		"auth",
 		options.AuthRateLimitMax,
@@ -38,7 +42,6 @@ func registerAuthRoutes(v1 fiber.Router, options Options) {
 		if err != nil {
 			return err
 		}
-		c.Set(fiber.HeaderCacheControl, "no-store")
 		return success(c, fiber.Map{
 			"accessToken": rawToken,
 			"tokenType":   "Bearer",

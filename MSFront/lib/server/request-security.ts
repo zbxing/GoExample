@@ -1,22 +1,13 @@
 import 'server-only';
+import {
+  normalizeHttpOrigin,
+  parseTrustedMutationOrigins,
+  validateTrustedMutationOrigins,
+} from '@/lib/server/runtime-config';
 
 const safeMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-function normalizeOrigin(value: string) {
-  const url = new URL(value);
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
-    throw new Error('Origin must be an HTTP(S) origin without credentials.');
-  }
-  return url.origin;
-}
-
-function configuredOrigins(rawValue: string) {
-  return rawValue
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map(normalizeOrigin);
-}
+export { validateTrustedMutationOrigins };
 
 export function isTrustedMutationOrigin(
   request: Request,
@@ -32,9 +23,9 @@ export function isTrustedMutationOrigin(
   }
 
   try {
-    const origin = normalizeOrigin(originHeader);
-    const requestOrigin = normalizeOrigin(request.url);
-    return origin === requestOrigin || configuredOrigins(trustedOrigins).includes(origin);
+    const origin = normalizeHttpOrigin(originHeader);
+    const requestOrigin = normalizeHttpOrigin(request.url);
+    return origin === requestOrigin || parseTrustedMutationOrigins(trustedOrigins).includes(origin);
   } catch {
     return false;
   }

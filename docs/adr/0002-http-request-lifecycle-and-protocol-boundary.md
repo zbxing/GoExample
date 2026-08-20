@@ -20,12 +20,14 @@
 - 主动 request deadline 在 500 ms 上限内终止协作式 handler，并返回 HTTP 408；
 - server shutdown 在 500 ms 上限内取消活动 handler，应用 context 返回 `context.Canceled`；
 - Fiber `tls.Listener` 能完成受信任证书的 HTTPS/HTTP/1.1 请求并在 shutdown 时清理；
-- Fiber `SendStreamWriter` 能按 flush 顺序发送最小多块响应；该测试不覆盖背压、慢 reader/writer 或断连清理；
+- Fiber `SendStreamWriter` 能按 flush 顺序发送最小多块响应；受控慢读客户端会制造 socket 背压，并证明 `HTTP_WRITE_TIMEOUT` 安装的写截止时间终止底层写入和流生产；该契约仍不代表 SSE/WebSocket 已获得完整生命周期支持；
 - `/api/v1` 的 `HTTP_MAX_IN_FLIGHT` 提供非阻塞应用 admission：容量耗尽返回 `503` 与 `Retry-After`，顶层健康探针不占用业务 slot；这不是传输层慢客户端背压的替代品；
 - readiness 进入 draining 后，新的 `/api/v1` 请求返回 `503` 与 `Retry-After`，已经开始的 handler 不被该 gate 中断；容量拒绝和摘流拒绝分别计数；
 - `HTTP_READ_BUFFER_SIZE` 显式限定请求头读取预算（默认 16 KiB，4 KiB–1 MiB），真实 TCP 超限请求返回 431；该上限必须与 edge、认证头和 Cookie 预算一致；
-- `HTTP_READ_TIMEOUT` 会限制请求头读取阶段；真实 TCP 只发送不完整请求头时返回 408，业务 handler 不执行；该契约不代表慢响应 reader/writer 或传输级背压已经完成；
+- `HTTP_READ_TIMEOUT` 会限制请求头和请求体读取阶段；真实 TCP 只发送不完整请求头或声明长度后停止上传时返回 408，业务 handler 不执行；
 - `HTTP_MAX_CONNECTIONS` 映射 Fiber/fasthttp transport 连接并发上限；真实 TCP 在容量耗尽时返回 503 状态行并关闭连接，拒绝发生在应用 middleware 前，不带应用 admission 的 `Retry-After` 或 metrics counter；
+- 同一 HTTP/1.1 TCP 连接可连续完成两个请求，短 `IdleTimeout` 会回收空闲 keep-alive 连接；
+- 客户端发送完整请求后半关闭写端，服务端仍会返回完整响应并关闭连接；计数 listener 证明 shutdown 后空闲 keep-alive 连接从 active 1 收敛到 0；
 - 客户端强制关闭 TCP 连接不会及时取消应用 context，这是已知限制而不是成功能力。
 
 `Proj/Example/internal/projectapi/transport_benchmark_test.go` 额外验证标准 `net/http` TLS/HTTP/2，以及 loopback HTTP/2 edge 到 Fiber HTTP/1.1 upstream 的 envelope 一致性；这些测试不替代目标平台代理演练。
@@ -51,5 +53,6 @@ SHUTDOWN_DRAIN_DELAY + HTTP_REQUEST_TIMEOUT < SHUTDOWN_TIMEOUT (20s)
 
 - 目标 edge-to-client TLS/HTTP/2 或 HTTP/3 自动握手测试；
 - edge-to-app timeout、buffering、header 与断连传播实验；
-- 慢上传、慢响应 reader/writer、SSE/WebSocket、传输级背压和连接容量测试；请求头读取超时已有契约，但不覆盖这些场景；
+- 目标 edge 下的慢上传、慢响应、半关闭、连接容量和断连传播测试；应用直连 TCP 已覆盖这些边界中的基础行为，但不能替代生产代理；
+- SSE/WebSocket 的背压、心跳、断连清理和停机契约；当前通用流响应测试不代表这些协议已受支持；
 - 客户端断连的可控取消实现，或迁移到具备标准取消语义的 transport。

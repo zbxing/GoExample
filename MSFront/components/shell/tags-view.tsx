@@ -8,6 +8,8 @@ import type { Route } from 'next';
 import { useAuth } from '@/providers/auth-provider';
 import { flattenMenuTree } from '@/lib/utils/menu-access';
 import { resolveMenuIcon } from '@/lib/utils/menu-icons';
+import { beginGvaContentLoading, beginGvaRouteProgress } from '@/lib/utils/gva-page-loading';
+import { triggerGvaPageLeave } from '@/lib/utils/gva-page-leave';
 
 interface TagsViewItem {
   path: string;
@@ -185,6 +187,17 @@ export function TagsView({
     persistTags(next);
   }, [tags, pathname, meta.title, meta.icon]);
 
+  function navigateTo(path: string) {
+    if (pathname === path) {
+      return;
+    }
+    const leaving = triggerGvaPageLeave();
+    beginGvaRouteProgress();
+    // 离场约 300ms；延迟 loading 避免白膜盖住旧页滑出
+    beginGvaContentLoading(leaving ? 360 : 400);
+    router.push(path as Route);
+  }
+
   function closeTag(path: string) {
     const index = tags.findIndex((item) => item.path === path);
     if (index < 0 || !tags[index].closable) {
@@ -194,13 +207,13 @@ export function TagsView({
     persistTags(next.length ? next : SERVER_SNAPSHOT);
     if (pathname === path) {
       const fallback = next[index] ?? next[index - 1] ?? HOME_TAB;
-      router.push(fallback.path as Route);
+      navigateTo(fallback.path);
     }
   }
 
   function closeAll() {
     persistTags(SERVER_SNAPSHOT);
-    router.push(HOME_TAB.path as Route);
+    navigateTo(HOME_TAB.path);
     setMenuOpen(false);
   }
 
@@ -215,7 +228,7 @@ export function TagsView({
       (item, idx, arr) => arr.findIndex((candidate) => candidate.path === item.path) === idx,
     );
     persistTags(unique);
-    router.push(keep.path as Route);
+    navigateTo(keep.path);
     setMenuOpen(false);
   }
 
@@ -230,7 +243,7 @@ export function TagsView({
     const next = tags.slice(0, index + 1);
     persistTags(next);
     if (!next.some((item) => item.path === pathname)) {
-      router.push(next[next.length - 1].path as Route);
+      navigateTo(next[next.length - 1].path);
     }
     setMenuOpen(false);
   }
@@ -249,7 +262,7 @@ export function TagsView({
     );
     persistTags(next);
     if (!next.some((item) => item.path === pathname)) {
-      router.push(right.path as Route);
+      navigateTo(right.path);
     }
     setMenuOpen(false);
   }
@@ -276,9 +289,7 @@ export function TagsView({
                   : `gvaPageTab gvaPageTab-${tabMode}`
               }
               onClick={() => {
-                if (pathname !== tag.path) {
-                  router.push(tag.path as Route);
-                }
+                navigateTo(tag.path);
               }}
               onContextMenu={(event) => {
                 event.preventDefault();

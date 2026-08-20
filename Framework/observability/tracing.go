@@ -2,15 +2,22 @@ package observability
 
 import (
 	"context"
-	cryptorand "crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 
 	"github.com/gofiber/fiber/v3"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // TraceparentHeader is the W3C Trace Context header used for propagation.
-const TraceparentHeader = "traceparent"
+const (
+	TraceparentHeader = "traceparent"
+	TracestateHeader  = "tracestate"
+)
 
 type traceContextKey struct{}
 
@@ -34,8 +41,14 @@ func FromContext(ctx context.Context) (TraceContext, bool) {
 	if ctx == nil {
 		return TraceContext{}, false
 	}
-	trace, ok := ctx.Value(traceContextKey{}).(TraceContext)
-	return trace, ok
+	if current, ok := ctx.Value(traceContextKey{}).(TraceContext); ok {
+		return current, true
+	}
+	spanContext := trace.SpanContextFromContext(ctx)
+	if !spanContext.IsValid() {
+		return TraceContext{}, false
+	}
+	return traceContextFromSpan(spanContext, trace.SpanContext{}), true
 }
 
 // ParseTraceparent strictly parses the W3C version 00 format. Invalid or
@@ -62,51 +75,81 @@ func ParseTraceparent(value string) (traceID, parentSpanID string, flags byte, o
 	return value[3:35], value[36:52], flagBytes[0], true
 }
 
-// TraceMiddleware creates a server span and puts it in the request context.
-// Missing or invalid incoming headers start a new trace; no client-provided ID
-// is used unless it passes the complete W3C validation above.
+// TraceMiddleware creates a local OpenTelemetry server span without exporting
+// it. Applications that configure OTLP should use TraceMiddlewareWithProvider.
 func TraceMiddleware(c fiber.Ctx) error {
-	previous := c.Context()
-	base := previous
-	if base == nil {
-		base = context.Background()
-	}
-
-	parentTraceID, parentSpanID, flags, validParent := ParseTraceparent(c.Get(TraceparentHeader))
-	traceID := parentTraceID
-	if !validParent {
-		var err error
-		traceID, err = randomHex(16)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, "trace context unavailable")
-		}
-		parentSpanID = ""
-		flags = 0
-	}
-	spanID, err := randomHex(8)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "trace context unavailable")
-	}
-	trace := TraceContext{
-		TraceID:      traceID,
-		SpanID:       spanID,
-		ParentSpanID: parentSpanID,
-		Flags:        flags,
-		RemoteParent: validParent,
-	}
-	ctx := context.WithValue(base, traceContextKey{}, trace)
-	c.SetContext(ctx)
-	c.Set(TraceparentHeader, trace.Traceparent())
-	defer c.SetContext(previous)
-	return c.Next()
+	return TraceMiddlewareWithProvider(DefaultTracerProvider())(c)
 }
 
-func randomHex(size int) (string, error) {
-	bytes := make([]byte, size)
-	if _, err := cryptorand.Read(bytes); err != nil {
-		return "", err
+// TraceMiddlewareWithProvider creates an OpenTelemetry server span. It records
+// only bounded HTTP attributes and never stores raw URLs, bodies, tokens, or
+// arbitrary error text in span attributes.
+func TraceMiddlewareWithProvider(provider trace.TracerProvider) fiber.Handler {
+	if provider == nil {
+		provider = DefaultTracerProvider()
 	}
-	return hex.EncodeToString(bytes), nil
+	tracer := provider.Tracer(tracerInstrumentationName)
+	propagator := propagation.TraceContext{}
+	return func(c fiber.Ctx) error {
+		previous := c.Context()
+		base := previous
+		if base == nil {
+			base = context.Background()
+		}
+
+		if _, _, _, valid := ParseTraceparent(c.Get(TraceparentHeader)); valid {
+			base = propagator.Extract(base, propagation.MapCarrier{
+				TraceparentHeader: c.Get(TraceparentHeader),
+				TracestateHeader:  c.Get(TracestateHeader),
+			})
+		}
+		parent := trace.SpanContextFromContext(base)
+		ctx, span := tracer.Start(
+			base,
+			c.Method()+" request",
+			trace.WithSpanKind(trace.SpanKindServer),
+			trace.WithAttributes(attribute.String("http.request.method", c.Method())),
+		)
+		spanContext := span.SpanContext()
+		if !spanContext.IsValid() {
+			span.End()
+			return fiber.NewError(fiber.StatusInternalServerError, "trace context unavailable")
+		}
+		current := traceContextFromSpan(spanContext, parent)
+		ctx = context.WithValue(ctx, traceContextKey{}, current)
+		c.SetContext(ctx)
+		c.Set(TraceparentHeader, current.Traceparent())
+		defer func() {
+			span.End()
+			c.SetContext(previous)
+		}()
+
+		err := c.Next()
+		status := responseStatus(c, err)
+		route := routePath(c)
+		span.SetName(c.Method() + " " + route)
+		span.SetAttributes(
+			attribute.String("http.route", route),
+			attribute.Int("http.response.status_code", status),
+		)
+		if status >= fiber.StatusInternalServerError {
+			span.SetStatus(codes.Error, http.StatusText(status))
+		}
+		return err
+	}
+}
+
+func traceContextFromSpan(current, parent trace.SpanContext) TraceContext {
+	result := TraceContext{
+		TraceID:      current.TraceID().String(),
+		SpanID:       current.SpanID().String(),
+		Flags:        byte(current.TraceFlags()),
+		RemoteParent: parent.IsRemote(),
+	}
+	if parent.IsValid() {
+		result.ParentSpanID = parent.SpanID().String()
+	}
+	return result
 }
 
 func isZero(value []byte) bool {

@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { getAccessManagement } from '@/lib/api/management';
 import {
   updateManagedUsersRoles,
@@ -7,6 +6,7 @@ import {
 import { requireApiAccess } from '@/lib/server/auth-request';
 import { apiErrorResponse, readJsonBody } from '@/lib/server/request-body';
 import { managedUserBatchSchema } from '@/lib/server/request-schemas';
+import { privateJson } from '@/lib/server/response-security';
 
 export async function GET(request: Request) {
   const { error: accessError } = await requireApiAccess(request);
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
   try {
     const accessManagement = await getAccessManagement();
-    return NextResponse.json(accessManagement);
+    return privateJson(accessManagement);
   } catch (error) {
     return apiErrorResponse(error, 'Failed to load access management users.');
   }
@@ -29,15 +29,15 @@ export async function PATCH(request: Request) {
 
     if (body.action === 'batch-status') {
       const result = await updateManagedUsersStatus(body.userIds, body.status);
-      return NextResponse.json(result);
+      return privateJson(result);
     }
 
     if (body.action === 'batch-role') {
       const result = await updateManagedUsersRoles(body.userIds, body.roleId, body.operation);
-      return NextResponse.json(result);
+      return privateJson(result);
     }
 
-    return NextResponse.json(
+    return privateJson(
       {
         message: 'Unsupported batch user action.',
       },

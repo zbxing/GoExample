@@ -46,7 +46,7 @@ func RequestLogger(logger *slog.Logger, skipPaths ...string) fiber.Handler {
 			"route", routePath(c),
 			"status", status,
 			"duration_ms", float64(time.Since(startedAt).Microseconds()) / 1000,
-			"response_bytes", len(c.Response().Body()),
+			"response_bytes", responseBytes(c),
 			"client_ip", c.IP(),
 		}
 		if trace, ok := FromContext(c.Context()); ok {
@@ -72,6 +72,13 @@ func RequestLogger(logger *slog.Logger, skipPaths ...string) fiber.Handler {
 		}
 		return err
 	}
+}
+
+func responseBytes(c fiber.Ctx) int {
+	if c.Response().IsBodyStream() {
+		return c.Response().Header.ContentLength()
+	}
+	return len(c.Response().Body())
 }
 
 func requestContext(c fiber.Ctx) context.Context {

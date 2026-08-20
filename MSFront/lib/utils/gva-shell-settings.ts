@@ -86,7 +86,7 @@ export const defaultGvaShellSettings: GvaShellSettings = {
   grayscale: false,
   colourWeakness: false,
   themeColor: '#2264f2',
-  themeRadius: 0.5,
+  themeRadius: 0.625,
   size: 'default',
   otherColor: {
     info: '#909399',
@@ -159,7 +159,7 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
     theme: {
       themeScheme: 'auto',
       themeColor: '#2264f2',
-      themeRadius: 0.5,
+      themeRadius: 0.625,
       layout: { mode: 'normal', sideWidth: 256, sideCollapsedWidth: 80, sideItemHeight: 48 },
       tab: { mode: 'chrome', showIcon: true, visible: true, shadow: 'sm', bg: '' },
       menu: { theme: 'light', darkSider: false },
@@ -191,7 +191,7 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
     theme: {
       themeScheme: 'auto',
       themeColor: '#2264f2',
-      themeRadius: 0.5,
+      themeRadius: 0.625,
       layout: { mode: 'vertical', sideWidth: 256, sideCollapsedWidth: 80, sideItemHeight: 48 },
       header: {
         breadcrumb: { visible: true, showIcon: true },
@@ -212,7 +212,7 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
     theme: {
       themeScheme: 'dark',
       themeColor: '#2264f2',
-      themeRadius: 0.5,
+      themeRadius: 0.625,
       menu: { theme: 'light', darkSider: true },
       card: { mode: 'shadow' },
     },
@@ -284,6 +284,25 @@ export function normalizeGvaShellSettings(raw: unknown): GvaShellSettings {
   if (merged.isInfoFollowPrimary) {
     merged.otherColor.info = merged.themeColor;
   }
+
+  const layoutModes: GvaLayoutMode[] = ['normal', 'head', 'combination', 'sidebar', 'vertical'];
+  if (!layoutModes.includes(merged.layout.mode)) {
+    merged.layout.mode = 'normal';
+  }
+  // 侧栏宽度异常（0 / NaN）会导致左侧栏“消失”
+  if (!Number.isFinite(merged.layout.sideWidth) || merged.layout.sideWidth < 160) {
+    merged.layout.sideWidth = 256;
+  }
+  if (merged.layout.sideWidth > 480) {
+    merged.layout.sideWidth = 480;
+  }
+  if (!Number.isFinite(merged.layout.sideCollapsedWidth) || merged.layout.sideCollapsedWidth < 48) {
+    merged.layout.sideCollapsedWidth = 80;
+  }
+  if (!Number.isFinite(merged.layout.sideItemHeight) || merged.layout.sideItemHeight < 32) {
+    merged.layout.sideItemHeight = 48;
+  }
+
   return merged;
 }
 

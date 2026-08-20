@@ -1,7 +1,7 @@
 package projectapi
 
 import (
-	"github.com/gofiber/fiber/v3"
+	"context"
 
 	"github.com/zbxing/goexample/Framework/httpapi"
 	"github.com/zbxing/goexample/Proj/Example/internal/projectapp"
@@ -18,22 +18,33 @@ func Endpoints(authEnabled bool) []string {
 	return append(endpoints, "GET /api/v1/project")
 }
 
-func Register(v1 fiber.Router, options httpapi.Options) {
-	httpapi.RegisterDefaultRoutes(v1, options)
-	service := projectapp.NewService(projectapp.Project{
-		Name:        options.Name,
-		Environment: options.Environment,
-		Version:     options.Version,
-	})
-	v1.Get("/project", func(c fiber.Ctx) error {
-		project, err := service.GetProject(c.Context(), projectapp.GetProjectQuery{})
-		if err != nil {
-			return err
-		}
-		return httpapi.Success(c, projectResponse{
-			Name:        project.Name,
-			Environment: project.Environment,
-			Version:     project.Version,
-		})
-	})
+func Queries(options httpapi.Options) []httpapi.ApplicationQuery {
+	serviceOptions := []projectapp.Option{}
+	if options.TracerProvider != nil {
+		serviceOptions = append(serviceOptions, projectapp.WithTracerProvider(options.TracerProvider))
+	}
+	service := projectapp.NewService(
+		projectapp.Project{
+			Name:        options.Name,
+			Environment: options.Environment,
+			Version:     options.Version,
+		},
+		serviceOptions...,
+	)
+	return []httpapi.ApplicationQuery{
+		{
+			Path: "/project",
+			Handler: func(ctx context.Context) (any, error) {
+				project, err := service.GetProject(ctx, projectapp.GetProjectQuery{})
+				if err != nil {
+					return nil, err
+				}
+				return projectResponse{
+					Name:        project.Name,
+					Environment: project.Environment,
+					Version:     project.Version,
+				}, nil
+			},
+		},
+	}
 }

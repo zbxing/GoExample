@@ -82,6 +82,10 @@ func TestSharedStorageNamespacesLimiterAndIdempotency(t *testing.T) {
 	if !hasPrefix(keys, "goexample:idempotency:/echo:") || !hasPrefix(keys, "goexample:idempotency:/validate:") {
 		t.Fatalf("idempotency namespaces = %#v", keys)
 	}
+	if !hasPrefix(keys, "goexample:idempotency-fingerprint:/echo:") ||
+		!hasPrefix(keys, "goexample:idempotency-fingerprint:/validate:") {
+		t.Fatalf("idempotency fingerprint namespaces = %#v", keys)
+	}
 	if !hasPrefix(keys, "goexample:limiter:api:") {
 		t.Fatalf("limiter namespace = %#v", keys)
 	}
