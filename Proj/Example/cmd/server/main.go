@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +18,7 @@ import (
 	"github.com/zbxing/goexample/Framework/httpapi"
 	"github.com/zbxing/goexample/Framework/observability"
 	"github.com/zbxing/goexample/Framework/server"
+	"github.com/zbxing/goexample/Framework/sharedstate"
 	"github.com/zbxing/goexample/Framework/validation"
 	"github.com/zbxing/goexample/Proj/Example/internal/projectapi"
 )
@@ -54,7 +57,47 @@ func run(ctx context.Context, output io.Writer) (runErr error) {
 		Audience: cfg.JWTAudience,
 		TTL:      cfg.JWTTTL,
 	})
+	var tokenVerifier auth.TokenVerifier = authService
+	var oidcVerifier *auth.JWKSVerifier
+	var oidcBrowser *httpapi.OIDCBrowser
+	var oidcClient *auth.OIDCClient
+	var oidcRequests *auth.AuthorizationRequestManager
+	authMode := "disabled"
+	if authService.Enabled() {
+		authMode = "demo"
+	}
+	if cfg.OIDCAuthEnabled {
+		oidcVerifier, err = auth.NewJWKSVerifier(ctx, auth.JWKSConfig{
+			Issuer:          cfg.OIDCIssuer,
+			Audience:        cfg.OIDCAudience,
+			JWKSURL:         cfg.OIDCJWKSURL,
+			HTTPTimeout:     cfg.OIDCJWKSHTTPTimeout,
+			RefreshInterval: cfg.OIDCJWKSRefreshInterval,
+			MaxTokenAge:     cfg.OIDCMaxTokenAge,
+			RequiredACR:     cfg.OIDCRequiredACR,
+			RequiredAMR:     cfg.OIDCRequiredAMR,
+			MaxAuthAge:      cfg.OIDCMaxAuthAge,
+		})
+		if err != nil {
+			return fmt.Errorf("initialize OIDC token verifier: %w", err)
+		}
+		tokenVerifier = oidcVerifier
+		authMode = "oidc"
+		if cfg.OIDCBrowserEnabled {
+			oidcClient, err = auth.NewOIDCClient(ctx, auth.OIDCClientConfig{
+				Issuer:       cfg.OIDCIssuer,
+				ClientID:     cfg.OIDCClientID,
+				ClientSecret: cfg.OIDCClientSecret,
+				RedirectURL:  cfg.OIDCRedirectURL,
+				HTTPTimeout:  cfg.OIDCJWKSHTTPTimeout,
+			})
+			if err != nil {
+				return fmt.Errorf("initialize browser OIDC client: %w", err)
+			}
+		}
+	}
 	healthChecker := health.New(cfg.HealthCheckTimeout, cfg.HealthCacheTTL)
+	metrics := observability.NewMetrics()
 	tracerProvider, err := observability.NewTracerProvider(ctx, observability.TracingConfig{
 		ServiceName:        cfg.Name,
 		ServiceVersion:     version,
@@ -66,6 +109,7 @@ func run(ctx context.Context, output io.Writer) (runErr error) {
 		BatchTimeout:       cfg.TraceBatchTimeout,
 		MaxQueueSize:       cfg.TraceMaxQueueSize,
 		MaxExportBatchSize: cfg.TraceMaxExportBatchSize,
+		Metrics:            metrics,
 	})
 	if err != nil {
 		return fmt.Errorf("initialize tracing: %w", err)
@@ -77,6 +121,83 @@ func run(ctx context.Context, output io.Writer) (runErr error) {
 			runErr = errors.Join(runErr, fmt.Errorf("shutdown tracing: %w", err))
 		}
 	}()
+
+	var externalState *sharedstate.Redis
+	if cfg.SharedStateMode == httpapi.SharedStateModeExternal {
+		redisTLS, tlsErr := redisTLSConfig(cfg)
+		if tlsErr != nil {
+			return fmt.Errorf("initialize Redis TLS: %w", tlsErr)
+		}
+		externalState, err = sharedstate.NewRedis(ctx, sharedstate.RedisConfig{
+			URL:                cfg.RedisURL,
+			Topology:           sharedstate.RedisTopology(cfg.RedisTopology),
+			SentinelAddresses:  cfg.RedisSentinelAddresses,
+			SentinelMasterName: cfg.RedisSentinelMasterName,
+			Username:           cfg.RedisUsername,
+			Password:           cfg.RedisPassword,
+			SentinelUsername:   cfg.RedisSentinelUsername,
+			SentinelPassword:   cfg.RedisSentinelPassword,
+			Database:           cfg.RedisDatabase,
+			TLSConfig:          redisTLS,
+			KeyPrefix:          cfg.RedisKeyPrefix,
+			OperationTimeout:   cfg.RedisOperationTimeout,
+			LockTTL:            cfg.RedisLockTTL,
+			LockWaitTimeout:    cfg.RedisLockWaitTimeout,
+			LockRetryInterval:  cfg.RedisLockRetryInterval,
+			PoolSize:           cfg.RedisPoolSize,
+			MinIdleConnections: cfg.RedisMinIdleConnections,
+			TracerProvider:     tracerProvider,
+		})
+		if err != nil {
+			return fmt.Errorf("initialize external shared state: %w", err)
+		}
+		defer func() {
+			if err := externalState.Close(); err != nil {
+				runErr = errors.Join(runErr, fmt.Errorf("close external shared state: %w", err))
+			}
+		}()
+		if err := healthChecker.Register("redis", externalState.Check); err != nil {
+			return fmt.Errorf("register Redis readiness check: %w", err)
+		}
+	}
+	if cfg.OIDCBrowserEnabled {
+		var authorizationRequestStore auth.AuthorizationRequestStore
+		var browserSessionStore auth.BrowserSessionStore
+		var authorizationACRValues []string
+		if externalState != nil {
+			authorizationRequestStore = externalState
+			browserSessionStore = externalState
+		}
+		if cfg.OIDCRequiredACR != "" {
+			authorizationACRValues = []string{cfg.OIDCRequiredACR}
+		}
+		oidcRequests, err = auth.NewAuthorizationRequestManager(auth.AuthorizationRequestConfig{
+			AuthorizationURL: oidcClient.Metadata().AuthorizationEndpoint,
+			ClientID:         cfg.OIDCClientID,
+			RedirectURL:      cfg.OIDCRedirectURL,
+			Scopes:           []string{"openid"},
+			ACRValues:        authorizationACRValues,
+			TTL:              cfg.OIDCAuthorizationTTL,
+			Store:            authorizationRequestStore,
+		})
+		if err != nil {
+			return fmt.Errorf("initialize browser OIDC authorization requests: %w", err)
+		}
+		browserSessions, sessionErr := auth.NewBrowserSessionManager(auth.BrowserSessionConfig{
+			TTL:                   cfg.OIDCBrowserSessionTTL,
+			MaxSessions:           cfg.OIDCBrowserMaxSessions,
+			MaxSessionsPerSubject: cfg.OIDCBrowserMaxSessionsPerSubject,
+			Store:                 browserSessionStore,
+		})
+		if sessionErr != nil {
+			return fmt.Errorf("initialize browser application sessions: %w", sessionErr)
+		}
+		oidcBrowser, err = httpapi.NewOIDCBrowserWithSessions(oidcRequests, oidcClient, oidcVerifier, browserSessions)
+		if err != nil {
+			return fmt.Errorf("initialize browser OIDC adapter: %w", err)
+		}
+		authMode = "oidc_browser"
+	}
 
 	apiOptions := httpapi.Options{
 		Name:                cfg.Name,
@@ -108,14 +229,32 @@ func run(ctx context.Context, output io.Writer) (runErr error) {
 		PprofToken:          cfg.PprofToken,
 		SystemInfoDetailed:  cfg.SystemInfoDetailed,
 		Auth:                authService,
+		TokenVerifier:       tokenVerifier,
+		OIDCBrowser:         oidcBrowser,
 		Health:              healthChecker,
-		Metrics:             observability.NewMetrics(),
+		Metrics:             metrics,
 		TracerProvider:      tracerProvider,
 		Validator:           validation.New(),
 		Logger:              logger,
 	}
-	apiOptions.Endpoints = projectapi.Endpoints(authService.Enabled())
+	if externalState != nil {
+		apiOptions.SharedStorage = externalState
+		apiOptions.IdempotencyLock = externalState
+	}
+	apiOptions.Endpoints = projectapi.EndpointsForAuth(tokenVerifier.Enabled(), authService.Enabled())
+	if oidcBrowser != nil {
+		apiOptions.Endpoints = append(apiOptions.Endpoints,
+			"GET /api/v1/auth/oidc/start",
+			"GET /api/v1/auth/oidc/callback",
+			"POST /api/v1/auth/oidc/logout",
+			"GET /api/v1/auth/oidc/sessions",
+			"PATCH /api/v1/auth/oidc/sessions/:sessionId",
+			"DELETE /api/v1/auth/oidc/sessions/:sessionId",
+			"DELETE /api/v1/auth/oidc/sessions",
+		)
+	}
 	apiOptions.ApplicationQueries = projectapi.Queries(apiOptions)
+	apiOptions.ApplicationCommands = projectapi.Commands(apiOptions)
 	if err := httpapi.ValidateSharedState(
 		cfg.Environment,
 		cfg.SharedStateMode,
@@ -127,17 +266,64 @@ func run(ctx context.Context, output io.Writer) (runErr error) {
 		return fmt.Errorf("validate shared state: %w", err)
 	}
 	app := httpapi.New(apiOptions)
+	handler, err := httpapi.NewHTTPHandler(app)
+	if err != nil {
+		return fmt.Errorf("initialize standard HTTP handler: %w", err)
+	}
 
-	return server.Run(ctx, server.Options{
-		App:             app,
-		Health:          healthChecker,
-		Logger:          logger,
-		Name:            cfg.Name,
-		Version:         version,
-		Environment:     cfg.Environment,
-		Address:         cfg.Address(),
-		ShutdownTimeout: cfg.ShutdownTimeout,
-		DrainDelay:      cfg.ShutdownDrainDelay,
-		Attributes:      []any{"demo_auth_enabled", cfg.DemoAuthEnabled, "trace_exporter", cfg.TraceExporter},
+	return server.RunHTTP(ctx, server.HTTPOptions{
+		Handler:             handler,
+		ApplicationShutdown: app.ShutdownWithContext,
+		ConnectionObserver:  metrics,
+		Health:              healthChecker,
+		Logger:              logger,
+		Name:                cfg.Name,
+		Version:             version,
+		Environment:         cfg.Environment,
+		Address:             cfg.Address(),
+		ShutdownTimeout:     cfg.ShutdownTimeout,
+		DrainDelay:          cfg.ShutdownDrainDelay,
+		ReadHeaderTimeout:   cfg.ReadTimeout,
+		ReadTimeout:         cfg.ReadTimeout,
+		WriteTimeout:        cfg.WriteTimeout,
+		IdleTimeout:         cfg.IdleTimeout,
+		MaxHeaderBytes:      cfg.ReadBufferSize,
+		MaxConnections:      cfg.MaxConnections,
+		Attributes:          []any{"auth_mode", authMode, "trace_exporter", cfg.TraceExporter, "shared_state_mode", cfg.SharedStateMode},
 	})
+}
+
+func redisTLSConfig(cfg config.Config) (*tls.Config, error) {
+	if !cfg.RedisTLSEnabled {
+		return nil, nil
+	}
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		ServerName: cfg.RedisTLSServerName,
+	}
+	if cfg.RedisTLSCAFile == "" {
+		return tlsConfig, nil
+	}
+	file, err := os.Open(cfg.RedisTLSCAFile)
+	if err != nil {
+		return nil, errors.New("open Redis TLS CA file")
+	}
+	defer file.Close()
+	const maxCABytes = 1 << 20
+	contents, err := io.ReadAll(io.LimitReader(file, maxCABytes+1))
+	if err != nil {
+		return nil, errors.New("read Redis TLS CA file")
+	}
+	if len(contents) > maxCABytes {
+		return nil, errors.New("Redis TLS CA file exceeds 1 MiB")
+	}
+	roots, err := x509.SystemCertPool()
+	if err != nil {
+		roots = x509.NewCertPool()
+	}
+	if !roots.AppendCertsFromPEM(contents) {
+		return nil, errors.New("Redis TLS CA file contains no valid certificates")
+	}
+	tlsConfig.RootCAs = roots
+	return tlsConfig, nil
 }

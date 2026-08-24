@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "implementation": {
+    "name": "nginx",
+    "version": "1.30.4",
+    "image": "nginx:1.30.4-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46"
+  },
+  "listener": {
+    "port": 8443,
+    "protocols": [
+      "http/1.1",
+      "h2"
+    ],
+    "tls": {
+      "minimumVersion": "TLSv1.2",
+      "maximumVersion": "TLSv1.3",
+      "certificatePath": "/run/secrets/goexample-edge/tls.crt",
+      "privateKeyPath": "/run/secrets/goexample-edge/tls.key"
+    }
+  },
+  "limits": {
+    "clientHeaderBufferBytes": 4096,
+    "largeHeaderBufferCount": 4,
+    "largeHeaderBufferBytes": 16384,
+    "clientBodyBufferBytes": 131072,
+    "clientMaxBodyBytes": 4194304,
+    "workerConnections": 1024,
+    "upstreamKeepaliveConnections": 64
+  },
+  "timeouts": {
+    "clientHeaderSeconds": 10,
+    "clientBodySeconds": 10,
+    "sendSeconds": 10,
+    "keepaliveSeconds": 60,
+    "upstreamConnectSeconds": 2,
+    "upstreamSendSeconds": 10,
+    "upstreamReadSeconds": 10
+  },
+  "lifecycle": {
+    "workerShutdownSeconds": 25,
+    "containerStopSeconds": 30,
+    "stopSignal": "SIGQUIT"
+  },
+  "behavior": {
+    "proxyRequestBuffering": false,
+    "proxyResponseBuffering": false,
+    "proxyRetry": false,
+    "replaceRequestID": true,
+    "preserveTraceContext": true,
+    "edgeStatusCodes": [
+      431,
+      502,
+      504
+    ],
+    "passThroughStatusCodes": [
+      503
+    ]
+  }
+}

@@ -1,14 +1,14 @@
 'use client';
 
-import Link from 'next/link';
-import { createElement, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { createElement, Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname, useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import type { Route } from 'next';
 import { useAuth } from '@/providers/auth-provider';
 import { flattenMenuTree } from '@/lib/utils/menu-access';
 import { resolveMenuIcon } from '@/lib/utils/menu-icons';
-import { beginGvaContentLoading, beginGvaRouteProgress } from '@/lib/utils/gva-page-loading';
+import { beginGvaRouteProgress } from '@/lib/utils/gva-page-loading';
 import { triggerGvaPageLeave } from '@/lib/utils/gva-page-leave';
 
 interface TagsViewItem {
@@ -55,7 +55,18 @@ function normalizeTags(parsed: unknown): TagsViewItem[] {
   if (!Array.isArray(parsed) || parsed.length === 0) {
     return SERVER_SNAPSHOT;
   }
-  return parsed as TagsViewItem[];
+  const items = (parsed as TagsViewItem[]).map((item) =>
+    item.path === HOME_TAB.path ? { ...item, closable: false } : item,
+  );
+  return normalizeTagOrder(items);
+}
+
+/** 无关闭按钮的标签固定在最左侧，其余保持相对顺序 */
+function normalizeTagOrder(current: TagsViewItem[]): TagsViewItem[] {
+  const pinned = current.filter((item) => !item.closable);
+  const rest = current.filter((item) => item.closable);
+  const next = [...pinned, ...rest];
+  return tagsEqual(next, current) ? current : next;
 }
 
 function readStoredTags(): TagsViewItem[] {
@@ -89,10 +100,11 @@ function persistTags(next: TagsViewItem[]) {
     return;
   }
 
-  const payload = JSON.stringify(next);
+  const normalized = normalizeTagOrder(next);
+  const payload = JSON.stringify(normalized);
   window.sessionStorage.setItem(storageKey, payload);
   cachedClientRaw = payload;
-  cachedClientSnapshot = next;
+  cachedClientSnapshot = normalized;
   emitStorage();
 }
 
@@ -130,6 +142,102 @@ function ensureTag(
   ];
 }
 
+function overlapX(aLeft: number, aRight: number, bLeft: number, bRight: number): number {
+  return Math.max(0, Math.min(aRight, bRight) - Math.max(aLeft, bLeft));
+}
+
+/**
+ * 基于拖拽开始时的位置快照判断重叠，避免让位动画反馈导致来回切换。
+ * - 与某标签重叠 ≥50%：交换到该位置
+ * - 与原始槽位重叠 ≥50%：回到起始位置
+ * - 否则：保持当前插入位置（不自动回弹）
+ */
+function computeInsertIndex(
+  ghostLeft: number,
+  ghostWidth: number,
+  items: TagsViewItem[],
+  dragPath: string,
+  rects: Map<string, DOMRect>,
+  currentInsert: number,
+): number {
+  const fromIdx = items.findIndex((item) => item.path === dragPath);
+  if (fromIdx < 0) {
+    return 0;
+  }
+
+  const pinnedCount = items.filter((item) => !item.closable).length;
+  const ghostRight = ghostLeft + ghostWidth;
+  const clamp = (value: number) => Math.max(pinnedCount, Math.min(value, items.length));
+
+  const originRect = rects.get(dragPath);
+  if (originRect) {
+    const homeOverlap = overlapX(ghostLeft, ghostRight, originRect.left, originRect.right);
+    if (homeOverlap >= originRect.width * 0.5) {
+      return clamp(fromIdx);
+    }
+  }
+
+  let bestIdx = -1;
+  let bestRatio = 0;
+
+  for (let i = 0; i < items.length; i++) {
+    if (i === fromIdx) {
+      continue;
+    }
+    const rect = rects.get(items[i].path);
+    if (!rect || rect.width <= 0) {
+      continue;
+    }
+    const overlap = overlapX(ghostLeft, ghostRight, rect.left, rect.right);
+    const ratio = overlap / rect.width;
+    if (ratio > bestRatio) {
+      bestRatio = ratio;
+      bestIdx = i;
+    }
+  }
+
+  if (bestRatio < 0.5) {
+    return clamp(currentInsert);
+  }
+
+  const insertAt = bestIdx < fromIdx ? bestIdx : bestIdx + 1;
+  return clamp(insertAt);
+}
+
+/** 拖拽中：非拖动项根据插入位置平移让位 */
+function getShiftX(
+  index: number,
+  fromIdx: number,
+  insertAt: number,
+  slotWidth: number,
+): number {
+  if (index === fromIdx) {
+    return 0;
+  }
+  if (fromIdx < insertAt) {
+    if (index > fromIdx && index < insertAt) {
+      return -slotWidth;
+    }
+  } else if (fromIdx > insertAt) {
+    if (index >= insertAt && index < fromIdx) {
+      return slotWidth;
+    }
+  }
+  return 0;
+}
+
+/** 将 fromIdx 处的项移动到 insertAt（原始数组「插入到该下标前」语义） */
+function moveToIndex(items: TagsViewItem[], fromIdx: number, insertAt: number): TagsViewItem[] {
+  if (fromIdx < 0 || insertAt < 0 || fromIdx === insertAt) {
+    return items;
+  }
+  const next = [...items];
+  const [moved] = next.splice(fromIdx, 1);
+  const to = insertAt > fromIdx ? insertAt - 1 : insertAt;
+  next.splice(to, 0, moved);
+  return next;
+}
+
 function ChromeTabBg({ symbolId }: { symbolId: string }) {
   return (
     <svg className="gvaChromeSvg" aria-hidden="true">
@@ -159,6 +267,41 @@ export function TagsView({
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
   const [rightTarget, setRightTarget] = useState<string | null>(null);
+  const [draggingPath, setDraggingPath] = useState<string | null>(null);
+  const [insertIndex, setInsertIndex] = useState<number | null>(null);
+  const [dragGhost, setDragGhost] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [portalReady, setPortalReady] = useState(false);
+  const dragRef = useRef<{
+    path: string;
+    fromIdx: number;
+    slotWidth: number;
+    anchorTop: number;
+    startX: number;
+    startY: number;
+    offsetX: number;
+    width: number;
+    height: number;
+    active: boolean;
+  } | null>(null);
+  const baseTagsRef = useRef<TagsViewItem[]>(tags);
+  const insertIndexRef = useRef<number | null>(null);
+  const tabRectsRef = useRef<Map<string, DOMRect>>(new Map());
+  const tabRefs = useRef(new Map<string, HTMLDivElement>());
+  const tagsRef = useRef(tags);
+  const navigateRef = useRef<(path: string) => void>(() => {});
+
+  useEffect(() => {
+    setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    tagsRef.current = tags;
+  }, [tags]);
 
   const metaMap = useMemo(() => {
     const map = new Map<string, { title: string; icon?: string }>([
@@ -193,10 +336,122 @@ export function TagsView({
     }
     const leaving = triggerGvaPageLeave();
     beginGvaRouteProgress();
-    // 离场约 300ms；延迟 loading 避免白膜盖住旧页滑出
-    beginGvaContentLoading(leaving ? 360 : 400);
+    // 内容区 loading 只由 apiFetch 驱动（对齐 GVA），导航处不再 begin，避免无 end 卡住
+    void leaving;
     router.push(path as Route);
   }
+
+  navigateRef.current = navigateTo;
+
+  const dragTags = draggingPath ? baseTagsRef.current : tags;
+  const dragFromIdx =
+    draggingPath && insertIndex !== null
+      ? dragTags.findIndex((item) => item.path === draggingPath)
+      : -1;
+
+  function resetDragVisuals() {
+    setDraggingPath(null);
+    setInsertIndex(null);
+    setDragGhost(null);
+    insertIndexRef.current = null;
+    tabRectsRef.current = new Map();
+    for (const el of tabRefs.current.values()) {
+      el.style.transition = '';
+      el.style.transform = '';
+    }
+  }
+
+  useEffect(() => {
+    function onMouseMove(event: MouseEvent) {
+      const drag = dragRef.current;
+      if (!drag) {
+        return;
+      }
+
+      const dx = event.clientX - drag.startX;
+      const dy = event.clientY - drag.startY;
+      if (!drag.active && Math.hypot(dx, dy) > 5) {
+        drag.active = true;
+        baseTagsRef.current = tagsRef.current;
+        const rects = new Map<string, DOMRect>();
+        for (const item of baseTagsRef.current) {
+          const el = tabRefs.current.get(item.path);
+          if (el) {
+            rects.set(item.path, el.getBoundingClientRect());
+          }
+        }
+        tabRectsRef.current = rects;
+        insertIndexRef.current = drag.fromIdx;
+        setDraggingPath(drag.path);
+        setInsertIndex(drag.fromIdx);
+        setMenuOpen(false);
+        document.body.style.cursor = 'grabbing';
+        setDragGhost({
+          left: event.clientX - drag.offsetX,
+          top: drag.anchorTop,
+          width: drag.width,
+          height: drag.height,
+        });
+      }
+      if (!drag.active) {
+        return;
+      }
+
+      const ghostLeft = event.clientX - drag.offsetX;
+
+      setDragGhost({
+        left: ghostLeft,
+        top: drag.anchorTop,
+        width: drag.width,
+        height: drag.height,
+      });
+
+      const nextInsert = computeInsertIndex(
+        ghostLeft,
+        drag.width,
+        baseTagsRef.current,
+        drag.path,
+        tabRectsRef.current,
+        insertIndexRef.current ?? drag.fromIdx,
+      );
+      if (nextInsert !== insertIndexRef.current) {
+        insertIndexRef.current = nextInsert;
+        setInsertIndex(nextInsert);
+      }
+    }
+
+    function onMouseUp() {
+      const drag = dragRef.current;
+      if (!drag) {
+        return;
+      }
+
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+
+      if (drag.active) {
+        const insertAt = insertIndexRef.current ?? drag.fromIdx;
+        const next = moveToIndex(baseTagsRef.current, drag.fromIdx, insertAt);
+        if (!tagsEqual(next, tagsRef.current)) {
+          persistTags(next);
+        }
+        resetDragVisuals();
+      } else {
+        navigateRef.current(drag.path);
+      }
+
+      dragRef.current = null;
+    }
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, []);
 
   function closeTag(path: string) {
     const index = tags.findIndex((item) => item.path === path);
@@ -222,12 +477,14 @@ export function TagsView({
       return;
     }
     const keep = tags.find((item) => item.path === rightTarget) ?? HOME_TAB;
+    const pinned = tags.filter((item) => !item.closable);
     const next =
-      keep.path === HOME_TAB.path ? SERVER_SNAPSHOT : [HOME_TAB, { ...keep, closable: true }];
-    const unique = next.filter(
-      (item, idx, arr) => arr.findIndex((candidate) => candidate.path === item.path) === idx,
-    );
-    persistTags(unique);
+      !keep.closable
+        ? normalizeTagOrder(pinned)
+        : normalizeTagOrder([...pinned, { ...keep, closable: true }]).filter(
+            (item, idx, arr) => arr.findIndex((candidate) => candidate.path === item.path) === idx,
+          );
+    persistTags(next.length ? next : SERVER_SNAPSHOT);
     navigateTo(keep.path);
     setMenuOpen(false);
   }
@@ -240,7 +497,7 @@ export function TagsView({
     if (index < 0) {
       return;
     }
-    const next = tags.slice(0, index + 1);
+    const next = normalizeTagOrder(tags.slice(0, index + 1));
     persistTags(next);
     if (!next.some((item) => item.path === pathname)) {
       navigateTo(next[next.length - 1].path);
@@ -256,19 +513,25 @@ export function TagsView({
     if (index < 0) {
       return;
     }
-    const right = tags[index];
-    const next = [HOME_TAB, ...(right.path === HOME_TAB.path ? [] : [right])].filter(
+    const target = tags[index];
+    const pinned = tags.filter((item) => !item.closable);
+    const next = normalizeTagOrder(
+      !target.closable ? pinned : [...pinned, target],
+    ).filter(
       (item, idx, arr) => arr.findIndex((candidate) => candidate.path === item.path) === idx,
     );
-    persistTags(next);
+    persistTags(next.length ? next : SERVER_SNAPSHOT);
     if (!next.some((item) => item.path === pathname)) {
-      navigateTo(right.path);
+      navigateTo(target.path);
     }
     setMenuOpen(false);
   }
 
   return (
-    <div className={`gvaTagsView gvaTabs-${tabMode}`} data-tab-mode={tabMode}>
+    <div
+      className={`gvaTagsView gvaTabs-${tabMode}${draggingPath ? ' is-dragging-tabs' : ''}`}
+      data-tab-mode={tabMode}
+    >
       <svg width="0" height="0" className="gvaChromeDefs" aria-hidden="true">
         <defs>
           <symbol id="gva-chrome-geometry-left" viewBox="0 0 214 36" preserveAspectRatio="none">
@@ -277,19 +540,70 @@ export function TagsView({
         </defs>
       </svg>
       <div className="gvaTagsScroll">
-        {tags.map((tag) => {
+        {dragTags.map((tag, index) => {
           const active = pathname === tag.path;
           const Icon = tag.icon ? resolveMenuIcon(tag.icon) : null;
+          const draggable = tag.closable;
+          const isDragging = draggingPath === tag.path;
+          const slotWidth = dragRef.current?.slotWidth ?? 0;
+          const shiftX =
+            draggingPath && insertIndex !== null && dragFromIdx >= 0 && !isDragging
+              ? getShiftX(index, dragFromIdx, insertIndex, slotWidth)
+              : 0;
           return (
-            <div
-              key={tag.path}
-              className={
-                active
-                  ? `gvaPageTab gvaPageTab-${tabMode} is-active`
-                  : `gvaPageTab gvaPageTab-${tabMode}`
-              }
+            <Fragment key={tag.path}>
+              {isDragging && dragGhost ? (
+                <div
+                  className="gvaPageTabPlaceholder"
+                  style={{
+                    width: dragGhost.width,
+                    height: dragGhost.height,
+                    flexShrink: 0,
+                  }}
+                  aria-hidden="true"
+                />
+              ) : null}
+              <div
+              ref={(el) => {
+                if (el) {
+                  tabRefs.current.set(tag.path, el);
+                } else {
+                  tabRefs.current.delete(tag.path);
+                }
+              }}
+              data-tab-path={tag.path}
+              data-tab-pinned={tag.closable ? undefined : 'true'}
+              className={[
+                'gvaPageTab',
+                `gvaPageTab-${tabMode}`,
+                active ? 'is-active' : '',
+                draggable ? 'is-draggable' : 'is-pinned',
+                isDragging ? 'is-dragging' : '',
+                draggingPath && !isDragging ? 'is-shifting' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              style={{
+                ...(isDragging && dragGhost
+                  ? {
+                      position: 'fixed',
+                      left: dragGhost.left,
+                      top: dragGhost.top,
+                      width: dragGhost.width,
+                      height: dragGhost.height,
+                      zIndex: 4000,
+                      marginRight: 0,
+                      opacity: 1,
+                    }
+                  : undefined),
+                ...(draggingPath && !isDragging
+                  ? { transform: `translateX(${shiftX}px)` }
+                  : undefined),
+              }}
               onClick={() => {
-                navigateTo(tag.path);
+                if (!draggable) {
+                  navigateTo(tag.path);
+                }
               }}
               onContextMenu={(event) => {
                 event.preventDefault();
@@ -298,12 +612,42 @@ export function TagsView({
                 setMenuOpen(true);
               }}
               onMouseDown={(event) => {
-                if (event.button !== 1 || !tag.closable) {
+                if (event.button === 1 && tag.closable) {
+                  event.preventDefault();
+                  closeTag(tag.path);
                   return;
                 }
+                if (event.button !== 0 || !draggable) {
+                  return;
+                }
+                if ((event.target as HTMLElement).closest('.gvaPageTabClose')) {
+                  return;
+                }
+                const tabEl = event.currentTarget;
+                const rect = tabEl.getBoundingClientRect();
+                const fromIdx = tagsRef.current.findIndex((item) => item.path === tag.path);
+                const nextEl = tabEl.nextElementSibling as HTMLElement | null;
+                let slotWidth = rect.width;
+                if (nextEl?.dataset.tabPath) {
+                  slotWidth = nextEl.getBoundingClientRect().left - rect.left;
+                }
+                // 禁止浏览器把内部文本拖成 URL/文字幽灵图
                 event.preventDefault();
-                closeTag(tag.path);
+                document.body.style.userSelect = 'none';
+                dragRef.current = {
+                  path: tag.path,
+                  fromIdx,
+                  slotWidth,
+                  anchorTop: rect.top,
+                  startX: event.clientX,
+                  startY: event.clientY,
+                  offsetX: event.clientX - rect.left,
+                  width: rect.width,
+                  height: rect.height,
+                  active: false,
+                };
               }}
+              draggable={false}
             >
               {tabMode === 'chrome' ? (
                 <>
@@ -318,13 +662,7 @@ export function TagsView({
                 ? createElement(Icon, { size: 16, className: 'gvaPageTabIcon' })
                 : null}
 
-              <Link
-                href={tag.path as Route}
-                className="gvaPageTabLabel"
-                onClick={(event) => event.preventDefault()}
-              >
-                {tag.title}
-              </Link>
+              <span className="gvaPageTabLabel">{tag.title}</span>
 
               {tag.closable ? (
                 <button
@@ -344,38 +682,46 @@ export function TagsView({
 
               {tabMode === 'chrome' ? <div className="gvaChromeDivider" aria-hidden="true" /> : null}
             </div>
+            </Fragment>
           );
         })}
       </div>
 
-      {menuOpen ? (
-        <>
-          <button
-            type="button"
-            className="gvaTagsMenuBackdrop"
-            aria-label="关闭菜单"
-            onClick={() => setMenuOpen(false)}
-          />
-          <div
-            className="gvaTagsContextMenu"
-            style={{ left: menuPos.x, top: menuPos.y }}
-            role="menu"
-          >
-            <button type="button" onClick={closeAll}>
-              关闭所有
-            </button>
-            <button type="button" onClick={closeLeft}>
-              关闭左侧
-            </button>
-            <button type="button" onClick={closeRight}>
-              关闭右侧
-            </button>
-            <button type="button" onClick={closeOthers}>
-              关闭其他
-            </button>
-          </div>
-        </>
-      ) : null}
+      {menuOpen && portalReady
+        ? createPortal(
+            <>
+              <button
+                type="button"
+                className="gvaTagsMenuBackdrop"
+                aria-label="关闭菜单"
+                onClick={() => setMenuOpen(false)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  setMenuOpen(false);
+                }}
+              />
+              <div
+                className="gvaTagsContextMenu"
+                style={{ left: menuPos.x, top: menuPos.y }}
+                role="menu"
+              >
+                <button type="button" role="menuitem" onClick={closeAll}>
+                  关闭所有
+                </button>
+                <button type="button" role="menuitem" onClick={closeLeft}>
+                  关闭左侧
+                </button>
+                <button type="button" role="menuitem" onClick={closeRight}>
+                  关闭右侧
+                </button>
+                <button type="button" role="menuitem" onClick={closeOthers}>
+                  关闭其他
+                </button>
+              </div>
+            </>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

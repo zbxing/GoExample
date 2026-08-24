@@ -146,7 +146,7 @@ export function Topbar({
             <Link href="/dashboard" className="gvaHeaderBrand">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/gva-logo.png" alt="" className="gvaHeaderLogo" />
-              <strong>Gin-Vue-Admin</strong>
+              <strong>Go Admin</strong>
             </Link>
 
             <nav className="gvaBreadcrumb" aria-label="面包屑" hidden={!shellSettings.header.breadcrumb.visible}>

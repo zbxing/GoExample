@@ -11,7 +11,7 @@
 2. API 请求 context 同时受 `HTTP_REQUEST_TIMEOUT` 和服务停机控制。`httpapi.New` 创建独立的应用生命周期 context，Fiber `OnPreShutdown` hook 会先取消该 context，再进入 listener shutdown；`requestDeadline` 从它派生请求 context，因此停机可取消仍在运行的协作式下游任务，且不依赖 fasthttp `RequestCtx` 的内部并发行为。
 3. 当前 Fiber/fasthttp 链路不承诺客户端断开后取消下游任务。真实 TCP 实验固定了该限制：客户端发送请求后关闭 socket，不会在 100 ms 内关闭应用 context；任务仍由主动 request deadline 或 server shutdown 兜底。
 4. 在该限制解除或获得经批准的 edge 补偿前，不把 Fiber 用于依赖即时断连取消的大上传、昂贵查询或长流式请求。若目标业务需要该语义，迁移到基于 `net/http` 的 transport 是 V9-01 的框架判定条件。
-5. 当前 Fiber application listener 的已验证协议是 HTTP/1.1，真实 TLS listener 握手已有本地契约。标准 `net/http` 和 loopback reverse proxy 另有 TLS/HTTP/2 对照，但它们不代表 Fiber listener 或 Nginx/Envoy 生产 edge 已支持 HTTP/2/3；在完成目标 edge 的握手、header、buffering、timeout 和断连传播测试前不得宣称为生产能力。
+5. Example 默认由 `server.RunHTTP` 的标准 listener 承载经 Fiber adaptor 组装的 handler；accepted connection、read-header/read/write/idle/header、draining 和 shutdown 均有本地契约。Fiber direct listener 的 HTTP/1.1/TLS 行为和标准 `net/http` TLS/HTTP/2、loopback reverse proxy 另有对照。仓库现固定 Nginx 1.30.4 edge 配置与真实容器 CI 入口，但这仍不代表目标 Nginx/Ingress 已运行或 HTTP/3 已支持；在完成目标 edge 的握手、header、buffering、timeout 和断连传播测试前不得宣称为生产能力。
 
 ## 已验证行为
 
@@ -25,12 +25,14 @@
 - readiness 进入 draining 后，新的 `/api/v1` 请求返回 `503` 与 `Retry-After`，已经开始的 handler 不被该 gate 中断；容量拒绝和摘流拒绝分别计数；
 - `HTTP_READ_BUFFER_SIZE` 显式限定请求头读取预算（默认 16 KiB，4 KiB–1 MiB），真实 TCP 超限请求返回 431；该上限必须与 edge、认证头和 Cookie 预算一致；
 - `HTTP_READ_TIMEOUT` 会限制请求头和请求体读取阶段；真实 TCP 只发送不完整请求头或声明长度后停止上传时返回 408，业务 handler 不执行；
-- `HTTP_MAX_CONNECTIONS` 映射 Fiber/fasthttp transport 连接并发上限；真实 TCP 在容量耗尽时返回 503 状态行并关闭连接，拒绝发生在应用 middleware 前，不带应用 admission 的 `Retry-After` 或 metrics counter；
+- `HTTP_MAX_CONNECTIONS` 在 Example 默认 `server.RunHTTP` 路径限制标准 listener 已接受的连接数；容量耗尽时暂停 `Accept` 直到已有连接关闭，因此调用方必须设置连接 timeout，edge 应提供更早的容量拒绝。Fiber direct-listener 对照仍验证容量耗尽时返回 503；两种行为都发生在应用 middleware 前，不带 application admission 的 `Retry-After` 或 metrics counter；
 - 同一 HTTP/1.1 TCP 连接可连续完成两个请求，短 `IdleTimeout` 会回收空闲 keep-alive 连接；
 - 客户端发送完整请求后半关闭写端，服务端仍会返回完整响应并关闭连接；计数 listener 证明 shutdown 后空闲 keep-alive 连接从 active 1 收敛到 0；
 - 客户端强制关闭 TCP 连接不会及时取消应用 context，这是已知限制而不是成功能力。
 
 `Proj/Example/internal/projectapi/transport_benchmark_test.go` 额外验证标准 `net/http` TLS/HTTP/2，以及 loopback HTTP/2 edge 到 Fiber HTTP/1.1 upstream 的 envelope 一致性；这些测试不替代目标平台代理演练。
+
+`support/deploy/edge/goexample-nginx.contract.json` 固定 Nginx 1.30.4 digest、TLS 1.2/1.3、HTTP/2、header/body/timeouts、无请求/响应缓冲、禁上游重试和 SIGQUIT drain。`scripts/nginx-edge-contract.mjs` 的 Linux Docker 入口验证 trace/request-ID、431/502/503/504、上传中断和在途 drain，并归档原始日志与 hash；GitHub runner loopback artifact 仍不是目标 edge 证据。
 
 本地复现命令：
 
@@ -51,8 +53,8 @@ SHUTDOWN_DRAIN_DELAY + HTTP_REQUEST_TIMEOUT < SHUTDOWN_TIMEOUT (20s)
 
 ## 未完成项
 
-- 目标 edge-to-client TLS/HTTP/2 或 HTTP/3 自动握手测试；
-- edge-to-app timeout、buffering、header 与断连传播实验；
-- 目标 edge 下的慢上传、慢响应、半关闭、连接容量和断连传播测试；应用直连 TCP 已覆盖这些边界中的基础行为，但不能替代生产代理；
+- 目标 edge-to-client 真实证书 TLS/HTTP/2 与 HTTP/3 自动握手测试；
+- 目标 edge-to-app timeout、buffering、header 与断连传播实验；仓库固定容器入口不替代目标平台；
+- 目标 edge 下的慢上传、慢响应、半关闭、连接容量和断连传播测试；应用直连 TCP 与固定 Nginx loopback 只覆盖基础行为；
 - SSE/WebSocket 的背压、心跳、断连清理和停机契约；当前通用流响应测试不代表这些协议已受支持；
 - 客户端断连的可控取消实现，或迁移到具备标准取消语义的 transport。

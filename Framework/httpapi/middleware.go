@@ -14,6 +14,7 @@ import (
 
 	"github.com/zbxing/goexample/Framework/health"
 	"github.com/zbxing/goexample/Framework/observability"
+	"github.com/zbxing/goexample/Framework/sharedstate"
 )
 
 const maxRequestIDLength = 128
@@ -26,6 +27,9 @@ func streamSafeETag() fiber.Handler {
 
 		response := c.Response()
 		if hasCacheControlDirective(c.GetRespHeader(fiber.HeaderCacheControl), "no-store") {
+			if _, err := parseApplicationPrecondition(c.GetRespHeader(fiber.HeaderETag)); err == nil {
+				return nil
+			}
 			response.Header.Del(fiber.HeaderETag)
 			return nil
 		}
@@ -144,7 +148,7 @@ func requestDeadline(applicationContext context.Context, timeout time.Duration) 
 	}
 }
 
-func idempotencyMiddleware(route string, lifetime time.Duration, storage fiber.Storage, lock idempotency.Locker) fiber.Handler {
+func idempotencyMiddleware(route string, lifetime time.Duration, storage fiber.Storage, lock idempotency.Locker, fingerprintHeaders ...string) fiber.Handler {
 	if lock == nil {
 		lock = idempotency.NewMemoryLock()
 	}
@@ -162,11 +166,13 @@ func idempotencyMiddleware(route string, lifetime time.Duration, storage fiber.S
 		KeepResponseHeaders: []string{
 			fiber.HeaderCacheControl,
 			fiber.HeaderContentType,
+			fiber.HeaderETag,
+			fiber.HeaderPragma,
 		},
 	})
 
 	return func(c fiber.Ctx) error {
-		key := c.Get("X-Idempotency-Key")
+		key := strings.Clone(c.Get("X-Idempotency-Key"))
 		if key != "" && !fiber.IsMethodSafe(c.Method()) {
 			if err := idempotency.ConfigDefault.KeyHeaderValidate(key); err != nil {
 				return err
@@ -174,7 +180,7 @@ func idempotencyMiddleware(route string, lifetime time.Duration, storage fiber.S
 			if err := cacheLock.Lock(key); err != nil {
 				return fmt.Errorf("lock idempotency fingerprint: %w", err)
 			}
-			bindErr := fingerprints.bind(c, key, idempotencyRequestFingerprint(c), lifetime)
+			bindErr := fingerprints.bind(c, key, idempotencyRequestFingerprint(c, fingerprintHeaders...), lifetime)
 			unlockErr := cacheLock.Unlock(key)
 			if bindErr != nil {
 				return fmt.Errorf("bind idempotency fingerprint: %w", bindErr)
@@ -198,7 +204,11 @@ func rateLimiter(
 	message string,
 	next func(fiber.Ctx) bool,
 	storage fiber.Storage,
+	onLimitReached func(fiber.Ctx),
 ) fiber.Handler {
+	if atomicLimiter, ok := storage.(sharedstate.AtomicRateLimiter); ok {
+		return atomicRateLimiter(scope, maxRequests, window, message, next, atomicLimiter, onLimitReached)
+	}
 	return limiter.New(limiter.Config{
 		Max:        maxRequests,
 		Expiration: window,
@@ -214,7 +224,51 @@ func rateLimiter(
 			c.Set("X-RateLimit-Limit", strconv.Itoa(maxRequests))
 			c.Set("X-RateLimit-Remaining", "0")
 			c.Set("X-RateLimit-Reset", reset)
+			if onLimitReached != nil {
+				onLimitReached(c)
+			}
 			return failure(c, fiber.StatusTooManyRequests, message)
 		},
 	})
+}
+
+func atomicRateLimiter(
+	scope string,
+	maxRequests int,
+	window time.Duration,
+	message string,
+	next func(fiber.Ctx) bool,
+	limiter sharedstate.AtomicRateLimiter,
+	onLimitReached func(fiber.Ctx),
+) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		if next != nil && next(c) {
+			return c.Next()
+		}
+		result, err := limiter.Take(c.Context(), sharedStateKey("limiter:"+scope, c.IP()), maxRequests, window)
+		if err != nil {
+			// A dependency timeout is an internal availability failure, not a
+			// client request timeout.
+			return fmt.Errorf("rate limiter shared state: %v", err)
+		}
+		resetSeconds := int64(result.ResetAfter / time.Second)
+		if result.ResetAfter%time.Second != 0 {
+			resetSeconds++
+		}
+		if resetSeconds < 1 {
+			resetSeconds = 1
+		}
+		reset := strconv.FormatInt(resetSeconds, 10)
+		c.Set("X-RateLimit-Limit", strconv.Itoa(maxRequests))
+		c.Set("X-RateLimit-Remaining", strconv.Itoa(result.Remaining))
+		c.Set("X-RateLimit-Reset", reset)
+		if result.Allowed {
+			return c.Next()
+		}
+		c.Set(fiber.HeaderRetryAfter, reset)
+		if onLimitReached != nil {
+			onLimitReached(c)
+		}
+		return failure(c, fiber.StatusTooManyRequests, message)
+	}
 }

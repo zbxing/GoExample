@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   AdminConfirmDialog,
   AdminDialog,
@@ -13,6 +13,7 @@ import {
   useAdminToast,
 } from '@/components/admin/admin-primitives';
 import { apiFetch } from '@/lib/api/client';
+import { useGvaListLoad } from '@/lib/hooks/use-gva-list-load';
 import { Can, useAuth } from '@/providers/auth-provider';
 import { flattenMenuTree } from '@/lib/utils/menu-access';
 import type { SystemMenuTreeNode } from '@/lib/types/system';
@@ -39,7 +40,7 @@ export function SystemMenusPage() {
     menuBtns: '',
   });
 
-  useEffect(() => {
+  useGvaListLoad(() => {
     let cancelled = false;
 
     async function sync() {
@@ -176,13 +177,17 @@ export function SystemMenusPage() {
               return (
                 <div className="gvaRowActions">
                   <Can btn="menu:add">
-                    <AdminLinkButton onClick={() => openCreate(menu.id)}>添加子菜单</AdminLinkButton>
+                    <AdminLinkButton icon="edit" onClick={() => openCreate(menu.id)}>
+                      添加子菜单
+                    </AdminLinkButton>
                   </Can>
                   <Can btn="menu:edit">
-                    <AdminLinkButton onClick={() => openEdit(menu)}>编辑</AdminLinkButton>
+                    <AdminLinkButton icon="edit" onClick={() => openEdit(menu)}>
+                      编辑
+                    </AdminLinkButton>
                   </Can>
                   <Can btn="menu:delete">
-                    <AdminLinkButton danger onClick={() => setDeleteTarget(menu)}>
+                    <AdminLinkButton icon="delete" onClick={() => setDeleteTarget(menu)}>
                       删除
                     </AdminLinkButton>
                   </Can>

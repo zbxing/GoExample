@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"runtime"
 	"sort"
 	"strconv"
@@ -29,6 +30,10 @@ var requestDurationBuckets = [...]time.Duration{
 	10 * time.Second,
 }
 
+var securityEventLabels = [...]string{"login", "bearer", "session", "diagnostics", "authorization", "_OTHER"}
+var securityOutcomeLabels = [...]string{"success", "failure", "limited", "_OTHER"}
+var httpConnectionStateLabels = [...]string{"new", "active", "idle", "hijacked", "closed", "_OTHER"}
+
 type metricKey struct {
 	method string
 	route  string
@@ -49,12 +54,39 @@ type metricSnapshot struct {
 }
 
 type Metrics struct {
-	startedAt         time.Time
-	inFlight          atomic.Int64
-	requestIDReplaced atomic.Uint64
-	admissionRejected atomic.Uint64
-	drainingRejected  atomic.Uint64
-	requests          sync.Map
+	startedAt                 time.Time
+	inFlight                  atomic.Int64
+	requestIDReplaced         atomic.Uint64
+	admissionRejected         atomic.Uint64
+	drainingRejected          atomic.Uint64
+	httpConnectionCapacity    atomic.Int64
+	httpConnectionsOpen       atomic.Int64
+	httpConnectionEvents      [len(httpConnectionStateLabels)]atomic.Uint64
+	traceExporterEnabled      atomic.Bool
+	traceExportBatchSuccess   atomic.Uint64
+	traceExportBatchFailure   atomic.Uint64
+	traceExportSpanSuccess    atomic.Uint64
+	traceExportSpanFailure    atomic.Uint64
+	traceExportAttemptSuccess atomic.Uint64
+	traceExportAttemptFailure atomic.Uint64
+	traceQueueDroppedSpans    atomic.Uint64
+	traceProcessorCapacity    atomic.Int64
+	traceProcessorPending     atomic.Int64
+	traceProcessorHighWater   atomic.Int64
+	securityEvents            [len(securityEventLabels)][len(securityOutcomeLabels)]atomic.Uint64
+	securityAuditSinkSuccess  atomic.Uint64
+	securityAuditSinkFailure  atomic.Uint64
+	queueWorkersActive        atomic.Int64
+	queueWorkerStarted        atomic.Uint64
+	queueWorkerStopped        atomic.Uint64
+	queueWorkerFailed         atomic.Uint64
+	queueDeliveryAcknowledged atomic.Uint64
+	queueDeliveryRetried      atomic.Uint64
+	queueDeliveryDeadLettered atomic.Uint64
+	queueDeliverySettleFailed atomic.Uint64
+	queueLeaseExtended        atomic.Uint64
+	queueLeaseExtensionFailed atomic.Uint64
+	requests                  sync.Map
 }
 
 func NewMetrics() *Metrics {
@@ -86,6 +118,225 @@ func (m *Metrics) RecordDrainingRejected() {
 		return
 	}
 	m.drainingRejected.Add(1)
+}
+
+// SetHTTPConnectionCapacity records the configured standard server connection
+// bound. Values outside the server contract collapse to zero.
+func (m *Metrics) SetHTTPConnectionCapacity(capacity int) {
+	if m == nil {
+		return
+	}
+	if capacity < 1 || capacity > 1<<20 {
+		capacity = 0
+	}
+	m.httpConnectionCapacity.Store(int64(capacity))
+}
+
+// ObserveHTTPConnectionState records fixed net/http lifecycle states without
+// connection addresses or identifiers.
+func (m *Metrics) ObserveHTTPConnectionState(state http.ConnState) {
+	if m == nil {
+		return
+	}
+	m.httpConnectionEvents[httpConnectionStateIndex(state)].Add(1)
+	switch state {
+	case http.StateNew:
+		m.httpConnectionsOpen.Add(1)
+	case http.StateHijacked, http.StateClosed:
+		decrementNonnegative(&m.httpConnectionsOpen)
+	}
+}
+
+// RecordSecurityEvent records a security event using a fixed-cardinality
+// event/outcome matrix. Unknown values collapse to _OTHER and are never
+// emitted as labels.
+func (m *Metrics) RecordSecurityEvent(event, outcome string) {
+	if m == nil {
+		return
+	}
+	m.securityEvents[securityLabelIndex(securityEventLabels[:], event)][securityLabelIndex(securityOutcomeLabels[:], outcome)].Add(1)
+}
+
+// RecordSecurityAuditSinkWrite records an audit sink delivery outcome without
+// labels derived from the sink, its error or the audit record.
+func (m *Metrics) RecordSecurityAuditSinkWrite(success bool) {
+	if m == nil {
+		return
+	}
+	if success {
+		m.securityAuditSinkSuccess.Add(1)
+		return
+	}
+	m.securityAuditSinkFailure.Add(1)
+}
+
+// WorkerStarted records one queue worker entering its receive loop. It has no
+// labels so broker names, destinations, and message metadata cannot leak.
+func (m *Metrics) WorkerStarted() {
+	if m == nil {
+		return
+	}
+	m.queueWorkersActive.Add(1)
+	m.queueWorkerStarted.Add(1)
+}
+
+// WorkerStopped records one queue worker leaving its receive loop.
+func (m *Metrics) WorkerStopped() {
+	if m == nil {
+		return
+	}
+	m.queueWorkersActive.Add(-1)
+	m.queueWorkerStopped.Add(1)
+}
+
+// WorkerFailed records the first failure observed by a queue worker group.
+func (m *Metrics) WorkerFailed() {
+	if m != nil {
+		m.queueWorkerFailed.Add(1)
+	}
+}
+
+// DeliveryAcknowledged records a successfully processed and acknowledged
+// reliable delivery without broker or message labels.
+func (m *Metrics) DeliveryAcknowledged() {
+	if m != nil {
+		m.queueDeliveryAcknowledged.Add(1)
+	}
+}
+
+// DeliveryRetried records one bounded in-process delivery retry.
+func (m *Metrics) DeliveryRetried() {
+	if m != nil {
+		m.queueDeliveryRetried.Add(1)
+	}
+}
+
+// DeliveryDeadLettered records a failed delivery settled through its injected
+// dead-letter callback.
+func (m *Metrics) DeliveryDeadLettered() {
+	if m != nil {
+		m.queueDeliveryDeadLettered.Add(1)
+	}
+}
+
+// DeliverySettlementFailed records acknowledgement or dead-letter callback
+// failure, timeout, or panic without exposing the underlying error.
+func (m *Metrics) DeliverySettlementFailed() {
+	if m != nil {
+		m.queueDeliverySettleFailed.Add(1)
+	}
+}
+
+// DeliveryLeaseExtended records one successful broker lease-extension signal
+// without broker, destination, message, interval, or error labels.
+func (m *Metrics) DeliveryLeaseExtended() {
+	if m != nil {
+		m.queueLeaseExtended.Add(1)
+	}
+}
+
+// DeliveryLeaseExtensionFailed records a failed, timed-out, or panicking
+// lease-extension callback without exposing backend details.
+func (m *Metrics) DeliveryLeaseExtensionFailed() {
+	if m != nil {
+		m.queueLeaseExtensionFailed.Add(1)
+	}
+}
+
+func securityLabelIndex(labels []string, value string) int {
+	for index := 0; index < len(labels)-1; index++ {
+		if value == labels[index] {
+			return index
+		}
+	}
+	return len(labels) - 1
+}
+
+func httpConnectionStateIndex(state http.ConnState) int {
+	switch state {
+	case http.StateNew:
+		return 0
+	case http.StateActive:
+		return 1
+	case http.StateIdle:
+		return 2
+	case http.StateHijacked:
+		return 3
+	case http.StateClosed:
+		return 4
+	default:
+		return len(httpConnectionStateLabels) - 1
+	}
+}
+
+func decrementNonnegative(value *atomic.Int64) {
+	for {
+		current := value.Load()
+		if current <= 0 || value.CompareAndSwap(current, current-1) {
+			return
+		}
+	}
+}
+
+func (m *Metrics) configureTraceExporter(enabled bool) {
+	if m != nil {
+		m.traceExporterEnabled.Store(enabled)
+	}
+}
+
+func (m *Metrics) recordTraceExport(spanCount int, err error) {
+	if m == nil {
+		return
+	}
+	if err == nil {
+		m.traceExportBatchSuccess.Add(1)
+		m.traceExportSpanSuccess.Add(uint64(spanCount))
+		return
+	}
+	m.traceExportBatchFailure.Add(1)
+	m.traceExportSpanFailure.Add(uint64(spanCount))
+}
+
+func (m *Metrics) recordTraceExportAttempt(success bool) {
+	if m == nil {
+		return
+	}
+	if success {
+		m.traceExportAttemptSuccess.Add(1)
+		return
+	}
+	m.traceExportAttemptFailure.Add(1)
+}
+
+func (m *Metrics) recordTraceQueueDrop(spanCount int) {
+	if m != nil {
+		m.traceQueueDroppedSpans.Add(uint64(spanCount))
+	}
+}
+
+func (m *Metrics) configureTraceProcessorCapacity(capacity int) {
+	if m != nil {
+		m.traceProcessorCapacity.Store(int64(capacity))
+	}
+}
+
+func (m *Metrics) recordTraceProcessorAcquire() {
+	if m == nil {
+		return
+	}
+	pending := m.traceProcessorPending.Add(1)
+	for {
+		highWater := m.traceProcessorHighWater.Load()
+		if pending <= highWater || m.traceProcessorHighWater.CompareAndSwap(highWater, pending) {
+			return
+		}
+	}
+}
+
+func (m *Metrics) recordTraceProcessorRelease(spanCount int) {
+	if m != nil {
+		m.traceProcessorPending.Add(-int64(spanCount))
+	}
 }
 
 func (m *Metrics) Middleware(c fiber.Ctx) error {
@@ -164,6 +415,83 @@ func (m *Metrics) Render() string {
 	builder.WriteString("# HELP goexample_http_draining_rejections_total Requests rejected because the instance is draining.\n")
 	builder.WriteString("# TYPE goexample_http_draining_rejections_total counter\n")
 	fmt.Fprintf(&builder, "goexample_http_draining_rejections_total %d\n", m.drainingRejected.Load())
+	builder.WriteString("# HELP goexample_http_server_connection_capacity Maximum connections accepted by the standard HTTP server.\n")
+	builder.WriteString("# TYPE goexample_http_server_connection_capacity gauge\n")
+	fmt.Fprintf(&builder, "goexample_http_server_connection_capacity %d\n", m.httpConnectionCapacity.Load())
+	builder.WriteString("# HELP goexample_http_server_connections Current connections accepted by the standard HTTP server.\n")
+	builder.WriteString("# TYPE goexample_http_server_connections gauge\n")
+	fmt.Fprintf(&builder, "goexample_http_server_connections %d\n", m.httpConnectionsOpen.Load())
+	builder.WriteString("# HELP goexample_http_server_connection_events_total Fixed-cardinality standard HTTP connection lifecycle events.\n")
+	builder.WriteString("# TYPE goexample_http_server_connection_events_total counter\n")
+	for index, state := range httpConnectionStateLabels {
+		fmt.Fprintf(&builder, "goexample_http_server_connection_events_total{state=%s} %d\n", strconv.Quote(state), m.httpConnectionEvents[index].Load())
+	}
+	builder.WriteString("# HELP goexample_security_events_total Security authentication and privileged-access events with fixed labels.\n")
+	builder.WriteString("# TYPE goexample_security_events_total counter\n")
+	for eventIndex, event := range securityEventLabels {
+		for outcomeIndex, outcome := range securityOutcomeLabels {
+			fmt.Fprintf(
+				&builder,
+				"goexample_security_events_total{event=%s,outcome=%s} %d\n",
+				strconv.Quote(event),
+				strconv.Quote(outcome),
+				m.securityEvents[eventIndex][outcomeIndex].Load(),
+			)
+		}
+	}
+	builder.WriteString("# HELP goexample_security_audit_sink_writes_total Security audit sink write outcomes with fixed labels.\n")
+	builder.WriteString("# TYPE goexample_security_audit_sink_writes_total counter\n")
+	fmt.Fprintf(&builder, "goexample_security_audit_sink_writes_total{outcome=\"success\"} %d\n", m.securityAuditSinkSuccess.Load())
+	fmt.Fprintf(&builder, "goexample_security_audit_sink_writes_total{outcome=\"failure\"} %d\n", m.securityAuditSinkFailure.Load())
+	builder.WriteString("# HELP goexample_queue_workers_active Current active broker-neutral queue workers.\n")
+	builder.WriteString("# TYPE goexample_queue_workers_active gauge\n")
+	fmt.Fprintf(&builder, "goexample_queue_workers_active %d\n", m.queueWorkersActive.Load())
+	builder.WriteString("# HELP goexample_queue_worker_events_total Fixed-cardinality queue worker lifecycle events.\n")
+	builder.WriteString("# TYPE goexample_queue_worker_events_total counter\n")
+	fmt.Fprintf(&builder, "goexample_queue_worker_events_total{event=\"started\"} %d\n", m.queueWorkerStarted.Load())
+	fmt.Fprintf(&builder, "goexample_queue_worker_events_total{event=\"stopped\"} %d\n", m.queueWorkerStopped.Load())
+	fmt.Fprintf(&builder, "goexample_queue_worker_events_total{event=\"failure\"} %d\n", m.queueWorkerFailed.Load())
+	builder.WriteString("# HELP goexample_queue_delivery_events_total Fixed-cardinality reliable-delivery settlement events.\n")
+	builder.WriteString("# TYPE goexample_queue_delivery_events_total counter\n")
+	fmt.Fprintf(&builder, "goexample_queue_delivery_events_total{event=\"acknowledged\"} %d\n", m.queueDeliveryAcknowledged.Load())
+	fmt.Fprintf(&builder, "goexample_queue_delivery_events_total{event=\"retried\"} %d\n", m.queueDeliveryRetried.Load())
+	fmt.Fprintf(&builder, "goexample_queue_delivery_events_total{event=\"dead_lettered\"} %d\n", m.queueDeliveryDeadLettered.Load())
+	fmt.Fprintf(&builder, "goexample_queue_delivery_events_total{event=\"settlement_failed\"} %d\n", m.queueDeliverySettleFailed.Load())
+	builder.WriteString("# HELP goexample_queue_delivery_lease_events_total Fixed-cardinality delivery lease-extension events.\n")
+	builder.WriteString("# TYPE goexample_queue_delivery_lease_events_total counter\n")
+	fmt.Fprintf(&builder, "goexample_queue_delivery_lease_events_total{event=\"extended\"} %d\n", m.queueLeaseExtended.Load())
+	fmt.Fprintf(&builder, "goexample_queue_delivery_lease_events_total{event=\"failure\"} %d\n", m.queueLeaseExtensionFailed.Load())
+	builder.WriteString("# HELP goexample_otel_trace_exporter_enabled Whether OTLP trace export is configured for this process.\n")
+	builder.WriteString("# TYPE goexample_otel_trace_exporter_enabled gauge\n")
+	if m.traceExporterEnabled.Load() {
+		builder.WriteString("goexample_otel_trace_exporter_enabled 1\n")
+	} else {
+		builder.WriteString("goexample_otel_trace_exporter_enabled 0\n")
+	}
+	builder.WriteString("# HELP goexample_otel_trace_export_batches_total Final OTLP trace export batch outcomes after exporter retries.\n")
+	builder.WriteString("# TYPE goexample_otel_trace_export_batches_total counter\n")
+	fmt.Fprintf(&builder, "goexample_otel_trace_export_batches_total{outcome=\"success\"} %d\n", m.traceExportBatchSuccess.Load())
+	fmt.Fprintf(&builder, "goexample_otel_trace_export_batches_total{outcome=\"failure\"} %d\n", m.traceExportBatchFailure.Load())
+	builder.WriteString("# HELP goexample_otel_trace_export_spans_total Spans in final OTLP trace export batch outcomes.\n")
+	builder.WriteString("# TYPE goexample_otel_trace_export_spans_total counter\n")
+	fmt.Fprintf(&builder, "goexample_otel_trace_export_spans_total{outcome=\"success\"} %d\n", m.traceExportSpanSuccess.Load())
+	fmt.Fprintf(&builder, "goexample_otel_trace_export_spans_total{outcome=\"failure\"} %d\n", m.traceExportSpanFailure.Load())
+	builder.WriteString("# HELP goexample_otel_trace_export_attempts_total Individual OTLP HTTP attempt outcomes before and during exporter retries.\n")
+	builder.WriteString("# TYPE goexample_otel_trace_export_attempts_total counter\n")
+	fmt.Fprintf(&builder, "goexample_otel_trace_export_attempts_total{outcome=\"success\"} %d\n", m.traceExportAttemptSuccess.Load())
+	fmt.Fprintf(&builder, "goexample_otel_trace_export_attempts_total{outcome=\"failure\"} %d\n", m.traceExportAttemptFailure.Load())
+	builder.WriteString("# HELP goexample_otel_trace_queue_dropped_spans_total Spans dropped before OTLP export because the bounded processor capacity was exhausted.\n")
+	builder.WriteString("# TYPE goexample_otel_trace_queue_dropped_spans_total counter\n")
+	fmt.Fprintf(&builder, "goexample_otel_trace_queue_dropped_spans_total %d\n", m.traceQueueDroppedSpans.Load())
+	builder.WriteString("# HELP goexample_otel_trace_processor_capacity_spans Maximum spans admitted across the current batch and queue.\n")
+	builder.WriteString("# TYPE goexample_otel_trace_processor_capacity_spans gauge\n")
+	fmt.Fprintf(&builder, "goexample_otel_trace_processor_capacity_spans %d\n", m.traceProcessorCapacity.Load())
+	builder.WriteString("# HELP goexample_otel_trace_processor_pending_spans Spans admitted and awaiting a final exporter outcome.\n")
+	builder.WriteString("# TYPE goexample_otel_trace_processor_pending_spans gauge\n")
+	fmt.Fprintf(&builder, "goexample_otel_trace_processor_pending_spans %d\n", m.traceProcessorPending.Load())
+	builder.WriteString("# HELP goexample_otel_trace_processor_high_watermark_spans Highest pending span count observed by this process.\n")
+	builder.WriteString("# TYPE goexample_otel_trace_processor_high_watermark_spans gauge\n")
+	fmt.Fprintf(&builder, "goexample_otel_trace_processor_high_watermark_spans %d\n", m.traceProcessorHighWater.Load())
 	builder.WriteString("# HELP goexample_http_requests_total Total HTTP requests.\n")
 	builder.WriteString("# TYPE goexample_http_requests_total counter\n")
 	builder.WriteString("# HELP goexample_http_request_duration_seconds HTTP request duration histogram.\n")

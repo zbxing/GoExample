@@ -146,6 +146,1511 @@
       "method": "PUT",
       "apiGroup": "system",
       "description": "更新策略"
+    },
+    {
+      "id": "api-1000",
+      "path": "/autoCode/addFunc",
+      "method": "POST",
+      "apiGroup": "代码生成器历史",
+      "description": "创建代码生成器历史接口"
+    },
+    {
+      "id": "api-1001",
+      "path": "/autoCode/getMeta",
+      "method": "GET",
+      "apiGroup": "系统用户",
+      "description": "查看系统用户接口"
+    },
+    {
+      "id": "api-1002",
+      "path": "/autoCode/rollback",
+      "method": "PUT",
+      "apiGroup": "系统角色",
+      "description": "更新系统角色接口"
+    },
+    {
+      "id": "api-1003",
+      "path": "/autoCode/getPackage",
+      "method": "DELETE",
+      "apiGroup": "系统菜单",
+      "description": "删除系统菜单接口"
+    },
+    {
+      "id": "api-1004",
+      "path": "/autoCode/delPackage",
+      "method": "PATCH",
+      "apiGroup": "API管理",
+      "description": "修改API接口"
+    },
+    {
+      "id": "api-1005",
+      "path": "/autoCode/createTemp",
+      "method": "POST",
+      "apiGroup": "casbin",
+      "description": "创建casbin接口"
+    },
+    {
+      "id": "api-1006",
+      "path": "/autoCode/preview",
+      "method": "GET",
+      "apiGroup": "jwt",
+      "description": "查看jwt接口"
+    },
+    {
+      "id": "api-1007",
+      "path": "/autoCode/getTemplates",
+      "method": "PUT",
+      "apiGroup": "文件上传与下载",
+      "description": "更新文件上传与下载接口"
+    },
+    {
+      "id": "api-1008",
+      "path": "/user/getUserList",
+      "method": "DELETE",
+      "apiGroup": "客户",
+      "description": "删除客户接口"
+    },
+    {
+      "id": "api-1009",
+      "path": "/user/admin_register",
+      "method": "PATCH",
+      "apiGroup": "超级管理员",
+      "description": "修改超级管理员接口"
+    },
+    {
+      "id": "api-1010",
+      "path": "/user/setUserInfo",
+      "method": "POST",
+      "apiGroup": "字典管理",
+      "description": "创建字典接口"
+    },
+    {
+      "id": "api-1011",
+      "path": "/user/setUserAuthorities",
+      "method": "GET",
+      "apiGroup": "操作记录",
+      "description": "查看操作记录接口"
+    },
+    {
+      "id": "api-1012",
+      "path": "/user/deleteUser",
+      "method": "PUT",
+      "apiGroup": "参数配置",
+      "description": "更新参数配置接口"
+    },
+    {
+      "id": "api-1013",
+      "path": "/user/resetPassword",
+      "method": "DELETE",
+      "apiGroup": "组织管理",
+      "description": "删除组织接口"
+    },
+    {
+      "id": "api-1014",
+      "path": "/user/setUserAuthority",
+      "method": "PATCH",
+      "apiGroup": "公告管理",
+      "description": "修改公告接口"
+    },
+    {
+      "id": "api-1015",
+      "path": "/authority/getAuthorityList",
+      "method": "POST",
+      "apiGroup": "仪表盘",
+      "description": "创建仪表盘接口"
+    },
+    {
+      "id": "api-1016",
+      "path": "/authority/createAuthority",
+      "method": "GET",
+      "apiGroup": "示例模块",
+      "description": "查看示例模块接口"
+    },
+    {
+      "id": "api-1017",
+      "path": "/authority/deleteAuthority",
+      "method": "PUT",
+      "apiGroup": "任务调度",
+      "description": "更新任务调度接口"
+    },
+    {
+      "id": "api-1018",
+      "path": "/authority/updateAuthority",
+      "method": "DELETE",
+      "apiGroup": "消息中心",
+      "description": "删除消息中心接口"
+    },
+    {
+      "id": "api-1019",
+      "path": "/authority/copyAuthority",
+      "method": "PATCH",
+      "apiGroup": "审计日志",
+      "description": "修改审计日志接口"
+    },
+    {
+      "id": "api-1020",
+      "path": "/authority/setDataAuthority",
+      "method": "POST",
+      "apiGroup": "代码生成器历史",
+      "description": "创建代码生成器历史接口"
+    },
+    {
+      "id": "api-1021",
+      "path": "/menu/getMenu",
+      "method": "GET",
+      "apiGroup": "系统用户",
+      "description": "查看系统用户接口"
+    },
+    {
+      "id": "api-1022",
+      "path": "/menu/getMenuList",
+      "method": "PUT",
+      "apiGroup": "系统角色",
+      "description": "更新系统角色接口"
+    },
+    {
+      "id": "api-1023",
+      "path": "/menu/addBaseMenu",
+      "method": "DELETE",
+      "apiGroup": "系统菜单",
+      "description": "删除系统菜单接口"
+    },
+    {
+      "id": "api-1024",
+      "path": "/menu/deleteBaseMenu",
+      "method": "PATCH",
+      "apiGroup": "API管理",
+      "description": "修改API接口"
+    },
+    {
+      "id": "api-1025",
+      "path": "/menu/updateBaseMenu",
+      "method": "POST",
+      "apiGroup": "casbin",
+      "description": "创建casbin接口"
+    },
+    {
+      "id": "api-1026",
+      "path": "/menu/getBaseMenuTree",
+      "method": "GET",
+      "apiGroup": "jwt",
+      "description": "查看jwt接口"
+    },
+    {
+      "id": "api-1027",
+      "path": "/menu/addMenuAuthority",
+      "method": "PUT",
+      "apiGroup": "文件上传与下载",
+      "description": "更新文件上传与下载接口"
+    },
+    {
+      "id": "api-1028",
+      "path": "/menu/getMenuAuthority",
+      "method": "DELETE",
+      "apiGroup": "客户",
+      "description": "删除客户接口"
+    },
+    {
+      "id": "api-1029",
+      "path": "/api/getApiList",
+      "method": "PATCH",
+      "apiGroup": "超级管理员",
+      "description": "修改超级管理员接口"
+    },
+    {
+      "id": "api-1030",
+      "path": "/api/createApi",
+      "method": "POST",
+      "apiGroup": "字典管理",
+      "description": "创建字典接口"
+    },
+    {
+      "id": "api-1031",
+      "path": "/api/deleteApi",
+      "method": "GET",
+      "apiGroup": "操作记录",
+      "description": "查看操作记录接口"
+    },
+    {
+      "id": "api-1032",
+      "path": "/api/updateApi",
+      "method": "PUT",
+      "apiGroup": "参数配置",
+      "description": "更新参数配置接口"
+    },
+    {
+      "id": "api-1033",
+      "path": "/api/getApiById",
+      "method": "DELETE",
+      "apiGroup": "组织管理",
+      "description": "删除组织接口"
+    },
+    {
+      "id": "api-1034",
+      "path": "/api/deleteApisByIds",
+      "method": "PATCH",
+      "apiGroup": "公告管理",
+      "description": "修改公告接口"
+    },
+    {
+      "id": "api-1035",
+      "path": "/api/freshCasbin",
+      "method": "POST",
+      "apiGroup": "仪表盘",
+      "description": "创建仪表盘接口"
+    },
+    {
+      "id": "api-1036",
+      "path": "/api/syncApi",
+      "method": "GET",
+      "apiGroup": "示例模块",
+      "description": "查看示例模块接口"
+    },
+    {
+      "id": "api-1037",
+      "path": "/api/getAllApis",
+      "method": "PUT",
+      "apiGroup": "任务调度",
+      "description": "更新任务调度接口"
+    },
+    {
+      "id": "api-1038",
+      "path": "/casbin/updateCasbin",
+      "method": "DELETE",
+      "apiGroup": "消息中心",
+      "description": "删除消息中心接口"
+    },
+    {
+      "id": "api-1039",
+      "path": "/casbin/getPolicyPathByAuthorityId",
+      "method": "PATCH",
+      "apiGroup": "审计日志",
+      "description": "修改审计日志接口"
+    },
+    {
+      "id": "api-1040",
+      "path": "/jwt/jsonInBlacklist",
+      "method": "POST",
+      "apiGroup": "代码生成器历史",
+      "description": "创建代码生成器历史接口"
+    },
+    {
+      "id": "api-1041",
+      "path": "/fileUploadAndDownload/upload",
+      "method": "GET",
+      "apiGroup": "系统用户",
+      "description": "查看系统用户接口"
+    },
+    {
+      "id": "api-1042",
+      "path": "/fileUploadAndDownload/getFileList",
+      "method": "PUT",
+      "apiGroup": "系统角色",
+      "description": "更新系统角色接口"
+    },
+    {
+      "id": "api-1043",
+      "path": "/fileUploadAndDownload/deleteFile",
+      "method": "DELETE",
+      "apiGroup": "系统菜单",
+      "description": "删除系统菜单接口"
+    },
+    {
+      "id": "api-1044",
+      "path": "/customer/customer",
+      "method": "PATCH",
+      "apiGroup": "API管理",
+      "description": "修改API接口"
+    },
+    {
+      "id": "api-1045",
+      "path": "/customer/customerList",
+      "method": "POST",
+      "apiGroup": "casbin",
+      "description": "创建casbin接口"
+    },
+    {
+      "id": "api-1046",
+      "path": "/sysDictionary/createSysDictionary",
+      "method": "GET",
+      "apiGroup": "jwt",
+      "description": "查看jwt接口"
+    },
+    {
+      "id": "api-1047",
+      "path": "/sysDictionary/deleteSysDictionary",
+      "method": "PUT",
+      "apiGroup": "文件上传与下载",
+      "description": "更新文件上传与下载接口"
+    },
+    {
+      "id": "api-1048",
+      "path": "/sysDictionary/updateSysDictionary",
+      "method": "DELETE",
+      "apiGroup": "客户",
+      "description": "删除客户接口"
+    },
+    {
+      "id": "api-1049",
+      "path": "/sysDictionary/findSysDictionary",
+      "method": "PATCH",
+      "apiGroup": "超级管理员",
+      "description": "修改超级管理员接口"
+    },
+    {
+      "id": "api-1050",
+      "path": "/sysDictionary/getSysDictionaryList",
+      "method": "POST",
+      "apiGroup": "字典管理",
+      "description": "创建字典接口"
+    },
+    {
+      "id": "api-1051",
+      "path": "/sysOperationRecord/createSysOperationRecord",
+      "method": "GET",
+      "apiGroup": "操作记录",
+      "description": "查看操作记录接口"
+    },
+    {
+      "id": "api-1052",
+      "path": "/sysOperationRecord/deleteSysOperationRecord",
+      "method": "PUT",
+      "apiGroup": "参数配置",
+      "description": "更新参数配置接口"
+    },
+    {
+      "id": "api-1053",
+      "path": "/sysOperationRecord/findSysOperationRecord",
+      "method": "DELETE",
+      "apiGroup": "组织管理",
+      "description": "删除组织接口"
+    },
+    {
+      "id": "api-1054",
+      "path": "/sysOperationRecord/getSysOperationRecordList",
+      "method": "PATCH",
+      "apiGroup": "公告管理",
+      "description": "修改公告接口"
+    },
+    {
+      "id": "api-1055",
+      "path": "/system/getSystemConfig",
+      "method": "POST",
+      "apiGroup": "仪表盘",
+      "description": "创建仪表盘接口"
+    },
+    {
+      "id": "api-1056",
+      "path": "/system/setSystemConfig",
+      "method": "GET",
+      "apiGroup": "示例模块",
+      "description": "查看示例模块接口"
+    },
+    {
+      "id": "api-1057",
+      "path": "/system/getServerInfo",
+      "method": "PUT",
+      "apiGroup": "任务调度",
+      "description": "更新任务调度接口"
+    },
+    {
+      "id": "api-1058",
+      "path": "/simpleUploader/upload",
+      "method": "DELETE",
+      "apiGroup": "消息中心",
+      "description": "删除消息中心接口"
+    },
+    {
+      "id": "api-1059",
+      "path": "/simpleUploader/checkFileMd5",
+      "method": "PATCH",
+      "apiGroup": "审计日志",
+      "description": "修改审计日志接口"
+    },
+    {
+      "id": "api-1060",
+      "path": "/simpleUploader/mergeFileList",
+      "method": "POST",
+      "apiGroup": "代码生成器历史",
+      "description": "创建代码生成器历史接口"
+    },
+    {
+      "id": "api-1061",
+      "path": "/email/emailTest",
+      "method": "GET",
+      "apiGroup": "系统用户",
+      "description": "查看系统用户接口"
+    },
+    {
+      "id": "api-1062",
+      "path": "/email/sendEmail",
+      "method": "PUT",
+      "apiGroup": "系统角色",
+      "description": "更新系统角色接口"
+    },
+    {
+      "id": "api-1063",
+      "path": "/infoList/getInfoList",
+      "method": "DELETE",
+      "apiGroup": "系统菜单",
+      "description": "删除系统菜单接口"
+    },
+    {
+      "id": "api-1064",
+      "path": "/infoList/createInfo",
+      "method": "PATCH",
+      "apiGroup": "API管理",
+      "description": "修改API接口"
+    },
+    {
+      "id": "api-1065",
+      "path": "/infoList/deleteInfo",
+      "method": "POST",
+      "apiGroup": "casbin",
+      "description": "创建casbin接口"
+    },
+    {
+      "id": "api-1066",
+      "path": "/infoList/updateInfo",
+      "method": "GET",
+      "apiGroup": "jwt",
+      "description": "查看jwt接口"
+    },
+    {
+      "id": "api-1067",
+      "path": "/authorityBtn/getAuthorityBtn",
+      "method": "PUT",
+      "apiGroup": "文件上传与下载",
+      "description": "更新文件上传与下载接口"
+    },
+    {
+      "id": "api-1068",
+      "path": "/authorityBtn/setAuthorityBtn",
+      "method": "DELETE",
+      "apiGroup": "客户",
+      "description": "删除客户接口"
+    },
+    {
+      "id": "api-1069",
+      "path": "/authorityBtn/canRemoveAuthorityBtn",
+      "method": "PATCH",
+      "apiGroup": "超级管理员",
+      "description": "修改超级管理员接口"
+    },
+    {
+      "id": "api-1070",
+      "path": "/sysExportTemplate/createSysExportTemplate",
+      "method": "POST",
+      "apiGroup": "字典管理",
+      "description": "创建字典接口"
+    },
+    {
+      "id": "api-1071",
+      "path": "/sysExportTemplate/deleteSysExportTemplate",
+      "method": "GET",
+      "apiGroup": "操作记录",
+      "description": "查看操作记录接口"
+    },
+    {
+      "id": "api-1072",
+      "path": "/sysExportTemplate/updateSysExportTemplate",
+      "method": "PUT",
+      "apiGroup": "参数配置",
+      "description": "更新参数配置接口"
+    },
+    {
+      "id": "api-1073",
+      "path": "/sysExportTemplate/findSysExportTemplate",
+      "method": "DELETE",
+      "apiGroup": "组织管理",
+      "description": "删除组织接口"
+    },
+    {
+      "id": "api-1074",
+      "path": "/sysExportTemplate/getSysExportTemplateList",
+      "method": "PATCH",
+      "apiGroup": "公告管理",
+      "description": "修改公告接口"
+    },
+    {
+      "id": "api-1075",
+      "path": "/sysExportTemplate/exportExcel",
+      "method": "POST",
+      "apiGroup": "仪表盘",
+      "description": "创建仪表盘接口"
+    },
+    {
+      "id": "api-1076",
+      "path": "/sysExportTemplate/exportTemplate",
+      "method": "GET",
+      "apiGroup": "示例模块",
+      "description": "查看示例模块接口"
+    },
+    {
+      "id": "api-1077",
+      "path": "/sysExportTemplate/importExcel",
+      "method": "PUT",
+      "apiGroup": "任务调度",
+      "description": "更新任务调度接口"
+    },
+    {
+      "id": "api-1078",
+      "path": "/autoCode/addFunc/demo1",
+      "method": "DELETE",
+      "apiGroup": "消息中心",
+      "description": "删除消息中心接口"
+    },
+    {
+      "id": "api-1079",
+      "path": "/autoCode/getMeta/demo1",
+      "method": "PATCH",
+      "apiGroup": "审计日志",
+      "description": "修改审计日志接口"
+    },
+    {
+      "id": "api-1080",
+      "path": "/autoCode/rollback/demo1",
+      "method": "POST",
+      "apiGroup": "代码生成器历史",
+      "description": "创建代码生成器历史接口"
+    },
+    {
+      "id": "api-1081",
+      "path": "/autoCode/getPackage/demo1",
+      "method": "GET",
+      "apiGroup": "系统用户",
+      "description": "查看系统用户接口"
+    },
+    {
+      "id": "api-1082",
+      "path": "/autoCode/delPackage/demo1",
+      "method": "PUT",
+      "apiGroup": "系统角色",
+      "description": "更新系统角色接口"
+    },
+    {
+      "id": "api-1083",
+      "path": "/autoCode/createTemp/demo1",
+      "method": "DELETE",
+      "apiGroup": "系统菜单",
+      "description": "删除系统菜单接口"
+    },
+    {
+      "id": "api-1084",
+      "path": "/autoCode/preview/demo1",
+      "method": "PATCH",
+      "apiGroup": "API管理",
+      "description": "修改API接口"
+    },
+    {
+      "id": "api-1085",
+      "path": "/autoCode/getTemplates/demo1",
+      "method": "POST",
+      "apiGroup": "casbin",
+      "description": "创建casbin接口"
+    },
+    {
+      "id": "api-1086",
+      "path": "/user/getUserList/demo1",
+      "method": "GET",
+      "apiGroup": "jwt",
+      "description": "查看jwt接口"
+    },
+    {
+      "id": "api-1087",
+      "path": "/user/admin_register/demo1",
+      "method": "PUT",
+      "apiGroup": "文件上传与下载",
+      "description": "更新文件上传与下载接口"
+    },
+    {
+      "id": "api-1088",
+      "path": "/user/setUserInfo/demo1",
+      "method": "DELETE",
+      "apiGroup": "客户",
+      "description": "删除客户接口"
+    },
+    {
+      "id": "api-1089",
+      "path": "/user/setUserAuthorities/demo1",
+      "method": "PATCH",
+      "apiGroup": "超级管理员",
+      "description": "修改超级管理员接口"
+    },
+    {
+      "id": "api-1090",
+      "path": "/user/deleteUser/demo1",
+      "method": "POST",
+      "apiGroup": "字典管理",
+      "description": "创建字典接口"
+    },
+    {
+      "id": "api-1091",
+      "path": "/user/resetPassword/demo1",
+      "method": "GET",
+      "apiGroup": "操作记录",
+      "description": "查看操作记录接口"
+    },
+    {
+      "id": "api-1092",
+      "path": "/user/setUserAuthority/demo1",
+      "method": "PUT",
+      "apiGroup": "参数配置",
+      "description": "更新参数配置接口"
+    },
+    {
+      "id": "api-1093",
+      "path": "/authority/getAuthorityList/demo1",
+      "method": "DELETE",
+      "apiGroup": "组织管理",
+      "description": "删除组织接口"
+    },
+    {
+      "id": "api-1094",
+      "path": "/authority/createAuthority/demo1",
+      "method": "PATCH",
+      "apiGroup": "公告管理",
+      "description": "修改公告接口"
+    },
+    {
+      "id": "api-1095",
+      "path": "/authority/deleteAuthority/demo1",
+      "method": "POST",
+      "apiGroup": "仪表盘",
+      "description": "创建仪表盘接口"
+    },
+    {
+      "id": "api-1096",
+      "path": "/authority/updateAuthority/demo1",
+      "method": "GET",
+      "apiGroup": "示例模块",
+      "description": "查看示例模块接口"
+    },
+    {
+      "id": "api-1097",
+      "path": "/authority/copyAuthority/demo1",
+      "method": "PUT",
+      "apiGroup": "任务调度",
+      "description": "更新任务调度接口"
+    },
+    {
+      "id": "api-1098",
+      "path": "/authority/setDataAuthority/demo1",
+      "method": "DELETE",
+      "apiGroup": "消息中心",
+      "description": "删除消息中心接口"
+    },
+    {
+      "id": "api-1099",
+      "path": "/menu/getMenu/demo1",
+      "method": "PATCH",
+      "apiGroup": "审计日志",
+      "description": "修改审计日志接口"
+    },
+    {
+      "id": "api-1100",
+      "path": "/menu/getMenuList/demo1",
+      "method": "POST",
+      "apiGroup": "代码生成器历史",
+      "description": "创建代码生成器历史接口"
+    },
+    {
+      "id": "api-1101",
+      "path": "/menu/addBaseMenu/demo1",
+      "method": "GET",
+      "apiGroup": "系统用户",
+      "description": "查看系统用户接口"
+    },
+    {
+      "id": "api-1102",
+      "path": "/menu/deleteBaseMenu/demo1",
+      "method": "PUT",
+      "apiGroup": "系统角色",
+      "description": "更新系统角色接口"
+    },
+    {
+      "id": "api-1103",
+      "path": "/menu/updateBaseMenu/demo1",
+      "method": "DELETE",
+      "apiGroup": "系统菜单",
+      "description": "删除系统菜单接口"
+    },
+    {
+      "id": "api-1104",
+      "path": "/menu/getBaseMenuTree/demo1",
+      "method": "PATCH",
+      "apiGroup": "API管理",
+      "description": "修改API接口"
+    },
+    {
+      "id": "api-1105",
+      "path": "/menu/addMenuAuthority/demo1",
+      "method": "POST",
+      "apiGroup": "casbin",
+      "description": "创建casbin接口"
+    },
+    {
+      "id": "api-1106",
+      "path": "/menu/getMenuAuthority/demo1",
+      "method": "GET",
+      "apiGroup": "jwt",
+      "description": "查看jwt接口"
+    },
+    {
+      "id": "api-1107",
+      "path": "/api/getApiList/demo1",
+      "method": "PUT",
+      "apiGroup": "文件上传与下载",
+      "description": "更新文件上传与下载接口"
+    },
+    {
+      "id": "api-1108",
+      "path": "/api/createApi/demo1",
+      "method": "DELETE",
+      "apiGroup": "客户",
+      "description": "删除客户接口"
+    },
+    {
+      "id": "api-1109",
+      "path": "/api/deleteApi/demo1",
+      "method": "PATCH",
+      "apiGroup": "超级管理员",
+      "description": "修改超级管理员接口"
+    },
+    {
+      "id": "api-1110",
+      "path": "/api/updateApi/demo1",
+      "method": "POST",
+      "apiGroup": "字典管理",
+      "description": "创建字典接口"
+    },
+    {
+      "id": "api-1111",
+      "path": "/api/getApiById/demo1",
+      "method": "GET",
+      "apiGroup": "操作记录",
+      "description": "查看操作记录接口"
+    },
+    {
+      "id": "api-1112",
+      "path": "/api/deleteApisByIds/demo1",
+      "method": "PUT",
+      "apiGroup": "参数配置",
+      "description": "更新参数配置接口"
+    },
+    {
+      "id": "api-1113",
+      "path": "/api/freshCasbin/demo1",
+      "method": "DELETE",
+      "apiGroup": "组织管理",
+      "description": "删除组织接口"
+    },
+    {
+      "id": "api-1114",
+      "path": "/api/syncApi/demo1",
+      "method": "PATCH",
+      "apiGroup": "公告管理",
+      "description": "修改公告接口"
+    },
+    {
+      "id": "api-1115",
+      "path": "/api/getAllApis/demo1",
+      "method": "POST",
+      "apiGroup": "仪表盘",
+      "description": "创建仪表盘接口"
+    },
+    {
+      "id": "api-1116",
+      "path": "/casbin/updateCasbin/demo1",
+      "method": "GET",
+      "apiGroup": "示例模块",
+      "description": "查看示例模块接口"
+    },
+    {
+      "id": "api-1117",
+      "path": "/casbin/getPolicyPathByAuthorityId/demo1",
+      "method": "PUT",
+      "apiGroup": "任务调度",
+      "description": "更新任务调度接口"
+    },
+    {
+      "id": "api-1118",
+      "path": "/jwt/jsonInBlacklist/demo1",
+      "method": "DELETE",
+      "apiGroup": "消息中心",
+      "description": "删除消息中心接口"
+    },
+    {
+      "id": "api-1119",
+      "path": "/fileUploadAndDownload/upload/demo1",
+      "method": "PATCH",
+      "apiGroup": "审计日志",
+      "description": "修改审计日志接口"
+    },
+    {
+      "id": "api-1120",
+      "path": "/fileUploadAndDownload/getFileList/demo1",
+      "method": "POST",
+      "apiGroup": "代码生成器历史",
+      "description": "创建代码生成器历史接口"
+    },
+    {
+      "id": "api-1121",
+      "path": "/fileUploadAndDownload/deleteFile/demo1",
+      "method": "GET",
+      "apiGroup": "系统用户",
+      "description": "查看系统用户接口"
+    },
+    {
+      "id": "api-1122",
+      "path": "/customer/customer/demo1",
+      "method": "PUT",
+      "apiGroup": "系统角色",
+      "description": "更新系统角色接口"
+    },
+    {
+      "id": "api-1123",
+      "path": "/customer/customerList/demo1",
+      "method": "DELETE",
+      "apiGroup": "系统菜单",
+      "description": "删除系统菜单接口"
+    },
+    {
+      "id": "api-1124",
+      "path": "/sysDictionary/createSysDictionary/demo1",
+      "method": "PATCH",
+      "apiGroup": "API管理",
+      "description": "修改API接口"
+    },
+    {
+      "id": "api-1125",
+      "path": "/sysDictionary/deleteSysDictionary/demo1",
+      "method": "POST",
+      "apiGroup": "casbin",
+      "description": "创建casbin接口"
+    },
+    {
+      "id": "api-1126",
+      "path": "/sysDictionary/updateSysDictionary/demo1",
+      "method": "GET",
+      "apiGroup": "jwt",
+      "description": "查看jwt接口"
+    },
+    {
+      "id": "api-1127",
+      "path": "/sysDictionary/findSysDictionary/demo1",
+      "method": "PUT",
+      "apiGroup": "文件上传与下载",
+      "description": "更新文件上传与下载接口"
+    },
+    {
+      "id": "api-1128",
+      "path": "/sysDictionary/getSysDictionaryList/demo1",
+      "method": "DELETE",
+      "apiGroup": "客户",
+      "description": "删除客户接口"
+    },
+    {
+      "id": "api-1129",
+      "path": "/sysOperationRecord/createSysOperationRecord/demo1",
+      "method": "PATCH",
+      "apiGroup": "超级管理员",
+      "description": "修改超级管理员接口"
+    },
+    {
+      "id": "api-1130",
+      "path": "/sysOperationRecord/deleteSysOperationRecord/demo1",
+      "method": "POST",
+      "apiGroup": "字典管理",
+      "description": "创建字典接口"
+    },
+    {
+      "id": "api-1131",
+      "path": "/sysOperationRecord/findSysOperationRecord/demo1",
+      "method": "GET",
+      "apiGroup": "操作记录",
+      "description": "查看操作记录接口"
+    },
+    {
+      "id": "api-1132",
+      "path": "/sysOperationRecord/getSysOperationRecordList/demo1",
+      "method": "PUT",
+      "apiGroup": "参数配置",
+      "description": "更新参数配置接口"
+    },
+    {
+      "id": "api-1133",
+      "path": "/system/getSystemConfig/demo1",
+      "method": "DELETE",
+      "apiGroup": "组织管理",
+      "description": "删除组织接口"
+    },
+    {
+      "id": "api-1134",
+      "path": "/system/setSystemConfig/demo1",
+      "method": "PATCH",
+      "apiGroup": "公告管理",
+      "description": "修改公告接口"
+    },
+    {
+      "id": "api-1135",
+      "path": "/system/getServerInfo/demo1",
+      "method": "POST",
+      "apiGroup": "仪表盘",
+      "description": "创建仪表盘接口"
+    },
+    {
+      "id": "api-1136",
+      "path": "/simpleUploader/upload/demo1",
+      "method": "GET",
+      "apiGroup": "示例模块",
+      "description": "查看示例模块接口"
+    },
+    {
+      "id": "api-1137",
+      "path": "/simpleUploader/checkFileMd5/demo1",
+      "method": "PUT",
+      "apiGroup": "任务调度",
+      "description": "更新任务调度接口"
+    },
+    {
+      "id": "api-1138",
+      "path": "/simpleUploader/mergeFileList/demo1",
+      "method": "DELETE",
+      "apiGroup": "消息中心",
+      "description": "删除消息中心接口"
+    },
+    {
+      "id": "api-1139",
+      "path": "/email/emailTest/demo1",
+      "method": "PATCH",
+      "apiGroup": "审计日志",
+      "description": "修改审计日志接口"
+    },
+    {
+      "id": "api-1140",
+      "path": "/email/sendEmail/demo1",
+      "method": "POST",
+      "apiGroup": "代码生成器历史",
+      "description": "创建代码生成器历史接口"
+    },
+    {
+      "id": "api-1141",
+      "path": "/infoList/getInfoList/demo1",
+      "method": "GET",
+      "apiGroup": "系统用户",
+      "description": "查看系统用户接口"
+    },
+    {
+      "id": "api-1142",
+      "path": "/infoList/createInfo/demo1",
+      "method": "PUT",
+      "apiGroup": "系统角色",
+      "description": "更新系统角色接口"
+    },
+    {
+      "id": "api-1143",
+      "path": "/infoList/deleteInfo/demo1",
+      "method": "DELETE",
+      "apiGroup": "系统菜单",
+      "description": "删除系统菜单接口"
+    },
+    {
+      "id": "api-1144",
+      "path": "/infoList/updateInfo/demo1",
+      "method": "PATCH",
+      "apiGroup": "API管理",
+      "description": "修改API接口"
+    },
+    {
+      "id": "api-1145",
+      "path": "/authorityBtn/getAuthorityBtn/demo1",
+      "method": "POST",
+      "apiGroup": "casbin",
+      "description": "创建casbin接口"
+    },
+    {
+      "id": "api-1146",
+      "path": "/authorityBtn/setAuthorityBtn/demo1",
+      "method": "GET",
+      "apiGroup": "jwt",
+      "description": "查看jwt接口"
+    },
+    {
+      "id": "api-1147",
+      "path": "/authorityBtn/canRemoveAuthorityBtn/demo1",
+      "method": "PUT",
+      "apiGroup": "文件上传与下载",
+      "description": "更新文件上传与下载接口"
+    },
+    {
+      "id": "api-1148",
+      "path": "/sysExportTemplate/createSysExportTemplate/demo1",
+      "method": "DELETE",
+      "apiGroup": "客户",
+      "description": "删除客户接口"
+    },
+    {
+      "id": "api-1149",
+      "path": "/sysExportTemplate/deleteSysExportTemplate/demo1",
+      "method": "PATCH",
+      "apiGroup": "超级管理员",
+      "description": "修改超级管理员接口"
+    },
+    {
+      "id": "api-1150",
+      "path": "/sysExportTemplate/updateSysExportTemplate/demo1",
+      "method": "POST",
+      "apiGroup": "字典管理",
+      "description": "创建字典接口"
+    },
+    {
+      "id": "api-1151",
+      "path": "/sysExportTemplate/findSysExportTemplate/demo1",
+      "method": "GET",
+      "apiGroup": "操作记录",
+      "description": "查看操作记录接口"
+    },
+    {
+      "id": "api-1152",
+      "path": "/sysExportTemplate/getSysExportTemplateList/demo1",
+      "method": "PUT",
+      "apiGroup": "参数配置",
+      "description": "更新参数配置接口"
+    },
+    {
+      "id": "api-1153",
+      "path": "/sysExportTemplate/exportExcel/demo1",
+      "method": "DELETE",
+      "apiGroup": "组织管理",
+      "description": "删除组织接口"
+    },
+    {
+      "id": "api-1154",
+      "path": "/sysExportTemplate/exportTemplate/demo1",
+      "method": "PATCH",
+      "apiGroup": "公告管理",
+      "description": "修改公告接口"
+    },
+    {
+      "id": "api-1155",
+      "path": "/sysExportTemplate/importExcel/demo1",
+      "method": "POST",
+      "apiGroup": "仪表盘",
+      "description": "创建仪表盘接口"
+    },
+    {
+      "id": "api-1156",
+      "path": "/autoCode/addFunc/demo2",
+      "method": "GET",
+      "apiGroup": "示例模块",
+      "description": "查看示例模块接口"
+    },
+    {
+      "id": "api-1157",
+      "path": "/autoCode/getMeta/demo2",
+      "method": "PUT",
+      "apiGroup": "任务调度",
+      "description": "更新任务调度接口"
+    },
+    {
+      "id": "api-1158",
+      "path": "/autoCode/rollback/demo2",
+      "method": "DELETE",
+      "apiGroup": "消息中心",
+      "description": "删除消息中心接口"
+    },
+    {
+      "id": "api-1159",
+      "path": "/autoCode/getPackage/demo2",
+      "method": "PATCH",
+      "apiGroup": "审计日志",
+      "description": "修改审计日志接口"
+    },
+    {
+      "id": "api-1160",
+      "path": "/autoCode/delPackage/demo2",
+      "method": "POST",
+      "apiGroup": "代码生成器历史",
+      "description": "创建代码生成器历史接口"
+    },
+    {
+      "id": "api-1161",
+      "path": "/autoCode/createTemp/demo2",
+      "method": "GET",
+      "apiGroup": "系统用户",
+      "description": "查看系统用户接口"
+    },
+    {
+      "id": "api-1162",
+      "path": "/autoCode/preview/demo2",
+      "method": "PUT",
+      "apiGroup": "系统角色",
+      "description": "更新系统角色接口"
+    },
+    {
+      "id": "api-1163",
+      "path": "/autoCode/getTemplates/demo2",
+      "method": "DELETE",
+      "apiGroup": "系统菜单",
+      "description": "删除系统菜单接口"
+    },
+    {
+      "id": "api-1164",
+      "path": "/user/getUserList/demo2",
+      "method": "PATCH",
+      "apiGroup": "API管理",
+      "description": "修改API接口"
+    },
+    {
+      "id": "api-1165",
+      "path": "/user/admin_register/demo2",
+      "method": "POST",
+      "apiGroup": "casbin",
+      "description": "创建casbin接口"
+    },
+    {
+      "id": "api-1166",
+      "path": "/user/setUserInfo/demo2",
+      "method": "GET",
+      "apiGroup": "jwt",
+      "description": "查看jwt接口"
+    },
+    {
+      "id": "api-1167",
+      "path": "/user/setUserAuthorities/demo2",
+      "method": "PUT",
+      "apiGroup": "文件上传与下载",
+      "description": "更新文件上传与下载接口"
+    },
+    {
+      "id": "api-1168",
+      "path": "/user/deleteUser/demo2",
+      "method": "DELETE",
+      "apiGroup": "客户",
+      "description": "删除客户接口"
+    },
+    {
+      "id": "api-1169",
+      "path": "/user/resetPassword/demo2",
+      "method": "PATCH",
+      "apiGroup": "超级管理员",
+      "description": "修改超级管理员接口"
+    },
+    {
+      "id": "api-1170",
+      "path": "/user/setUserAuthority/demo2",
+      "method": "POST",
+      "apiGroup": "字典管理",
+      "description": "创建字典接口"
+    },
+    {
+      "id": "api-1171",
+      "path": "/authority/getAuthorityList/demo2",
+      "method": "GET",
+      "apiGroup": "操作记录",
+      "description": "查看操作记录接口"
+    },
+    {
+      "id": "api-1172",
+      "path": "/authority/createAuthority/demo2",
+      "method": "PUT",
+      "apiGroup": "参数配置",
+      "description": "更新参数配置接口"
+    },
+    {
+      "id": "api-1173",
+      "path": "/authority/deleteAuthority/demo2",
+      "method": "DELETE",
+      "apiGroup": "组织管理",
+      "description": "删除组织接口"
+    },
+    {
+      "id": "api-1174",
+      "path": "/authority/updateAuthority/demo2",
+      "method": "PATCH",
+      "apiGroup": "公告管理",
+      "description": "修改公告接口"
+    },
+    {
+      "id": "api-1175",
+      "path": "/authority/copyAuthority/demo2",
+      "method": "POST",
+      "apiGroup": "仪表盘",
+      "description": "创建仪表盘接口"
+    },
+    {
+      "id": "api-1176",
+      "path": "/authority/setDataAuthority/demo2",
+      "method": "GET",
+      "apiGroup": "示例模块",
+      "description": "查看示例模块接口"
+    },
+    {
+      "id": "api-1177",
+      "path": "/menu/getMenu/demo2",
+      "method": "PUT",
+      "apiGroup": "任务调度",
+      "description": "更新任务调度接口"
+    },
+    {
+      "id": "api-1178",
+      "path": "/menu/getMenuList/demo2",
+      "method": "DELETE",
+      "apiGroup": "消息中心",
+      "description": "删除消息中心接口"
+    },
+    {
+      "id": "api-1179",
+      "path": "/menu/addBaseMenu/demo2",
+      "method": "PATCH",
+      "apiGroup": "审计日志",
+      "description": "修改审计日志接口"
+    },
+    {
+      "id": "api-1180",
+      "path": "/menu/deleteBaseMenu/demo2",
+      "method": "POST",
+      "apiGroup": "代码生成器历史",
+      "description": "创建代码生成器历史接口"
+    },
+    {
+      "id": "api-1181",
+      "path": "/menu/updateBaseMenu/demo2",
+      "method": "GET",
+      "apiGroup": "系统用户",
+      "description": "查看系统用户接口"
+    },
+    {
+      "id": "api-1182",
+      "path": "/menu/getBaseMenuTree/demo2",
+      "method": "PUT",
+      "apiGroup": "系统角色",
+      "description": "更新系统角色接口"
+    },
+    {
+      "id": "api-1183",
+      "path": "/menu/addMenuAuthority/demo2",
+      "method": "DELETE",
+      "apiGroup": "系统菜单",
+      "description": "删除系统菜单接口"
+    },
+    {
+      "id": "api-1184",
+      "path": "/menu/getMenuAuthority/demo2",
+      "method": "PATCH",
+      "apiGroup": "API管理",
+      "description": "修改API接口"
+    },
+    {
+      "id": "api-1185",
+      "path": "/api/getApiList/demo2",
+      "method": "POST",
+      "apiGroup": "casbin",
+      "description": "创建casbin接口"
+    },
+    {
+      "id": "api-1186",
+      "path": "/api/createApi/demo2",
+      "method": "GET",
+      "apiGroup": "jwt",
+      "description": "查看jwt接口"
+    },
+    {
+      "id": "api-1187",
+      "path": "/api/deleteApi/demo2",
+      "method": "PUT",
+      "apiGroup": "文件上传与下载",
+      "description": "更新文件上传与下载接口"
+    },
+    {
+      "id": "api-1188",
+      "path": "/api/updateApi/demo2",
+      "method": "DELETE",
+      "apiGroup": "客户",
+      "description": "删除客户接口"
+    },
+    {
+      "id": "api-1189",
+      "path": "/api/getApiById/demo2",
+      "method": "PATCH",
+      "apiGroup": "超级管理员",
+      "description": "修改超级管理员接口"
+    },
+    {
+      "id": "api-1190",
+      "path": "/api/deleteApisByIds/demo2",
+      "method": "POST",
+      "apiGroup": "字典管理",
+      "description": "创建字典接口"
+    },
+    {
+      "id": "api-1191",
+      "path": "/api/freshCasbin/demo2",
+      "method": "GET",
+      "apiGroup": "操作记录",
+      "description": "查看操作记录接口"
+    },
+    {
+      "id": "api-1192",
+      "path": "/api/syncApi/demo2",
+      "method": "PUT",
+      "apiGroup": "参数配置",
+      "description": "更新参数配置接口"
+    },
+    {
+      "id": "api-1193",
+      "path": "/api/getAllApis/demo2",
+      "method": "DELETE",
+      "apiGroup": "组织管理",
+      "description": "删除组织接口"
+    },
+    {
+      "id": "api-1194",
+      "path": "/casbin/updateCasbin/demo2",
+      "method": "PATCH",
+      "apiGroup": "公告管理",
+      "description": "修改公告接口"
+    },
+    {
+      "id": "api-1195",
+      "path": "/casbin/getPolicyPathByAuthorityId/demo2",
+      "method": "POST",
+      "apiGroup": "仪表盘",
+      "description": "创建仪表盘接口"
+    },
+    {
+      "id": "api-1196",
+      "path": "/jwt/jsonInBlacklist/demo2",
+      "method": "GET",
+      "apiGroup": "示例模块",
+      "description": "查看示例模块接口"
+    },
+    {
+      "id": "api-1197",
+      "path": "/fileUploadAndDownload/upload/demo2",
+      "method": "PUT",
+      "apiGroup": "任务调度",
+      "description": "更新任务调度接口"
+    },
+    {
+      "id": "api-1198",
+      "path": "/fileUploadAndDownload/getFileList/demo2",
+      "method": "DELETE",
+      "apiGroup": "消息中心",
+      "description": "删除消息中心接口"
+    },
+    {
+      "id": "api-1199",
+      "path": "/fileUploadAndDownload/deleteFile/demo2",
+      "method": "PATCH",
+      "apiGroup": "审计日志",
+      "description": "修改审计日志接口"
+    },
+    {
+      "id": "api-1200",
+      "path": "/customer/customer/demo2",
+      "method": "POST",
+      "apiGroup": "代码生成器历史",
+      "description": "创建代码生成器历史接口"
+    },
+    {
+      "id": "api-1201",
+      "path": "/customer/customerList/demo2",
+      "method": "GET",
+      "apiGroup": "系统用户",
+      "description": "查看系统用户接口"
+    },
+    {
+      "id": "api-1202",
+      "path": "/sysDictionary/createSysDictionary/demo2",
+      "method": "PUT",
+      "apiGroup": "系统角色",
+      "description": "更新系统角色接口"
+    },
+    {
+      "id": "api-1203",
+      "path": "/sysDictionary/deleteSysDictionary/demo2",
+      "method": "DELETE",
+      "apiGroup": "系统菜单",
+      "description": "删除系统菜单接口"
+    },
+    {
+      "id": "api-1204",
+      "path": "/sysDictionary/updateSysDictionary/demo2",
+      "method": "PATCH",
+      "apiGroup": "API管理",
+      "description": "修改API接口"
+    },
+    {
+      "id": "api-1205",
+      "path": "/sysDictionary/findSysDictionary/demo2",
+      "method": "POST",
+      "apiGroup": "casbin",
+      "description": "创建casbin接口"
+    },
+    {
+      "id": "api-1206",
+      "path": "/sysDictionary/getSysDictionaryList/demo2",
+      "method": "GET",
+      "apiGroup": "jwt",
+      "description": "查看jwt接口"
+    },
+    {
+      "id": "api-1207",
+      "path": "/sysOperationRecord/createSysOperationRecord/demo2",
+      "method": "PUT",
+      "apiGroup": "文件上传与下载",
+      "description": "更新文件上传与下载接口"
+    },
+    {
+      "id": "api-1208",
+      "path": "/sysOperationRecord/deleteSysOperationRecord/demo2",
+      "method": "DELETE",
+      "apiGroup": "客户",
+      "description": "删除客户接口"
+    },
+    {
+      "id": "api-1209",
+      "path": "/sysOperationRecord/findSysOperationRecord/demo2",
+      "method": "PATCH",
+      "apiGroup": "超级管理员",
+      "description": "修改超级管理员接口"
+    },
+    {
+      "id": "api-1210",
+      "path": "/sysOperationRecord/getSysOperationRecordList/demo2",
+      "method": "POST",
+      "apiGroup": "字典管理",
+      "description": "创建字典接口"
+    },
+    {
+      "id": "api-1211",
+      "path": "/system/getSystemConfig/demo2",
+      "method": "GET",
+      "apiGroup": "操作记录",
+      "description": "查看操作记录接口"
+    },
+    {
+      "id": "api-1212",
+      "path": "/system/setSystemConfig/demo2",
+      "method": "PUT",
+      "apiGroup": "参数配置",
+      "description": "更新参数配置接口"
+    },
+    {
+      "id": "api-1213",
+      "path": "/system/getServerInfo/demo2",
+      "method": "DELETE",
+      "apiGroup": "组织管理",
+      "description": "删除组织接口"
+    },
+    {
+      "id": "api-1214",
+      "path": "/simpleUploader/upload/demo2",
+      "method": "PATCH",
+      "apiGroup": "公告管理",
+      "description": "修改公告接口"
     }
   ]
 }

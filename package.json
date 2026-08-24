@@ -6,8 +6,8 @@
   "packageManager": "yarn@1.22.22",
   "scripts": {
     "env": "node scripts/environment.mjs",
-    "test": "yarn test:node && yarn test:server && yarn test:front",
-    "test:node": "node --test __test__/node/script-guards.test.mjs __test__/node/go-download.test.mjs __test__/node/openapi-compat.test.mjs",
+    "test": "yarn test:node && yarn api:compat && yarn test:server && yarn test:front",
+    "test:node": "node --test __test__/node/script-guards.test.mjs __test__/node/go-download.test.mjs __test__/node/openapi-compat.test.mjs __test__/node/project-contracts.test.mjs __test__/node/kubernetes-manifest.test.mjs __test__/node/nginx-edge.test.mjs __test__/node/postgres-recovery-report.test.mjs __test__/node/server-release.test.mjs __test__/node/transport-benchmark-report.test.mjs __test__/node/transport-soak-report.test.mjs",
     "install:front": "node scripts/msfront.mjs install",
     "dev": "node scripts/msfront.mjs dev",
     "dev:front": "node scripts/msfront.mjs dev",
@@ -27,8 +27,27 @@
     "cover:server": "node scripts/go-project.mjs cover",
     "bench:server": "node scripts/go-project.mjs bench",
     "bench:transports": "node scripts/go-project.mjs bench-transports",
+    "soak:transports": "node scripts/go-project.mjs soak-transports",
     "openapi:compat": "node scripts/openapi-compat.mjs",
+    "contracts:check": "node scripts/project-contracts.mjs check",
+    "contracts:materialize": "node scripts/project-contracts.mjs materialize",
+    "contracts:resolve": "node scripts/project-contracts.mjs resolve",
+    "api:compat": "node scripts/go-project.mjs api-compat",
+    "api:snapshot": "node scripts/go-project.mjs api-snapshot",
+    "sdk:generate": "node scripts/go-sdk.mjs generate",
+    "sdk:check": "node scripts/go-sdk.mjs check",
     "evidence:manifest": "node scripts/evidence-manifest.mjs",
+    "evidence:verify": "node scripts/evidence-verify.mjs",
+    "kubernetes:check": "node scripts/kubernetes-manifest.mjs check",
+    "kubernetes:render": "node scripts/kubernetes-manifest.mjs render",
+    "edge:check": "node scripts/nginx-edge.mjs check",
+    "edge:render": "node scripts/nginx-edge.mjs render",
+    "edge:contract": "node scripts/nginx-edge-contract.mjs",
+    "redis:sentinel:contract": "node scripts/redis-sentinel-contract.mjs",
+    "postgres:recovery:contract": "node scripts/postgres-recovery-contract.mjs",
+    "drill:server": "node scripts/server-recovery-drill.mjs",
+    "release:server:build": "node scripts/server-release.mjs build",
+    "release:server:verify": "node scripts/server-release.mjs verify",
     "race:server": "node scripts/go-project.mjs race",
     "vuln:server": "node scripts/go-project.mjs vuln",
     "vet:server": "node scripts/go-project.mjs vet",
@@ -41,5 +60,8 @@
     "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.62.1",
     "playwright-core": "1.62.1"
+  },
+  "dependencies": {
+    "@simple-prism/core": "^0.1.4"
   }
 }

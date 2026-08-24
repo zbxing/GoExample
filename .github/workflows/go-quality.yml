@@ -5,20 +5,52 @@ on:
     paths:
       - "Framework/**"
       - "Proj/**"
+      - "SDK/**"
+      - "Consumer/**"
+      - "contracts/**"
       - "docs/openapi/**"
+      - "docs/recovery/**"
       - "go.work"
       - "go.work.sum"
       - "scripts/go-project.mjs"
+      - "scripts/go-sdk.mjs"
+      - "scripts/project-contracts.mjs"
+      - "scripts/lib/project-contracts.mjs"
+      - "scripts/postgres-recovery-contract.mjs"
+      - "scripts/postgres-recovery-report.mjs"
+      - "scripts/redis-sentinel-contract.mjs"
+      - "scripts/server-recovery-drill.mjs"
+      - "scripts/server-release.mjs"
+      - "scripts/evidence-manifest.mjs"
+      - "scripts/evidence-verify.mjs"
+      - "__test__/node/postgres-recovery-report.test.mjs"
+      - "__test__/node/server-release.test.mjs"
       - "package.json"
       - ".github/workflows/go-quality.yml"
   pull_request:
     paths:
       - "Framework/**"
       - "Proj/**"
+      - "SDK/**"
+      - "Consumer/**"
+      - "contracts/**"
       - "docs/openapi/**"
+      - "docs/recovery/**"
       - "go.work"
       - "go.work.sum"
       - "scripts/go-project.mjs"
+      - "scripts/go-sdk.mjs"
+      - "scripts/project-contracts.mjs"
+      - "scripts/lib/project-contracts.mjs"
+      - "scripts/postgres-recovery-contract.mjs"
+      - "scripts/postgres-recovery-report.mjs"
+      - "scripts/redis-sentinel-contract.mjs"
+      - "scripts/server-recovery-drill.mjs"
+      - "scripts/server-release.mjs"
+      - "scripts/evidence-manifest.mjs"
+      - "scripts/evidence-verify.mjs"
+      - "__test__/node/postgres-recovery-report.test.mjs"
+      - "__test__/node/server-release.test.mjs"
       - "package.json"
       - ".github/workflows/go-quality.yml"
   workflow_dispatch:
@@ -46,6 +78,17 @@ jobs:
           go-version-file: Framework/go.mod
           cache: false
 
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Verify generated Go SDK
+        run: |
+          node scripts/project-contracts.mjs materialize --fetch
+          node scripts/project-contracts.mjs check
+          node scripts/go-sdk.mjs check
+
       - name: Discover workspace modules
         id: workspace
         shell: bash
@@ -68,12 +111,40 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: Framework/go.mod
-          cache-dependency-path: ${{ matrix.module }}/go.sum
+          cache-dependency-path: |
+            ${{ matrix.module }}/go.mod
+            ${{ matrix.module }}/go.sum
+
+      - name: Set up Node
+        if: startsWith(matrix.module, './Proj/')
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Materialize pinned project OpenAPI contracts
+        if: startsWith(matrix.module, './Proj/')
+        run: node scripts/project-contracts.mjs materialize --fetch
+
+      - name: Check Framework public API compatibility
+        if: matrix.module == './Framework'
+        shell: bash
+        env:
+          FRAMEWORK_API_BASE_REF: ${{ github.event.pull_request.base.sha }}
+        run: |
+          args=(run ./Framework/internal/apisnapshot -root Framework -baseline Framework/api-snapshot.json)
+          if [[ -n "${FRAMEWORK_API_BASE_REF}" ]] && git cat-file -e "${FRAMEWORK_API_BASE_REF}:Framework/api-snapshot.json"; then
+            args+=(-baseline-ref "${FRAMEWORK_API_BASE_REF}")
+          elif [[ -n "${FRAMEWORK_API_BASE_REF}" ]]; then
+            echo "Target branch has no Framework API snapshot; validating the bootstrap snapshot only."
+          fi
+          go "${args[@]}"
 
       - name: Test
         run: go -C "${{ matrix.module }}" test ./...
@@ -132,3 +203,278 @@ jobs:
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:3001/readyz >/dev/null
+
+  postgres-contract:
+    needs: module-quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: Framework/go.mod
+          cache-dependency-path: Framework/go.sum
+
+      - name: Run real PostgreSQL serialization, lock, and recovery contracts
+        id: postgres-contract
+        run: node scripts/postgres-recovery-contract.mjs
+
+      - name: Generate PostgreSQL evidence manifest
+        if: always()
+        run: >-
+          node scripts/evidence-manifest.mjs
+          --output .temp/workflow-artifacts/postgres-recovery-contract/manifest.json
+
+      - name: Verify PostgreSQL evidence manifest
+        if: always()
+        run: >-
+          node scripts/evidence-verify.mjs
+          --manifest .temp/workflow-artifacts/postgres-recovery-contract/manifest.json
+
+      - name: Upload PostgreSQL contract evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: postgres-recovery-contract-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/workflow-artifacts/postgres-recovery-contract
+          if-no-files-found: error
+          retention-days: 30
+
+  nats-contract:
+    needs: module-quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Start pinned NATS JetStream
+        shell: bash
+        run: |
+          artifact_dir=".temp/workflow-artifacts/nats-contract"
+          image="nats:2.14.5-alpine@sha256:d4ac35882ac65aff236cd65b9d3fa4d24332c681e1a85f94eedccd3cdd65b1da"
+          mkdir -p "${artifact_dir}" ".temp/nats-server-bin"
+          docker run --detach --name goexample-nats-contract --publish 4222:4222 "${image}" -js -sd /data > "${artifact_dir}/container-id.txt"
+          docker cp goexample-nats-contract:/nats-server .temp/nats-server-bin/nats-server
+          chmod 0755 .temp/nats-server-bin/nats-server
+          sha256sum .temp/nats-server-bin/nats-server > "${artifact_dir}/nats-server-binary.sha256"
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: Framework/go.mod
+          cache-dependency-path: Framework/go.sum
+
+      - name: Run real NATS and JetStream delivery contracts
+        id: nats-contract
+        shell: bash
+        env:
+          NATS_TEST_URL: nats://127.0.0.1:4222
+          NATS_SERVER_BINARY: ${{ github.workspace }}/.temp/nats-server-bin/nats-server
+          NATS_RESTART_EVIDENCE_DIR: ${{ github.workspace }}/.temp/workflow-artifacts/nats-contract/restart
+          NATS_CLUSTER_EVIDENCE_DIR: ${{ github.workspace }}/.temp/workflow-artifacts/nats-contract/cluster
+          NATS_SNAPSHOT_EVIDENCE_DIR: ${{ github.workspace }}/.temp/workflow-artifacts/nats-contract/snapshot
+        run: |
+          artifact_dir=".temp/workflow-artifacts/nats-contract"
+          mkdir -p "${artifact_dir}"
+          {
+            echo "runner_os=${RUNNER_OS}"
+            echo "runner_arch=${RUNNER_ARCH}"
+            echo "git_commit=${GITHUB_SHA}"
+            echo "nats_image=nats:2.14.5-alpine@sha256:d4ac35882ac65aff236cd65b9d3fa4d24332c681e1a85f94eedccd3cdd65b1da"
+            echo "jetstream_enabled=true"
+            go version
+          } > "${artifact_dir}/environment.txt"
+          set +e
+          set -o pipefail
+          go -C Framework test -v -count=1 -timeout=2m -run '^TestRealNATS' ./queueclient/... 2>&1 | tee "${artifact_dir}/test-output.txt"
+          status="${PIPESTATUS[0]}"
+          set -e
+          echo "exit_code=${status}" > "${artifact_dir}/test-status.txt"
+          exit "${status}"
+
+      - name: Collect NATS contract evidence
+        if: always()
+        shell: bash
+        run: |
+          artifact_dir=".temp/workflow-artifacts/nats-contract"
+          mkdir -p "${artifact_dir}"
+          docker logs goexample-nats-contract > "${artifact_dir}/nats-server.log" 2>&1 || true
+          docker inspect goexample-nats-contract > "${artifact_dir}/nats-server-inspect.json" 2>&1 || true
+          docker rm --force goexample-nats-contract > "${artifact_dir}/cleanup.txt" 2>&1 || true
+          find "${artifact_dir}" -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "${artifact_dir}/SHA256SUMS"
+
+      - name: Upload NATS contract evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: nats-contract-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/workflow-artifacts/nats-contract
+          if-no-files-found: error
+          retention-days: 30
+
+  redis-sentinel-contract:
+    needs: module-quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: Framework/go.mod
+          cache-dependency-path: Framework/go.sum
+
+      - name: Run Redis Sentinel ACL failover contract
+        run: yarn redis:sentinel:contract
+
+      - name: Upload Redis Sentinel contract evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: redis-sentinel-contract-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/workflow-artifacts/redis-sentinel-contract
+          if-no-files-found: error
+          retention-days: 30
+
+  local-recovery-drill:
+    needs: module-quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: Framework/go.mod
+          cache-dependency-path: |
+            Framework/go.sum
+            Proj/Example/go.sum
+
+      - name: Run bounded local server recovery drill
+        run: yarn drill:server
+
+      - name: Generate recovery evidence manifest
+        if: always()
+        run: yarn evidence:manifest --output .temp/recovery/server-local/manifest.json
+
+      - name: Verify recovery evidence manifest
+        if: always()
+        run: yarn evidence:verify --manifest .temp/recovery/server-local/manifest.json
+
+      - name: Upload recovery evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: server-recovery-drill-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/recovery/server-local
+          if-no-files-found: error
+          retention-days: 30
+
+  server-release-provenance:
+    needs: module-quality
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: 1.25.13
+          cache-dependency-path: |
+            Framework/go.sum
+            Proj/Example/go.sum
+
+      - name: Build deterministic Linux server release
+        env:
+          SERVER_RELEASE_REQUIRE_CLEAN: "true"
+        run: yarn release:server:build
+
+      - name: Verify release manifest and checksum
+        run: yarn release:server:verify
+
+      - name: Generate signed build provenance
+        id: attest
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        with:
+          subject-checksums: .temp/server-release/SHA256SUMS
+
+      - name: Verify signed build provenance
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTEST_OUTCOME: ${{ steps.attest.outcome }}
+          ATTESTATION_BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+          ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+        run: |
+          release_root=".temp/server-release"
+          mkdir -p "${release_root}"
+          status=1
+          if [[ "${ATTEST_OUTCOME}" == "success" && -f "${ATTESTATION_BUNDLE}" ]]; then
+            cp "${ATTESTATION_BUNDLE}" "${release_root}/provenance.bundle.json"
+            printf '%s\n' "${ATTESTATION_URL}" > "${release_root}/attestation-url.txt"
+            artifact="$(jq -r '.subject.name' "${release_root}/release-manifest.json")"
+            set +e
+            set -o pipefail
+            gh attestation verify "${release_root}/${artifact}" --repo "${GITHUB_REPOSITORY}" 2>&1 | tee "${release_root}/attestation-verification.txt"
+            status="${PIPESTATUS[0]}"
+            set -e
+          else
+            printf 'attestation action outcome: %s\n' "${ATTEST_OUTCOME}" > "${release_root}/attestation-verification.txt"
+          fi
+          printf 'exit_code=%s\n' "${status}" > "${release_root}/attestation-status.txt"
+          exit "${status}"
+
+      - name: Generate release evidence manifest
+        if: always()
+        run: yarn evidence:manifest --output .temp/server-release/evidence-manifest.json
+
+      - name: Verify release evidence manifest
+        if: always()
+        run: yarn evidence:verify --manifest .temp/server-release/evidence-manifest.json
+
+      - name: Upload signed server release evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: goexample-server-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/server-release
+          if-no-files-found: error
+          retention-days: 30

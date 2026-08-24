@@ -168,6 +168,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
           isMobileOpen={isMobileSidebarOpen}
           darkSider={shellSettings.menu.darkSider}
           menuTheme={shellSettings.menu.theme}
+          collapseMode={shellSettings.menu.collapseMode}
           showCollapseButton={shellSettings.header.collapseButton.visible}
           onClose={closeMobileSidebar}
           onToggleCollapse={toggleSidebarCollapse}
@@ -205,7 +206,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
       {shellSettings.watermark.visible ? (
         <div className="gvaWatermark" aria-hidden="true">
           {Array.from({ length: 24 }, (_, index) => (
-            <span key={index}>Gin-Vue-Admin</span>
+            <span key={index}>Go Admin</span>
           ))}
         </div>
       ) : null}

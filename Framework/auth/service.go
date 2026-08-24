@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
@@ -72,6 +73,13 @@ type Config struct {
 	Now      func() time.Time
 }
 
+// TokenVerifier validates bearer access tokens for HTTP and application
+// adapters. Implementations must return only stable, low-sensitivity errors.
+type TokenVerifier interface {
+	Enabled() bool
+	VerifyToken(context.Context, string) (Claims, error)
+}
+
 type Service struct {
 	enabled  bool
 	username string
@@ -82,6 +90,8 @@ type Service struct {
 	ttl      time.Duration
 	now      func() time.Time
 }
+
+var _ TokenVerifier = (*Service)(nil)
 
 func NewService(config Config) *Service {
 	now := config.Now
@@ -199,6 +209,12 @@ func (s *Service) Verify(rawToken string) (Claims, error) {
 		return Claims{}, ErrInvalidToken
 	}
 	return *claims, nil
+}
+
+// VerifyToken implements TokenVerifier while preserving the context-free
+// Verify method used by existing demo-auth consumers.
+func (s *Service) VerifyToken(_ context.Context, rawToken string) (Claims, error) {
+	return s.Verify(rawToken)
 }
 
 func validClaims(claims Claims, now time.Time, ttl time.Duration) bool {

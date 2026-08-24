@@ -8,6 +8,8 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/idempotency"
+
+	"github.com/zbxing/goexample/Framework/sharedstate"
 )
 
 // Shared state can remain in memory for a single process, but production
@@ -35,6 +37,9 @@ func ValidateSharedState(environment, mode string, allowInMemory, idempotencyEna
 		if storage == nil {
 			return fmt.Errorf("external shared state requires a shared storage implementation")
 		}
+		if _, ok := storage.(sharedstate.AtomicRateLimiter); !ok {
+			return fmt.Errorf("external shared state requires an atomic rate limiter implementation")
+		}
 		if idempotencyEnabled && lock == nil {
 			return fmt.Errorf("external shared state requires a distributed idempotency lock")
 		}
@@ -53,8 +58,10 @@ func newNamespacedStorage(storage fiber.Storage, namespace string) fiber.Storage
 	if storage == nil {
 		return nil
 	}
-	return namespacedStorage{storage: storage, prefix: "goexample:" + namespace + ":"}
+	return namespacedStorage{storage: storage, prefix: sharedStateKey(namespace, "")}
 }
+
+func sharedStateKey(namespace, key string) string { return "goexample:" + namespace + ":" + key }
 
 func (s namespacedStorage) key(key string) string { return s.prefix + key }
 
@@ -99,7 +106,7 @@ func newNamespacedLocker(locker idempotency.Locker, namespace string) idempotenc
 	if locker == nil {
 		return nil
 	}
-	return namespacedLocker{locker: locker, prefix: "goexample:" + namespace + ":"}
+	return namespacedLocker{locker: locker, prefix: sharedStateKey("lock:"+namespace, "")}
 }
 
 func (l namespacedLocker) Lock(key string) error   { return l.locker.Lock(l.prefix + key) }

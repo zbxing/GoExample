@@ -11,6 +11,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { AdminSelect } from '@/components/admin/admin-primitives';
 import { useTheme } from '@/providers/theme-provider';
 import type { ThemeMode } from '@/lib/types/management';
 import {
@@ -28,6 +29,7 @@ import {
   THEME_PRESET_COLORS,
   type GvaCardMode,
   type GvaLayoutMode,
+  type GvaMenuCollapseMode,
   type GvaMenuTheme,
   type GvaPageTransition,
   type GvaShadow,
@@ -288,8 +290,24 @@ function AppearancePane({
           color={settings.themeColor}
           onChange={(theme) => onChange({ ...settings, menu: { ...settings.menu, theme } })}
         />
-        {showDarkSider ? (
-          <div className="gvaThemeCardBg" style={{ marginTop: 12 }}>
+        <div className="gvaThemeCardBg" style={{ marginTop: 12 }}>
+          <SettingItem label="侧边栏折叠">
+            <ThemeSelect
+              value={settings.menu.collapseMode}
+              options={[
+                { label: '默认(仅当前)', value: 'current' },
+                { label: '全部(所有)', value: 'all' },
+                { label: '自定义', value: 'custom' },
+              ]}
+              onChange={(collapseMode) =>
+                onChange({
+                  ...settings,
+                  menu: { ...settings.menu, collapseMode: collapseMode as GvaMenuCollapseMode },
+                })
+              }
+            />
+          </SettingItem>
+          {showDarkSider ? (
             <SettingItem label="深色侧边栏">
               <ThemeSwitch
                 checked={settings.menu.darkSider}
@@ -297,8 +315,8 @@ function AppearancePane({
                 onChange={(darkSider) => onChange({ ...settings, menu: { ...settings.menu, darkSider } })}
               />
             </SettingItem>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </Section>
 
       <Section title="标签栏风格">
@@ -508,6 +526,7 @@ function LayoutPane({
             <ThemeSelect
               value={settings.header.shadow}
               options={shadowOptions}
+              placement="top"
               onChange={(shadow) =>
                 onChange({ ...settings, header: { ...settings.header, shadow: shadow as GvaShadow } })
               }
@@ -528,6 +547,7 @@ function LayoutPane({
             <ThemeSelect
               value={settings.tab.shadow}
               options={shadowOptions}
+              placement="top"
               onChange={(shadow) =>
                 onChange({ ...settings, tab: { ...settings.tab, shadow: shadow as GvaShadow } })
               }
@@ -558,6 +578,7 @@ function LayoutPane({
                 { label: '缩放', value: 'zoom' },
                 { label: '无动画', value: 'none' },
               ]}
+              placement="top"
               onChange={(transition) =>
                 onChange({ ...settings, page: { transition: transition as GvaPageTransition } })
               }
@@ -802,7 +823,7 @@ function GeneralPane({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/gva-logo.png" alt="" className="gvaAboutLogo" />
             <div>
-              <h4>Gin-Vue-Admin</h4>
+              <h4>Go Admin</h4>
               <p>基于 Vue3 + Gin 的全栈开发基础平台，提供完整的后台管理解决方案</p>
               <div className="gvaAboutLinks">
                 <a href="https://github.com/flipped-aurora/gin-vue-admin" target="_blank" rel="noreferrer" style={{ color: settings.themeColor }}>
@@ -881,19 +902,23 @@ function ThemeSelect({
   value,
   options,
   onChange,
+  minWidth = 120,
+  placement = 'bottom',
 }: {
   value: string;
   options: Array<{ label: string; value: string }>;
   onChange: (value: string) => void;
+  minWidth?: number;
+  placement?: 'top' | 'bottom';
 }) {
   return (
-    <select className="gvaThemeSelect" value={value} onChange={(event) => onChange(event.target.value)}>
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+    <AdminSelect
+      value={value}
+      options={options}
+      minWidth={minWidth}
+      placement={placement}
+      onChange={onChange}
+    />
   );
 }
 

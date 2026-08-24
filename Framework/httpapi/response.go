@@ -62,6 +62,10 @@ func errorHandler(c fiber.Ctx, err error) error {
 		status = fiber.StatusConflict
 		message = "X-Idempotency-Key is already bound to a different request"
 	}
+	if errors.Is(err, ErrPreconditionFailed) {
+		status = fiber.StatusPreconditionFailed
+		message = "resource version no longer matches"
+	}
 	var fiberError *fiber.Error
 	if errors.As(err, &fiberError) {
 		status = fiberError.Code

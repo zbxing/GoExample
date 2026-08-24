@@ -4,7 +4,6 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
-  readdirSync,
   rmSync,
 } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
@@ -16,8 +15,6 @@ import { fileMatchesSha256, findGoArchiveChecksum } from './lib/go-download.mjs'
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(currentDirectory, '..');
-const frameworkRoot = path.join(repositoryRoot, 'Framework');
-const projectsRoot = path.join(repositoryRoot, 'Proj');
 const frontRoot = path.join(repositoryRoot, 'MSFront');
 const toolchainRoot = path.join(repositoryRoot, '.temp', 'toolchain');
 const goExecutableName = process.platform === 'win32' ? 'go.exe' : 'go';
@@ -95,18 +92,6 @@ function goVersion(command) {
   return match ? match[1] : null;
 }
 
-function compareVersions(left, right) {
-  const leftParts = left.split('.').map(Number);
-  const rightParts = right.split('.').map(Number);
-  for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
-    const difference = (leftParts[index] ?? 0) - (rightParts[index] ?? 0);
-    if (difference !== 0) {
-      return difference;
-    }
-  }
-  return 0;
-}
-
 function findGo() {
   const candidates = [
     process.env.GO_BINARY?.trim(),
@@ -117,7 +102,7 @@ function findGo() {
 
   for (const candidate of candidates) {
     const version = goVersion(candidate);
-    if (version && compareVersions(version, requiredGoVersion) >= 0) {
+    if (version === requiredGoVersion) {
       return { command: candidate, version };
     }
   }
@@ -155,20 +140,25 @@ async function installGo() {
     archive.fileName,
   );
 
-  console.log(`[env] Downloading Go ${requiredGoVersion} from ${archive.url}`);
-  try {
-    const response = await fetch(archive.url);
-    if (!response.ok || !response.body) {
-      throw new Error(`Unable to download Go: HTTP ${response.status}`);
+  if (existsSync(archivePath) && (await fileMatchesSha256(archivePath, expectedChecksum))) {
+    console.log(`[env] Reusing verified Go archive: ${archive.fileName}`);
+  } else {
+    console.log(`[env] Downloading Go ${requiredGoVersion} from ${archive.url}`);
+    try {
+      const response = await fetch(archive.url);
+      if (!response.ok || !response.body) {
+        throw new Error(`Unable to download Go: HTTP ${response.status}`);
+      }
+      await pipeline(Readable.fromWeb(response.body), createWriteStream(partialPath));
+      if (!(await fileMatchesSha256(partialPath, expectedChecksum))) {
+        throw new Error(`Go archive SHA-256 verification failed for ${archive.fileName}.`);
+      }
+      rmSync(archivePath, { force: true });
+      renameSync(partialPath, archivePath);
+    } catch (error) {
+      rmSync(partialPath, { force: true });
+      throw error;
     }
-    await pipeline(Readable.fromWeb(response.body), createWriteStream(partialPath));
-    if (!(await fileMatchesSha256(partialPath, expectedChecksum))) {
-      throw new Error(`Go archive SHA-256 verification failed for ${archive.fileName}.`);
-    }
-    renameSync(partialPath, archivePath);
-  } catch (error) {
-    rmSync(partialPath, { force: true });
-    throw error;
   }
 
   if (process.platform === 'win32') {
@@ -178,10 +168,15 @@ async function installGo() {
         '-NoProfile',
         '-NonInteractive',
         '-Command',
-        'Expand-Archive -LiteralPath $args[0] -DestinationPath $args[1] -Force',
-        archivePath,
-        installRoot,
+        'Expand-Archive -LiteralPath $env:GOEXAMPLE_GO_ARCHIVE -DestinationPath $env:GOEXAMPLE_GO_INSTALL_ROOT -Force',
       ],
+      {
+        env: {
+          ...process.env,
+          GOEXAMPLE_GO_ARCHIVE: archivePath,
+          GOEXAMPLE_GO_INSTALL_ROOT: installRoot,
+        },
+      },
     );
   } else {
     await run('tar', ['-xzf', archivePath, '-C', installRoot]);
@@ -196,17 +191,31 @@ async function installGo() {
 }
 
 function goModuleRoots() {
-  const roots = [frameworkRoot];
-  if (!existsSync(projectsRoot)) {
-    return roots;
+  const workspace = readFileSync(path.join(repositoryRoot, 'go.work'), 'utf8');
+  const useBlock = workspace.match(/^use\s*\(([^]*?)^\)/m)?.[1];
+  if (!useBlock) {
+    throw new Error('go.work must declare workspace modules in a use block.');
   }
-  for (const entry of readdirSync(projectsRoot, { withFileTypes: true })) {
-    const projectRoot = path.join(projectsRoot, entry.name);
-    if (entry.isDirectory() && existsSync(path.join(projectRoot, 'go.mod'))) {
-      roots.push(projectRoot);
+  const modulePaths = useBlock
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\/\/.*$/, '').trim())
+    .filter(Boolean);
+  if (modulePaths.length === 0) {
+    throw new Error('go.work must contain at least one workspace module.');
+  }
+  return modulePaths.map((modulePath) => {
+    if (!modulePath.startsWith('./') || modulePath.includes('..')) {
+      throw new Error(`go.work contains an unsafe workspace module path: ${modulePath}`);
     }
-  }
-  return roots;
+    const moduleRoot = path.resolve(repositoryRoot, modulePath);
+    if (
+      !moduleRoot.startsWith(`${repositoryRoot}${path.sep}`) ||
+      !existsSync(path.join(moduleRoot, 'go.mod'))
+    ) {
+      throw new Error(`go.work module was not found inside the repository: ${modulePath}`);
+    }
+    return moduleRoot;
+  });
 }
 
 async function main() {

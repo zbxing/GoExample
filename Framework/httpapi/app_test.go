@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -523,6 +524,189 @@ func TestApplicationQueriesKeepHandlersTransportNeutral(t *testing.T) {
 	}
 }
 
+func TestTypedApplicationQueryBindsIsolatedSourcesAndAuthenticatedPrincipal(t *testing.T) {
+	type queryRequest struct {
+		ID     int    `uri:"id" json:"id" validate:"min=1"`
+		Page   int    `query:"page" json:"page" validate:"min=1,max=100"`
+		Locale string `header:"X-Client-Locale" json:"locale" validate:"required,max=16"`
+	}
+	type queryResponse struct {
+		ID        int    `json:"id"`
+		Page      int    `json:"page"`
+		Locale    string `json:"locale"`
+		Subject   string `json:"subject"`
+		Username  string `json:"username"`
+		RoleCount int    `json:"roleCount"`
+	}
+
+	options := testOptions()
+	var traceObserved, deadlineObserved bool
+	options.ApplicationQueries = []ApplicationQuery{
+		NewAuthenticatedQuery("/typed-query/:id", func(ctx context.Context, request queryRequest, principal ApplicationPrincipal) (queryResponse, error) {
+			_, traceObserved = observability.FromContext(ctx)
+			_, deadlineObserved = ctx.Deadline()
+			return queryResponse{
+				ID:        request.ID,
+				Page:      request.Page,
+				Locale:    request.Locale,
+				Subject:   principal.Subject,
+				Username:  principal.Username,
+				RoleCount: len(principal.RoleIDs),
+			}, nil
+		}),
+	}
+	app := New(options)
+
+	unauthorized, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/typed-query/42?page=2", http.NoBody))
+	if err != nil {
+		t.Fatalf("unauthorized typed query error = %v", err)
+	}
+	unauthorized.Body.Close()
+	if unauthorized.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("unauthorized typed query status = %d", unauthorized.StatusCode)
+	}
+	assertNoStoreResponse(t, unauthorized)
+
+	user, authenticated := options.Auth.Authenticate("demo", "demo123")
+	if !authenticated {
+		t.Fatal("test user authentication failed")
+	}
+	rawToken, _, err := options.Auth.Issue(user)
+	if err != nil {
+		t.Fatalf("issue test token: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/typed-query/42?id=999&page=2&locale=spoofed", http.NoBody)
+	request.Header.Set(fiber.HeaderAuthorization, "Bearer "+rawToken)
+	request.Header.Set("X-Client-Locale", "zh-CN")
+	response, err := app.Test(request)
+	if err != nil {
+		t.Fatalf("typed query error = %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("typed query status = %d", response.StatusCode)
+	}
+	assertNoStoreResponse(t, response)
+	envelope := decodeEnvelope(t, response)
+	var data queryResponse
+	if err := json.Unmarshal(envelope.Data, &data); err != nil {
+		t.Fatalf("decode typed query response: %v", err)
+	}
+	if data.ID != 42 || data.Page != 2 || data.Locale != "zh-CN" || data.Subject != user.ID || data.Username != user.Username || data.RoleCount != 1 {
+		t.Fatalf("typed query response = %#v", data)
+	}
+	if !traceObserved || !deadlineObserved {
+		t.Fatalf("typed query trace/deadline = %t/%t", traceObserved, deadlineObserved)
+	}
+
+	invalid := httptest.NewRequest(http.MethodGet, "/api/v1/typed-query/not-an-integer?page=2", http.NoBody)
+	invalid.Header.Set(fiber.HeaderAuthorization, "Bearer "+rawToken)
+	invalid.Header.Set("X-Client-Locale", "zh-CN")
+	invalidResponse, err := app.Test(invalid)
+	if err != nil {
+		t.Fatalf("invalid typed query error = %v", err)
+	}
+	defer invalidResponse.Body.Close()
+	if invalidResponse.StatusCode != http.StatusBadRequest {
+		t.Fatalf("invalid typed query status = %d", invalidResponse.StatusCode)
+	}
+	if invalidEnvelope := decodeEnvelope(t, invalidResponse); invalidEnvelope.Msg != "request parameters are invalid" {
+		t.Fatalf("invalid typed query envelope = %#v", invalidEnvelope)
+	}
+}
+
+func TestAuthorizedApplicationQueryEnforcesCopiedAnyOfRolesBeforeBinding(t *testing.T) {
+	type queryRequest struct {
+		ID     int    `uri:"id" validate:"min=1"`
+		Locale string `header:"X-Client-Locale" validate:"required"`
+	}
+	type queryResponse struct {
+		Subject string `json:"subject"`
+	}
+
+	options := testOptions()
+	requiredRoles := []string{"operator", "demo"}
+	var executions atomic.Int32
+	options.ApplicationQueries = []ApplicationQuery{
+		NewAuthorizedQuery("/authorized-query/:id", requiredRoles, func(_ context.Context, _ queryRequest, principal ApplicationPrincipal) (queryResponse, error) {
+			executions.Add(1)
+			return queryResponse{Subject: principal.Subject}, nil
+		}),
+	}
+	requiredRoles[1] = "viewer"
+	configured := options.ApplicationQueries[0]
+	if !configured.authorizationRequired || len(configured.requiredRoleIDs) != 2 || configured.requiredRoleIDs[1] != "demo" {
+		t.Fatalf("authorized query role copy = %#v", configured.requiredRoleIDs)
+	}
+	app := New(options)
+
+	request := func(rawToken, path string, withLocale bool) *http.Response {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
+		if rawToken != "" {
+			req.Header.Set(fiber.HeaderAuthorization, "Bearer "+rawToken)
+		}
+		if withLocale {
+			req.Header.Set("X-Client-Locale", "zh-CN")
+		}
+		response, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("authorized query request error = %v", err)
+		}
+		return response
+	}
+
+	missing := request("", "/api/v1/authorized-query/42", true)
+	missing.Body.Close()
+	if missing.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("missing token status = %d", missing.StatusCode)
+	}
+	assertNoStoreResponse(t, missing)
+
+	invalid := request("invalid-token", "/api/v1/authorized-query/42", true)
+	invalid.Body.Close()
+	if invalid.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("invalid token status = %d", invalid.StatusCode)
+	}
+	assertNoStoreResponse(t, invalid)
+
+	user, authenticated := options.Auth.Authenticate("demo", "demo123")
+	if !authenticated {
+		t.Fatal("test user authentication failed")
+	}
+	wrongRoleUser := user
+	wrongRoleUser.RoleIDs = []string{"viewer"}
+	wrongRoleUser.RoleNames = []string{"Viewer"}
+	wrongRoleToken, _, err := options.Auth.Issue(wrongRoleUser)
+	if err != nil {
+		t.Fatalf("issue wrong-role token: %v", err)
+	}
+	wrongRoleClaims, err := options.Auth.Verify(wrongRoleToken)
+	if err != nil || len(wrongRoleClaims.RoleIDs) != 1 || wrongRoleClaims.RoleIDs[0] != "viewer" {
+		t.Fatalf("wrong-role claims = %#v, error = %v", wrongRoleClaims.RoleIDs, err)
+	}
+	forbidden := request(wrongRoleToken, "/api/v1/authorized-query/not-an-integer", false)
+	defer forbidden.Body.Close()
+	if forbidden.StatusCode != http.StatusForbidden || executions.Load() != 0 {
+		t.Fatalf("wrong-role status/executions = %d/%d", forbidden.StatusCode, executions.Load())
+	}
+	assertNoStoreResponse(t, forbidden)
+	if envelope := decodeEnvelope(t, forbidden); envelope.Msg != "access is forbidden" {
+		t.Fatalf("wrong-role envelope = %#v", envelope)
+	}
+
+	correctRoleToken, _, err := options.Auth.Issue(user)
+	if err != nil {
+		t.Fatalf("issue correct-role token: %v", err)
+	}
+	allowed := request(correctRoleToken, "/api/v1/authorized-query/42", true)
+	defer allowed.Body.Close()
+	if allowed.StatusCode != http.StatusOK || executions.Load() != 1 {
+		t.Fatalf("correct-role status/executions = %d/%d", allowed.StatusCode, executions.Load())
+	}
+	assertNoStoreResponse(t, allowed)
+}
+
 func TestApplicationQueryErrorsUseTheServerErrorBoundary(t *testing.T) {
 	options := testOptions()
 	options.ApplicationQueries = []ApplicationQuery{
@@ -549,6 +733,742 @@ func TestApplicationQueryErrorsUseTheServerErrorBoundary(t *testing.T) {
 	}
 }
 
+func TestVersionedApplicationQueryReturnsStrongETagAndHandlesConditionalGET(t *testing.T) {
+	type queryRequest struct {
+		ID int `uri:"id" validate:"min=1"`
+	}
+	type queryResponse struct {
+		ID    int    `json:"id"`
+		Value string `json:"value"`
+	}
+
+	options := testOptions()
+	var executions atomic.Int32
+	options.ApplicationQueries = []ApplicationQuery{
+		NewVersionedQuery("/versioned-query/:id", func(_ context.Context, request queryRequest) (queryResponse, string, error) {
+			executions.Add(1)
+			return queryResponse{ID: request.ID, Value: "current"}, "v7", nil
+		}),
+		NewVersionedQuery("/invalid-versioned-query", func(context.Context, struct{}) (queryResponse, string, error) {
+			return queryResponse{Value: "private response"}, "private invalid tag", nil
+		}),
+	}
+	app := New(options)
+
+	requestVersioned := func(path, ifNoneMatch string) *http.Response {
+		t.Helper()
+		request := httptest.NewRequest(http.MethodGet, "/api/v1"+path, http.NoBody)
+		if ifNoneMatch != "" {
+			request.Header.Set(fiber.HeaderIfNoneMatch, ifNoneMatch)
+		}
+		response, err := app.Test(request)
+		if err != nil {
+			t.Fatalf("versioned query request error = %v", err)
+		}
+		return response
+	}
+
+	first := requestVersioned("/versioned-query/42", "")
+	if first.StatusCode != http.StatusOK || first.Header.Get(fiber.HeaderETag) != `"v7"` {
+		first.Body.Close()
+		t.Fatalf("versioned query response = %d/%q", first.StatusCode, first.Header.Get(fiber.HeaderETag))
+	}
+	if !hasCacheControlDirective(first.Header.Get(fiber.HeaderCacheControl), "no-store") || first.Header.Get(fiber.HeaderPragma) != "no-cache" {
+		first.Body.Close()
+		t.Fatalf("versioned query cache headers = %#v", first.Header)
+	}
+	envelope := decodeEnvelope(t, first)
+	first.Body.Close()
+	if !strings.Contains(string(envelope.Data), `"id":42`) || !strings.Contains(string(envelope.Data), `"value":"current"`) {
+		t.Fatalf("versioned query data = %s", envelope.Data)
+	}
+
+	nonmatching := requestVersioned("/versioned-query/42", `"v6"`)
+	nonmatching.Body.Close()
+	if nonmatching.StatusCode != http.StatusOK || nonmatching.Header.Get(fiber.HeaderETag) != `"v7"` {
+		t.Fatalf("nonmatching versioned query = %d/%q", nonmatching.StatusCode, nonmatching.Header.Get(fiber.HeaderETag))
+	}
+
+	for _, test := range []struct {
+		name        string
+		ifNoneMatch string
+	}{
+		{name: "strong", ifNoneMatch: `"v7"`},
+		{name: "weak", ifNoneMatch: `W/"v7"`},
+		{name: "list", ifNoneMatch: `"v6", W/"v7"`},
+		{name: "wildcard", ifNoneMatch: `*`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			response := requestVersioned("/versioned-query/42", test.ifNoneMatch)
+			defer response.Body.Close()
+			body, err := io.ReadAll(response.Body)
+			if err != nil {
+				t.Fatalf("read conditional response: %v", err)
+			}
+			if response.StatusCode != http.StatusNotModified || response.Header.Get(fiber.HeaderETag) != `"v7"` || len(body) != 0 {
+				t.Fatalf("conditional versioned query = %d/%q body %q", response.StatusCode, response.Header.Get(fiber.HeaderETag), body)
+			}
+			if !hasCacheControlDirective(response.Header.Get(fiber.HeaderCacheControl), "no-store") || response.Header.Get(fiber.HeaderPragma) != "no-cache" {
+				t.Fatalf("conditional versioned cache headers = %#v", response.Header)
+			}
+		})
+	}
+	if executions.Load() != 6 {
+		t.Fatalf("versioned query executions = %d, want 6", executions.Load())
+	}
+
+	invalid := requestVersioned("/invalid-versioned-query", "*")
+	defer invalid.Body.Close()
+	if invalid.StatusCode != http.StatusInternalServerError || invalid.Header.Get(fiber.HeaderETag) != "" {
+		t.Fatalf("invalid versioned query response = %d/%q", invalid.StatusCode, invalid.Header.Get(fiber.HeaderETag))
+	}
+	assertNoStoreResponse(t, invalid)
+	invalidEnvelope := decodeEnvelope(t, invalid)
+	if invalidEnvelope.Msg != "internal server error" || strings.Contains(string(invalidEnvelope.Data), "private") {
+		t.Fatalf("invalid versioned query envelope = %#v", invalidEnvelope)
+	}
+}
+
+func TestApplicationQuerySupportsExplicitHEADWithoutGETRoute(t *testing.T) {
+	options := testOptions()
+	var executions atomic.Int32
+	options.ApplicationQueries = []ApplicationQuery{
+		NewQuery("/head-query", func(context.Context, struct{}) (struct {
+			Value string `json:"value"`
+		}, error) {
+			executions.Add(1)
+			return struct {
+				Value string `json:"value"`
+			}{Value: "head"}, nil
+		}).WithMethod(http.MethodHead),
+	}
+	app := New(options)
+
+	getResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/head-query", http.NoBody))
+	if err != nil {
+		t.Fatalf("GET explicit HEAD query error = %v", err)
+	}
+	getResponse.Body.Close()
+	if getResponse.StatusCode != http.StatusMethodNotAllowed {
+		t.Fatalf("GET explicit HEAD query status = %d, want 405", getResponse.StatusCode)
+	}
+
+	headResponse, err := app.Test(httptest.NewRequest(http.MethodHead, "/api/v1/head-query", http.NoBody))
+	if err != nil {
+		t.Fatalf("HEAD query error = %v", err)
+	}
+	body, err := io.ReadAll(headResponse.Body)
+	headResponse.Body.Close()
+	if err != nil {
+		t.Fatalf("read HEAD query response: %v", err)
+	}
+	if headResponse.StatusCode != http.StatusOK || len(body) != 0 || executions.Load() != 1 {
+		t.Fatalf("HEAD query response = %d, body=%q, executions=%d", headResponse.StatusCode, body, executions.Load())
+	}
+}
+
+func TestAuthorizedVersionedApplicationQueryChecksAccessBeforeBinding(t *testing.T) {
+	type queryRequest struct {
+		ID     int    `uri:"id" validate:"min=1"`
+		Locale string `header:"X-Client-Locale" validate:"required"`
+	}
+	type queryResponse struct {
+		Subject string `json:"subject"`
+	}
+
+	options := testOptions()
+	var executions atomic.Int32
+	options.ApplicationQueries = []ApplicationQuery{
+		NewAuthorizedVersionedQuery("/authorized-versioned-query/:id", []string{"demo"}, func(_ context.Context, _ queryRequest, principal ApplicationPrincipal) (queryResponse, string, error) {
+			executions.Add(1)
+			return queryResponse{Subject: principal.Subject}, "v1", nil
+		}),
+	}
+	app := New(options)
+
+	user, authenticated := options.Auth.Authenticate("demo", "demo123")
+	if !authenticated {
+		t.Fatal("versioned query test authentication failed")
+	}
+	wrongRole := user
+	wrongRole.RoleIDs = []string{"viewer"}
+	wrongRoleToken, _, err := options.Auth.Issue(wrongRole)
+	if err != nil {
+		t.Fatalf("issue wrong-role token: %v", err)
+	}
+	validToken, _, err := options.Auth.Issue(user)
+	if err != nil {
+		t.Fatalf("issue valid token: %v", err)
+	}
+	request := func(token, path string, withLocale bool) *http.Response {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, "/api/v1"+path, http.NoBody)
+		if token != "" {
+			req.Header.Set(fiber.HeaderAuthorization, "Bearer "+token)
+		}
+		if withLocale {
+			req.Header.Set("X-Client-Locale", "zh-CN")
+		}
+		req.Header.Set(fiber.HeaderIfNoneMatch, "*")
+		response, requestErr := app.Test(req)
+		if requestErr != nil {
+			t.Fatalf("authorized versioned query request error = %v", requestErr)
+		}
+		return response
+	}
+
+	unauthorized := request("", "/authorized-versioned-query/not-an-integer", false)
+	unauthorized.Body.Close()
+	if unauthorized.StatusCode != http.StatusUnauthorized || executions.Load() != 0 {
+		t.Fatalf("unauthorized versioned query = %d executions %d", unauthorized.StatusCode, executions.Load())
+	}
+
+	forbidden := request(wrongRoleToken, "/authorized-versioned-query/not-an-integer", false)
+	forbidden.Body.Close()
+	if forbidden.StatusCode != http.StatusForbidden || executions.Load() != 0 {
+		t.Fatalf("forbidden versioned query = %d executions %d", forbidden.StatusCode, executions.Load())
+	}
+
+	invalid := request(validToken, "/authorized-versioned-query/not-an-integer", false)
+	invalid.Body.Close()
+	if invalid.StatusCode != http.StatusBadRequest || executions.Load() != 0 {
+		t.Fatalf("invalid versioned query = %d executions %d", invalid.StatusCode, executions.Load())
+	}
+
+	allowed := request(validToken, "/authorized-versioned-query/42", true)
+	defer allowed.Body.Close()
+	if allowed.StatusCode != http.StatusNotModified || allowed.Header.Get(fiber.HeaderETag) != `"v1"` || executions.Load() != 1 {
+		t.Fatalf("allowed versioned query = %d/%q executions %d", allowed.StatusCode, allowed.Header.Get(fiber.HeaderETag), executions.Load())
+	}
+}
+
+func TestApplicationCommandsBindValidateTraceAndReplayWithoutFiber(t *testing.T) {
+	type commandRequest struct {
+		Audience string `json:"audience" validate:"required,min=2,max=80"`
+	}
+	type commandResponse struct {
+		Audience string `json:"audience"`
+	}
+	options := testOptions()
+	var executions atomic.Int32
+	var traceObserved, deadlineObserved bool
+	options.ApplicationCommands = []ApplicationCommand{
+		NewJSONCommand("/project-command", func(ctx context.Context, request commandRequest) (commandResponse, error) {
+			executions.Add(1)
+			_, traceObserved = observability.FromContext(ctx)
+			_, deadlineObserved = ctx.Deadline()
+			return commandResponse{Audience: request.Audience}, nil
+		}),
+	}
+	app := New(options)
+
+	requestCommand := func(body string) *http.Response {
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/project-command", strings.NewReader(body))
+		request.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+		request.Header.Set("X-Idempotency-Key", "123e4567-e89b-12d3-a456-426614174000")
+		response, err := app.Test(request)
+		if err != nil {
+			t.Fatalf("application command error = %v", err)
+		}
+		return response
+	}
+
+	first := requestCommand(`{"audience":"operators"}`)
+	if first.StatusCode != http.StatusOK {
+		first.Body.Close()
+		t.Fatalf("application command status = %d", first.StatusCode)
+	}
+	firstEnvelope := decodeEnvelope(t, first)
+	first.Body.Close()
+	if !strings.Contains(string(firstEnvelope.Data), `"audience":"operators"`) {
+		t.Fatalf("application command data = %s", firstEnvelope.Data)
+	}
+
+	replayed := requestCommand(`{"audience":"operators"}`)
+	defer replayed.Body.Close()
+	if replayed.StatusCode != http.StatusOK || replayed.Header.Get("X-Idempotency-Replayed") != "true" {
+		t.Fatalf("application command replay status/header = %d/%q", replayed.StatusCode, replayed.Header.Get("X-Idempotency-Replayed"))
+	}
+	if executions.Load() != 1 || !traceObserved || !deadlineObserved {
+		t.Fatalf("application command executions/trace/deadline = %d/%t/%t", executions.Load(), traceObserved, deadlineObserved)
+	}
+
+	invalid := doJSONRequest(t, app, http.MethodPost, "/api/v1/project-command", `{"audience":"x"}`, "")
+	defer invalid.Body.Close()
+	if invalid.StatusCode != http.StatusBadRequest || executions.Load() != 1 {
+		t.Fatalf("invalid application command status/executions = %d/%d", invalid.StatusCode, executions.Load())
+	}
+
+	unsupported, err := app.Test(httptest.NewRequest(http.MethodPost, "/api/v1/project-command", strings.NewReader(`{"audience":"operators"}`)))
+	if err != nil {
+		t.Fatalf("unsupported application command error = %v", err)
+	}
+	defer unsupported.Body.Close()
+	if unsupported.StatusCode != http.StatusUnsupportedMediaType {
+		t.Fatalf("unsupported application command status = %d", unsupported.StatusCode)
+	}
+}
+
+func TestApplicationCommandsSupportExplicitMutationMethods(t *testing.T) {
+	type request struct {
+		Value string `json:"value" validate:"required,min=2"`
+	}
+	type response struct {
+		Method string `json:"method"`
+	}
+	options := testOptions()
+	// The handler must remain transport-neutral; use separate commands to prove
+	// the same static path can be registered for each supported method.
+	options.ApplicationCommands = []ApplicationCommand{
+		NewJSONCommand("/method-command", func(context.Context, request) (response, error) {
+			return response{Method: "POST"}, nil
+		}),
+		NewJSONCommand("/method-command", func(context.Context, request) (response, error) {
+			return response{Method: "PUT"}, nil
+		}).WithMethod(http.MethodPut),
+		NewJSONCommand("/method-command", func(context.Context, request) (response, error) {
+			return response{Method: "PATCH"}, nil
+		}).WithMethod(http.MethodPatch),
+		NewJSONCommand("/method-command", func(context.Context, request) (response, error) {
+			return response{Method: "DELETE"}, nil
+		}).WithMethod(http.MethodDelete),
+	}
+	app := New(options)
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
+		response := doJSONRequest(t, app, method, "/api/v1/method-command", `{"value":"ok"}`, "")
+		if response.StatusCode != http.StatusOK {
+			response.Body.Close()
+			t.Fatalf("%s status = %d", method, response.StatusCode)
+		}
+		var envelope testEnvelope
+		if err := json.NewDecoder(response.Body).Decode(&envelope); err != nil {
+			response.Body.Close()
+			t.Fatalf("%s envelope: %v", method, err)
+		}
+		response.Body.Close()
+		if !strings.Contains(string(envelope.Data), `"method":"`+method+`"`) {
+			t.Fatalf("%s response = %s", method, envelope.Data)
+		}
+	}
+}
+
+func TestAuthenticatedApplicationCommandExposesMinimizedPrincipal(t *testing.T) {
+	type commandResponse struct {
+		Subject string `json:"subject"`
+	}
+	options := testOptions()
+	options.ApplicationCommands = []ApplicationCommand{
+		NewAuthenticatedJSONCommand("/authenticated-command", func(_ context.Context, _ struct{}, principal ApplicationPrincipal) (commandResponse, error) {
+			return commandResponse{Subject: principal.Subject}, nil
+		}),
+	}
+	app := New(options)
+
+	missing := doJSONRequest(t, app, http.MethodPost, "/api/v1/authenticated-command", `{}`, "")
+	missing.Body.Close()
+	if missing.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("authenticated command missing token status = %d", missing.StatusCode)
+	}
+	assertNoStoreResponse(t, missing)
+	invalid := doJSONRequest(t, app, http.MethodPost, "/api/v1/authenticated-command", `{}`, "invalid-token")
+	invalid.Body.Close()
+	if invalid.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("authenticated command invalid token status = %d", invalid.StatusCode)
+	}
+	assertNoStoreResponse(t, invalid)
+
+	user, authenticated := options.Auth.Authenticate("demo", "demo123")
+	if !authenticated {
+		t.Fatal("authenticated command test authentication failed")
+	}
+	rawToken, _, err := options.Auth.Issue(user)
+	if err != nil {
+		t.Fatalf("issue authenticated command token: %v", err)
+	}
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/authenticated-command", strings.NewReader(`{}`))
+	request.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	request.Header.Set(fiber.HeaderAuthorization, "Bearer "+rawToken)
+	response, err := app.Test(request)
+	if err != nil {
+		t.Fatalf("authenticated command request error = %v", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("authenticated command status = %d", response.StatusCode)
+	}
+	assertNoStoreResponse(t, response)
+	if envelope := decodeEnvelope(t, response); !strings.Contains(string(envelope.Data), `"subject":"`+user.ID+`"`) {
+		t.Fatalf("authenticated command response = %s", envelope.Data)
+	}
+}
+
+func TestAuthorizedApplicationCommandRejectsBeforeMediaTypeIdempotencyAndBinding(t *testing.T) {
+	type commandRequest struct {
+		Audience string `json:"audience" validate:"required,min=2,max=80"`
+	}
+	type commandResponse struct {
+		Subject string `json:"subject"`
+	}
+
+	options := testOptions()
+	requiredRoles := []string{"operator", "demo"}
+	var executions atomic.Int32
+	options.ApplicationCommands = []ApplicationCommand{
+		NewAuthorizedJSONCommand("/authorized-command", requiredRoles, func(_ context.Context, _ commandRequest, principal ApplicationPrincipal) (commandResponse, error) {
+			executions.Add(1)
+			return commandResponse{Subject: principal.Subject}, nil
+		}),
+	}
+	requiredRoles[1] = "viewer"
+	configured := options.ApplicationCommands[0]
+	if !configured.authorizationRequired || len(configured.requiredRoleIDs) != 2 || configured.requiredRoleIDs[1] != "demo" {
+		t.Fatalf("authorized command role copy = %#v", configured.requiredRoleIDs)
+	}
+	app := New(options)
+
+	user, authenticated := options.Auth.Authenticate("demo", "demo123")
+	if !authenticated {
+		t.Fatal("authorized command test authentication failed")
+	}
+	wrongRoleUser := user
+	wrongRoleUser.RoleIDs = []string{"viewer"}
+	wrongRoleUser.RoleNames = []string{"Viewer"}
+	wrongRoleToken, _, err := options.Auth.Issue(wrongRoleUser)
+	if err != nil {
+		t.Fatalf("issue wrong-role command token: %v", err)
+	}
+	const idempotencyKey = "123e4567-e89b-12d3-a456-426614174111"
+	forbiddenRequest := httptest.NewRequest(http.MethodPost, "/api/v1/authorized-command", strings.NewReader(`not-json`))
+	forbiddenRequest.Header.Set(fiber.HeaderAuthorization, "Bearer "+wrongRoleToken)
+	forbiddenRequest.Header.Set("X-Idempotency-Key", idempotencyKey)
+	forbidden, err := app.Test(forbiddenRequest)
+	if err != nil {
+		t.Fatalf("wrong-role command request error = %v", err)
+	}
+	forbidden.Body.Close()
+	if forbidden.StatusCode != http.StatusForbidden || executions.Load() != 0 {
+		t.Fatalf("wrong-role command status/executions = %d/%d", forbidden.StatusCode, executions.Load())
+	}
+	assertNoStoreResponse(t, forbidden)
+
+	correctRoleToken, _, err := options.Auth.Issue(user)
+	if err != nil {
+		t.Fatalf("issue correct-role command token: %v", err)
+	}
+	requestAllowed := func() *http.Response {
+		t.Helper()
+		request := httptest.NewRequest(http.MethodPost, "/api/v1/authorized-command", strings.NewReader(`{"audience":"operators"}`))
+		request.Header.Set(fiber.HeaderAuthorization, "Bearer "+correctRoleToken)
+		request.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+		request.Header.Set("X-Idempotency-Key", idempotencyKey)
+		response, err := app.Test(request)
+		if err != nil {
+			t.Fatalf("authorized command request error = %v", err)
+		}
+		return response
+	}
+	allowed := requestAllowed()
+	allowed.Body.Close()
+	if allowed.StatusCode != http.StatusOK || executions.Load() != 1 {
+		t.Fatalf("correct-role command status/executions = %d/%d", allowed.StatusCode, executions.Load())
+	}
+	assertNoStoreResponse(t, allowed)
+
+	replayed := requestAllowed()
+	defer replayed.Body.Close()
+	if replayed.StatusCode != http.StatusOK || replayed.Header.Get("X-Idempotency-Replayed") != "true" || executions.Load() != 1 {
+		t.Fatalf("authorized command replay status/header/executions = %d/%q/%d", replayed.StatusCode, replayed.Header.Get("X-Idempotency-Replayed"), executions.Load())
+	}
+	assertNoStoreResponse(t, replayed)
+}
+
+func TestApplicationCommandErrorsUseTheServerErrorBoundary(t *testing.T) {
+	options := testOptions()
+	options.ApplicationCommands = []ApplicationCommand{
+		NewJSONCommand("/command-failure", func(context.Context, struct{}) (struct{}, error) {
+			return struct{}{}, errors.New("private command detail")
+		}),
+	}
+	app := New(options)
+	response := doJSONRequest(t, app, http.MethodPost, "/api/v1/command-failure", `{}`, "")
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("application command status = %d", response.StatusCode)
+	}
+	assertNoStoreResponse(t, response)
+	envelope := decodeEnvelope(t, response)
+	if envelope.Msg != "internal server error" || strings.Contains(string(envelope.Data), "private command detail") {
+		t.Fatalf("application command error envelope = %#v", envelope)
+	}
+}
+
+func TestVersionedApplicationCommandEnforcesStrongPreconditionsAndIdempotency(t *testing.T) {
+	type versionedRequest struct {
+		Value string `json:"value" validate:"required,min=2,max=32"`
+	}
+	type versionedResponse struct {
+		Value string `json:"value"`
+	}
+
+	options := testOptions()
+	var executions atomic.Int32
+	var version atomic.Int32
+	version.Store(1)
+	options.ApplicationCommands = []ApplicationCommand{
+		NewVersionedJSONCommand("/versioned-command", func(_ context.Context, request versionedRequest, precondition ApplicationPrecondition) (versionedResponse, string, error) {
+			executions.Add(1)
+			current := version.Load()
+			if precondition.EntityTag != fmt.Sprintf("v%d", current) || !version.CompareAndSwap(current, current+1) {
+				return versionedResponse{}, "", ErrPreconditionFailed
+			}
+			return versionedResponse{Value: request.Value}, fmt.Sprintf("v%d", current+1), nil
+		}).WithMethod(http.MethodPatch),
+		NewVersionedJSONCommand("/invalid-versioned-response", func(_ context.Context, request versionedRequest, _ ApplicationPrecondition) (versionedResponse, string, error) {
+			return versionedResponse{Value: request.Value}, "invalid tag", nil
+		}).WithMethod(http.MethodPatch),
+	}
+	app := New(options)
+
+	requestVersioned := func(path, entityTag, key, body string, contentType bool) *http.Response {
+		t.Helper()
+		request := httptest.NewRequest(http.MethodPatch, "/api/v1"+path, strings.NewReader(body))
+		if contentType {
+			request.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+		}
+		if entityTag != "" {
+			request.Header.Set(fiber.HeaderIfMatch, entityTag)
+		}
+		if key != "" {
+			request.Header.Set("X-Idempotency-Key", key)
+		}
+		response, err := app.Test(request)
+		if err != nil {
+			t.Fatalf("versioned command request error = %v", err)
+		}
+		return response
+	}
+
+	missing := requestVersioned("/versioned-command", "", "", `not-json`, false)
+	missing.Body.Close()
+	if missing.StatusCode != http.StatusPreconditionRequired || executions.Load() != 0 {
+		t.Fatalf("missing If-Match status/executions = %d/%d", missing.StatusCode, executions.Load())
+	}
+	assertNoStoreResponse(t, missing)
+
+	if _, err := parseApplicationPrecondition(` "v1"`); !errors.Is(err, errInvalidApplicationPrecondition) {
+		t.Fatalf("leading whitespace precondition error = %v", err)
+	}
+	for _, entityTag := range []string{`W/"v1"`, `*`, `"v1", "v2"`, `v1`, `""`, `"bad tag"`} {
+		invalid := requestVersioned("/versioned-command", entityTag, "", `{"value":"first"}`, true)
+		invalid.Body.Close()
+		if invalid.StatusCode != http.StatusBadRequest || executions.Load() != 0 {
+			t.Fatalf("invalid If-Match %q status/executions = %d/%d", entityTag, invalid.StatusCode, executions.Load())
+		}
+		assertNoStoreResponse(t, invalid)
+	}
+
+	unsupported := requestVersioned("/versioned-command", `"v1"`, "", `{"value":"first"}`, false)
+	unsupported.Body.Close()
+	if unsupported.StatusCode != http.StatusUnsupportedMediaType || executions.Load() != 0 {
+		t.Fatalf("versioned media type status/executions = %d/%d", unsupported.StatusCode, executions.Load())
+	}
+
+	const firstKey = "123e4567-e89b-12d3-a456-426614174201"
+	first := requestVersioned("/versioned-command", `"v1"`, firstKey, `{"value":"first"}`, true)
+	if first.StatusCode != http.StatusOK || first.Header.Get(fiber.HeaderETag) != `"v2"` {
+		first.Body.Close()
+		t.Fatalf("first versioned response = %d/%q", first.StatusCode, first.Header.Get(fiber.HeaderETag))
+	}
+	if !strings.Contains(first.Header.Get(fiber.HeaderCacheControl), "no-store") || first.Header.Get(fiber.HeaderPragma) != "no-cache" {
+		first.Body.Close()
+		t.Fatalf("first versioned cache headers = %#v", first.Header)
+	}
+	first.Body.Close()
+
+	replayed := requestVersioned("/versioned-command", `"v1"`, firstKey, `{"value":"first"}`, true)
+	replayed.Body.Close()
+	if replayed.StatusCode != http.StatusOK || replayed.Header.Get(fiber.HeaderETag) != `"v2"` || replayed.Header.Get("X-Idempotency-Replayed") != "true" || executions.Load() != 1 {
+		t.Fatalf("versioned replay = %d/%q/%q executions %d", replayed.StatusCode, replayed.Header.Get(fiber.HeaderETag), replayed.Header.Get("X-Idempotency-Replayed"), executions.Load())
+	}
+	if !strings.Contains(replayed.Header.Get(fiber.HeaderCacheControl), "no-store") || replayed.Header.Get(fiber.HeaderPragma) != "no-cache" {
+		t.Fatalf("versioned replay cache headers = %#v", replayed.Header)
+	}
+
+	fingerprintConflict := requestVersioned("/versioned-command", `"v2"`, firstKey, `{"value":"first"}`, true)
+	fingerprintConflict.Body.Close()
+	if fingerprintConflict.StatusCode != http.StatusConflict || executions.Load() != 1 {
+		t.Fatalf("If-Match fingerprint conflict status/executions = %d/%d", fingerprintConflict.StatusCode, executions.Load())
+	}
+	assertNoStoreResponse(t, fingerprintConflict)
+
+	stale := requestVersioned("/versioned-command", `"v1"`, "123e4567-e89b-12d3-a456-426614174202", `{"value":"stale"}`, true)
+	stale.Body.Close()
+	if stale.StatusCode != http.StatusPreconditionFailed || stale.Header.Get(fiber.HeaderETag) != "" || executions.Load() != 2 || version.Load() != 2 {
+		t.Fatalf("stale version response = %d/%q executions/version %d/%d", stale.StatusCode, stale.Header.Get(fiber.HeaderETag), executions.Load(), version.Load())
+	}
+	assertNoStoreResponse(t, stale)
+
+	next := requestVersioned("/versioned-command", `"v2"`, "123e4567-e89b-12d3-a456-426614174203", `{"value":"second"}`, true)
+	next.Body.Close()
+	if next.StatusCode != http.StatusOK || next.Header.Get(fiber.HeaderETag) != `"v3"` || executions.Load() != 3 || version.Load() != 3 {
+		t.Fatalf("next version response = %d/%q executions/version %d/%d", next.StatusCode, next.Header.Get(fiber.HeaderETag), executions.Load(), version.Load())
+	}
+	if !strings.Contains(next.Header.Get(fiber.HeaderCacheControl), "no-store") || next.Header.Get(fiber.HeaderPragma) != "no-cache" {
+		t.Fatalf("next version cache headers = %#v", next.Header)
+	}
+
+	invalidResponse := requestVersioned("/invalid-versioned-response", `"v1"`, "", `{"value":"first"}`, true)
+	defer invalidResponse.Body.Close()
+	if invalidResponse.StatusCode != http.StatusInternalServerError || invalidResponse.Header.Get(fiber.HeaderETag) != "" {
+		t.Fatalf("invalid response ETag status/header = %d/%q", invalidResponse.StatusCode, invalidResponse.Header.Get(fiber.HeaderETag))
+	}
+	assertNoStoreResponse(t, invalidResponse)
+}
+
+func TestAuthorizedVersionedApplicationCommandChecksAccessBeforePrecondition(t *testing.T) {
+	type response struct {
+		Subject string `json:"subject"`
+	}
+	options := testOptions()
+	var executions atomic.Int32
+	options.ApplicationCommands = []ApplicationCommand{
+		NewAuthorizedVersionedJSONCommand("/authorized-versioned", []string{"demo"}, func(_ context.Context, _ struct{}, principal ApplicationPrincipal, precondition ApplicationPrecondition) (response, string, error) {
+			executions.Add(1)
+			return response{Subject: principal.Subject}, precondition.EntityTag + ".next", nil
+		}).WithMethod(http.MethodPatch),
+	}
+	app := New(options)
+
+	user, authenticated := options.Auth.Authenticate("demo", "demo123")
+	if !authenticated {
+		t.Fatal("versioned command test authentication failed")
+	}
+	wrongRole := user
+	wrongRole.RoleIDs = []string{"viewer"}
+	wrongRoleToken, _, err := options.Auth.Issue(wrongRole)
+	if err != nil {
+		t.Fatalf("issue wrong-role token: %v", err)
+	}
+	request := func(token, entityTag string, contentType bool) *http.Response {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPatch, "/api/v1/authorized-versioned", strings.NewReader(`{}`))
+		req.Header.Set(fiber.HeaderAuthorization, "Bearer "+token)
+		if entityTag != "" {
+			req.Header.Set(fiber.HeaderIfMatch, entityTag)
+		}
+		if contentType {
+			req.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+		}
+		result, requestErr := app.Test(req)
+		if requestErr != nil {
+			t.Fatalf("authorized versioned request error = %v", requestErr)
+		}
+		return result
+	}
+
+	forbidden := request(wrongRoleToken, "", false)
+	forbidden.Body.Close()
+	if forbidden.StatusCode != http.StatusForbidden || executions.Load() != 0 {
+		t.Fatalf("forbidden versioned status/executions = %d/%d", forbidden.StatusCode, executions.Load())
+	}
+
+	validToken, _, err := options.Auth.Issue(user)
+	if err != nil {
+		t.Fatalf("issue valid token: %v", err)
+	}
+	missing := request(validToken, "", false)
+	missing.Body.Close()
+	if missing.StatusCode != http.StatusPreconditionRequired || executions.Load() != 0 {
+		t.Fatalf("authorized missing precondition status/executions = %d/%d", missing.StatusCode, executions.Load())
+	}
+	unsupported := request(validToken, `"v1"`, false)
+	unsupported.Body.Close()
+	if unsupported.StatusCode != http.StatusUnsupportedMediaType || executions.Load() != 0 {
+		t.Fatalf("authorized media type status/executions = %d/%d", unsupported.StatusCode, executions.Load())
+	}
+	allowed := request(validToken, `"v1"`, true)
+	defer allowed.Body.Close()
+	if allowed.StatusCode != http.StatusOK || allowed.Header.Get(fiber.HeaderETag) != `"v1.next"` || executions.Load() != 1 {
+		t.Fatalf("authorized versioned response = %d/%q executions %d", allowed.StatusCode, allowed.Header.Get(fiber.HeaderETag), executions.Load())
+	}
+	if !strings.Contains(allowed.Header.Get(fiber.HeaderCacheControl), "no-store") || allowed.Header.Get(fiber.HeaderPragma) != "no-cache" {
+		t.Fatalf("authorized versioned cache headers = %#v", allowed.Header)
+	}
+	if envelope := decodeEnvelope(t, allowed); !strings.Contains(string(envelope.Data), `"subject":"`+user.ID+`"`) {
+		t.Fatalf("authorized versioned data = %s", envelope.Data)
+	}
+}
+
+func TestApplicationCommandsRejectAmbiguousDefinitions(t *testing.T) {
+	handler := func(context.Context, struct{}) (struct{}, error) { return struct{}{}, nil }
+	authenticatedHandler := func(context.Context, struct{}, ApplicationPrincipal) (struct{}, error) { return struct{}{}, nil }
+	versionedHandler := func(context.Context, struct{}, ApplicationPrecondition) (struct{}, string, error) {
+		return struct{}{}, "v1", nil
+	}
+	authenticatedVersionedHandler := func(context.Context, struct{}, ApplicationPrincipal, ApplicationPrecondition) (struct{}, string, error) {
+		return struct{}{}, "v1", nil
+	}
+	command := func(path string) ApplicationCommand { return NewJSONCommand(path, handler) }
+	tooManyRoles := make([]string, maxApplicationRequiredRoles+1)
+	for index := range tooManyRoles {
+		tooManyRoles[index] = fmt.Sprintf("role-%d", index)
+	}
+	tests := []struct {
+		name        string
+		commands    []ApplicationCommand
+		registrar   RouteRegistrar
+		disableAuth bool
+	}{
+		{name: "empty path", commands: []ApplicationCommand{command("")}},
+		{name: "relative path", commands: []ApplicationCommand{command("relative")}},
+		{name: "whitespace in path", commands: []ApplicationCommand{command("/project command")}},
+		{name: "control character in path", commands: []ApplicationCommand{command("/project\x00command")}},
+		{name: "backslash in path", commands: []ApplicationCommand{command("/project\\command")}},
+		{name: "query in path", commands: []ApplicationCommand{command("/items?all=true")}},
+		{name: "parameter path", commands: []ApplicationCommand{command("/items/:id")}},
+		{name: "wildcard path", commands: []ApplicationCommand{command("/items/*")}},
+		{name: "encoded path", commands: []ApplicationCommand{command("/items/%2e%2e")}},
+		{name: "repeated separator", commands: []ApplicationCommand{command("/items//all")}},
+		{name: "relative segment", commands: []ApplicationCommand{command("/items/../all")}},
+		{name: "trailing separator", commands: []ApplicationCommand{command("/items/")}},
+		{name: "nil handler", commands: []ApplicationCommand{{Path: "/items"}}},
+		{name: "duplicate path", commands: []ApplicationCommand{command("/items"), command("/items")}},
+		{name: "case insensitive duplicate", commands: []ApplicationCommand{command("/items"), command("/ITEMS")}},
+		{name: "default route collision", commands: []ApplicationCommand{command("/example/echo")}},
+		{name: "case insensitive default route collision", commands: []ApplicationCommand{command("/EXAMPLE/ECHO")}},
+		{name: "enabled auth route collision", commands: []ApplicationCommand{command("/auth/login")}},
+		{name: "mixed registration modes", commands: []ApplicationCommand{command("/items")}, registrar: func(fiber.Router) {}},
+		{name: "authenticated command requires auth", commands: []ApplicationCommand{NewAuthenticatedJSONCommand("/items", authenticatedHandler)}, disableAuth: true},
+		{name: "authorized command requires auth", commands: []ApplicationCommand{NewAuthorizedJSONCommand("/items", []string{"demo"}, authenticatedHandler)}, disableAuth: true},
+		{name: "authenticated versioned command requires auth", commands: []ApplicationCommand{NewAuthenticatedVersionedJSONCommand("/items", authenticatedVersionedHandler)}, disableAuth: true},
+		{name: "authorized versioned command requires auth", commands: []ApplicationCommand{NewAuthorizedVersionedJSONCommand("/items", []string{"demo"}, authenticatedVersionedHandler)}, disableAuth: true},
+		{name: "authorized versioned command requires a role", commands: []ApplicationCommand{NewAuthorizedVersionedJSONCommand("/items", nil, authenticatedVersionedHandler)}},
+		{name: "versioned command rejects unsupported method", commands: []ApplicationCommand{NewVersionedJSONCommand("/items", versionedHandler).WithMethod(http.MethodOptions)}},
+		{name: "authorized command requires a role", commands: []ApplicationCommand{NewAuthorizedJSONCommand("/items", nil, authenticatedHandler)}},
+		{name: "authorized command rejects duplicate roles", commands: []ApplicationCommand{NewAuthorizedJSONCommand("/items", []string{"demo", "demo"}, authenticatedHandler)}},
+		{name: "authorized command rejects malformed roles", commands: []ApplicationCommand{NewAuthorizedJSONCommand("/items", []string{"admin role"}, authenticatedHandler)}},
+		{name: "authorized command rejects excessive roles", commands: []ApplicationCommand{NewAuthorizedJSONCommand("/items", tooManyRoles, authenticatedHandler)}},
+		{name: "command rejects unsupported method", commands: []ApplicationCommand{NewJSONCommand("/items", handler).WithMethod(http.MethodOptions)}},
+		{name: "command rejects whitespace method", commands: []ApplicationCommand{NewJSONCommand("/items", handler).WithMethod(" PUT")}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			defer func() {
+				if recovered := recover(); recovered == nil {
+					t.Fatal("New() did not reject ambiguous application command configuration")
+				}
+			}()
+			options := testOptions()
+			if test.disableAuth {
+				options.Auth = auth.NewService(auth.Config{})
+			}
+			options.ApplicationCommands = test.commands
+			options.RegisterRoutes = test.registrar
+			_ = New(options)
+		})
+	}
+}
+
 func TestApplicationQueriesRejectAmbiguousDefinitions(t *testing.T) {
 	handler := func(context.Context) (any, error) { return nil, nil }
 	tests := []struct {
@@ -559,9 +1479,23 @@ func TestApplicationQueriesRejectAmbiguousDefinitions(t *testing.T) {
 		{name: "empty path", queries: []ApplicationQuery{{Handler: handler}}},
 		{name: "relative path", queries: []ApplicationQuery{{Path: "relative", Handler: handler}}},
 		{name: "whitespace in path", queries: []ApplicationQuery{{Path: "/project query", Handler: handler}}},
+		{name: "control character in path", queries: []ApplicationQuery{{Path: "/project\x00query", Handler: handler}}},
+		{name: "backslash in path", queries: []ApplicationQuery{{Path: "/project\\query", Handler: handler}}},
 		{name: "query in path", queries: []ApplicationQuery{{Path: "/items?all=true", Handler: handler}}},
+		{name: "parameter path", queries: []ApplicationQuery{{Path: "/items/:id", Handler: handler}}},
+		{name: "wildcard path", queries: []ApplicationQuery{{Path: "/items/*", Handler: handler}}},
+		{name: "encoded path", queries: []ApplicationQuery{{Path: "/items/%2e%2e", Handler: handler}}},
+		{name: "repeated separator", queries: []ApplicationQuery{{Path: "/items//all", Handler: handler}}},
+		{name: "relative segment", queries: []ApplicationQuery{{Path: "/items/../all", Handler: handler}}},
+		{name: "trailing separator", queries: []ApplicationQuery{{Path: "/items/", Handler: handler}}},
 		{name: "nil handler", queries: []ApplicationQuery{{Path: "/items"}}},
 		{name: "duplicate path", queries: []ApplicationQuery{{Path: "/items", Handler: handler}, {Path: "/items", Handler: handler}}},
+		{name: "case insensitive duplicate", queries: []ApplicationQuery{{Path: "/items", Handler: handler}, {Path: "/ITEMS", Handler: handler}}},
+		{name: "default route collision", queries: []ApplicationQuery{{Path: "/example/hello", Handler: handler}}},
+		{name: "case insensitive default route collision", queries: []ApplicationQuery{{Path: "/EXAMPLE/HELLO", Handler: handler}}},
+		{name: "enabled auth route collision", queries: []ApplicationQuery{{Path: "/auth/me", Handler: handler}}},
+		{name: "unsupported method", queries: []ApplicationQuery{(ApplicationQuery{Path: "/items", Handler: handler}).WithMethod(http.MethodOptions)}},
+		{name: "whitespace method", queries: []ApplicationQuery{(ApplicationQuery{Path: "/items", Handler: handler}).WithMethod(" HEAD ")}},
 		{name: "mixed registration modes", queries: []ApplicationQuery{{Path: "/items", Handler: handler}}, registrar: func(fiber.Router) {}},
 	}
 	for _, test := range tests {
@@ -574,6 +1508,128 @@ func TestApplicationQueriesRejectAmbiguousDefinitions(t *testing.T) {
 			options := testOptions()
 			options.ApplicationQueries = test.queries
 			options.RegisterRoutes = test.registrar
+			_ = New(options)
+		})
+	}
+}
+
+func TestTypedApplicationQueriesRejectUnsafeBindingsAndOverlappingRoutes(t *testing.T) {
+	type itemByID struct {
+		ID string `uri:"id"`
+	}
+	type itemBySlug struct {
+		Slug string `uri:"slug"`
+	}
+	handleID := func(context.Context, itemByID) (struct{}, error) { return struct{}{}, nil }
+	handleSlug := func(context.Context, itemBySlug) (struct{}, error) { return struct{}{}, nil }
+	authorizedHandler := func(context.Context, struct{}, ApplicationPrincipal) (struct{}, error) { return struct{}{}, nil }
+	authenticatedVersionedHandler := func(context.Context, struct{}, ApplicationPrincipal) (struct{}, string, error) {
+		return struct{}{}, "v1", nil
+	}
+	tooManyRoles := make([]string, maxApplicationRequiredRoles+1)
+	for index := range tooManyRoles {
+		tooManyRoles[index] = fmt.Sprintf("role-%d", index)
+	}
+	tests := []struct {
+		name        string
+		queries     []ApplicationQuery
+		disableAuth bool
+	}{
+		{
+			name: "request must be a struct",
+			queries: []ApplicationQuery{NewQuery("/typed", func(context.Context, string) (struct{}, error) {
+				return struct{}{}, nil
+			})},
+		},
+		{
+			name: "missing explicit source",
+			queries: []ApplicationQuery{NewQuery("/typed", func(context.Context, struct{ Value string }) (struct{}, error) {
+				return struct{}{}, nil
+			})},
+		},
+		{
+			name: "multiple explicit sources",
+			queries: []ApplicationQuery{NewQuery("/typed/:value", func(context.Context, struct {
+				Value string `uri:"value" query:"value"`
+			}) (struct{}, error) {
+				return struct{}{}, nil
+			})},
+		},
+		{
+			name:    "URI binding missing from path",
+			queries: []ApplicationQuery{NewQuery("/typed", handleID)},
+		},
+		{
+			name:    "path parameter missing from request",
+			queries: []ApplicationQuery{NewQuery("/typed/:id", func(context.Context, struct{}) (struct{}, error) { return struct{}{}, nil })},
+		},
+		{
+			name:    "dynamic routes overlap",
+			queries: []ApplicationQuery{NewQuery("/items/:id", handleID), NewQuery("/items/:slug", handleSlug)},
+		},
+		{
+			name:    "dynamic and static routes overlap",
+			queries: []ApplicationQuery{NewQuery("/items/:id", handleID), NewQuery("/items/all", func(context.Context, struct{}) (struct{}, error) { return struct{}{}, nil })},
+		},
+		{
+			name:    "dynamic route overlaps Framework route",
+			queries: []ApplicationQuery{NewQuery("/example/:id", handleID)},
+		},
+		{
+			name: "authenticated query requires auth",
+			queries: []ApplicationQuery{NewAuthenticatedQuery("/typed", func(context.Context, struct{}, ApplicationPrincipal) (struct{}, error) {
+				return struct{}{}, nil
+			})},
+			disableAuth: true,
+		},
+		{
+			name:        "authorized query requires auth",
+			queries:     []ApplicationQuery{NewAuthorizedQuery("/typed", []string{"demo"}, authorizedHandler)},
+			disableAuth: true,
+		},
+		{
+			name:        "authenticated versioned query requires auth",
+			queries:     []ApplicationQuery{NewAuthenticatedVersionedQuery("/typed", authenticatedVersionedHandler)},
+			disableAuth: true,
+		},
+		{
+			name:        "authorized versioned query requires auth",
+			queries:     []ApplicationQuery{NewAuthorizedVersionedQuery("/typed", []string{"demo"}, authenticatedVersionedHandler)},
+			disableAuth: true,
+		},
+		{
+			name:    "authorized versioned query requires a role",
+			queries: []ApplicationQuery{NewAuthorizedVersionedQuery("/typed", nil, authenticatedVersionedHandler)},
+		},
+		{
+			name:    "authorized query requires a role",
+			queries: []ApplicationQuery{NewAuthorizedQuery("/typed", nil, authorizedHandler)},
+		},
+		{
+			name:    "authorized query rejects duplicate roles",
+			queries: []ApplicationQuery{NewAuthorizedQuery("/typed", []string{"demo", "demo"}, authorizedHandler)},
+		},
+		{
+			name:    "authorized query rejects malformed roles",
+			queries: []ApplicationQuery{NewAuthorizedQuery("/typed", []string{"admin role"}, authorizedHandler)},
+		},
+		{
+			name:    "authorized query rejects excessive roles",
+			queries: []ApplicationQuery{NewAuthorizedQuery("/typed", tooManyRoles, authorizedHandler)},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			defer func() {
+				if recovered := recover(); recovered == nil {
+					t.Fatal("New() did not reject unsafe typed query configuration")
+				}
+			}()
+			options := testOptions()
+			if test.disableAuth {
+				options.Auth = auth.NewService(auth.Config{})
+			}
+			options.ApplicationQueries = test.queries
 			_ = New(options)
 		})
 	}
@@ -711,6 +1767,160 @@ func TestJWTAuthenticationFlow(t *testing.T) {
 	}
 	if user.Username != "demo" {
 		t.Fatalf("user = %#v", user)
+	}
+}
+
+func TestSecurityAuditEventsAreCorrelatedBoundedAndCredentialSafe(t *testing.T) {
+	var output bytes.Buffer
+	options := testOptions()
+	options.AuthRateLimitMax = 2
+	options.MetricsToken = "metrics-audit-secret"
+	options.PprofEnabled = true
+	options.PprofToken = "pprof-audit-secret"
+	options.Logger = observability.NewLogger("json", "info", &output)
+	options.ApplicationQueries = []ApplicationQuery{
+		NewAuthorizedQuery("/audited-query", []string{"demo"}, func(context.Context, struct{}, ApplicationPrincipal) (struct{}, error) {
+			return struct{}{}, nil
+		}),
+	}
+	options.ApplicationCommands = []ApplicationCommand{
+		NewAuthorizedJSONCommand("/audited-command", []string{"demo"}, func(context.Context, struct{}, ApplicationPrincipal) (struct{}, error) {
+			return struct{}{}, nil
+		}),
+	}
+	app := New(options)
+	deniedUser, authenticated := options.Auth.Authenticate("demo", "demo123")
+	if !authenticated {
+		t.Fatal("audit test authentication failed")
+	}
+	deniedUser.RoleIDs = []string{"audit-denied-role"}
+	deniedUser.RoleNames = []string{"Audit Denied Role"}
+	deniedToken, _, err := options.Auth.Issue(deniedUser)
+	if err != nil {
+		t.Fatalf("issue denied audit token: %v", err)
+	}
+
+	requestIndex := 0
+	doRequest := func(method, path, body string, headers map[string]string, wantStatus int) {
+		t.Helper()
+		requestIndex++
+		request := httptest.NewRequest(method, path, strings.NewReader(body))
+		request.Header.Set(fiber.HeaderXRequestID, fmt.Sprintf("audit-request-%d", requestIndex))
+		for name, value := range headers {
+			request.Header.Set(name, value)
+		}
+		response, err := app.Test(request)
+		if err != nil {
+			t.Fatalf("%s %s request error = %v", method, path, err)
+		}
+		response.Body.Close()
+		if response.StatusCode != wantStatus {
+			t.Fatalf("%s %s status = %d, want %d", method, path, response.StatusCode, wantStatus)
+		}
+	}
+
+	jsonHeaders := map[string]string{fiber.HeaderContentType: fiber.MIMEApplicationJSON}
+	doRequest(http.MethodPost, "/api/v1/auth/login", `{"username":"audit-attacker","password":"login-audit-secret"}`, jsonHeaders, http.StatusUnauthorized)
+	doRequest(http.MethodPost, "/api/v1/auth/login", `{"username":"demo","password":"demo123"}`, jsonHeaders, http.StatusOK)
+	doRequest(http.MethodPost, "/api/v1/auth/login", `{"username":"audit-attacker","password":"login-audit-secret"}`, jsonHeaders, http.StatusTooManyRequests)
+	doRequest(http.MethodGet, "/api/v1/auth/me", "", nil, http.StatusUnauthorized)
+	doRequest(http.MethodGet, "/api/v1/auth/me", "", map[string]string{fiber.HeaderAuthorization: "Bearer bearer-audit-secret"}, http.StatusUnauthorized)
+	doRequest(http.MethodGet, "/metrics", "", map[string]string{fiber.HeaderAuthorization: "Bearer wrong-metrics-audit-secret"}, http.StatusUnauthorized)
+	doRequest(http.MethodGet, "/metrics", "", map[string]string{fiber.HeaderAuthorization: "Bearer " + options.MetricsToken}, http.StatusOK)
+	doRequest(http.MethodGet, "/debug/pprof/", "", map[string]string{fiber.HeaderAuthorization: "Bearer wrong-pprof-audit-secret"}, http.StatusUnauthorized)
+	doRequest(http.MethodGet, "/debug/pprof/", "", map[string]string{fiber.HeaderAuthorization: "Bearer " + options.PprofToken}, http.StatusOK)
+	doRequest(http.MethodGet, "/api/v1/audited-query", "", map[string]string{fiber.HeaderAuthorization: "Bearer " + deniedToken}, http.StatusForbidden)
+	doRequest(http.MethodPost, "/api/v1/audited-command", "", map[string]string{fiber.HeaderAuthorization: "Bearer " + deniedToken}, http.StatusForbidden)
+
+	logs := output.String()
+	for _, sensitive := range []string{
+		"audit-attacker",
+		"login-audit-secret",
+		"demo123",
+		"bearer-audit-secret",
+		"metrics-audit-secret",
+		"pprof-audit-secret",
+		"audit-denied-role",
+		"Audit Denied Role",
+	} {
+		if strings.Contains(logs, sensitive) {
+			t.Fatalf("security logs contain sensitive value %q: %s", sensitive, logs)
+		}
+	}
+
+	type expectedAudit struct {
+		event   string
+		outcome string
+		reason  string
+		target  string
+	}
+	expected := []expectedAudit{
+		{event: "login", outcome: "failure", reason: "invalid_credentials", target: "demo_auth"},
+		{event: "login", outcome: "success", reason: "credentials_valid", target: "demo_auth"},
+		{event: "login", outcome: "limited", reason: "rate_limited", target: "demo_auth"},
+		{event: "bearer", outcome: "failure", reason: "token_missing", target: "api"},
+		{event: "bearer", outcome: "failure", reason: "token_invalid", target: "api"},
+		{event: "diagnostics", outcome: "failure", reason: "token_invalid", target: "metrics"},
+		{event: "diagnostics", outcome: "success", reason: "token_valid", target: "metrics"},
+		{event: "diagnostics", outcome: "failure", reason: "token_invalid", target: "pprof"},
+		{event: "diagnostics", outcome: "success", reason: "token_valid", target: "pprof"},
+		{event: "authorization", outcome: "failure", reason: "role_required", target: "application_query"},
+		{event: "authorization", outcome: "failure", reason: "role_required", target: "application_command"},
+	}
+	matched := make([]bool, len(expected))
+	auditCount := 0
+	loginActorCount := 0
+	for _, line := range strings.Split(strings.TrimSpace(logs), "\n") {
+		var record map[string]any
+		if err := json.Unmarshal([]byte(line), &record); err != nil || record["msg"] != "security_audit" {
+			continue
+		}
+		auditCount++
+		for _, field := range []string{"request_id", "trace_id", "span_id"} {
+			if value, ok := record[field].(string); !ok || value == "" {
+				t.Fatalf("security audit field %q = %#v; record=%#v", field, record[field], record)
+			}
+		}
+		for _, forbidden := range []string{"username", "password", "token", "authorization", "body", "error", "path", "client_ip", "subject", "role", "claims", "email", "display_name"} {
+			if _, exists := record[forbidden]; exists {
+				t.Fatalf("security audit contains forbidden field %q: %#v", forbidden, record)
+			}
+		}
+		if record["actor_id"] == "fiber-demo-user" {
+			loginActorCount++
+		}
+		for index, want := range expected {
+			if record["event"] == want.event && record["outcome"] == want.outcome &&
+				record["reason"] == want.reason && record["target"] == want.target {
+				matched[index] = true
+			}
+		}
+	}
+	if auditCount != len(expected) {
+		t.Fatalf("security audit count = %d, want %d; logs=%s", auditCount, len(expected), logs)
+	}
+	for index, found := range matched {
+		if !found {
+			t.Fatalf("security audit event missing: %#v; logs=%s", expected[index], logs)
+		}
+	}
+	if loginActorCount != 1 {
+		t.Fatalf("successful login actor audit count = %d, want 1; logs=%s", loginActorCount, logs)
+	}
+
+	metrics := options.Metrics.Render()
+	for _, want := range []string{
+		`goexample_security_events_total{event="login",outcome="success"} 1`,
+		`goexample_security_events_total{event="login",outcome="failure"} 1`,
+		`goexample_security_events_total{event="login",outcome="limited"} 1`,
+		`goexample_security_events_total{event="bearer",outcome="failure"} 2`,
+		`goexample_security_events_total{event="diagnostics",outcome="success"} 2`,
+		`goexample_security_events_total{event="diagnostics",outcome="failure"} 2`,
+		`goexample_security_events_total{event="authorization",outcome="failure"} 2`,
+	} {
+		if !strings.Contains(metrics, want) {
+			t.Fatalf("security event metric %q missing: %s", want, metrics)
+		}
 	}
 }
 

@@ -6,7 +6,10 @@ on:
       - "Framework/**"
       - "Proj/Example/**"
       - "scripts/go-project.mjs"
+      - "scripts/transport-benchmark-report.mjs"
+      - "scripts/transport-soak-report.mjs"
       - "scripts/evidence-manifest.mjs"
+      - "scripts/evidence-verify.mjs"
       - "package.json"
       - "go.work"
       - "go.work.sum"
@@ -57,6 +60,21 @@ jobs:
             yarn --version
           } | tee .temp/transport-benchmark/environment.txt
 
+      - name: Capture system state before benchmark
+        shell: bash
+        run: |
+          {
+            echo "captured_at=$(date --utc --iso-8601=seconds)"
+            echo "open_file_limit=$(ulimit -n)"
+            echo "kernel_file_table=$(cat /proc/sys/fs/file-nr)"
+            echo "--- socket summary ---"
+            ss -s
+            echo "--- network devices ---"
+            cat /proc/net/dev
+            echo "--- memory ---"
+            grep -E '^(MemTotal|MemFree|MemAvailable|Buffers|Cached|SwapTotal|SwapFree):' /proc/meminfo
+          } | tee .temp/transport-benchmark/system-before.txt
+
       - name: Run real-TCP transport contract and five benchmark rounds
         shell: bash
         run: |
@@ -68,10 +86,84 @@ jobs:
             | tee .temp/transport-benchmark/benchmark-status.txt
           exit "${benchmark_status}"
 
+      - name: Run bounded transport soak
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          TRANSPORT_SOAK_DURATION=30s GOMAXPROCS=2 /usr/bin/time -v \
+            yarn soak:transports 2>&1 \
+            | tee .temp/transport-benchmark/transport-soak.txt
+          soak_status=${PIPESTATUS[0]}
+          printf 'exit_code=%s\n' "${soak_status}" \
+            | tee .temp/transport-benchmark/soak-status.txt
+          exit "${soak_status}"
+
+      - name: Capture system state after benchmark
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "captured_at=$(date --utc --iso-8601=seconds)"
+            echo "open_file_limit=$(ulimit -n)"
+            echo "kernel_file_table=$(cat /proc/sys/fs/file-nr)"
+            echo "--- socket summary ---"
+            ss -s
+            echo "--- network devices ---"
+            cat /proc/net/dev
+            echo "--- memory ---"
+            grep -E '^(MemTotal|MemFree|MemAvailable|Buffers|Cached|SwapTotal|SwapFree):' /proc/meminfo
+          } | tee .temp/transport-benchmark/system-after.txt
+
+      - name: Extract benchmark trend input
+        if: always()
+        shell: bash
+        run: |
+          grep -E '^BenchmarkProjectTransportTCP(Parallel)?/' \
+            .temp/transport-benchmark/transport-benchmark.txt \
+            | tee .temp/transport-benchmark/benchmark-trend.txt
+          test -s .temp/transport-benchmark/benchmark-trend.txt
+
+      - name: Generate capacity report
+        if: always()
+        shell: bash
+        run: |
+          node scripts/transport-benchmark-report.mjs \
+            --input .temp/transport-benchmark/transport-benchmark.txt \
+            --output .temp/transport-benchmark/transport-capacity-report.json
+
+      - name: Generate soak report
+        if: always()
+        shell: bash
+        run: |
+          node scripts/transport-soak-report.mjs \
+            --input .temp/transport-benchmark/transport-soak.txt \
+            --output .temp/transport-benchmark/transport-soak-report.json
+
+      - name: Summarize CPU and heap profiles
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f .temp/transport-benchmark/transport.cpu.pprof ]]; then
+            go tool pprof -top -nodecount=30 \
+              .temp/transport-benchmark/transport.cpu.pprof \
+              > .temp/transport-benchmark/cpu-profile-top.txt 2>&1
+          fi
+          if [[ -f .temp/transport-benchmark/transport.heap.pprof ]]; then
+            go tool pprof -top -nodecount=30 -sample_index=alloc_space \
+              .temp/transport-benchmark/transport.heap.pprof \
+              > .temp/transport-benchmark/heap-profile-top.txt 2>&1
+          fi
+
       - name: Generate evidence manifest
         if: always()
         shell: bash
         run: yarn evidence:manifest --output .temp/transport-benchmark/manifest.json
+
+      - name: Verify evidence manifest
+        if: always()
+        shell: bash
+        run: yarn evidence:verify --manifest .temp/transport-benchmark/manifest.json
 
       - name: Upload raw benchmark evidence
         if: always()

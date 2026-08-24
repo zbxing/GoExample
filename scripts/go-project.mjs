@@ -29,12 +29,38 @@ if (!existsSync(path.join(projectRoot, 'go.mod'))) {
   process.exit(1);
 }
 
-const projectPattern = `./Proj/${projectName}/...`;
-const frameworkPattern = './Framework/...';
 const outputRoot = path.join(repositoryRoot, '.temp');
 const transportEvidenceRoot = path.join(outputRoot, 'transport-benchmark');
 const workspace = readFileSync(path.join(repositoryRoot, 'go.work'), 'utf8');
 const workspacePackage = JSON.parse(readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'));
+const workspaceUseBlock = workspace.match(/^use\s*\(([^]*?)^\)/m)?.[1];
+if (!workspaceUseBlock) {
+  console.error('go.work must declare workspace modules in a use block.');
+  process.exit(1);
+}
+const workspaceModulePaths = workspaceUseBlock
+  .split(/\r?\n/)
+  .map((line) => line.replace(/\/\/.*$/, '').trim())
+  .filter(Boolean);
+if (workspaceModulePaths.length === 0) {
+  console.error('go.work must contain at least one workspace module.');
+  process.exit(1);
+}
+for (const modulePath of workspaceModulePaths) {
+  if (!modulePath.startsWith('./') || modulePath.includes('..')) {
+    console.error(`go.work contains an unsafe workspace module path: ${modulePath}`);
+    process.exit(1);
+  }
+  const moduleRoot = path.resolve(repositoryRoot, modulePath);
+  if (
+    !moduleRoot.startsWith(`${repositoryRoot}${path.sep}`) ||
+    !existsSync(path.join(moduleRoot, 'go.mod'))
+  ) {
+    console.error(`go.work module was not found inside the repository: ${modulePath}`);
+    process.exit(1);
+  }
+}
+const workspacePatterns = workspaceModulePaths.map((modulePath) => `${modulePath}/...`);
 const toolchainMatch = workspace.match(/^toolchain\s+go(\d+\.\d+\.\d+)$/m);
 if (!toolchainMatch) {
   console.error('go.work must declare a toolchain version.');
@@ -64,16 +90,25 @@ const buildCommit = /^[a-f0-9]{7,40}$/i.test(gitCommitResult.stdout?.trim() ?? '
   ? gitCommitResult.stdout.trim()
   : 'unknown';
 const buildTime = new Date().toISOString();
+const frameworkAPIBaselineRef = process.env.FRAMEWORK_API_BASE_REF?.trim();
+const frameworkAPITool = './Framework/internal/apisnapshot';
+const frameworkAPIArguments = [
+  'run',
+  frameworkAPITool,
+  '-root',
+  'Framework',
+  '-baseline',
+  'Framework/api-snapshot.json',
+];
 const taskDefinitions = {
   run: { cwd: projectRoot, args: ['run', './cmd/server'] },
-  test: { cwd: repositoryRoot, args: ['test', frameworkPattern, projectPattern] },
+  test: { cwd: repositoryRoot, args: ['test', ...workspacePatterns] },
   cover: {
     cwd: repositoryRoot,
     args: [
       'test',
       `-coverprofile=${path.join(outputRoot, 'coverage', `${projectName}.out`)}`,
-      frameworkPattern,
-      projectPattern,
+      ...workspacePatterns,
     ],
   },
   bench: {
@@ -122,20 +157,25 @@ const taskDefinitions = {
         : []),
     ],
   },
-  race: { cwd: repositoryRoot, args: ['test', '-race', frameworkPattern, projectPattern] },
-  vuln: {
-    commands: [
-      {
-        cwd: frameworkRoot,
-        args: ['run', 'golang.org/x/vuln/cmd/govulncheck@v1.1.4', './...'],
-      },
-      {
-        cwd: projectRoot,
-        args: ['run', 'golang.org/x/vuln/cmd/govulncheck@v1.1.4', './...'],
-      },
+  'soak-transports': {
+    cwd: repositoryRoot,
+    args: [
+      'test',
+      '-v',
+      '-count=1',
+      '-timeout=12m',
+      '-run=^TestProjectTransportSoakTCP$',
+      './Proj/Example/internal/projectapi',
     ],
   },
-  vet: { cwd: repositoryRoot, args: ['vet', frameworkPattern, projectPattern] },
+  race: { cwd: repositoryRoot, args: ['test', '-race', ...workspacePatterns] },
+  vuln: {
+    commands: workspaceModulePaths.map((modulePath) => ({
+      cwd: path.resolve(repositoryRoot, modulePath),
+      args: ['run', 'golang.org/x/vuln/cmd/govulncheck@v1.1.4', './...'],
+    })),
+  },
+  vet: { cwd: repositoryRoot, args: ['vet', ...workspacePatterns] },
   build: {
     cwd: repositoryRoot,
     args: [
@@ -148,6 +188,17 @@ const taskDefinitions = {
       `./Proj/${projectName}/cmd/server`,
     ],
   },
+  'api-compat': {
+    cwd: repositoryRoot,
+    args: [
+      ...frameworkAPIArguments,
+      ...(frameworkAPIBaselineRef ? ['-baseline-ref', frameworkAPIBaselineRef] : []),
+    ],
+  },
+  'api-snapshot': {
+    cwd: repositoryRoot,
+    args: [...frameworkAPIArguments, '-write'],
+  },
 };
 
 if (!(task in taskDefinitions)) {
@@ -159,8 +210,10 @@ mkdirSync(path.join(outputRoot, 'bin'), { recursive: true });
 mkdirSync(path.join(outputRoot, 'coverage'), { recursive: true });
 mkdirSync(transportEvidenceRoot, { recursive: true });
 const goTemporaryRoot = process.env.GOTMPDIR?.trim() || path.join(outputRoot, 'go-tmp');
+const goCacheRoot = process.env.GOCACHE?.trim() || path.join(outputRoot, 'gocache');
 mkdirSync(goTemporaryRoot, { recursive: true });
-const goEnvironment = { ...process.env, GOTMPDIR: goTemporaryRoot };
+mkdirSync(goCacheRoot, { recursive: true });
+const goEnvironment = { ...process.env, GOCACHE: goCacheRoot, GOTMPDIR: goTemporaryRoot };
 
 const goCommand =
   process.env.GO_BINARY?.trim() || localGoCandidates.find((candidate) => existsSync(candidate)) || 'go';

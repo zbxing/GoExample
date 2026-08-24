@@ -37,7 +37,7 @@ export function TopbarContextContent({
     <div className="topbarContext">
       <div className="referenceTopbarBrand">
         <Blocks size={27} strokeWidth={2.2} aria-hidden="true" />
-        <strong>Gin-Vue-Admin</strong>
+        <strong>Go Admin</strong>
         <span><CircleHelp size={14} aria-hidden="true" />仪表盘</span>
       </div>
       <div className="topbarBreadcrumb" title={pageDescription}>

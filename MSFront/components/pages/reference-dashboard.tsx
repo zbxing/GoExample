@@ -21,12 +21,12 @@ const metrics = [
 
 const plugins = [
   ['[BBS] 极光论坛--基于G...', '面向 gin-vue-admin 的论坛社区插件，提供版块、用户、帖子、评论、经验体系。', '¥ 3688'],
-  ['[gvaClaw] 适配GVA的...', '适配 Gin-Vue-Admin 的多端兼容 claw，为内嵌的管理后台提供 Web 管理能力。', '¥ 599'],
-  ['Gin-Vue-Admin 开发者...', '围绕权限、菜单和接口快速生成后台代码，减少重复的基础配置工作。', '¥ 299'],
+  ['[gvaClaw] 适配GVA的...', '适配 Go Admin 的多端兼容 claw，为内嵌的管理后台提供 Web 管理能力。', '¥ 599'],
+  ['Go Admin 开发者...', '围绕权限、菜单和接口快速生成后台代码，减少重复的基础配置工作。', '¥ 299'],
 ] as const;
 
 const updates = [
-  ['Gin-Vue-Admin', '系统核心依赖与权限模块完成更新', '2026/08/14'],
+  ['Go Admin', '系统核心依赖与权限模块完成更新', '2026/08/14'],
   ['插件市场', '新增多套可复用的业务插件与示例文件', '2026/08/13'],
   ['文档中心', '补充从初始化到部署的完整操作说明', '2026/08/12'],
 ] as const;
@@ -48,7 +48,7 @@ const externalLinks = [
 
 export function ReferenceDashboard() {
   return (
-    <main className="referenceDashboard">
+    <div className="gvaSystemPage referenceDashboard">
       <section className="referenceWelcome">
         <div>
           <span className="referenceEyebrow">DASHBOARD</span>
@@ -62,14 +62,26 @@ export function ReferenceDashboard() {
       </section>
 
       <section className="referenceMetricGrid" aria-label="Dashboard metrics">
-        {metrics.map((metric) => (
-          <article key={metric.label} className="referenceMetricCard">
-            <strong>{metric.label}</strong>
-            <div className="referenceMetricValue">{metric.value}</div>
-            <span>{metric.delta} <ArrowUpRight size={13} /></span>
-            <Sparkline path={metric.path} />
-          </article>
-        ))}
+        <div className="referenceMetricMain">
+          {metrics.slice(0, 2).map((metric) => (
+            <article key={metric.label} className="referenceMetricCard">
+              <strong>{metric.label}</strong>
+              <div className="referenceMetricValue">{metric.value}</div>
+              <span>{metric.delta} <ArrowUpRight size={13} /></span>
+              <Sparkline path={metric.path} />
+            </article>
+          ))}
+        </div>
+        <div className="referenceMetricSide">
+          {metrics.slice(2).map((metric) => (
+            <article key={metric.label} className="referenceMetricCard">
+              <strong>{metric.label}</strong>
+              <div className="referenceMetricValue">{metric.value}</div>
+              <span>{metric.delta} <ArrowUpRight size={13} /></span>
+              <Sparkline path={metric.path} />
+            </article>
+          ))}
+        </div>
       </section>
 
       <div className="referenceDashboardColumns">
@@ -154,7 +166,7 @@ export function ReferenceDashboard() {
           </section>
         </aside>
       </div>
-    </main>
+    </div>
   );
 }
 

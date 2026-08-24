@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "GoExample Example Fiber API",
-    "version": "1.0.0",
+    "version": "1.4.0",
     "summary": "Framework platform endpoints and the Example project API",
-    "description": "The demo authentication operations are registered only when GOEXAMPLE_DEMO_AUTH_ENABLED is enabled. Internal bearer protection for metrics is mandatory in production configuration."
+    "description": "The local password login operation is registered only when demo authentication is enabled. Protected API operations accept an enabled Bearer verifier or an opaque browser session established by OIDC; unsafe cookie-authenticated requests also require the bound CSRF header. Internal bearer protection for metrics is mandatory in production configuration."
   },
   "servers": [
     {
@@ -159,11 +159,195 @@
         }
       }
     },
+    "/api/v1/auth/oidc/start": {
+      "get": {
+        "operationId": "startOIDCBrowserAuthorization",
+        "tags": ["auth"],
+        "summary": "Start browser OIDC Authorization Code + PKCE",
+        "responses": {
+          "302": {
+            "description": "Redirect to the configured OIDC authorization endpoint with an HttpOnly state-binding cookie",
+            "headers": {
+              "Location": {
+                "description": "Validated provider authorization URL",
+                "schema": { "type": "string", "format": "uri" }
+              },
+              "Set-Cookie": {
+                "description": "Secure, HttpOnly, SameSite=Lax state-binding cookie",
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/api/v1/auth/oidc/callback": {
+      "get": {
+        "operationId": "completeOIDCBrowserAuthorization",
+        "tags": ["auth"],
+        "summary": "Complete a state-cookie-bound browser OIDC callback",
+        "parameters": [
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 128 }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 8192 }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "minLength": 1, "maxLength": 1024 }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "ID and access tokens were verified with the same bounded subject and an opaque application session was established; no provider token or callback value is returned",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Expires the one-time state-binding cookie and sets Secure __Host- session and CSRF cookies",
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "502": { "$ref": "#/components/responses/BadGateway" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/api/v1/auth/oidc/logout": {
+      "post": {
+        "operationId": "logoutOIDCBrowserSession",
+        "tags": ["auth"],
+        "summary": "Revoke the current opaque browser session",
+        "security": [{ "browserSession": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/BrowserCSRFToken" }],
+        "responses": {
+          "204": {
+            "description": "Session revoked and session/CSRF cookies expired",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Expires the Secure __Host- session and CSRF cookies",
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/BearerUnauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/api/v1/auth/oidc/sessions": {
+      "get": {
+        "operationId": "listOIDCBrowserSessions",
+        "tags": ["auth"],
+        "summary": "List active browser sessions for the authenticated subject",
+        "security": [{ "bearerAuth": [] }, { "browserSession": [] }],
+        "responses": {
+          "200": {
+            "description": "Bounded active-session inventory containing only public random identifiers and UTC timestamps",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/BrowserSessionListEnvelope" } }
+            }
+          },
+          "401": { "$ref": "#/components/responses/BearerUnauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      },
+      "delete": {
+        "operationId": "revokeAllOIDCBrowserSessions",
+        "tags": ["auth"],
+        "summary": "Revoke every active browser session for the authenticated subject",
+        "security": [{ "bearerAuth": [] }, { "browserSession": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/OptionalBrowserCSRFToken" }],
+        "responses": {
+          "204": {
+            "description": "All browser sessions for the authenticated subject were revoked; any browser session and CSRF cookies are expired",
+            "headers": {
+              "Set-Cookie": {
+                "description": "Expires the Secure __Host- session and CSRF cookies",
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/BearerUnauthorized" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
+    "/api/v1/auth/oidc/sessions/{sessionId}": {
+      "patch": {
+        "operationId": "updateOIDCBrowserSessionDeviceName",
+        "tags": ["auth"],
+        "summary": "Set or clear the bounded device name for one subject-owned browser session",
+        "security": [{ "bearerAuth": [] }, { "browserSession": [] }],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "description": "Random public identifier returned by the session inventory",
+            "schema": { "type": "string", "minLength": 43, "maxLength": 43, "pattern": "^[A-Za-z0-9_-]{43}$" }
+          },
+          { "$ref": "#/components/parameters/OptionalBrowserCSRFToken" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/BrowserSessionDeviceNameRequest" } }
+          }
+        },
+        "responses": {
+          "204": { "description": "The bounded device name was updated or cleared" },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/BearerUnauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      },
+      "delete": {
+        "operationId": "revokeOIDCBrowserSession",
+        "tags": ["auth"],
+        "summary": "Revoke one subject-owned browser session by its public identifier",
+        "security": [{ "bearerAuth": [] }, { "browserSession": [] }],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "description": "Random public identifier returned by the session inventory",
+            "schema": { "type": "string", "minLength": 43, "maxLength": 43, "pattern": "^[A-Za-z0-9_-]{43}$" }
+          },
+          { "$ref": "#/components/parameters/OptionalBrowserCSRFToken" }
+        ],
+        "responses": {
+          "204": { "description": "The subject-owned browser session was revoked" },
+          "401": { "$ref": "#/components/responses/BearerUnauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" },
+          "503": { "$ref": "#/components/responses/ServiceUnavailable" }
+        }
+      }
+    },
     "/api/v1/auth/me": {
       "get": {
         "operationId": "getCurrentUser",
         "tags": ["auth"],
-        "security": [{ "bearerAuth": [] }],
+        "security": [{ "bearerAuth": [] }, { "browserSession": [] }],
         "responses": {
           "200": {
             "description": "Authenticated user",
@@ -218,6 +402,7 @@
             }
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "$ref": "#/components/responses/Conflict" },
           "415": { "$ref": "#/components/responses/UnsupportedMediaType" },
           "429": { "$ref": "#/components/responses/TooManyRequests" }
         }
@@ -242,6 +427,7 @@
             }
           },
           "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "$ref": "#/components/responses/Conflict" },
           "415": { "$ref": "#/components/responses/UnsupportedMediaType" },
           "429": { "$ref": "#/components/responses/TooManyRequests" }
         }
@@ -275,7 +461,7 @@
       "get": {
         "operationId": "getPrivateExample",
         "tags": ["example"],
-        "security": [{ "bearerAuth": [] }],
+        "security": [{ "bearerAuth": [] }, { "browserSession": [] }],
         "responses": {
           "200": {
             "description": "Private example response",
@@ -300,6 +486,115 @@
           }
         }
       }
+    },
+    "/api/v1/project/preview/{audience}": {
+      "get": {
+        "operationId": "previewProject",
+        "tags": ["project"],
+        "security": [{ "bearerAuth": [] }, { "browserSession": [] }],
+        "x-required-roles": ["demo"],
+        "x-resource-authorization": {
+          "tenantSource": "header:X-Tenant-ID or principal:subject",
+          "resourceType": "project",
+          "resourceId": "current",
+          "action": "preview"
+        },
+        "parameters": [
+          {
+            "name": "audience",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["summary", "detailed"]
+            }
+          },
+          {
+			"name": "X-Tenant-ID",
+			"in": "header",
+			"required": false,
+			"description": "Optional tenant identifier; defaults to the authenticated subject and must match it under the current Example policy.",
+			"schema": {
+			  "type": "string",
+			  "minLength": 1,
+			  "maxLength": 128,
+			  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.@:/|\\-]*$"
+			}
+		  },
+		  {
+            "name": "X-Client-Locale",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 16
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated project preview",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Envelope" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/BearerUnauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
+    },
+    "/api/v1/project/describe": {
+      "post": {
+        "operationId": "describeProject",
+        "tags": ["project"],
+        "security": [{ "bearerAuth": [] }, { "browserSession": [] }],
+        "x-required-roles": ["demo"],
+        "x-resource-authorization": {
+          "tenantSource": "body:tenantId or principal:subject",
+          "resourceType": "project",
+          "resourceId": "current",
+          "action": "describe"
+        },
+        "parameters": [
+          { "$ref": "#/components/parameters/IdempotencyKey" },
+          { "$ref": "#/components/parameters/OptionalBrowserCSRFToken" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/ProjectDescriptionRequest" } }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Typed project description",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/BearerUnauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/Conflict" },
+          "415": { "$ref": "#/components/responses/UnsupportedMediaType" },
+          "429": { "$ref": "#/components/responses/TooManyRequests" }
+        }
+      }
     }
   },
   "components": {
@@ -308,7 +603,13 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "Demo JWT access token; replace this authentication module for production use."
+        "description": "JWT access token verified by the enabled demo token service or external OIDC/JWKS verifier. The login operation issues tokens only in demo mode."
+      },
+      "browserSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "__Host-goexample-session",
+        "description": "Opaque Secure HttpOnly application session established only by a verified browser OIDC callback. Unsafe methods also require X-CSRF-Token."
       },
       "internalBearer": {
         "type": "http",
@@ -323,6 +624,20 @@
         "required": false,
         "description": "Required as a 36-character key when idempotency middleware is enabled.",
         "schema": { "type": "string", "minLength": 36, "maxLength": 36 }
+      },
+      "BrowserCSRFToken": {
+        "name": "X-CSRF-Token",
+        "in": "header",
+        "required": true,
+        "description": "Raw token from the bound __Host-goexample-csrf cookie.",
+        "schema": { "type": "string", "minLength": 43, "maxLength": 43 }
+      },
+      "OptionalBrowserCSRFToken": {
+        "name": "X-CSRF-Token",
+        "in": "header",
+        "required": false,
+        "description": "Required only when this unsafe operation uses browserSession instead of bearerAuth.",
+        "schema": { "type": "string", "minLength": 43, "maxLength": 43 }
       }
     },
     "schemas": {
@@ -353,6 +668,35 @@
           "password": { "type": "string", "minLength": 6, "maxLength": 128 }
         }
       },
+      "BrowserSessionInfo": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sessionId", "createdAt", "expiresAt"],
+        "properties": {
+          "sessionId": { "type": "string", "minLength": 43, "maxLength": 43, "pattern": "^[A-Za-z0-9_-]{43}$" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "expiresAt": { "type": "string", "format": "date-time" },
+          "deviceName": { "type": "string", "maxLength": 64, "description": "Optional caller-supplied name; omitted when cleared" }
+        }
+      },
+      "BrowserSessionDeviceNameRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["deviceName"],
+        "properties": {
+          "deviceName": { "type": "string", "maxLength": 64, "description": "Bounded caller-supplied name; an empty string clears it" }
+        }
+      },
+      "BrowserSessionListEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "data", "msg"],
+        "properties": {
+          "code": { "type": "integer", "const": 0 },
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/BrowserSessionInfo" }, "maxItems": 10000 },
+          "msg": { "type": "string", "const": "success" }
+        }
+      },
       "ProfileRequest": {
         "type": "object",
         "additionalProperties": false,
@@ -361,6 +705,20 @@
           "name": { "type": "string", "minLength": 2, "maxLength": 80 },
           "email": { "type": "string", "format": "email", "maxLength": 254 },
           "age": { "type": "integer", "minimum": 18, "maximum": 130 }
+        }
+      },
+      "ProjectDescriptionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+		"required": ["audience"],
+        "properties": {
+		  "tenantId": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 128,
+			"pattern": "^[A-Za-z0-9][A-Za-z0-9_.@:/|\\-]*$"
+		  },
+          "audience": { "type": "string", "minLength": 2, "maxLength": 80 }
         }
       }
     },
@@ -402,6 +760,18 @@
           "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
         }
       },
+      "NotFound": {
+        "description": "The subject-owned resource was not found; malformed, unknown, and cross-subject identifiers are intentionally indistinguishable",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "Conflict": {
+        "description": "Idempotency key is already bound to a different request",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
       "Unauthorized": {
         "description": "Authentication required or rejected",
         "content": {
@@ -409,13 +779,19 @@
         }
       },
       "BearerUnauthorized": {
-        "description": "Bearer access token is required or rejected",
+        "description": "Bearer access token or opaque browser session is required or rejected",
         "headers": {
           "WWW-Authenticate": {
             "description": "RFC 6750 Bearer challenge; invalid tokens include error=\"invalid_token\".",
             "schema": { "type": "string", "pattern": "^Bearer(?: .*)?$" }
           }
         },
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "Forbidden": {
+        "description": "The authenticated principal lacks every role required by this operation",
         "content": {
           "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
         }
@@ -434,6 +810,18 @@
       },
       "TooManyRequests": {
         "description": "Rate limit exceeded",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "BadGateway": {
+        "description": "A bounded upstream identity operation failed",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
+        }
+      },
+      "ServiceUnavailable": {
+        "description": "A bounded authentication component is unavailable",
         "content": {
           "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } }
         }

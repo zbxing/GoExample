@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { IconPlus } from '@/components/admin/admin-icons';
 import {
   AdminConfirmDialog,
   AdminDialog,
@@ -17,6 +18,7 @@ import {
   useAdminToast,
 } from '@/components/admin/admin-primitives';
 import { apiFetch } from '@/lib/api/client';
+import { useGvaListLoad } from '@/lib/hooks/use-gva-list-load';
 import { Can, useAuth } from '@/providers/auth-provider';
 import type { SystemRoleRecord, SystemUserPublic } from '@/lib/types/system';
 
@@ -73,7 +75,7 @@ export function SystemUsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<SystemUserPublic | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  useEffect(() => {
+  useGvaListLoad(() => {
     let cancelled = false;
 
     async function sync() {
@@ -320,6 +322,9 @@ export function SystemUsersPage() {
       <AdminToolbar>
         <Can btn="user:add">
           <button type="button" className="elButton elButtonPrimary" onClick={openCreate}>
+            <span className="elButtonIcon" aria-hidden="true">
+              <IconPlus size={14} />
+            </span>
             新增用户
           </button>
         </Can>
@@ -362,10 +367,13 @@ export function SystemUsersPage() {
               return (
                 <div className="gvaRowActions">
                   <Can btn="user:edit">
-                    <AdminLinkButton onClick={() => openEdit(user)}>编辑</AdminLinkButton>
+                    <AdminLinkButton icon="edit" onClick={() => openEdit(user)}>
+                      编辑
+                    </AdminLinkButton>
                   </Can>
                   <Can btn="user:edit">
                     <AdminLinkButton
+                      icon="edit"
                       onClick={() => {
                         setResetTarget(user);
                         setResetPassword('');
@@ -376,7 +384,7 @@ export function SystemUsersPage() {
                     </AdminLinkButton>
                   </Can>
                   <Can btn="user:delete">
-                    <AdminLinkButton danger onClick={() => setDeleteTarget(user)}>
+                    <AdminLinkButton icon="delete" onClick={() => setDeleteTarget(user)}>
                       删除
                     </AdminLinkButton>
                   </Can>

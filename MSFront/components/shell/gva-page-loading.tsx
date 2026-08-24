@@ -3,7 +3,6 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import {
-  beginGvaContentLoading,
   beginGvaRouteProgress,
   endGvaRouteProgress,
   getGvaContentLoadingVisible,
@@ -74,7 +73,8 @@ export function GvaRouteLoadingEffects() {
       }
       const leaving = triggerGvaPageLeave();
       beginGvaRouteProgress();
-      beginGvaContentLoading(leaving ? 360 : 400);
+      // 内容区 loading 仅由接口请求触发，与 GVA 一致
+      void leaving;
     }
 
     document.addEventListener('click', onPointerDown, true);

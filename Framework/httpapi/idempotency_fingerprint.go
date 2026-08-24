@@ -80,12 +80,16 @@ func fingerprintLifetime(responseLifetime time.Duration) time.Duration {
 	return responseLifetime + overlap
 }
 
-func idempotencyRequestFingerprint(c fiber.Ctx) [sha256.Size]byte {
+func idempotencyRequestFingerprint(c fiber.Ctx, fingerprintHeaders ...string) [sha256.Size]byte {
 	digest := sha256.New()
 	writeFingerprintPart(digest, []byte(c.Method()))
 	writeFingerprintPart(digest, []byte(c.OriginalURL()))
 	writeFingerprintPart(digest, []byte(idempotencyPrincipal(c)))
 	writeFingerprintPart(digest, []byte(normalizedMediaType(c.Get(fiber.HeaderContentType))))
+	for _, header := range fingerprintHeaders {
+		writeFingerprintPart(digest, []byte(strings.ToLower(header)))
+		writeFingerprintPart(digest, []byte(c.Get(header)))
+	}
 	writeFingerprintPart(digest, c.Body())
 
 	var result [sha256.Size]byte

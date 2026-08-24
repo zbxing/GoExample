@@ -59,8 +59,8 @@ func registerExampleRoutes(v1 fiber.Router, options Options) {
 			return context.DeadlineExceeded
 		}
 	})
-	if options.Auth.Enabled() {
-		example.Get("/private", requireAuth(options.Auth), func(c fiber.Ctx) error {
+	if AuthenticationEnabled(options) {
+		example.Get("/private", requireAuth(options), func(c fiber.Ctx) error {
 			claims, _ := currentClaims(c)
 			return success(c, fiber.Map{
 				"message": "authenticated request succeeded",

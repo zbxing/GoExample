@@ -2,6 +2,8 @@ export type GvaTabMode = 'chrome' | 'button' | 'slider';
 export type GvaThemeScheme = 'light' | 'dark' | 'auto';
 export type GvaLayoutMode = 'normal' | 'head' | 'combination' | 'sidebar' | 'vertical';
 export type GvaMenuTheme = 'design' | 'light' | 'group';
+/** 侧边栏折叠：默认仅当前路径 / 全部展开 / 自定义多开 */
+export type GvaMenuCollapseMode = 'current' | 'all' | 'custom';
 export type GvaCardMode = 'border' | 'shadow';
 export type GvaSize = 'default' | 'large' | 'small';
 export type GvaShadow = 'none' | 'sm' | 'md' | 'lg';
@@ -47,6 +49,7 @@ export interface GvaShellSettings {
   };
   menu: {
     theme: GvaMenuTheme;
+    collapseMode: GvaMenuCollapseMode;
     darkSider: boolean;
   };
   card: {
@@ -121,6 +124,7 @@ export const defaultGvaShellSettings: GvaShellSettings = {
   },
   menu: {
     theme: 'light',
+    collapseMode: 'current',
     darkSider: false,
   },
   card: {
@@ -162,7 +166,7 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
       themeRadius: 0.625,
       layout: { mode: 'normal', sideWidth: 256, sideCollapsedWidth: 80, sideItemHeight: 48 },
       tab: { mode: 'chrome', showIcon: true, visible: true, shadow: 'sm', bg: '' },
-      menu: { theme: 'light', darkSider: false },
+      menu: { theme: 'light', collapseMode: 'current', darkSider: false },
       card: { mode: 'border' },
     },
   },
@@ -181,7 +185,7 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
         bg: '',
         shadow: 'sm',
       },
-      menu: { theme: 'light', darkSider: false },
+      menu: { theme: 'light', collapseMode: 'current', darkSider: false },
       card: { mode: 'border' },
     },
   },
@@ -202,7 +206,7 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
         shadow: 'none',
       },
       tab: { visible: true, shadow: 'none', mode: 'button', bg: 'rgba(255, 255, 255, 0)', showIcon: true },
-      menu: { theme: 'design', darkSider: false },
+      menu: { theme: 'design', collapseMode: 'current', darkSider: false },
       card: { mode: 'border' },
     },
   },
@@ -213,7 +217,7 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
       themeScheme: 'dark',
       themeColor: '#2264f2',
       themeRadius: 0.625,
-      menu: { theme: 'light', darkSider: true },
+      menu: { theme: 'light', collapseMode: 'current', darkSider: true },
       card: { mode: 'shadow' },
     },
   },
@@ -280,6 +284,10 @@ export function normalizeGvaShellSettings(raw: unknown): GvaShellSettings {
   if (merged.menu.theme === ('dark' as GvaMenuTheme)) {
     merged.menu.theme = 'light';
     merged.menu.darkSider = true;
+  }
+  const collapseModes: GvaMenuCollapseMode[] = ['current', 'all', 'custom'];
+  if (!collapseModes.includes(merged.menu.collapseMode)) {
+    merged.menu.collapseMode = 'current';
   }
   if (merged.isInfoFollowPrimary) {
     merged.otherColor.info = merged.themeColor;

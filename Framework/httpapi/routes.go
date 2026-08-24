@@ -16,7 +16,7 @@ func registerRoutes(app *fiber.App, options Options, applicationContext context.
 			"endpoints":   options.Endpoints,
 		})
 	})
-	app.Get("/metrics", requireInternalToken(options.MetricsToken, "metrics"), options.Metrics.Handler)
+	app.Get("/metrics", requireInternalToken(options, options.MetricsToken, "metrics"), options.Metrics.Handler)
 
 	api := app.Group("/api")
 	registerHealthRoutes(app, api, options)
@@ -28,20 +28,26 @@ func registerRoutes(app *fiber.App, options Options, applicationContext context.
 		options.RateLimitWindow,
 		"request rate limit exceeded",
 		func(c fiber.Ctx) bool {
-			return c.Method() == fiber.MethodPost && c.Path() == "/api/v1/auth/login"
+			path := c.Path()
+			return path == "/api/v1/auth/login" || path == "/api/v1/auth/oidc/start" || path == "/api/v1/auth/oidc/callback"
 		},
 		options.SharedStorage,
+		nil,
 	))
 
 	v1 := api.Group("/v1")
 	v1.Use(rejectWhenDraining(options.Health, options.Metrics))
 	v1.Use(boundedConcurrency(options.MaxInFlight, options.Metrics))
-	if len(options.ApplicationQueries) > 0 && options.RegisterRoutes != nil {
-		panic("ApplicationQueries and RegisterRoutes cannot be configured together")
+	hasApplicationRoutes := len(options.ApplicationQueries) > 0 || len(options.ApplicationCommands) > 0
+	if hasApplicationRoutes && options.RegisterRoutes != nil {
+		panic("ApplicationQueries/ApplicationCommands and RegisterRoutes cannot be configured together")
 	}
-	if len(options.ApplicationQueries) > 0 {
+	if hasApplicationRoutes {
+		validateApplicationQueries(options.ApplicationQueries, AuthenticationEnabled(options), options.OIDCBrowser != nil)
+		validateApplicationCommands(options.ApplicationCommands, AuthenticationEnabled(options), options.OIDCBrowser != nil && options.OIDCBrowser.SessionsEnabled())
 		RegisterDefaultRoutes(v1, options)
-		registerApplicationQueries(v1, options.ApplicationQueries)
+		registerApplicationQueries(v1, options.ApplicationQueries, options)
+		registerApplicationCommands(v1, options.ApplicationCommands, options)
 		return
 	}
 	if options.RegisterRoutes != nil {
@@ -57,6 +63,12 @@ func RegisterDefaultRoutes(v1 fiber.Router, options Options) {
 }
 
 func DefaultEndpoints(authEnabled bool) []string {
+	return DefaultEndpointsForAuth(authEnabled, authEnabled)
+}
+
+// DefaultEndpointsForAuth distinguishes bearer verification from the local
+// demo login endpoint used to issue HS256 tokens.
+func DefaultEndpointsForAuth(authEnabled, demoLoginEnabled bool) []string {
 	endpoints := []string{
 		"GET /api/health",
 		"GET /api/health/ready",
@@ -72,11 +84,10 @@ func DefaultEndpoints(authEnabled bool) []string {
 		"GET /api/v1/example/delay",
 	}
 	if authEnabled {
-		endpoints = append(endpoints,
-			"POST /api/v1/auth/login",
-			"GET /api/v1/auth/me",
-			"GET /api/v1/example/private",
-		)
+		endpoints = append(endpoints, "GET /api/v1/auth/me", "GET /api/v1/example/private")
+	}
+	if demoLoginEnabled {
+		endpoints = append(endpoints, "POST /api/v1/auth/login")
 	}
 	return endpoints
 }

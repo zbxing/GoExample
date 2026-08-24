@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "projects": [
+    {
+      "projectPath": "Proj/Example",
+      "contract": {
+        "repository": "workspace",
+        "ref": "worktree",
+        "document": "docs/openapi/openapi.json"
+      },
+      "sdk": {
+        "path": "SDK/GoExample",
+        "package": "goexample"
+      }
+    }
+  ]
+}

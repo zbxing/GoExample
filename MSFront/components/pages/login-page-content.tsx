@@ -60,7 +60,7 @@ export function LoginPageContent() {
           <div className="gvaEntryBrand">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/gva-logo.png" alt="" className="gvaEntryLogo" />
-            <p className="gvaEntryTitle">Gin-Vue-Admin</p>
+            <p className="gvaEntryTitle">Go Admin</p>
           </div>
 
           <form

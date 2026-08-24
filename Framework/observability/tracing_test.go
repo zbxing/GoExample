@@ -3,12 +3,14 @@ package observability
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,6 +20,33 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.opentelemetry.io/otel/trace"
 )
+
+type blockingSpanExporter struct {
+	started   chan struct{}
+	release   chan struct{}
+	startOnce sync.Once
+	exported  atomic.Int64
+}
+
+func newBlockingSpanExporter() *blockingSpanExporter {
+	return &blockingSpanExporter{
+		started: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+}
+
+func (exporter *blockingSpanExporter) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpan) error {
+	exporter.startOnce.Do(func() { close(exporter.started) })
+	select {
+	case <-exporter.release:
+		exporter.exported.Add(int64(len(spans)))
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (*blockingSpanExporter) Shutdown(context.Context) error { return nil }
 
 func TestParseTraceparentStrictlyValidatesVersionIDsAndFlags(t *testing.T) {
 	valid := "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
@@ -155,12 +184,245 @@ func TestOTLPHTTPBatchExporterDoesNotBlockRequestAndFlushesOnShutdown(t *testing
 	}
 }
 
+func TestBatchSpanProcessorDropsBurstWithoutBlockingWhenExporterIsStalled(t *testing.T) {
+	const (
+		maxQueueSize = 4
+		burstSize    = 100
+	)
+	exporter := newBlockingSpanExporter()
+	metrics := NewMetrics()
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(exporter.release) }) }
+	provider := newTracerProvider(TracingConfig{
+		ServiceName:        "trace-burst-test",
+		ServiceVersion:     "1.0.0",
+		Environment:        "test",
+		SampleRatio:        1,
+		ExportTimeout:      time.Second,
+		BatchTimeout:       time.Hour,
+		MaxQueueSize:       maxQueueSize,
+		MaxExportBatchSize: 1,
+		Metrics:            metrics,
+	}, exporter)
+	t.Cleanup(func() {
+		release()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		_ = provider.Shutdown(shutdownCtx)
+	})
+
+	tracer := provider.Tracer("burst-test")
+	_, firstSpan := tracer.Start(context.Background(), "collector outage starts")
+	firstSpan.End()
+	select {
+	case <-exporter.started:
+	case <-time.After(time.Second):
+		t.Fatal("span exporter did not start")
+	}
+
+	burstCompleted := make(chan struct{})
+	go func() {
+		for index := 0; index < burstSize; index++ {
+			_, span := tracer.Start(context.Background(), "burst")
+			span.End()
+		}
+		close(burstCompleted)
+	}()
+	select {
+	case <-burstCompleted:
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("ending spans blocked on the stalled exporter")
+	}
+	output := metrics.Render()
+	for _, expected := range []string{
+		"goexample_otel_trace_queue_dropped_spans_total 96",
+		"goexample_otel_trace_processor_capacity_spans 5",
+		"goexample_otel_trace_processor_pending_spans 5",
+		"goexample_otel_trace_processor_high_watermark_spans 5",
+	} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("bounded processor metric %q missing from output = %s", expected, output)
+		}
+	}
+
+	release()
+	flushCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := provider.ForceFlush(flushCtx); err != nil {
+		t.Fatalf("ForceFlush() after exporter recovery error = %v", err)
+	}
+	if got, want := exporter.exported.Load(), int64(1+maxQueueSize); got != want {
+		t.Fatalf("exported spans after bounded queue recovery = %d, want %d", got, want)
+	}
+	if output := metrics.Render(); !strings.Contains(output, "goexample_otel_trace_processor_pending_spans 0") {
+		t.Fatalf("processor pending metric after recovery = %s", output)
+	}
+}
+
+func TestOTLPHTTPExporterMetricsRecordCollectorFailureAndRecovery(t *testing.T) {
+	var collectorFailing atomic.Bool
+	collectorFailing.Store(true)
+	collectorSecret := "private collector failure response"
+	collector := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		_, _ = io.Copy(io.Discard, request.Body)
+		if collectorFailing.Load() {
+			response.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = response.Write([]byte(collectorSecret))
+			return
+		}
+		response.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(collector.Close)
+
+	metrics := NewMetrics()
+	provider, err := NewTracerProvider(context.Background(), TracingConfig{
+		ServiceName:        "trace-recovery-test",
+		ServiceVersion:     "1.0.0",
+		Environment:        "test",
+		Exporter:           "otlp",
+		Endpoint:           collector.URL,
+		SampleRatio:        1,
+		ExportTimeout:      100 * time.Millisecond,
+		BatchTimeout:       time.Hour,
+		MaxQueueSize:       8,
+		MaxExportBatchSize: 8,
+		Metrics:            metrics,
+	})
+	if err != nil {
+		t.Fatalf("NewTracerProvider() error = %v", err)
+	}
+	t.Cleanup(func() { _ = provider.Shutdown(context.Background()) })
+
+	_, failedSpan := provider.Tracer("test").Start(context.Background(), "collector unavailable")
+	failedSpan.End()
+	flushCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+	err = provider.ForceFlush(flushCtx)
+	cancel()
+	if err == nil {
+		t.Fatal("ForceFlush() succeeded while collector returned 503")
+	}
+	if strings.Contains(err.Error(), collectorSecret) || strings.Contains(err.Error(), collector.URL) {
+		t.Fatalf("ForceFlush() exposed collector details: %v", err)
+	}
+	if output := metrics.Render(); !strings.Contains(output, `goexample_otel_trace_export_batches_total{outcome="failure"} 1`) ||
+		!strings.Contains(output, `goexample_otel_trace_export_spans_total{outcome="failure"} 1`) {
+		t.Fatalf("collector failure metrics = %s", output)
+	} else if strings.Contains(output, collectorSecret) || strings.Contains(output, collector.URL) {
+		t.Fatalf("collector failure metrics exposed details: %s", output)
+	}
+
+	collectorFailing.Store(false)
+	_, recoveredSpan := provider.Tracer("test").Start(context.Background(), "collector recovered")
+	recoveredSpan.End()
+	flushCtx, cancel = context.WithTimeout(context.Background(), time.Second)
+	err = provider.ForceFlush(flushCtx)
+	cancel()
+	if err != nil {
+		t.Fatalf("ForceFlush() after collector recovery error = %v", err)
+	}
+	output := metrics.Render()
+	if !strings.Contains(output, `goexample_otel_trace_exporter_enabled 1`) ||
+		!strings.Contains(output, `goexample_otel_trace_export_batches_total{outcome="success"} 1`) ||
+		!strings.Contains(output, `goexample_otel_trace_export_spans_total{outcome="success"} 1`) {
+		t.Fatalf("collector recovery metrics = %s", output)
+	}
+}
+
+func TestOTLPHTTPExporterRecordsEachAttemptAndRecoversWithinOneBatch(t *testing.T) {
+	var attempts atomic.Int64
+	collectorSecret := "private collector response must not become a metric"
+	collector := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		_, _ = io.Copy(io.Discard, request.Body)
+		if attempts.Add(1) == 1 {
+			response.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = response.Write([]byte(collectorSecret))
+			return
+		}
+		response.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(collector.Close)
+
+	metrics := NewMetrics()
+	provider, err := NewTracerProvider(context.Background(), TracingConfig{
+		ServiceName:        "trace-attempt-test",
+		ServiceVersion:     "1.0.0",
+		Environment:        "test",
+		Exporter:           "otlp",
+		Endpoint:           collector.URL,
+		SampleRatio:        1,
+		ExportTimeout:      500 * time.Millisecond,
+		BatchTimeout:       time.Hour,
+		MaxQueueSize:       8,
+		MaxExportBatchSize: 8,
+		Metrics:            metrics,
+	})
+	if err != nil {
+		t.Fatalf("NewTracerProvider() error = %v", err)
+	}
+	t.Cleanup(func() { _ = provider.Shutdown(context.Background()) })
+
+	_, span := provider.Tracer("test").Start(context.Background(), "retry then recover")
+	span.End()
+	flushCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	err = provider.ForceFlush(flushCtx)
+	cancel()
+	if err != nil {
+		t.Fatalf("ForceFlush() error = %v", err)
+	}
+	if got := attempts.Load(); got != 2 {
+		t.Fatalf("collector attempts = %d, want one failure and one retry success", got)
+	}
+	output := metrics.Render()
+	for _, expected := range []string{
+		`goexample_otel_trace_export_attempts_total{outcome="failure"} 1`,
+		`goexample_otel_trace_export_attempts_total{outcome="success"} 1`,
+		`goexample_otel_trace_export_batches_total{outcome="success"} 1`,
+		`goexample_otel_trace_export_batches_total{outcome="failure"} 0`,
+	} {
+		if !strings.Contains(output, expected) {
+			t.Fatalf("retry metric %q missing from output = %s", expected, output)
+		}
+	}
+	if strings.Contains(output, collectorSecret) || strings.Contains(output, collector.URL) {
+		t.Fatalf("retry metrics leaked collector details: %s", output)
+	}
+}
+
+func TestTraceExporterHTTPClientAndRetryBudgetsAreFinite(t *testing.T) {
+	exportTimeout := 3 * time.Second
+	client := newTraceExporterHTTPClient(exportTimeout, NewMetrics())
+	if client.Timeout <= 0 || client.Timeout >= exportTimeout {
+		t.Fatalf("OTLP HTTP attempt timeout = %s", client.Timeout)
+	}
+	observed, ok := client.Transport.(traceAttemptTransport)
+	if !ok {
+		t.Fatalf("OTLP transport type = %T", client.Transport)
+	}
+	transport, ok := observed.base.(*http.Transport)
+	if !ok {
+		t.Fatalf("OTLP base transport type = %T", observed.base)
+	}
+	if transport.DialContext == nil || !transport.ForceAttemptHTTP2 || transport.MaxIdleConns <= 0 ||
+		transport.MaxIdleConnsPerHost <= 0 || transport.MaxConnsPerHost <= 0 ||
+		transport.IdleConnTimeout <= 0 || transport.TLSHandshakeTimeout <= 0 ||
+		transport.ResponseHeaderTimeout <= 0 || transport.MaxResponseHeaderBytes <= 0 ||
+		transport.TLSClientConfig == nil || transport.TLSClientConfig.MinVersion != tls.VersionTLS12 {
+		t.Fatalf("OTLP HTTP transport has an unbounded or weak budget: %#v", transport)
+	}
+	retry := traceExporterRetryConfig(exportTimeout)
+	if !retry.Enabled || retry.InitialInterval <= 0 || retry.MaxInterval < retry.InitialInterval ||
+		retry.MaxElapsedTime != exportTimeout || retry.InitialInterval >= exportTimeout {
+		t.Fatalf("OTLP retry configuration = %#v", retry)
+	}
+}
+
 func TestNewTracerProviderRejectsInvalidConfiguration(t *testing.T) {
 	for _, config := range []TracingConfig{
 		{Exporter: "stdout"},
 		{Exporter: "otlp", Endpoint: "collector:4318"},
 		{Exporter: "otlp", Endpoint: "https://user:secret@collector.example"},
 		{Exporter: "none", MaxQueueSize: 1, MaxExportBatchSize: 2},
+		{Exporter: "none", MaxQueueSize: 1000001, MaxExportBatchSize: 1},
 	} {
 		if provider, err := NewTracerProvider(context.Background(), config); err == nil {
 			_ = provider.Shutdown(context.Background())

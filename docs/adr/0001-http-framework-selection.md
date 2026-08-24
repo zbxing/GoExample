@@ -42,10 +42,16 @@
 yarn bench:transports
 ```
 
-该命令在固定 Linux runner 上运行 5 轮 benchmark；Windows/macOS 只执行真实 TCP 契约测试，benchmark 会明确跳过，不能产生可比结论。`.github/workflows/go-transport-benchmark.yml` 固定使用 `ubuntu-24.04` 和 `GOMAXPROCS=2`，采集 runner、内核、CPU、Go 与 commit 信息，输出 throughput、p50/p95/p99、错误率和 alloc，并始终上传原始输出、CPU/heap profile 与进程 CPU/RSS artifact。workflow 存在不等于已经获得 Linux 结果；当前只完成纯 JSON 基线，其他工作负载和可引用的远端 artifact 仍待补齐。
+该命令在固定 Linux runner 上运行 5 轮 benchmark；Windows/macOS 只执行真实 TCP 契约测试，benchmark 会明确跳过，不能产生可比结论。容量矩阵固定为 `steady-c1`（600 请求/并发 1/keep-alive）、`steady-c16`（2000/16/keep-alive）、`steady-c64`（4000/64/keep-alive）和 `connection-churn-c16`（800/16/关闭 keep-alive），两个 transport 使用相同 application service、响应字段和值及真实 TCP client。
+
+`.github/workflows/go-transport-benchmark.yml` 固定使用 `ubuntu-24.04` 和 `GOMAXPROCS=2`，采集 runner、内核、CPU、Go、commit、进程 CPU/RSS、前后 socket/网络/内存/FD limit 快照、CPU/heap profile 及文本摘要。每轮结构化记录 payload、throughput、p50/p95/p99、连接获取 p95、拨号、在途峰值、alloc/malloc、GC、goroutine 和 Linux FD；其中内存、GC、goroutine 与 FD 是 loopback client/server 共处的 harness 进程增量，不能解释为服务端独占成本。报告器严格要求 5 轮、4 × 2 完整矩阵、零错误与稳定 payload，再输出中位数和 Fiber/`net/http` 方向比；标准 Go benchmark 行另存为后续趋势输入。
+
+workflow 还以并发 32 对每个 transport 执行 30 秒有界 loopback soak。5 秒窗口必须全部有请求且零错误，最低窗口吞吐不得低于窗口中位数的 50%；关闭 idle connection、执行 GC 并等待后，报告器限制 goroutine、heap in-use 和 FD 的粗粒度残留增长。该短时 harness 门禁只能捕获明显回归，不证明无泄漏、目标依赖长稳、生产资源隔离或 RPO/RTO。
+
+workflow 存在不等于已经获得 Linux 结果。当前仓库内固定 workload、报告门禁和制品路径已完成，但没有可引用的远端 artifact、目标 payload/依赖/edge、容量拐点或长稳数据。
 
 真实 TCP 生命周期实验还确认：主动 deadline 和 server shutdown 可以取消协作式 application context，但客户端关闭连接不会及时传播。该限制及迁移条件记录在 `docs/adr/0002-http-request-lifecycle-and-protocol-boundary.md`。
 
 ## 结果与复评
 
-截至 2026-08-18，尚无固定 Linux runner 的原始结果，因此 ADR 保持“评估中”。收集到完整结果后，补充原始 artifact、统计摘要、profile 和“保留 Fiber/迁移/延后决策”结论，再更新 V9 评估分数。
+截至 2026-08-22，尚无固定 Linux runner 的成功原始 artifact，因此 ADR 保持“评估中”。收集到完整结果后，补充 run URL、原始 artifact、统计摘要、profile、容量拐点和“保留 Fiber/迁移/延后决策”结论，再更新评估分数。

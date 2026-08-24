@@ -1,0 +1,386 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "ConfigMap",
+      "metadata": {
+        "name": "goexample-api-config",
+        "labels": {
+          "app.kubernetes.io/name": "goexample-api",
+          "app.kubernetes.io/component": "api"
+        }
+      },
+      "data": {
+        "APP_NAME": "GoExample API",
+        "APP_ENV": "production",
+        "LOG_LEVEL": "info",
+        "LOG_FORMAT": "json",
+        "LOG_SKIP_PATHS": "/livez,/readyz,/startupz,/metrics",
+        "OTEL_TRACES_EXPORTER": "none",
+        "OTEL_TRACES_SAMPLER_ARG": "0.1",
+        "HTTP_HOST": "0.0.0.0",
+        "HTTP_PORT": "3001",
+        "HTTP_READ_TIMEOUT": "10s",
+        "HTTP_WRITE_TIMEOUT": "10s",
+        "HTTP_IDLE_TIMEOUT": "60s",
+        "HTTP_REQUEST_TIMEOUT": "8s",
+        "HTTP_MAX_IN_FLIGHT": "256",
+        "HEALTH_CHECK_TIMEOUT": "2s",
+        "HEALTH_CACHE_TTL": "1s",
+        "SHUTDOWN_TIMEOUT": "20s",
+        "SHUTDOWN_DRAIN_DELAY": "5s",
+        "CORS_ALLOW_ORIGINS": "__GOEXAMPLE_ALLOWED_ORIGIN__",
+        "CORS_ALLOW_CREDENTIALS": "false",
+        "IDEMPOTENCY_ENABLED": "true",
+        "IDEMPOTENCY_LIFETIME": "30m",
+        "SHARED_STATE_MODE": "external",
+        "ALLOW_IN_MEMORY_SHARED_STATE": "false",
+        "REDIS_KEY_PREFIX": "goexample:production:example:",
+        "REDIS_OPERATION_TIMEOUT": "500ms",
+        "REDIS_LOCK_TTL": "15s",
+        "REDIS_LOCK_WAIT_TIMEOUT": "2s",
+        "REDIS_LOCK_RETRY_INTERVAL": "25ms",
+        "REDIS_POOL_SIZE": "32",
+        "REDIS_MIN_IDLE_CONNECTIONS": "2",
+        "PPROF_ENABLED": "false",
+        "SYSTEM_INFO_DETAILED": "false",
+        "DEMO_AUTH_ENABLED": "false",
+        "OIDC_AUTH_ENABLED": "true",
+        "OIDC_ISSUER": "__GOEXAMPLE_OIDC_ISSUER__",
+        "OIDC_AUDIENCE": "__GOEXAMPLE_OIDC_AUDIENCE__",
+        "OIDC_JWKS_URL": "__GOEXAMPLE_OIDC_JWKS_URL__",
+        "OIDC_JWKS_HTTP_TIMEOUT": "3s",
+        "OIDC_JWKS_REFRESH_INTERVAL": "5m",
+        "OIDC_MAX_TOKEN_AGE": "15m"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "ServiceAccount",
+      "metadata": {
+        "name": "goexample-api",
+        "labels": {
+          "app.kubernetes.io/name": "goexample-api",
+          "app.kubernetes.io/component": "api"
+        }
+      },
+      "automountServiceAccountToken": false
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "goexample-api",
+        "labels": {
+          "app.kubernetes.io/name": "goexample-api",
+          "app.kubernetes.io/component": "api"
+        }
+      },
+      "spec": {
+        "replicas": 3,
+        "revisionHistoryLimit": 5,
+        "minReadySeconds": 10,
+        "progressDeadlineSeconds": 600,
+        "strategy": {
+          "type": "RollingUpdate",
+          "rollingUpdate": {
+            "maxUnavailable": 0,
+            "maxSurge": 1
+          }
+        },
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "goexample-api",
+            "app.kubernetes.io/component": "api"
+          }
+        },
+        "template": {
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/name": "goexample-api",
+              "app.kubernetes.io/component": "api"
+            }
+          },
+          "spec": {
+            "serviceAccountName": "goexample-api",
+            "automountServiceAccountToken": false,
+            "terminationGracePeriodSeconds": 30,
+            "securityContext": {
+              "runAsNonRoot": true,
+              "runAsUser": 65532,
+              "runAsGroup": 65532,
+              "fsGroup": 65532,
+              "seccompProfile": {
+                "type": "RuntimeDefault"
+              }
+            },
+            "topologySpreadConstraints": [
+              {
+                "maxSkew": 1,
+                "topologyKey": "kubernetes.io/hostname",
+                "whenUnsatisfiable": "DoNotSchedule",
+                "labelSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "goexample-api",
+                    "app.kubernetes.io/component": "api"
+                  }
+                }
+              },
+              {
+                "maxSkew": 1,
+                "topologyKey": "topology.kubernetes.io/zone",
+                "whenUnsatisfiable": "ScheduleAnyway",
+                "labelSelector": {
+                  "matchLabels": {
+                    "app.kubernetes.io/name": "goexample-api",
+                    "app.kubernetes.io/component": "api"
+                  }
+                }
+              }
+            ],
+            "containers": [
+              {
+                "name": "api",
+                "image": "__GOEXAMPLE_IMAGE_DIGEST__",
+                "imagePullPolicy": "IfNotPresent",
+                "ports": [
+                  {
+                    "name": "http",
+                    "containerPort": 3001,
+                    "protocol": "TCP"
+                  }
+                ],
+                "envFrom": [
+                  {
+                    "configMapRef": {
+                      "name": "goexample-api-config"
+                    }
+                  },
+                  {
+                    "secretRef": {
+                      "name": "goexample-api-runtime"
+                    }
+                  }
+                ],
+                "startupProbe": {
+                  "httpGet": {
+                    "path": "/startupz",
+                    "port": "http",
+                    "scheme": "HTTP"
+                  },
+                  "periodSeconds": 2,
+                  "timeoutSeconds": 2,
+                  "failureThreshold": 30
+                },
+                "readinessProbe": {
+                  "httpGet": {
+                    "path": "/readyz",
+                    "port": "http",
+                    "scheme": "HTTP"
+                  },
+                  "periodSeconds": 5,
+                  "timeoutSeconds": 3,
+                  "failureThreshold": 2,
+                  "successThreshold": 1
+                },
+                "livenessProbe": {
+                  "httpGet": {
+                    "path": "/livez",
+                    "port": "http",
+                    "scheme": "HTTP"
+                  },
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 2,
+                  "failureThreshold": 3
+                },
+                "resources": {
+                  "requests": {
+                    "cpu": "100m",
+                    "memory": "128Mi"
+                  },
+                  "limits": {
+                    "cpu": "1000m",
+                    "memory": "512Mi"
+                  }
+                },
+                "securityContext": {
+                  "allowPrivilegeEscalation": false,
+                  "readOnlyRootFilesystem": true,
+                  "runAsNonRoot": true,
+                  "capabilities": {
+                    "drop": [
+                      "ALL"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Service",
+      "metadata": {
+        "name": "goexample-api",
+        "labels": {
+          "app.kubernetes.io/name": "goexample-api",
+          "app.kubernetes.io/component": "api"
+        }
+      },
+      "spec": {
+        "type": "ClusterIP",
+        "selector": {
+          "app.kubernetes.io/name": "goexample-api",
+          "app.kubernetes.io/component": "api"
+        },
+        "ports": [
+          {
+            "name": "http",
+            "port": 80,
+            "targetPort": "http",
+            "protocol": "TCP"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "policy/v1",
+      "kind": "PodDisruptionBudget",
+      "metadata": {
+        "name": "goexample-api",
+        "labels": {
+          "app.kubernetes.io/name": "goexample-api",
+          "app.kubernetes.io/component": "api"
+        }
+      },
+      "spec": {
+        "minAvailable": 2,
+        "selector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "goexample-api",
+            "app.kubernetes.io/component": "api"
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "autoscaling/v2",
+      "kind": "HorizontalPodAutoscaler",
+      "metadata": {
+        "name": "goexample-api",
+        "labels": {
+          "app.kubernetes.io/name": "goexample-api",
+          "app.kubernetes.io/component": "api"
+        }
+      },
+      "spec": {
+        "scaleTargetRef": {
+          "apiVersion": "apps/v1",
+          "kind": "Deployment",
+          "name": "goexample-api"
+        },
+        "minReplicas": 3,
+        "maxReplicas": 10,
+        "behavior": {
+          "scaleUp": {
+            "stabilizationWindowSeconds": 0,
+            "selectPolicy": "Max",
+            "policies": [
+              {
+                "type": "Percent",
+                "value": 100,
+                "periodSeconds": 60
+              },
+              {
+                "type": "Pods",
+                "value": 2,
+                "periodSeconds": 60
+              }
+            ]
+          },
+          "scaleDown": {
+            "stabilizationWindowSeconds": 300,
+            "selectPolicy": "Max",
+            "policies": [
+              {
+                "type": "Percent",
+                "value": 25,
+                "periodSeconds": 60
+              }
+            ]
+          }
+        },
+        "metrics": [
+          {
+            "type": "Resource",
+            "resource": {
+              "name": "cpu",
+              "target": {
+                "type": "Utilization",
+                "averageUtilization": 70
+              }
+            }
+          },
+          {
+            "type": "Resource",
+            "resource": {
+              "name": "memory",
+              "target": {
+                "type": "Utilization",
+                "averageUtilization": 75
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "networking.k8s.io/v1",
+      "kind": "NetworkPolicy",
+      "metadata": {
+        "name": "goexample-api-ingress",
+        "labels": {
+          "app.kubernetes.io/name": "goexample-api",
+          "app.kubernetes.io/component": "api"
+        }
+      },
+      "spec": {
+        "podSelector": {
+          "matchLabels": {
+            "app.kubernetes.io/name": "goexample-api",
+            "app.kubernetes.io/component": "api"
+          }
+        },
+        "policyTypes": [
+          "Ingress"
+        ],
+        "ingress": [
+          {
+            "from": [
+              {
+                "podSelector": {}
+              },
+              {
+                "namespaceSelector": {
+                  "matchLabels": {
+                    "goexample.io/ingress-access": "true"
+                  }
+                }
+              }
+            ],
+            "ports": [
+              {
+                "protocol": "TCP",
+                "port": 3001
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

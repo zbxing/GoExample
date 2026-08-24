@@ -1,0 +1,3 @@
+[submodule "api-contracts"]
+	path = support/api-contracts
+	url = https://github.com/zbxing/api-contracts.git

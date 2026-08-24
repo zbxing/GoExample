@@ -15,3 +15,5 @@ The response envelope and status semantics are unchanged during the migration wi
 - `Link: </replacement>; rel="successor-version"`, an RFC 8288 link to the canonical route.
 
 Consumers should update probe definitions, monitors, allowlists, and generated clients to use the successor paths. Verify both 200 and 503 readiness behavior before removing the compatibility paths from consumer configuration.
+
+`support/consumer/HealthProbe` is the first tracked migration rehearsal. Its contract test calls the deprecated readiness alias against the real Framework adapter, verifies all migration headers, clears the request record, and then proves the SDK-backed consumer calls only `/readyz`. The current consumer/version status is maintained in `consumer-matrix.md`; it is local evidence and does not prove an external deployment migrated.

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AdminPage, AdminCard, AdminTable, AdminToolbar, useAdminToast } from '@/components/admin/admin-primitives';
 import { apiFetch } from '@/lib/api/client';
+import { useGvaListLoad } from '@/lib/hooks/use-gva-list-load';
 import { Can } from '@/providers/auth-provider';
 import type { CasbinPolicyRecord, HttpMethod, SystemApiRecord, SystemRoleRecord } from '@/lib/types/system';
 

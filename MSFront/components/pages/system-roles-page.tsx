@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   AdminConfirmDialog,
   AdminDialog,
@@ -15,6 +15,7 @@ import {
   useAdminToast,
 } from '@/components/admin/admin-primitives';
 import { apiFetch } from '@/lib/api/client';
+import { useGvaListLoad } from '@/lib/hooks/use-gva-list-load';
 import { Can, useAuth } from '@/providers/auth-provider';
 import type {
   CasbinPolicyRecord,
@@ -67,7 +68,7 @@ export function SystemRolesPage() {
   const [bindRoleId, setBindRoleId] = useState('');
   const [selectedApiKeys, setSelectedApiKeys] = useState<string[]>([]);
 
-  useEffect(() => {
+  useGvaListLoad(() => {
     let cancelled = false;
 
     async function sync() {
@@ -257,14 +258,18 @@ export function SystemRolesPage() {
               return (
                 <div className="gvaRowActions">
                   <Can btn="role:edit">
-                    <AdminLinkButton onClick={() => openEdit(role)}>编辑</AdminLinkButton>
+                    <AdminLinkButton icon="edit" onClick={() => openEdit(role)}>
+                      编辑
+                    </AdminLinkButton>
                   </Can>
                   <Can btn="role:bind">
-                    <AdminLinkButton onClick={() => openBind(role)}>设置权限</AdminLinkButton>
+                    <AdminLinkButton icon="user" onClick={() => openBind(role)}>
+                      设置权限
+                    </AdminLinkButton>
                   </Can>
                   <Can btn="role:delete">
                     <AdminLinkButton
-                      danger
+                      icon="delete"
                       disabled={role.locked}
                       onClick={() => setDeleteTarget(role)}
                     >

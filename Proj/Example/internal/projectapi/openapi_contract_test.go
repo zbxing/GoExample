@@ -17,15 +17,75 @@ type contractOpenAPIResponse struct {
 	Headers map[string]json.RawMessage `json:"headers"`
 }
 
-func TestOpenAPIMatchesRegisteredRoutes(t *testing.T) {
-	content, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "docs", "openapi", "openapi.json"))
+type projectContractManifest struct {
+	Version  int `json:"version"`
+	Projects []struct {
+		ProjectPath string `json:"projectPath"`
+		Contract    struct {
+			Repository     string `json:"repository"`
+			Ref            string `json:"ref"`
+			ResolvedCommit string `json:"resolvedCommit"`
+			Document       string `json:"document"`
+		} `json:"contract"`
+	} `json:"projects"`
+}
+
+func readExampleOpenAPI(t *testing.T) []byte {
+	t.Helper()
+	repositoryRoot := filepath.Join("..", "..", "..", "..")
+	manifestContent, err := os.ReadFile(filepath.Join(repositoryRoot, "contracts", "projects.json"))
 	if err != nil {
-		t.Fatalf("read OpenAPI document: %v", err)
+		t.Fatalf("read project contract manifest: %v", err)
 	}
+	var manifest projectContractManifest
+	if err := json.Unmarshal(manifestContent, &manifest); err != nil {
+		t.Fatalf("decode project contract manifest: %v", err)
+	}
+	if manifest.Version != 1 {
+		t.Fatalf("project contract manifest version = %d, want 1", manifest.Version)
+	}
+	for _, project := range manifest.Projects {
+		if project.ProjectPath != "Proj/Example" {
+			continue
+		}
+		documentPath := filepath.FromSlash(project.Contract.Document)
+		cleanDocumentPath := filepath.Clean(documentPath)
+		if filepath.IsAbs(documentPath) || cleanDocumentPath == ".." || strings.HasPrefix(cleanDocumentPath, ".."+string(filepath.Separator)) {
+			t.Fatalf("Example contract document is unsafe: %q", project.Contract.Document)
+		}
+		contractPath := filepath.Join(repositoryRoot, documentPath)
+		if project.Contract.Repository != "workspace" {
+			if !strings.HasPrefix(project.Contract.Ref, "refs/heads/") && !strings.HasPrefix(project.Contract.Ref, "refs/tags/") {
+				t.Fatalf("Example external contract ref is not pinned to a branch or tag: %q", project.Contract.Ref)
+			}
+			if len(project.Contract.ResolvedCommit) != 40 || strings.Trim(project.Contract.ResolvedCommit, "0123456789abcdef") != "" {
+				t.Fatalf("Example external contract resolvedCommit is not a lower-case SHA-1: %q", project.Contract.ResolvedCommit)
+			}
+			contractPath = filepath.Join(repositoryRoot, ".temp", "contracts", "Example", project.Contract.ResolvedCommit, documentPath)
+		}
+		content, err := os.ReadFile(contractPath)
+		if err != nil {
+			t.Fatalf("read materialized Example OpenAPI document %q: %v", contractPath, err)
+		}
+		return content
+	}
+	t.Fatal("Proj/Example is missing from project contract manifest")
+	return nil
+}
+
+func TestOpenAPIMatchesRegisteredRoutes(t *testing.T) {
+	content := readExampleOpenAPI(t)
 
 	type operation struct {
-		OperationID  string `json:"operationId"`
-		Deprecated   bool   `json:"deprecated"`
+		OperationID           string   `json:"operationId"`
+		Deprecated            bool     `json:"deprecated"`
+		RequiredRoles         []string `json:"x-required-roles"`
+		ResourceAuthorization struct {
+			TenantSource string `json:"tenantSource"`
+			ResourceType string `json:"resourceType"`
+			ResourceID   string `json:"resourceId"`
+			Action       string `json:"action"`
+		} `json:"x-resource-authorization"`
 		ExternalDocs struct {
 			URL string `json:"url"`
 		} `json:"externalDocs"`
@@ -53,7 +113,18 @@ func TestOpenAPIMatchesRegisteredRoutes(t *testing.T) {
 		"/api/health/ready":   "/readyz",
 		"/api/health/startup": "/startupz",
 	}
+	expectedRoleRequirements := map[string][]string{
+		"GET /api/v1/project/preview/{audience}": {"demo"},
+		"POST /api/v1/project/describe":          {"demo"},
+	}
+	expectedResourceAuthorization := map[string][4]string{
+		"GET /api/v1/project/preview/{audience}": {"header:X-Tenant-ID or principal:subject", "project", "current", "preview"},
+		"POST /api/v1/project/describe":          {"body:tenantId or principal:subject", "project", "current", "describe"},
+	}
+	seenRoleRequirements := make(map[string]bool, len(expectedRoleRequirements))
 	deprecatedCount := 0
+	roleProtectedCount := 0
+	resourceProtectedCount := 0
 	for path, pathItem := range document.Paths {
 		for method, operation := range pathItem {
 			method = strings.ToUpper(method)
@@ -90,12 +161,54 @@ func TestOpenAPIMatchesRegisteredRoutes(t *testing.T) {
 					t.Fatalf("%s %s 401 response = %q", method, path, unauthorized.Ref)
 				}
 			}
+			if len(operation.RequiredRoles) > 0 {
+				roleProtectedCount++
+				operationKey := method + " " + path
+				if len(operation.Security) == 0 {
+					t.Fatalf("%s %s declares roles without authentication", method, path)
+				}
+				var forbidden struct {
+					Ref string `json:"$ref"`
+				}
+				if err := json.Unmarshal(operation.Responses["403"], &forbidden); err != nil {
+					t.Fatalf("decode %s %s 403 response: %v", method, path, err)
+				}
+				if forbidden.Ref != "#/components/responses/Forbidden" {
+					t.Fatalf("%s %s 403 response = %q", method, path, forbidden.Ref)
+				}
+				expectedRoles, expected := expectedRoleRequirements[operationKey]
+				if !expected || !slices.Equal(operation.RequiredRoles, expectedRoles) {
+					t.Fatalf("%s required roles = %#v", operationKey, operation.RequiredRoles)
+				}
+				seenRoleRequirements[operationKey] = true
+			}
+			resourceAuthorization := operation.ResourceAuthorization
+			if resourceAuthorization.TenantSource != "" {
+				resourceProtectedCount++
+				operationKey := method + " " + path
+				expected, ok := expectedResourceAuthorization[operationKey]
+				actual := [4]string{resourceAuthorization.TenantSource, resourceAuthorization.ResourceType, resourceAuthorization.ResourceID, resourceAuthorization.Action}
+				if !ok || actual != expected || len(operation.Security) == 0 || len(operation.RequiredRoles) == 0 {
+					t.Fatalf("%s resource authorization = %#v", operationKey, actual)
+				}
+			}
 			operationIDs[operation.OperationID] = method + " " + path
 			documented = append(documented, method+" "+path)
 		}
 	}
 	if deprecatedCount != len(deprecatedHealthRoutes) {
 		t.Fatalf("deprecated operation count = %d, want %d", deprecatedCount, len(deprecatedHealthRoutes))
+	}
+	if roleProtectedCount != len(expectedRoleRequirements) {
+		t.Fatalf("role-protected operation count = %d, want %d", roleProtectedCount, len(expectedRoleRequirements))
+	}
+	if resourceProtectedCount != len(expectedResourceAuthorization) {
+		t.Fatalf("resource-protected operation count = %d, want %d", resourceProtectedCount, len(expectedResourceAuthorization))
+	}
+	for operationKey := range expectedRoleRequirements {
+		if !seenRoleRequirements[operationKey] {
+			t.Fatalf("role requirement missing for %s", operationKey)
+		}
 	}
 	challenge, exists := document.Components.Responses["BearerUnauthorized"]
 	if !exists {
@@ -118,20 +231,44 @@ func TestOpenAPIMatchesRegisteredRoutes(t *testing.T) {
 		}),
 	}
 	options.ApplicationQueries = Queries(options)
+	options.ApplicationCommands = Commands(options)
 	app := httpapi.New(options)
 	registered := make([]string, 0)
 	for _, route := range app.GetRoutes(true) {
 		if !isDocumentedHTTPMethod(route.Method) {
 			continue
 		}
-		registered = append(registered, route.Method+" "+route.Path)
+		registered = append(registered, route.Method+" "+openAPIPath(route.Path))
 	}
 
 	slices.Sort(documented)
 	slices.Sort(registered)
-	if !slices.Equal(documented, registered) {
+	conditionalOIDCBrowserRoutes := map[string]struct{}{
+		"GET /api/v1/auth/oidc/start":                   {},
+		"GET /api/v1/auth/oidc/callback":                {},
+		"POST /api/v1/auth/oidc/logout":                 {},
+		"GET /api/v1/auth/oidc/sessions":                {},
+		"PATCH /api/v1/auth/oidc/sessions/{sessionId}":  {},
+		"DELETE /api/v1/auth/oidc/sessions":             {},
+		"DELETE /api/v1/auth/oidc/sessions/{sessionId}": {},
+	}
+	documentedForDemoMode := slices.DeleteFunc(slices.Clone(documented), func(route string) bool {
+		_, conditional := conditionalOIDCBrowserRoutes[route]
+		return conditional
+	})
+	if !slices.Equal(documentedForDemoMode, registered) {
 		t.Fatalf("OpenAPI routes differ from Fiber routes\ndocumented: %#v\nregistered: %#v", documented, registered)
 	}
+}
+
+func openAPIPath(fiberPath string) string {
+	segments := strings.Split(fiberPath, "/")
+	for index, segment := range segments {
+		if strings.HasPrefix(segment, ":") {
+			segments[index] = "{" + strings.TrimPrefix(segment, ":") + "}"
+		}
+	}
+	return strings.Join(segments, "/")
 }
 
 func assertDeprecatedResponses(

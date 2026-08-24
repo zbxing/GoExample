@@ -3,6 +3,8 @@ go 1.25.0
 toolchain go1.25.13
 
 use (
+	./support/consumer/HealthProbe
 	./Framework
 	./Proj/Example
+	./SDK/GoExample
 )

@@ -3456,8 +3456,21 @@ body {
 
 .referenceMetricGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.55fr) minmax(290px, 0.75fr);
   gap: 16px;
+  align-items: stretch;
+}
+
+.referenceMetricMain {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: inherit;
+  min-width: 0;
+}
+
+.referenceMetricSide {
+  display: grid;
+  min-width: 0;
 }
 
 .referenceMetricCard {
@@ -3885,7 +3898,8 @@ body {
 }
 
 @media (max-width: 1100px) {
-  .referenceDashboardColumns {
+  .referenceDashboardColumns,
+  .referenceMetricGrid {
     grid-template-columns: 1fr;
   }
 
@@ -4052,7 +4066,8 @@ body {
     justify-content: center;
   }
 
-  .referenceMetricGrid {
+  .referenceMetricGrid,
+  .referenceMetricMain {
     grid-template-columns: 1fr;
     gap: 12px;
   }

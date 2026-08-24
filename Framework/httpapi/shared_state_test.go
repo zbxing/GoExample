@@ -14,10 +14,11 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/idempotency"
 
 	"github.com/zbxing/goexample/Framework/observability"
+	"github.com/zbxing/goexample/Framework/sharedstate"
 )
 
 func TestValidateSharedStateRequiresExternalDependencies(t *testing.T) {
-	storage := &contractStorage{}
+	storage := &atomicContractStorage{contractStorage: &contractStorage{}}
 	lock := &contractLock{}
 	tests := []struct {
 		name        string
@@ -35,6 +36,7 @@ func TestValidateSharedStateRequiresExternalDependencies(t *testing.T) {
 		{name: "production explicit memory downgrade", env: "production", mode: "memory", allow: true},
 		{name: "external storage required", env: "production", mode: "external", idempotency: true, locker: lock, want: "storage"},
 		{name: "external lock required", env: "production", mode: "external", idempotency: true, store: storage, want: "lock"},
+		{name: "external atomic limiter required", env: "production", mode: "external", store: &contractStorage{}, want: "atomic"},
 		{name: "production memory is rejected", env: "production", mode: "memory", want: "downgrade"},
 		{name: "unknown mode", env: "test", mode: "redis", want: "mode"},
 	}
@@ -100,7 +102,7 @@ func TestSharedStorageNamespacesLimiterAndIdempotency(t *testing.T) {
 	lock.mu.Lock()
 	lockKeys := append([]string(nil), lock.keys...)
 	lock.mu.Unlock()
-	if !hasPrefix(lockKeys, "goexample:idempotency:/echo:") {
+	if !hasPrefix(lockKeys, "goexample:lock:idempotency:/echo:") {
 		t.Fatalf("idempotency lock namespace = %#v", lockKeys)
 	}
 }
@@ -245,6 +247,14 @@ func (l *contractLock) Lock(key string) error {
 
 func (l *contractLock) Unlock(string) error { return nil }
 
+type atomicContractStorage struct {
+	*contractStorage
+}
+
+func (s *atomicContractStorage) Take(context.Context, string, int, time.Duration) (sharedstate.RateLimitResult, error) {
+	return sharedstate.RateLimitResult{Allowed: true}, nil
+}
+
 func contains(value, want string) bool { return strings.Contains(value, want) }
 
 func hasPrefix(values []string, prefix string) bool {
@@ -257,4 +267,5 @@ func hasPrefix(values []string, prefix string) bool {
 }
 
 var _ fiber.Storage = (*contractStorage)(nil)
+var _ sharedstate.AtomicRateLimiter = (*atomicContractStorage)(nil)
 var _ idempotency.Locker = (*contractLock)(nil)

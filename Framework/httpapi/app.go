@@ -52,22 +52,29 @@ type Options struct {
 	IdempotencyLifetime time.Duration
 	// SharedStorage and IdempotencyLock are optional in development/test.
 	// External mode requires storage and, when idempotency is enabled, a lock.
-	SharedStorage      fiber.Storage
-	IdempotencyLock    idempotency.Locker
-	MetricsToken       string
-	PprofEnabled       bool
-	PprofToken         string
-	SystemInfoDetailed bool
-	Auth               *auth.Service
-	Health             *health.Checker
-	Metrics            *observability.Metrics
-	TracerProvider     trace.TracerProvider
-	Validator          fiber.StructValidator
-	Logger             *slog.Logger
-	Now                func() time.Time
-	Endpoints          []string
-	ApplicationQueries []ApplicationQuery
-	RegisterRoutes     RouteRegistrar
+	SharedStorage        fiber.Storage
+	IdempotencyLock      idempotency.Locker
+	MetricsToken         string
+	PprofEnabled         bool
+	PprofToken           string
+	SystemInfoDetailed   bool
+	Auth                 *auth.Service
+	TokenVerifier        auth.TokenVerifier
+	OIDCBrowser          *OIDCBrowser
+	Health               *health.Checker
+	Metrics              *observability.Metrics
+	TracerProvider       trace.TracerProvider
+	Validator            fiber.StructValidator
+	Logger               *slog.Logger
+	SecurityAuditSink    SecurityAuditSink
+	SecurityAuditTimeout time.Duration
+	// ResourceAuthorizationTimeout bounds each application resource policy.
+	ResourceAuthorizationTimeout time.Duration
+	Now                          func() time.Time
+	Endpoints                    []string
+	ApplicationQueries           []ApplicationQuery
+	ApplicationCommands          []ApplicationCommand
+	RegisterRoutes               RouteRegistrar
 }
 
 func New(options Options) *fiber.App {
@@ -148,6 +155,8 @@ func New(options Options) *fiber.App {
 			observability.TraceparentHeader,
 			observability.TracestateHeader,
 			"X-Idempotency-Key",
+			"X-Tenant-ID",
+			browserCSRFHeaderName,
 		},
 		ExposeHeaders: []string{
 			fiber.HeaderXRequestID,
@@ -240,6 +249,15 @@ func withDefaults(options Options) Options {
 	if options.Logger == nil {
 		options.Logger = slog.Default()
 	}
+	if options.SecurityAuditTimeout <= 0 {
+		options.SecurityAuditTimeout = 100 * time.Millisecond
+	}
+	if options.ResourceAuthorizationTimeout <= 0 {
+		options.ResourceAuthorizationTimeout = 100 * time.Millisecond
+	}
+	if !validResourceAuthorizationTimeout(options.ResourceAuthorizationTimeout) {
+		panic("ResourceAuthorizationTimeout must be between 1ns and 1s")
+	}
 	if options.Validator == nil {
 		options.Validator = validation.New()
 	}
@@ -249,15 +267,42 @@ func withDefaults(options Options) Options {
 	if options.Auth == nil {
 		options.Auth = auth.NewService(auth.Config{})
 	}
+	if options.TokenVerifier == nil {
+		options.TokenVerifier = options.Auth
+	}
 	if options.Health == nil {
 		options.Health = health.New(options.HealthCheckTimeout, options.HealthCacheTTL)
 	}
 	if options.Endpoints == nil {
 		if options.RegisterRoutes == nil {
-			options.Endpoints = DefaultEndpoints(options.Auth.Enabled())
+			options.Endpoints = DefaultEndpointsForAuth(AuthenticationEnabled(options), options.Auth.Enabled())
+			if options.OIDCBrowser != nil {
+				options.Endpoints = append(options.Endpoints,
+					"GET /api/v1/auth/oidc/start",
+					"GET /api/v1/auth/oidc/callback",
+				)
+				if options.OIDCBrowser.SessionsEnabled() {
+					options.Endpoints = append(options.Endpoints,
+						"POST /api/v1/auth/oidc/logout",
+						"GET /api/v1/auth/oidc/sessions",
+						"PATCH /api/v1/auth/oidc/sessions/:sessionId",
+						"DELETE /api/v1/auth/oidc/sessions/:sessionId",
+						"DELETE /api/v1/auth/oidc/sessions",
+					)
+				}
+			}
 		} else {
 			options.Endpoints = []string{}
 		}
 	}
 	return options
+}
+
+// AuthenticationEnabled reports whether bearer-protected routes can verify
+// tokens. Demo credential issuance is intentionally a separate capability.
+func AuthenticationEnabled(options Options) bool {
+	if options.TokenVerifier != nil {
+		return options.TokenVerifier.Enabled()
+	}
+	return options.Auth != nil && options.Auth.Enabled()
 }
