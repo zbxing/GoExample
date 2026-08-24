@@ -1,0 +1,3776 @@
+{
+  ".codex/hooks.json": {
+    "mtime": 1787564805.4659116,
+    "seen": 1787581915.2016287,
+    "ast_hash": "05ca63b96022e8bd0271886e03c65208",
+    "semantic_hash": ""
+  },
+  "Framework/api-snapshot.json": {
+    "mtime": 1787542442.7693698,
+    "seen": 1787581915.2016287,
+    "ast_hash": "c40d3058829bc292bf56fb51a508d39f",
+    "semantic_hash": ""
+  },
+  "Framework/auth/browser_session.go": {
+    "mtime": 1787538821.9728825,
+    "seen": 1787581915.2016287,
+    "ast_hash": "3e0f7a6c446cdc49c79e4ac08621c773",
+    "semantic_hash": ""
+  },
+  "Framework/auth/browser_session_test.go": {
+    "mtime": 1787538911.2942579,
+    "seen": 1787581915.2016287,
+    "ast_hash": "46fb7a0297b7ebca7e352c59efad1daf",
+    "semantic_hash": ""
+  },
+  "Framework/auth/jwks.go": {
+    "mtime": 1787527744.4904191,
+    "seen": 1787581915.2016287,
+    "ast_hash": "e3589940767e2d86fa41c7e40df0ce55",
+    "semantic_hash": ""
+  },
+  "Framework/auth/jwks_test.go": {
+    "mtime": 1787527766.7216785,
+    "seen": 1787581915.2016287,
+    "ast_hash": "25827c6bd4e362340dbe56726510a959",
+    "semantic_hash": ""
+  },
+  "Framework/auth/oidc_callback.go": {
+    "mtime": 1787525814.3111787,
+    "seen": 1787581915.2016287,
+    "ast_hash": "f549b0cda4eadd462eb3923934a4d657",
+    "semantic_hash": ""
+  },
+  "Framework/auth/oidc_callback_test.go": {
+    "mtime": 1787466832.735821,
+    "seen": 1787581915.2016287,
+    "ast_hash": "633cd4d11e23a089419d05ca38417d1e",
+    "semantic_hash": ""
+  },
+  "Framework/auth/oidc_client.go": {
+    "mtime": 1787465940.229631,
+    "seen": 1787581915.2016287,
+    "ast_hash": "859c49383ac3b05fd7227e150573ad00",
+    "semantic_hash": ""
+  },
+  "Framework/auth/oidc_client_test.go": {
+    "mtime": 1787466027.0235884,
+    "seen": 1787581915.2016287,
+    "ast_hash": "f1a1a2d957bcfff2eec9ad4986e3eb83",
+    "semantic_hash": ""
+  },
+  "Framework/auth/oidc_flow.go": {
+    "mtime": 1787527267.4031105,
+    "seen": 1787581915.2016287,
+    "ast_hash": "57d16f0b9d4c027991cbc83aa870426c",
+    "semantic_hash": ""
+  },
+  "Framework/auth/oidc_flow_test.go": {
+    "mtime": 1787527267.4041073,
+    "seen": 1787581915.2016287,
+    "ast_hash": "fd8f82ed5ea7016c98e0250a3612f39b",
+    "semantic_hash": ""
+  },
+  "Framework/auth/service.go": {
+    "mtime": 1787296805.6011903,
+    "seen": 1787581915.2016287,
+    "ast_hash": "298c5e37ad30440a6277971c5a8fa9c8",
+    "semantic_hash": ""
+  },
+  "Framework/auth/service_test.go": {
+    "mtime": 1787197256.0269177,
+    "seen": 1787581915.2016287,
+    "ast_hash": "dcde83bbef57c6b88f0a8bafb43a7db1",
+    "semantic_hash": ""
+  },
+  "Framework/auth/session.go": {
+    "mtime": 1787463403.4623783,
+    "seen": 1787581915.2016287,
+    "ast_hash": "1e67ba54e54175ba6f92cd147115e07b",
+    "semantic_hash": ""
+  },
+  "Framework/auth/session_test.go": {
+    "mtime": 1787461715.457255,
+    "seen": 1787581915.2016287,
+    "ast_hash": "9377dbca282459e8062265b3951a47a7",
+    "semantic_hash": ""
+  },
+  "Framework/authorization/authorization.go": {
+    "mtime": 1787519428.205706,
+    "seen": 1787581915.2016287,
+    "ast_hash": "e92d7955d5303b825477f251393d0e26",
+    "semantic_hash": ""
+  },
+  "Framework/authorization/authorization_test.go": {
+    "mtime": 1787519209.126387,
+    "seen": 1787581915.2016287,
+    "ast_hash": "0a9ab03425637c93bb9b4ded623f3ead",
+    "semantic_hash": ""
+  },
+  "Framework/config/config.go": {
+    "mtime": 1787528658.2298374,
+    "seen": 1787581915.2016287,
+    "ast_hash": "8b89a0430b3605efa8098059267d35a3",
+    "semantic_hash": ""
+  },
+  "Framework/config/config_test.go": {
+    "mtime": 1787528646.4238331,
+    "seen": 1787581915.2016287,
+    "ast_hash": "2d9a816fe2b8dea6995c55fb3f57ba21",
+    "semantic_hash": ""
+  },
+  "Framework/go.mod": {
+    "mtime": 1787497885.3895257,
+    "seen": 1787581915.2016287,
+    "ast_hash": "b6dc653ebc02699e50c23a7f404d7c87",
+    "semantic_hash": ""
+  },
+  "Framework/health/benchmark_test.go": {
+    "mtime": 1786892662.802686,
+    "seen": 1787581915.2016287,
+    "ast_hash": "c562b5fbbbebcef8aa8cc13b484182e3",
+    "semantic_hash": ""
+  },
+  "Framework/health/checker.go": {
+    "mtime": 1787048270.5248911,
+    "seen": 1787581915.2016287,
+    "ast_hash": "b0c94ba39933fd354dcaf9ce6bc0fe16",
+    "semantic_hash": ""
+  },
+  "Framework/health/checker_test.go": {
+    "mtime": 1787048270.5257456,
+    "seen": 1787581915.2016287,
+    "ast_hash": "5bca6de9d6b8468a90bb6fee7bfa0fb6",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/app.go": {
+    "mtime": 1787580477.3293867,
+    "seen": 1787581915.2016287,
+    "ast_hash": "ee81787bba39dd53757e36a0fb962bbd",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/app_test.go": {
+    "mtime": 1787522917.5506308,
+    "seen": 1787581915.2016287,
+    "ast_hash": "b669fc7c917e0cf121de62326c05be2c",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/application_authorization.go": {
+    "mtime": 1787520348.9852407,
+    "seen": 1787581915.2016287,
+    "ast_hash": "eb0fd966d3356d3c2a6bcef0ae7d8d16",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/application_command.go": {
+    "mtime": 1787523969.4477863,
+    "seen": 1787581915.2016287,
+    "ast_hash": "320593146d0a687196a869b7fe92be9d",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/application_precondition.go": {
+    "mtime": 1787414183.8002572,
+    "seen": 1787581915.2016287,
+    "ast_hash": "c01ac448368540a1500c4a4b699597eb",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/application_query.go": {
+    "mtime": 1787538650.9818678,
+    "seen": 1787581915.2016287,
+    "ast_hash": "5dd901a9339d48d96e08e6b78120ae41",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/application_resource_authorization_test.go": {
+    "mtime": 1787520827.2028263,
+    "seen": 1787581915.2016287,
+    "ast_hash": "f6a4285df6e782a1ab2b093731169a29",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/auth_middleware.go": {
+    "mtime": 1787524337.9179976,
+    "seen": 1787581915.2016287,
+    "ast_hash": "956f7ab55119e99be46629ed6ec950c2",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/benchmark_test.go": {
+    "mtime": 1786892662.802183,
+    "seen": 1787581915.2016287,
+    "ast_hash": "525f0e5983bde447c7df805188905486",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/binding.go": {
+    "mtime": 1786933387.0068672,
+    "seen": 1787581915.2016287,
+    "ast_hash": "15fdf7afd8e25ac0f4457dfc382d4091",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/diagnostics.go": {
+    "mtime": 1787226116.0734084,
+    "seen": 1787581915.2016287,
+    "ast_hash": "c6581d3e24d56c2e99471f64c21bad55",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/idempotency_fingerprint.go": {
+    "mtime": 1787413856.1115656,
+    "seen": 1787581915.2016287,
+    "ast_hash": "c902c768156086df1984b9d9a87e1cf9",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/lifecycle_contract_test.go": {
+    "mtime": 1787200247.451573,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6b119ee15578e9624c6f247c7f6da3b7",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/middleware.go": {
+    "mtime": 1787499300.61039,
+    "seen": 1787581915.2026258,
+    "ast_hash": "26b461c95afc22937919e5f09dbee1ee",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/oidc_browser.go": {
+    "mtime": 1787538821.973396,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3f58bd4e27664ea334d78d5ccf482c78",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/oidc_browser_test.go": {
+    "mtime": 1787539072.3678808,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e603248f736ca54c196374a1f60c66e2",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/redis_shared_state_test.go": {
+    "mtime": 1787232766.215793,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3c4e3b19d4605515570ec90a537a01cb",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/response.go": {
+    "mtime": 1787413856.113562,
+    "seen": 1787581915.2026258,
+    "ast_hash": "06ee17fa74c3902df6abd27adea03654",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/routes.go": {
+    "mtime": 1787523969.4472818,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3decfd9a9494f08e9da325bf938943e2",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/routes_auth.go": {
+    "mtime": 1787521946.8177273,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d901417b29626dacf4087c69cf2b8b6d",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/routes_example.go": {
+    "mtime": 1787296950.0964441,
+    "seen": 1787581915.2026258,
+    "ast_hash": "53bb1755ba9d5a450e2c884834045e72",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/routes_health.go": {
+    "mtime": 1787214120.7857783,
+    "seen": 1787581915.2026258,
+    "ast_hash": "94e832d43552682319dc999cc4b0c0cf",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/routes_system.go": {
+    "mtime": 1786933422.9426656,
+    "seen": 1787581915.2026258,
+    "ast_hash": "941fe6a26c90859b7cf17451a21303b1",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/security_audit.go": {
+    "mtime": 1787523969.4447665,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5035a61eb51303c910b8bba59f65fb66",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/security_audit_chain.go": {
+    "mtime": 1787524005.8890765,
+    "seen": 1787581915.2026258,
+    "ast_hash": "acbe33ce5d48553ad6f8cf67fed79e61",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/security_audit_chain_test.go": {
+    "mtime": 1787524582.6151254,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c8013d8464282c3f7c561fecc9dff908",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/security_audit_sink.go": {
+    "mtime": 1787277246.660767,
+    "seen": 1787581915.2026258,
+    "ast_hash": "63bb9dc486c1b8b4a77a352cace708ed",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/security_audit_sink_test.go": {
+    "mtime": 1787277507.3105714,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d8942663d5c3481cb58e460df47c96be",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/shared_state.go": {
+    "mtime": 1787232766.2145567,
+    "seen": 1787581915.2026258,
+    "ast_hash": "cef11bbc2922aba07b33510222a0aa96",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/shared_state_test.go": {
+    "mtime": 1787232766.2152877,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f084e1e3bf1ca387f5d4302aa543af2d",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/standard_handler.go": {
+    "mtime": 1787580477.3283894,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9095b61cd08aa569d33ec7fe44a590cf",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/standard_handler_test.go": {
+    "mtime": 1787580699.2086582,
+    "seen": 1787581915.2026258,
+    "ast_hash": "88b196da13956a04a449b0277b591151",
+    "semantic_hash": ""
+  },
+  "Framework/httpapi/token_verifier_test.go": {
+    "mtime": 1787297111.7111137,
+    "seen": 1787581915.2026258,
+    "ast_hash": "05c7e64c3ef388b0d64da007a98ee6fa",
+    "semantic_hash": ""
+  },
+  "Framework/httpclient/client.go": {
+    "mtime": 1787221158.8415387,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6c5c82b2b3cacfb0e09b670ec88fe170",
+    "semantic_hash": ""
+  },
+  "Framework/httpclient/client_test.go": {
+    "mtime": 1787221110.2923179,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1c9c68f0c868ec8eadfba59fba229859",
+    "semantic_hash": ""
+  },
+  "Framework/internal/apisnapshot/main.go": {
+    "mtime": 1787218883.7708428,
+    "seen": 1787581915.2026258,
+    "ast_hash": "27914980c1260d85d4d8bb315be04312",
+    "semantic_hash": ""
+  },
+  "Framework/internal/apisnapshot/main_test.go": {
+    "mtime": 1787218915.493575,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6c6b9afd9a5ec5b026a2ff19ffbb3e82",
+    "semantic_hash": ""
+  },
+  "Framework/observability/benchmark_test.go": {
+    "mtime": 1786892410.1536808,
+    "seen": 1787581915.2026258,
+    "ast_hash": "345e6f247518de3a0df11ad115d5669a",
+    "semantic_hash": ""
+  },
+  "Framework/observability/logger.go": {
+    "mtime": 1787198777.5268888,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3229398920c0cb6771d0a6c8efc68c29",
+    "semantic_hash": ""
+  },
+  "Framework/observability/logger_test.go": {
+    "mtime": 1787198783.0605056,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e8ccbf650dfa3ba8c3c8fc53267399ac",
+    "semantic_hash": ""
+  },
+  "Framework/observability/metrics.go": {
+    "mtime": 1787524005.888572,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3d57d2d19c4f2fb9ef04b90a3c1c01b7",
+    "semantic_hash": ""
+  },
+  "Framework/observability/metrics_test.go": {
+    "mtime": 1787524005.8907375,
+    "seen": 1787581915.2026258,
+    "ast_hash": "42b5a78c8739bdf1f42a81d6d4221355",
+    "semantic_hash": ""
+  },
+  "Framework/observability/tracing.go": {
+    "mtime": 1787211246.3323774,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5ed3e850cd92d2c260dfc105738242d8",
+    "semantic_hash": ""
+  },
+  "Framework/observability/tracing_provider.go": {
+    "mtime": 1787235737.4506283,
+    "seen": 1787581915.2026258,
+    "ast_hash": "4672939f727445bbb46184728d39c227",
+    "semantic_hash": ""
+  },
+  "Framework/observability/tracing_test.go": {
+    "mtime": 1787235737.4526234,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a2f865eac9051188b60ab3e63a03de8f",
+    "semantic_hash": ""
+  },
+  "Framework/queueclient/client.go": {
+    "mtime": 1787283946.6187868,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0b19c3877e60ac543ccc9e3c589222a7",
+    "semantic_hash": ""
+  },
+  "Framework/queueclient/client_test.go": {
+    "mtime": 1787283946.6197846,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f5b178424d90774552a7113406cb27c7",
+    "semantic_hash": ""
+  },
+  "Framework/queueclient/nats_integration_test.go": {
+    "mtime": 1787295856.3819275,
+    "seen": 1787581915.2026258,
+    "ast_hash": "92950e71ddfe310ef0d2aa0c82a3aefe",
+    "semantic_hash": ""
+  },
+  "Framework/queueclient/natsjetstream/adapter.go": {
+    "mtime": 1787512640.5760658,
+    "seen": 1787581915.2026258,
+    "ast_hash": "13fcbd7d6237fba3f19a0a86e5263262",
+    "semantic_hash": ""
+  },
+  "Framework/queueclient/natsjetstream/adapter_test.go": {
+    "mtime": 1787512817.1708696,
+    "seen": 1787581915.2026258,
+    "ast_hash": "53e09ece54566d4dffa1f0d5411f9422",
+    "semantic_hash": ""
+  },
+  "Framework/queueclient/natsjetstream/cluster_integration_test.go": {
+    "mtime": 1787516267.0748029,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b7088badb162a946c97adc898dedd757",
+    "semantic_hash": ""
+  },
+  "Framework/queueclient/natsjetstream/integration_test.go": {
+    "mtime": 1787512817.171903,
+    "seen": 1787581915.2026258,
+    "ast_hash": "db796195acc5409a0442612c98795358",
+    "semantic_hash": ""
+  },
+  "Framework/queueclient/natsjetstream/restart_integration_test.go": {
+    "mtime": 1787506582.1626592,
+    "seen": 1787581915.2026258,
+    "ast_hash": "de58d1db3caae2cd21c2198b149b7d55",
+    "semantic_hash": ""
+  },
+  "Framework/queueclient/natsjetstream/snapshot_integration_test.go": {
+    "mtime": 1787518472.8101442,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c88ef36b5bd101c240cb0642a48bbe45",
+    "semantic_hash": ""
+  },
+  "Framework/queueclient/worker.go": {
+    "mtime": 1787512817.171386,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f7497ff5c8dc39aa5a4c2bcf42019a4c",
+    "semantic_hash": ""
+  },
+  "Framework/queueclient/worker_test.go": {
+    "mtime": 1787512817.174977,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a817f932a4b2331d202a35a559306ccd",
+    "semantic_hash": ""
+  },
+  "Framework/server/http.go": {
+    "mtime": 1787498697.833496,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a71e68fbf8fccd1355e4afc25d54e917",
+    "semantic_hash": ""
+  },
+  "Framework/server/http_test.go": {
+    "mtime": 1787498753.3021097,
+    "seen": 1787581915.2026258,
+    "ast_hash": "745c1c3619dd801cc60afbce945882cc",
+    "semantic_hash": ""
+  },
+  "Framework/server/server.go": {
+    "mtime": 1786935338.0761657,
+    "seen": 1787581915.2026258,
+    "ast_hash": "077788c442b95c25ad5864ee772c3c09",
+    "semantic_hash": ""
+  },
+  "Framework/server/server_test.go": {
+    "mtime": 1786935338.0771604,
+    "seen": 1787581915.2026258,
+    "ast_hash": "641599004b05f443d3bfc83a475d6307",
+    "semantic_hash": ""
+  },
+  "Framework/sharedstate/authorization_request_store.go": {
+    "mtime": 1787525882.0441186,
+    "seen": 1787581915.2026258,
+    "ast_hash": "68fc2cdbd8bfde2900dba794e173271c",
+    "semantic_hash": ""
+  },
+  "Framework/sharedstate/authorization_request_store_test.go": {
+    "mtime": 1787525799.7457604,
+    "seen": 1787581915.2026258,
+    "ast_hash": "928567d2b75f3329e9c6d5987d1fbbc2",
+    "semantic_hash": ""
+  },
+  "Framework/sharedstate/browser_session_store.go": {
+    "mtime": 1787542300.2994628,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7a8d1017bee983b6c3b472f5951f65f9",
+    "semantic_hash": ""
+  },
+  "Framework/sharedstate/browser_session_store_test.go": {
+    "mtime": 1787538955.3710554,
+    "seen": 1787581915.2026258,
+    "ast_hash": "108f66cf6ecb5ec32da2e9895fd2ed26",
+    "semantic_hash": ""
+  },
+  "Framework/sharedstate/redis.go": {
+    "mtime": 1787407311.5358133,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5228a49b658145a47295e4a8e251b7de",
+    "semantic_hash": ""
+  },
+  "Framework/sharedstate/redis_sentinel_integration_test.go": {
+    "mtime": 1787408429.246563,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e54cd118068d777db6ba7cfd3fb283ae",
+    "semantic_hash": ""
+  },
+  "Framework/sharedstate/redis_test.go": {
+    "mtime": 1787407303.8640106,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a93a97b8611b31bede029b0541c85a6e",
+    "semantic_hash": ""
+  },
+  "Framework/sharedstate/redis_tracing.go": {
+    "mtime": 1787234921.7871528,
+    "seen": 1787581915.2026258,
+    "ast_hash": "92856cd10a0a1ee3db8274277b2a70cf",
+    "semantic_hash": ""
+  },
+  "Framework/sharedstate/session_store.go": {
+    "mtime": 1787463537.2536936,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8bb3a75cdb97dbbbeddeae16df408b84",
+    "semantic_hash": ""
+  },
+  "Framework/sharedstate/session_store_test.go": {
+    "mtime": 1787463777.9088657,
+    "seen": 1787581915.2026258,
+    "ast_hash": "517a4345d28eb4a4710312ab22f09b84",
+    "semantic_hash": ""
+  },
+  "Framework/sqlclient/client.go": {
+    "mtime": 1787413124.5288217,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d20743c82d2681768b7342bbc5e08777",
+    "semantic_hash": ""
+  },
+  "Framework/sqlclient/client_test.go": {
+    "mtime": 1787413124.5298193,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e166cfec211c2c4f2ac3839968a1b7b8",
+    "semantic_hash": ""
+  },
+  "Framework/sqlclient/postgres_integration_test.go": {
+    "mtime": 1787415289.0859227,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6209b8f215fcf9ab7c08a17b1ec667dc",
+    "semantic_hash": ""
+  },
+  "Framework/validation/validator.go": {
+    "mtime": 1786874135.2773783,
+    "seen": 1787581915.2026258,
+    "ast_hash": "43829854ad80f0378d0762351f27dc27",
+    "semantic_hash": ""
+  },
+  "Framework/validation/validator_test.go": {
+    "mtime": 1786874135.2783742,
+    "seen": 1787581915.2026258,
+    "ast_hash": "648885dec5a8cbcdc1216280899237c9",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/access-utils.test.ts": {
+    "mtime": 1786949989.5164554,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6ea25b97161e8303e8a24ea9b91a90ba",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/api-inventory-parser.test.ts": {
+    "mtime": 1786968897.855513,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ac5bb5cbd7645e48e1b165ab8bfa13c8",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/auth-request.test.ts": {
+    "mtime": 1787141541.2724352,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b3bbd9521c4effdc5ee60f2c28d1eba0",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/auth-token.test.ts": {
+    "mtime": 1787148253.6063511,
+    "seen": 1787581915.2026258,
+    "ast_hash": "99cdd20645ecdcf92aac3d21766b4b59",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/casbin-access.test.ts": {
+    "mtime": 1786949989.5204444,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0a95268daaed89191351c866793ec11b",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/database-config.test.ts": {
+    "mtime": 1786962862.6993237,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ac0870b77a8fa8d2ca20387449974356",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/instrumentation.test.ts": {
+    "mtime": 1787148552.0938833,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c03add698276885e7f0df1dcf99355ad",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/json-store.test.ts": {
+    "mtime": 1786952390.110344,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5e2f26462896badf6c050b2b071a4033",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/logout-route.test.ts": {
+    "mtime": 1787147103.6868494,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9ac79a649ebdfe65a4c4bc6786ea49fd",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/migration-lib.test.ts": {
+    "mtime": 1786962819.162172,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c8438fb8925a3e500fef2f92ebec83d2",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/password.test.ts": {
+    "mtime": 1786952390.1113417,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3cbec9561e85d2aed27ddd115523653d",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/probe-policy.test.ts": {
+    "mtime": 1786952390.1131477,
+    "seen": 1787581915.2026258,
+    "ast_hash": "26c4c285b8dce04b1a1bda2d85e161a7",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/proxy.test.ts": {
+    "mtime": 1787213685.9946027,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2386ad6eff0d53d7185996d22f4a83b0",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/request-body.test.ts": {
+    "mtime": 1786960494.8645449,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9aa31ff8fff61d20806fb153d15f9a6f",
+    "semantic_hash": ""
+  },
+  "MSFront/__tests__/unit/request-security.test.ts": {
+    "mtime": 1787148253.6063511,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3315701c7770dedf60d47bf03e941aa8",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(auth)/layout.tsx": {
+    "mtime": 1786703372.2396493,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1801d090b07bddc193fd1d7a641655ac",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(auth)/login/page.tsx": {
+    "mtime": 1786703381.042197,
+    "seen": 1787581915.2026258,
+    "ast_hash": "59958670ade775b9265bfe249a0ea533",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/403/page.tsx": {
+    "mtime": 1786703577.1273382,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b84349a17f99e014546dec3cfa3d5bc9",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/dashboard/page.tsx": {
+    "mtime": 1780297157.8553154,
+    "seen": 1787581915.2026258,
+    "ast_hash": "cbf2ba9938277010c82a682973d6076c",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/environments/page.tsx": {
+    "mtime": 1780297157.856312,
+    "seen": 1787581915.2026258,
+    "ast_hash": "663c5eaadeb1cb1372278b9c8af18e82",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/integrations/page.tsx": {
+    "mtime": 1780297157.856312,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0f9cd427c0e085678e20c6b8e5aa5875",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/layout.tsx": {
+    "mtime": 1787213685.6721175,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3c83b94edb514bd0d81c755c27c74903",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/projects/[projectId]/page.tsx": {
+    "mtime": 1786605783.3257182,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f89c3242b90319796bc1fa97700000b1",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/projects/page.tsx": {
+    "mtime": 1786607379.524184,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e32c46313ac677e959135bd103156e22",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/roles/page.tsx": {
+    "mtime": 1786703577.7475948,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ba037f8e6eeb2ee1b159aa57ee94ca2d",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/security/page.tsx": {
+    "mtime": 1780297157.86004,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c9ad7fba55aba57517246a40195e7163",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/services/page.tsx": {
+    "mtime": 1780297157.8610375,
+    "seen": 1787581915.2026258,
+    "ast_hash": "224c2dcb2ff6fe5d30c5e7d73c1c9709",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/settings/page.tsx": {
+    "mtime": 1780297157.8610375,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2c40832f34e3d48b83f66e4de3718eba",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/system/apis/page.tsx": {
+    "mtime": 1786703575.7290623,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a240a413bba8e89bf6161900389d1a7b",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/system/casbin/page.tsx": {
+    "mtime": 1786703576.5209706,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a0a9705d50a1879777e2c10ef016ab5c",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/system/menus/page.tsx": {
+    "mtime": 1786703575.2154455,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7ffb376e3a30e7e4540d9035ec9135cd",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/system/roles/page.tsx": {
+    "mtime": 1786703574.7519608,
+    "seen": 1787581915.2026258,
+    "ast_hash": "27b72d6d2baf58289072764e9ce56890",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/system/users/page.tsx": {
+    "mtime": 1786703574.2749853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0a999fe9644d61c854b2b5a4d9bff2cb",
+    "semantic_hash": ""
+  },
+  "MSFront/app/(dashboard)/users/page.tsx": {
+    "mtime": 1786703577.4290607,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d6c4dd072ce0bead008db3efe2ed2040",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/auth/login/route.ts": {
+    "mtime": 1787141541.2694428,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d597d4907d40c14e7106c6f962348394",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/auth/logout/route.ts": {
+    "mtime": 1787141541.2704396,
+    "seen": 1787581915.2026258,
+    "ast_hash": "19f372c9d871f78eeb9f1199e6af1d3c",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/auth/me/route.ts": {
+    "mtime": 1787213685.8793921,
+    "seen": 1787581915.2026258,
+    "ast_hash": "72cc1874aaecceba2bbfc0688097c692",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/inventory/route.ts": {
+    "mtime": 1787143006.391714,
+    "seen": 1787581915.2026258,
+    "ast_hash": "20cbc4baf42fc08b9fa30e6f3ad542df",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/overview/route.ts": {
+    "mtime": 1787143006.3928077,
+    "seen": 1787581915.2026258,
+    "ast_hash": "26fe266b3f9f868fc249919cec0fb42d",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/projects/[projectId]/health/route.ts": {
+    "mtime": 1787143006.3928077,
+    "seen": 1787581915.2026258,
+    "ast_hash": "478b96eef08fb2a7f643b60df7c2f0c3",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/projects/[projectId]/route.ts": {
+    "mtime": 1787143006.3928077,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3abd56d6020c004f066d9e2aff07d2f7",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/projects/route.ts": {
+    "mtime": 1787143006.3928077,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e26beb20291c758f9ec7e6af8ccd5e10",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/security/api-keys/[apiKeyId]/revoke/route.ts": {
+    "mtime": 1787143006.3978055,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b4932bce3c290ed178e1d7d63ea4f1be",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/security/roles/[roleId]/route.ts": {
+    "mtime": 1787143006.3978055,
+    "seen": 1787581915.2026258,
+    "ast_hash": "eb3a5aa8240e73b310c6b0727f516089",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/security/roles/route.ts": {
+    "mtime": 1787143006.3978055,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0bd6a94e3a3a4c06358cf5e315d9c9d1",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/security/route.ts": {
+    "mtime": 1787143006.3928077,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7807d3e3efe31c15db1dc0893f9f6bf0",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/security/sessions/[sessionId]/revoke/route.ts": {
+    "mtime": 1787143006.3978055,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0512bc0beedf2fb90aa75137f2fc44f3",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/security/users/[userId]/route.ts": {
+    "mtime": 1787143006.3978055,
+    "seen": 1787581915.2026258,
+    "ast_hash": "537625f59e802d69d8a3181cbed71aba",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/management/security/users/route.ts": {
+    "mtime": 1787143006.3978055,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2169ebc0c272d42a836d34dfb6da0342",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/system/apis/route.ts": {
+    "mtime": 1786960554.5453413,
+    "seen": 1787581915.2026258,
+    "ast_hash": "644d9f3c661d7a8205af47802a4cf6af",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/system/apis/sync/route.ts": {
+    "mtime": 1787554269.8803525,
+    "seen": 1787581915.2026258,
+    "ast_hash": "395ceccda8277d3b54ddb389af1dbe7d",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/system/casbin/route.ts": {
+    "mtime": 1786960554.5453413,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3464521a87746c5ac6076687a673acd0",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/system/menus/async/route.ts": {
+    "mtime": 1786960646.4455953,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2206527fe9d0588940c81f6d77c7eafd",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/system/menus/route.ts": {
+    "mtime": 1786960554.5453413,
+    "seen": 1787581915.2026258,
+    "ast_hash": "dcc586943ce71d6cb8bed02e9e4f84d5",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/system/roles/route.ts": {
+    "mtime": 1786960554.5453413,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5e53ffee52471095c3751170bd9c4c50",
+    "semantic_hash": ""
+  },
+  "MSFront/app/api/system/users/route.ts": {
+    "mtime": 1786960706.1759746,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ff350309e04deb3dd65fc7df7afa0453",
+    "semantic_hash": ""
+  },
+  "MSFront/app/error.tsx": {
+    "mtime": 1786960776.474345,
+    "seen": 1787581915.2026258,
+    "ast_hash": "fe13b9622c142b7fb07b611bcfe3325c",
+    "semantic_hash": ""
+  },
+  "MSFront/app/layout.tsx": {
+    "mtime": 1786855035.1741133,
+    "seen": 1787581915.2026258,
+    "ast_hash": "cd93ac2146848796f22401140b71789b",
+    "semantic_hash": ""
+  },
+  "MSFront/app/loading.tsx": {
+    "mtime": 1786960776.4753435,
+    "seen": 1787581915.2026258,
+    "ast_hash": "cc843be113e09386bb70b6f51d5f4b49",
+    "semantic_hash": ""
+  },
+  "MSFront/app/not-found.tsx": {
+    "mtime": 1786960776.4753435,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8aa14c868441c6ac97ce35ffdfbd071f",
+    "semantic_hash": ""
+  },
+  "MSFront/app/page.tsx": {
+    "mtime": 1780297157.872936,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b948a650dcfec9e9a69021bd6cac9d29",
+    "semantic_hash": ""
+  },
+  "MSFront/components/admin/admin-icons.tsx": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b99e8f982e8c76906bf14d4f163febe2",
+    "semantic_hash": ""
+  },
+  "MSFront/components/admin/admin-primitives.tsx": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3509f5966a3fb78ad3d70e12c8655263",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/access-command-center-surface-content.tsx": {
+    "mtime": 1786332955.1423388,
+    "seen": 1787581915.2026258,
+    "ast_hash": "32ea426279b3078ab4daf7ff351862a6",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/access-governance-surface.tsx": {
+    "mtime": 1786332955.1433952,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bf39c1821c6539396441d5a6b9694f38",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/access-overview-section-content.tsx": {
+    "mtime": 1786332955.1433952,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5b29603bc65ae9bfd29ba5a288a9a117",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/access-selection-surface.tsx": {
+    "mtime": 1780297157.8739333,
+    "seen": 1787581915.2026258,
+    "ast_hash": "df769f99de8c2a3ad9530f0533c5589c",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/editor-section.tsx": {
+    "mtime": 1780297157.8749306,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2ff95b76d78f338b822b8bd1905f8038",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/editor-workspace-shell.tsx": {
+    "mtime": 1780297157.8749306,
+    "seen": 1787581915.2026258,
+    "ast_hash": "30dccd823a00b65837e305f19041b332",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/feedback-banner.tsx": {
+    "mtime": 1780297157.875928,
+    "seen": 1787581915.2026258,
+    "ast_hash": "825a4266062bb813d8621dfd3e92e839",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/management-primitives.tsx": {
+    "mtime": 1780297157.875928,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2fb0246423e90590feb770285e26ef03",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/overview-summary-section.tsx": {
+    "mtime": 1780297157.8769257,
+    "seen": 1787581915.2026258,
+    "ast_hash": "86ba46a4fb59f956ef638b486c111736",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/project-command-center-surface.tsx": {
+    "mtime": 1780297157.8769257,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7450aad09a002c8b332485f34121b5b1",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/project-detail-panel-section.tsx": {
+    "mtime": 1780297157.8779225,
+    "seen": 1787581915.2026258,
+    "ast_hash": "81b1f1777d2fd78eee666eeceee8770c",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/project-endpoint-surface.tsx": {
+    "mtime": 1780297157.8779225,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bd9d3021eae67404ce09fa15afdabb66",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/project-spotlight-card-content.tsx": {
+    "mtime": 1786332955.1433952,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5b833cebfd0728b52e6d1499b398291f",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/project-spotlight-section.tsx": {
+    "mtime": 1780297157.8779225,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7eb3e0d828f534db8abe5b0b495d2fe7",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/project-surface.tsx": {
+    "mtime": 1786332955.1433952,
+    "seen": 1787581915.2026258,
+    "ast_hash": "442526a765d9ba4f2d29f430934ee9c9",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/registry-workbench-controls.tsx": {
+    "mtime": 1780297157.8963015,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d5bbccdc00f83103b90ecdbd992ac28e",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/registry-workspace-shell.tsx": {
+    "mtime": 1780297157.8963015,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c0e24a414bdd04c05f1a0fe117f4bfe3",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/results-workbench-controls.tsx": {
+    "mtime": 1780297157.8963015,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3889f40a4c9173e3ac7932b5341b9d16",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/results-workspace-shell.tsx": {
+    "mtime": 1780297157.8978076,
+    "seen": 1787581915.2026258,
+    "ast_hash": "51f7a20bcd99d932c00403d3d2d727e5",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/runtime-surface-panel-details-content.tsx": {
+    "mtime": 1786332955.1433952,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a83b91af23d9b2ae0e52f0a12b5363f1",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/runtime-surface-panel-summary-content.tsx": {
+    "mtime": 1786332955.1433952,
+    "seen": 1787581915.2026258,
+    "ast_hash": "fda65f535f7d97e16fc2c890a1d8c170",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/runtime-surface-panel.tsx": {
+    "mtime": 1786332955.1433952,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8bb4f3cfa3b6df58767c484b3d573541",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/section-header.tsx": {
+    "mtime": 1780297157.898816,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c4cf293e16c87a5b94c18cd966406b1b",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-api-key-card-content.tsx": {
+    "mtime": 1786332955.1433952,
+    "seen": 1787581915.2026258,
+    "ast_hash": "79f0c6e6c802beab5dae1d829b89bde0",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-credential-results-sections-content.tsx": {
+    "mtime": 1786332955.1433952,
+    "seen": 1787581915.2026258,
+    "ast_hash": "46cc23a0a599a219832563f25b3fe5e0",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-credential-results.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6c74a81453a642432ed4bd623f7d37ae",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-credential-surface.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5b2ac9d290b2b34e989c7d848cf0c39d",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-credential-workbench-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bd63b274d4f4e05e68487dca9e63447f",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-empty-state.tsx": {
+    "mtime": 1780297157.8998137,
+    "seen": 1787581915.2026258,
+    "ast_hash": "dffb5abefc0dbfbc53c50179c53e9a75",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-filters-workbench-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8ee7eca4c1d0ba9079e21b2c29c7ba36",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-filters-workbench-filters-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "12cfd0c7aa4cec05bf471659cc011574",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-filters-workbench-results-bar-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f56e4b0298edc073b8cb63915a7c5e9e",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-governance-overview-panel-shell.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "64d697e17899c12ffb2c9a816a5846b8",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-governance-results-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bd4ad82e8cd899c57ca5affb496784d8",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-governance-results-sections-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d9d5f5fd454bd83bba6b02cb460bda64",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-governance-surface.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c74df329a085346af9e404a36c04f442",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-governance-workbench-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3c3dc32f657f486aebeb92823c41ec44",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-panel-section.tsx": {
+    "mtime": 1780297157.9008126,
+    "seen": 1787581915.2026258,
+    "ast_hash": "13d2a4b9e52d379230caf2306cdbfb73",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-session-card-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d5ada13e7472c8ff218a43f323ad71cf",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-summary-card.tsx": {
+    "mtime": 1780297157.9008126,
+    "seen": 1787581915.2026258,
+    "ast_hash": "67503f56488aae3a3fb4acf2100638ca",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/security-workbench-controls.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ac7306ae57ccc04352c5ef063ac95a05",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/status-badge.tsx": {
+    "mtime": 1780297157.9018114,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5be087d4bb501ce778e582f7d5954500",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/workbench-results-bar.tsx": {
+    "mtime": 1780297157.9018114,
+    "seen": 1787581915.2026258,
+    "ast_hash": "22a4a5a7725b86bd26d023a401c0f1cb",
+    "semantic_hash": ""
+  },
+  "MSFront/components/common/workbench-status-group.tsx": {
+    "mtime": 1780297157.9028082,
+    "seen": 1787581915.2026258,
+    "ast_hash": "85d5f0a1e69e8472f027358170feda7a",
+    "semantic_hash": ""
+  },
+  "MSFront/components/dashboard/metric-grid.tsx": {
+    "mtime": 1780297157.9038055,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1b9e5d2275bce4254fac23b567328463",
+    "semantic_hash": ""
+  },
+  "MSFront/components/dashboard/portfolio-grid-results-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9238894e51a56a40363849074d4683ac",
+    "semantic_hash": ""
+  },
+  "MSFront/components/dashboard/portfolio-grid-workbench-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0ed31db589594a926221d0a339246d33",
+    "semantic_hash": ""
+  },
+  "MSFront/components/dashboard/portfolio-grid.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5047ec7df1c85d990c576c955d5c8244",
+    "semantic_hash": ""
+  },
+  "MSFront/components/dashboard/timeline-panel.tsx": {
+    "mtime": 1780297157.9048026,
+    "seen": 1787581915.2026258,
+    "ast_hash": "052b66a5722662bd40f7e3e45f88d618",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/dashboard-page-content.tsx": {
+    "mtime": 1786696925.7135031,
+    "seen": 1787581915.2026258,
+    "ast_hash": "319f9ee849fd97a5431b7e9d8c8b973e",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/dashboard-page-overview-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "326c586a064e990a2e8931ee5a92006d",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/dashboard-page.tsx": {
+    "mtime": 1786700194.6045794,
+    "seen": 1787581915.2026258,
+    "ast_hash": "143292dd83170e1cf068014185efcdeb",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/environments-page-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "960f90a9184f4d14155304ded6dd8466",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/environments-page-lower-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2c8b40c0612798b6f5e940856ce76acb",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/environments-page-overview-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bd6ffd7ea9e041dfc50dbf9217560555",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/environments-page-results-workspace-shell.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "86b7b5e7dcf1f89f69b9a15cf6b7172f",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/environments-page-workbench-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b80cd84fa7eadf05710115a0986fb287",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/environments-page-workbench-filters-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "71d9b1deb9daa81b72e207da23ad5791",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/environments-page-workbench-results-bar-content.tsx": {
+    "mtime": 1786332955.1474266,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1553fa40b73e9689355e03adf28d1b97",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/environments-page.tsx": {
+    "mtime": 1786332955.1594317,
+    "seen": 1787581915.2026258,
+    "ast_hash": "20e752c69ff1f268490ae9b4bc4c0a18",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page-content.tsx": {
+    "mtime": 1786332955.159707,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d05e4bb847e5f490b40fb676eb0e2196",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page-inventory-content.tsx": {
+    "mtime": 1786332955.159707,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f17d093c03bb8ec97ee366ae21da3eb4",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page-inventory-operations-content.tsx": {
+    "mtime": 1786332955.159707,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0f402d018d28e2766bd7af17db79a364",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page-inventory-section-shell.tsx": {
+    "mtime": 1786332955.159707,
+    "seen": 1787581915.2026258,
+    "ast_hash": "137f422d97f339b5ed17c1090ebf9619",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page-inventory-security-schemes-content.tsx": {
+    "mtime": 1786332955.159707,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0b0fe211a070c3271abe2da5a081c63a",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page-lower-content.tsx": {
+    "mtime": 1786332955.159707,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c48c66aedc35d8bedacb664b94ccd2d0",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page-overview-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "79460362891932ccdd119035e53daff0",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page-results-workspace-shell.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bd6acefa0d4406fc2bbc0c389463ecde",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page-workbench-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "58f15c0b04a88cf76bb9aca51d471aa1",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page-workbench-filters-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "346cbc4b56d840be0f79bbbae8f25d96",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page-workbench-results-bar-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "73019b655592732d3e12d98f871c5724",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/integrations-page.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0aaa0ca222a9c80f88078d76fcfd6d7b",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/login-page-content.tsx": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "29a2704108199f7445130ca3e0661cf1",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/project-detail-page-actions-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b5922ea95b4cb7d47aefdaffead97292",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/project-detail-page-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "90f475535805ea67adb1e83cf2651818",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/project-detail-page-lower-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "becaba18134685cefda6fbc76c669a7e",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/project-detail-page-overview-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "697654b002c461ac139e7cb0a1e596a0",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/project-detail-page.tsx": {
+    "mtime": 1786605783.3257182,
+    "seen": 1787581915.2026258,
+    "ast_hash": "dc4e3c6300c67c242d465aa37b67714f",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/projects-page-lower-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e40a51e4b0609cd070c7b8bf7b4aef35",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/projects-page-overview-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "38faf80c2e350c3d634f60587adabaee",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/projects-page.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "32feca96a5181114de1883965ec53459",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/projects-registry-page.tsx": {
+    "mtime": 1786610220.1719298,
+    "seen": 1787581915.2026258,
+    "ast_hash": "519ee0aa6253f46acd5e622fd1167984",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/reference-dashboard.tsx": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c57e81c79d2aeda1459fb6e32dc9bd31",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c504c13d5572a5fee8cbc06204e45c8d",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-editor-actions-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f35b182f680f42900e9244f22a67e52b",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-editor-members-content.tsx": {
+    "mtime": 1786332955.2101853,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2b5a2192db2447c2a68c308231362002",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-editor-permissions-content.tsx": {
+    "mtime": 1786332955.263836,
+    "seen": 1787581915.2026258,
+    "ast_hash": "fbd7c814f82cec07072e380c6e340985",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-editor-profile-content.tsx": {
+    "mtime": 1786332955.263836,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b55d3e72390cbc13250aee777b8e03de",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-editor-workspace-content.tsx": {
+    "mtime": 1786332955.2648356,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7b9b06ed2f3f82efa1b1423a214c003f",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-lower-content.tsx": {
+    "mtime": 1786332955.2648356,
+    "seen": 1787581915.2026258,
+    "ast_hash": "faac9395e336b6a69477d16911d108b4",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-overview-content.tsx": {
+    "mtime": 1786332955.265834,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3a8544759d820cd95f1b66f84711537d",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-registry-actions-content.tsx": {
+    "mtime": 1786332955.265834,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2bc00b2adda743c4cbc7ac5985336e60",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-registry-workbench-content.tsx": {
+    "mtime": 1786332955.265834,
+    "seen": 1787581915.2026258,
+    "ast_hash": "46cb8f4d95c5cd2627787a378a1e76db",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-registry-workbench-context-actions-content.tsx": {
+    "mtime": 1786332955.2668586,
+    "seen": 1787581915.2026258,
+    "ast_hash": "720f9d3ce59fe0b3fddd628d9622ddc9",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-registry-workbench-filters-content.tsx": {
+    "mtime": 1786332955.2668586,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d40bc1fcbe14dfcfb5eccefb947ecba5",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-registry-workspace-shell.tsx": {
+    "mtime": 1786332955.2678564,
+    "seen": 1787581915.2026258,
+    "ast_hash": "44f41f695ad3a59166002ecfc282e20f",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page-workspaces-content.tsx": {
+    "mtime": 1786332955.2678564,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0a86f160f39bb74dbc89842d195a315a",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/roles-page.tsx": {
+    "mtime": 1786332955.2688532,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9a36d628d861f6c5d31c52559d40ea8b",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/security-page-lower-content.tsx": {
+    "mtime": 1786332955.2688532,
+    "seen": 1787581915.2026258,
+    "ast_hash": "63611dac40b6ff2c0e55f4e9006c381b",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/security-page-results-content.tsx": {
+    "mtime": 1786332955.2688532,
+    "seen": 1787581915.2026258,
+    "ast_hash": "10f529e60c6be4134866d3ed84d8a9a3",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/security-page-results-shell.tsx": {
+    "mtime": 1786332955.2698567,
+    "seen": 1787581915.2026258,
+    "ast_hash": "79e280a41cd3639e2bc3f29ec37e9ed6",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/security-page-workbench-content.tsx": {
+    "mtime": 1786332955.277359,
+    "seen": 1787581915.2026258,
+    "ast_hash": "fe5cef0e94a3652f573bdc9261f6f09c",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/security-page.tsx": {
+    "mtime": 1786332955.277359,
+    "seen": 1787581915.2026258,
+    "ast_hash": "041d745956f6b6e69c494a37d4974a54",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/services-page-content.tsx": {
+    "mtime": 1786332955.277359,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b28c743c1f7f3e8cfec70e852de878c0",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/services-page-lower-content.tsx": {
+    "mtime": 1786332955.277359,
+    "seen": 1787581915.2026258,
+    "ast_hash": "cd5db0a8e6cd84e062b9980adad1a7d7",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/services-page-overview-content.tsx": {
+    "mtime": 1786332955.277359,
+    "seen": 1787581915.2026258,
+    "ast_hash": "caacc59c4f04e485aa55f5fffe7f4949",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/services-page-results-workspace-shell.tsx": {
+    "mtime": 1786332955.292044,
+    "seen": 1787581915.2026258,
+    "ast_hash": "4014847caa0e44987faf2b15e5b574f2",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/services-page-summary-content.tsx": {
+    "mtime": 1786332955.292044,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9cefed419dfd170fe8765f110b04dc1d",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/services-page-workbench-content.tsx": {
+    "mtime": 1786332955.2930467,
+    "seen": 1787581915.2026258,
+    "ast_hash": "45fadf1df048c03246a859944cf83aef",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/services-page-workbench-filters-content.tsx": {
+    "mtime": 1786332955.2930467,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f2ec1ef0037aa4c888a3f9a4bf71c988",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/services-page-workbench-results-bar-content.tsx": {
+    "mtime": 1786332955.2940433,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6618bbd1339a4255b92158f8a0d264f1",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/services-page.tsx": {
+    "mtime": 1786332955.2950404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7cee91824c470fa4c9341990dc1c0442",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/settings-page.tsx": {
+    "mtime": 1780297157.9168732,
+    "seen": 1787581915.2026258,
+    "ast_hash": "aca91a776bfb3414850b47263eae1426",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/system-apis-page.tsx": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3f57810e8eac48dfb1b8a92f842b5512",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/system-casbin-page.tsx": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "48b0301933b7096a1837865a1c39a70b",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/system-menus-page.tsx": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "20411a38eea687cb8e5869ada5159b57",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/system-roles-page.tsx": {
+    "mtime": 1787554269.8699934,
+    "seen": 1787581915.2026258,
+    "ast_hash": "4fa27f7dd366c507e0ca9cf0ed759706",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/system-users-page.tsx": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "61e524acd39242661b6cb643b3b9a815",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-content.tsx": {
+    "mtime": 1786332955.2950404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f10ffab70ce32c4dcd00bde775ce92b5",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-editor-actions-content.tsx": {
+    "mtime": 1786332955.2970343,
+    "seen": 1787581915.2026258,
+    "ast_hash": "740bcbd0bcf5d7942722506c91a26615",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-editor-permissions-content.tsx": {
+    "mtime": 1786332955.2970343,
+    "seen": 1787581915.2026258,
+    "ast_hash": "324dee8bcdc6f9489032ad4b75c9058e",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-editor-profile-content.tsx": {
+    "mtime": 1786332955.2980323,
+    "seen": 1787581915.2026258,
+    "ast_hash": "22ea9674ecefe7ae8a32a67e5b8b5f9e",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-editor-roles-content.tsx": {
+    "mtime": 1786332955.2980323,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ffe411d4971d20fd07b42e363e5512e5",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-editor-workspace-content.tsx": {
+    "mtime": 1786332955.2990303,
+    "seen": 1787581915.2026258,
+    "ast_hash": "66ce15ecf6186bcabbc6a19e108bd8a8",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-lower-content.tsx": {
+    "mtime": 1786332955.2990303,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5ebc4f9ccb11f9f0b0293d3487065fb1",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-overview-content.tsx": {
+    "mtime": 1786332955.2990303,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2123cdd935fca91c675148227d406c8a",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-registry-workbench-bulk-actions-content.tsx": {
+    "mtime": 1786332955.300027,
+    "seen": 1787581915.2026258,
+    "ast_hash": "4b856a4fe041f221a25054ed592630d7",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-registry-workbench-content.tsx": {
+    "mtime": 1786332955.300027,
+    "seen": 1787581915.2026258,
+    "ast_hash": "05ef85fe3d8365bdd55997e3095c496b",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-registry-workbench-context-actions-content.tsx": {
+    "mtime": 1786332955.3010244,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e8cd965d0e5216009859f40c7cb4700a",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-registry-workbench-filters-content.tsx": {
+    "mtime": 1786332955.3010244,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8a49f6704fd437c64814e0525e8fe9ba",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-registry-workbench-selection-summary-content.tsx": {
+    "mtime": 1786332955.302021,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c16bacbe0e04c359b199575c5ce14787",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-registry-workspace-shell.tsx": {
+    "mtime": 1786332955.302021,
+    "seen": 1787581915.2026258,
+    "ast_hash": "903e732cd1a5525f21f2a18fff9742ad",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page-workspaces-content.tsx": {
+    "mtime": 1786332955.3030195,
+    "seen": 1787581915.2026258,
+    "ast_hash": "71c2be951a4ff52b75174355aa67ed0c",
+    "semantic_hash": ""
+  },
+  "MSFront/components/pages/users-page.tsx": {
+    "mtime": 1786332955.3030195,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3bbd616851a9942bb8dc7327ce51b7ee",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-entity-editor-surface.tsx": {
+    "mtime": 1780297157.9178708,
+    "seen": 1787581915.2026258,
+    "ast_hash": "380c0b29d066edb0e24772400b0158ad",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-management-console-content.tsx": {
+    "mtime": 1786332955.3040147,
+    "seen": 1787581915.2026258,
+    "ast_hash": "85b47ad078902a2cb9f294fbe2ec71e7",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-management-console-editor-actions-content.tsx": {
+    "mtime": 1786332955.3040147,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3a006ed2d0c2bdcef7383e1d676af91c",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-management-console-editor-content.tsx": {
+    "mtime": 1786332955.3050122,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e57d146ff608510626c4f9330cb700b4",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-management-console-editor-workspace-shell.tsx": {
+    "mtime": 1786332955.3050122,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9ea1534c64f999032c3086cbb5f2738b",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-management-console-lower-content.tsx": {
+    "mtime": 1786332955.3060114,
+    "seen": 1787581915.2026258,
+    "ast_hash": "921b8caf90d3f574c469baa06c75c473",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-management-console-registry-actions-content.tsx": {
+    "mtime": 1786332955.3060114,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d68c7e3fb9e1b4491f8885e201d7a13e",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-management-console-registry-workspace-shell.tsx": {
+    "mtime": 1786332955.307008,
+    "seen": 1787581915.2026258,
+    "ast_hash": "98f24c4deddcb0d9f926f3729a8d8698",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-management-console-workbench-content.tsx": {
+    "mtime": 1786332955.3080053,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8c254941386d512b687b201c3ea06dac",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-management-console-workbench-filters-content.tsx": {
+    "mtime": 1786332955.3080053,
+    "seen": 1787581915.2026258,
+    "ast_hash": "446b7a015286583c11516216e17e56a4",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-management-console-workbench-results-bar-content.tsx": {
+    "mtime": 1786332955.3088136,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e6e10329b6b3b29c57628a6e130b851e",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/project-management-console.tsx": {
+    "mtime": 1786332955.3088832,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1c7d59698d6734b82b3edf03042afdd9",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/server-table.tsx": {
+    "mtime": 1780297157.9202101,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7c68c38d8513c8e6beaa5cb3c39f0edf",
+    "semantic_hash": ""
+  },
+  "MSFront/components/projects/service-grid.tsx": {
+    "mtime": 1780297157.9202101,
+    "seen": 1787581915.2026258,
+    "ast_hash": "06870239164277c8a73e78ec6f563e30",
+    "semantic_hash": ""
+  },
+  "MSFront/components/settings/settings-panel-content.tsx": {
+    "mtime": 1786332955.3098848,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c9931b4ebbeac4f018eeecf5f9c9d592",
+    "semantic_hash": ""
+  },
+  "MSFront/components/settings/settings-panel-hero-content.tsx": {
+    "mtime": 1786332955.3108814,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0bb67fe2152127ecb07afbad993234ef",
+    "semantic_hash": ""
+  },
+  "MSFront/components/settings/settings-panel-lower-content.tsx": {
+    "mtime": 1786332955.3118784,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1d04ef28c6e2c9ed91defb5a345ad8e7",
+    "semantic_hash": ""
+  },
+  "MSFront/components/settings/settings-panel-operations-content.tsx": {
+    "mtime": 1786332955.3118784,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ec0b6e397a2c031924820d223ddbc075",
+    "semantic_hash": ""
+  },
+  "MSFront/components/settings/settings-panel.tsx": {
+    "mtime": 1786332955.3128755,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0e2e07a5c0b598650892390cf2cc149b",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/bottom-info.tsx": {
+    "mtime": 1787554269.8595037,
+    "seen": 1787581915.2026258,
+    "ast_hash": "13d89e7fea3e6732485f08e889e70a6a",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/command-palette-content.tsx": {
+    "mtime": 1786799462.1303468,
+    "seen": 1787581915.2026258,
+    "ast_hash": "426596ded3d7ca881a059e2065634104",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/command-palette-shell.tsx": {
+    "mtime": 1786799470.446753,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e46514ce4adcb13a559e331220f8ac06",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/command-palette.tsx": {
+    "mtime": 1786799456.2580335,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2dfeb83b4afa8986e83655d373551849",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/dashboard-shell.tsx": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b9ee94828ea2fa32a2c00d4f4cc305cc",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/gva-morph-button.tsx": {
+    "mtime": 1786799870.5030825,
+    "seen": 1787581915.2026258,
+    "ast_hash": "731cdacaae8d665ae112d05d886fdc67",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/gva-page-loading.tsx": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2cd9fdde09e492442e67619e90d84964",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/gva-page-transition.tsx": {
+    "mtime": 1787214234.7461905,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bdecd1c1e84858c142d71e1bd4848ea4",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/gva-setting-drawer.tsx": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7771a710e8f40fe1a2708cbaa5d707d6",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/sidebar-navigation-content.tsx": {
+    "mtime": 1786699815.1844707,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9104b51df17e6bba3c405ed0969336e8",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/sidebar-summary-content.tsx": {
+    "mtime": 1786332955.3158674,
+    "seen": 1787581915.2026258,
+    "ast_hash": "47ec27ee6f35b1bf3c46088d5d368c15",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/sidebar.tsx": {
+    "mtime": 1787554269.8595037,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a7d12f85261b64d9f4b15d75de4d0f2c",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/tags-view.tsx": {
+    "mtime": 1787554269.7772765,
+    "seen": 1787581915.2026258,
+    "ast_hash": "52f36c0ba7902c3c2ce9befdf3010c35",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/topbar-context-content.tsx": {
+    "mtime": 1787554269.7772765,
+    "seen": 1787581915.2026258,
+    "ast_hash": "38283c5e3921947745c44d0b7a43c2bf",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/topbar-shell.tsx": {
+    "mtime": 1786694367.5712302,
+    "seen": 1787581915.2026258,
+    "ast_hash": "91057edb4d491ca6a9c4c03708431b47",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/topbar-workbench-content.tsx": {
+    "mtime": 1786699596.9413214,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a9f5c38fe9d0e404fb01f6eb2c145c40",
+    "semantic_hash": ""
+  },
+  "MSFront/components/shell/topbar.tsx": {
+    "mtime": 1787554269.7741134,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c2e33b7f3075c7a1ccc1c5fd30f81768",
+    "semantic_hash": ""
+  },
+  "MSFront/data/access-control.json": {
+    "mtime": 1786334907.422225,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b28f257006eb10feec239e60859e6c3f",
+    "semantic_hash": ""
+  },
+  "MSFront/data/projects.json": {
+    "mtime": 1786857075.744995,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0df65ee56d63dcb74631f73db5a6c9cd",
+    "semantic_hash": ""
+  },
+  "MSFront/data/system-apis.json": {
+    "mtime": 1787220836.9659812,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2d238c0ed41bad745f690c8ce2235293",
+    "semantic_hash": ""
+  },
+  "MSFront/data/system-casbin.json": {
+    "mtime": 1786946475.2316172,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5709c2379671283819201780ed67673c",
+    "semantic_hash": ""
+  },
+  "MSFront/data/system-menus.json": {
+    "mtime": 1786703206.5418515,
+    "seen": 1787581915.2026258,
+    "ast_hash": "05088991cb2cd856cca80c65c24c28bc",
+    "semantic_hash": ""
+  },
+  "MSFront/data/system-roles.json": {
+    "mtime": 1786703196.6401238,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c6cec77965efac51b1477cc93cbfc4eb",
+    "semantic_hash": ""
+  },
+  "MSFront/data/system-users.json": {
+    "mtime": 1787213685.7683752,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b2fd8ddf076cea529fde558cc46bdc6b",
+    "semantic_hash": ""
+  },
+  "MSFront/eslint.config.mjs": {
+    "mtime": 1786857427.19,
+    "seen": 1787581915.2026258,
+    "ast_hash": "195fb5d39aa9d771c797c4bfb5290255",
+    "semantic_hash": ""
+  },
+  "MSFront/instrumentation.ts": {
+    "mtime": 1787148910.1210945,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c15b6db4fa1976e259315893227c9067",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/api/client.ts": {
+    "mtime": 1787213685.4197507,
+    "seen": 1787581915.2026258,
+    "ast_hash": "696558890e661c5a924385d01ff7c19a",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/api/fiber-system-adapter.ts": {
+    "mtime": 1786857761.0751998,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e385f9cd61a3e494a731773341dfcd9e",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/api/get-system-adapter.ts": {
+    "mtime": 1786857761.0766735,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a59d599f896deff6a95c7eaf796c1288",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/api/local-system-adapter.ts": {
+    "mtime": 1786703305.9808128,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b7394766cdf1bb80beee430b4fd64b9b",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/api/management.ts": {
+    "mtime": 1786952326.9857457,
+    "seen": 1787581915.2026258,
+    "ast_hash": "01d3b6c5fe39e40447ed11f71ede90a9",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/api/system-adapter.ts": {
+    "mtime": 1786857761.0771773,
+    "seen": 1787581915.2026258,
+    "ast_hash": "fab74c17d095bf25c5f533db4c6ce520",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/config/navigation.ts": {
+    "mtime": 1786703616.6487298,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0ff230f67ea5c3f1859c31ae91eeb5bf",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/config/site.ts": {
+    "mtime": 1786963043.8948486,
+    "seen": 1787581915.2026258,
+    "ast_hash": "90653be6ad3b927c18c4bca76827607d",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/hooks/use-gva-list-load.ts": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "42baf3b20dd164167329e958470f8dca",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/i18n/dictionaries.ts": {
+    "mtime": 1786703469.4819324,
+    "seen": 1787581915.2026258,
+    "ast_hash": "53ba9a6056493bb112fd86660fe2eff7",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/i18n/index.ts": {
+    "mtime": 1780297157.9292731,
+    "seen": 1787581915.2026258,
+    "ast_hash": "83f4779d5c405dea7fe919d7e8a32721",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/management/operations.ts": {
+    "mtime": 1780297157.930321,
+    "seen": 1787581915.2026258,
+    "ast_hash": "396a672f7ad62aebc3a73daf5f463c88",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/management/overview.ts": {
+    "mtime": 1780297157.930321,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ea3439ccdcb371f54be858e7cdfb69d1",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/management/runtime.ts": {
+    "mtime": 1780297157.931318,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c004bb009cbdc4c490444e36f6549368",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/management/security.ts": {
+    "mtime": 1780297157.931318,
+    "seen": 1787581915.2026258,
+    "ast_hash": "036a372edc836d92261df272a54e5a46",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/access-control-config.ts": {
+    "mtime": 1786334928.0735178,
+    "seen": 1787581915.2026258,
+    "ast_hash": "dc1d981fea1819b71e0b28da193e9cdb",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/access-management-repository.ts": {
+    "mtime": 1786963155.9071362,
+    "seen": 1787581915.2026258,
+    "ast_hash": "760dc3609c2229d9efc22a9168e9b44a",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/api-inventory-parser.ts": {
+    "mtime": 1786963043.8933437,
+    "seen": 1787581915.2026258,
+    "ast_hash": "31ff88bf91e27bac5d3eee6a6e3775d6",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/api-inventory.ts": {
+    "mtime": 1786963043.8938477,
+    "seen": 1787581915.2026258,
+    "ast_hash": "eebc5e11028b8ecaebbcf120667e8630",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/auth-request.ts": {
+    "mtime": 1787142939.1821058,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8f8748d449797e5867f1789d91568903",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/auth-token.ts": {
+    "mtime": 1787196007.2712102,
+    "seen": 1787581915.2026258,
+    "ast_hash": "28b55a5fb6007e4a9e49ee4dfd727c5c",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/database-config.ts": {
+    "mtime": 1786963187.9220715,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e32fa7a2736a153384c10099fa561491",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/database.ts": {
+    "mtime": 1786962862.6984584,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9c008f784b3fd2347d533acc46335697",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/json-store.ts": {
+    "mtime": 1786954594.660328,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c9f2855a795594e6881260b8351fef98",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/password.ts": {
+    "mtime": 1786952326.9747913,
+    "seen": 1787581915.2026258,
+    "ast_hash": "353e938decf0e7249d486130cedcbfab",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/probe-policy.ts": {
+    "mtime": 1786952326.9837506,
+    "seen": 1787581915.2026258,
+    "ast_hash": "263e611dd317bb23040f69b7be02def6",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/project-repository.ts": {
+    "mtime": 1786952326.9747913,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2acf76060d79a853be8406937dd30a6c",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/request-body.ts": {
+    "mtime": 1787142958.2506545,
+    "seen": 1787581915.2026258,
+    "ast_hash": "69b5bb5d52cee5b5c1446bbcf8ae2894",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/request-schemas.ts": {
+    "mtime": 1786960834.670551,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ea16ac5b70920a18da5903833a5a9fd6",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/request-security.ts": {
+    "mtime": 1787196007.2722075,
+    "seen": 1787581915.2026258,
+    "ast_hash": "55d9dc92caa4255c3b64090278f14779",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/response-security.ts": {
+    "mtime": 1787147103.6868494,
+    "seen": 1787581915.2026258,
+    "ast_hash": "245431726a2266ef95ddc3642b03f4e4",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/runtime-config.ts": {
+    "mtime": 1787196007.2702136,
+    "seen": 1787581915.2026258,
+    "ast_hash": "aa8eaaf1220201bb702a3101c663f751",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/runtime-paths.ts": {
+    "mtime": 1780297157.934311,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9b9e3db966992bf971b36e987a7e99bb",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/security-repository.ts": {
+    "mtime": 1780297157.9353075,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b3225e0bc9abf57a1c62c9c407675a8a",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/system-api-repository.ts": {
+    "mtime": 1786703278.7383323,
+    "seen": 1787581915.2026258,
+    "ast_hash": "14488cfc9ecc20cf820e680945b065ef",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/system-api-sync.ts": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "cefd2ffdca9ea718404fe3f7893f3591",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/system-casbin-repository.ts": {
+    "mtime": 1786703279.0394535,
+    "seen": 1787581915.2026258,
+    "ast_hash": "edda27e8f66dcdcf14d3afcdd97e6353",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/system-menu-repository.ts": {
+    "mtime": 1786703616.437651,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0262c19044c52737ec3a6917f0927625",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/system-role-repository.ts": {
+    "mtime": 1786703267.138749,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d403f1bf2ee52b05fb098fad3e9fc50f",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/server/system-user-repository.ts": {
+    "mtime": 1786952326.9764867,
+    "seen": 1787581915.2026258,
+    "ast_hash": "329c46c241b559329f702105e9a8a244",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/types/management.ts": {
+    "mtime": 1786703382.9324543,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2b8f0ef6373adf123aa7b4d955dd6ee7",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/types/system.ts": {
+    "mtime": 1786703225.5090537,
+    "seen": 1787581915.2026258,
+    "ast_hash": "607614ada5ac8912d215a1a7655cf3ab",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/access-filters.ts": {
+    "mtime": 1780297157.9363046,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1c146ad7da110249bbaba75b68b75680",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/access-navigation.ts": {
+    "mtime": 1780297157.9363046,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6f694442d7290b15cc40a4faf73bc8d8",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/clipboard.ts": {
+    "mtime": 1780297157.9363046,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3ace5405cf85aef056371436f2db9dc6",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/format.ts": {
+    "mtime": 1780297157.9378102,
+    "seen": 1787581915.2026258,
+    "ast_hash": "fc2b846bf88eb6aea0ca4ce3d14f37f9",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/governance-filters.ts": {
+    "mtime": 1780297157.938851,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ea19dae6bb6e7455727914edd738c048",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/gva-page-leave.ts": {
+    "mtime": 1787214245.8801727,
+    "seen": 1787581915.2026258,
+    "ast_hash": "07abfe307492da3a46cd9a8565408ea9",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/gva-page-loading.ts": {
+    "mtime": 1787213685.3264937,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e7afe063d8b156e0e1f846711942b58f",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/gva-shell-settings.ts": {
+    "mtime": 1787554269.908574,
+    "seen": 1787581915.2026258,
+    "ast_hash": "331beea34ef66a16e209c6efc41301ef",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/menu-access.ts": {
+    "mtime": 1786703424.7968118,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6afac5abb6be8b72e590c533a8343a67",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/menu-icons.ts": {
+    "mtime": 1786703405.9975932,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f1f2c511aa826d3bfff3c830d0bbec6b",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/project-surface.ts": {
+    "mtime": 1780297157.938851,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d810d7f2a308c5e47b66fd985aca3501",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/security-filters.ts": {
+    "mtime": 1780297157.938851,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ced1c75106e44ae41c4b8011920b96cd",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/security-surface.ts": {
+    "mtime": 1780297157.9399073,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d016eb4b5db627832d569785712b8c6d",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/shell-navigation.ts": {
+    "mtime": 1780297157.9399073,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9fe57de56bdab258cfa29a94e0e58444",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/theme.ts": {
+    "mtime": 1786703384.6860282,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8e6d48d165e10a75fdcd00f7d56ab781",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-command-palette-controller.ts": {
+    "mtime": 1786605783.3257182,
+    "seen": 1787581915.2026258,
+    "ast_hash": "39e953bceda0e4211ae950be60e12cc8",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-dashboard-page-bridge-controller.ts": {
+    "mtime": 1786332955.3208542,
+    "seen": 1787581915.2026258,
+    "ast_hash": "dcb10659a6ea34a3b34278b6aef448d7",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-dashboard-page-controller.tsx": {
+    "mtime": 1780297157.9409065,
+    "seen": 1787581915.2026258,
+    "ast_hash": "48486357b9219a6fbb4259b15e471372",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-dashboard-page-presentation-controller.ts": {
+    "mtime": 1780297157.9419045,
+    "seen": 1787581915.2026258,
+    "ast_hash": "421bada60e7ee5d9b23eab7ecb8e5493",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-environments-page-bridge-controller.ts": {
+    "mtime": 1786332955.321852,
+    "seen": 1787581915.2026258,
+    "ast_hash": "48dd58fa0761d9426c56528257947cc5",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-environments-page-controller.ts": {
+    "mtime": 1780297157.9419045,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f1ad68899f22d037e5c1e5b1b10617c2",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-environments-page-surface-controller.ts": {
+    "mtime": 1780297157.942901,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e98a574457cb46e311a2bb186a380115",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-feedback.ts": {
+    "mtime": 1780297157.942901,
+    "seen": 1787581915.2026258,
+    "ast_hash": "55e5cd707b1436744cbf28d6f9f36409",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-integrations-page-bridge-controller.ts": {
+    "mtime": 1786332955.321852,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d03272204f178d0b52d06f4350333327",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-integrations-page-controller.ts": {
+    "mtime": 1780297157.942901,
+    "seen": 1787581915.2026258,
+    "ast_hash": "89b16f5bc76f1ee0e15e9079870c1b34",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-integrations-page-presentation-controller.ts": {
+    "mtime": 1780297157.9438982,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1d0641922cf2245f7af879e6616a5dfb",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-integrations-page-surface-controller.ts": {
+    "mtime": 1780297157.9438982,
+    "seen": 1787581915.2026258,
+    "ast_hash": "4d3da518af41817d84d2d5226e83273d",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-portfolio-grid-controller.ts": {
+    "mtime": 1780297157.9448955,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f4c3ad6d8d10c9b330d7a530e8198362",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-project-detail-page-bridge-controller.ts": {
+    "mtime": 1786605783.3257182,
+    "seen": 1787581915.2026258,
+    "ast_hash": "72da1be2c11804590f10063f6f1f8e43",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-project-detail-page-controller.ts": {
+    "mtime": 1786605783.3257182,
+    "seen": 1787581915.2026258,
+    "ast_hash": "331f2da8753add2fb1a8576df2bc75db",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-project-detail-page-surface-controller.ts": {
+    "mtime": 1780297157.9458942,
+    "seen": 1787581915.2026258,
+    "ast_hash": "48be42763dd94626ecf4656a9d693be6",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-project-management-console-bridge-controller.ts": {
+    "mtime": 1786332955.3234532,
+    "seen": 1787581915.2026258,
+    "ast_hash": "38da270f57667ad0693f3782bd1eb406",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-project-management-console-controller.ts": {
+    "mtime": 1780297157.9468906,
+    "seen": 1787581915.2026258,
+    "ast_hash": "67b2104ecde67163320b1a82b3c8c061",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-project-management-console-presentation-controller.ts": {
+    "mtime": 1780297157.9468906,
+    "seen": 1787581915.2026258,
+    "ast_hash": "da78ba68ceec1e3883421d68abf90084",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-project-management-console-surface-controller.ts": {
+    "mtime": 1780297157.9478877,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d9a2337930ec2f74d60729b8bf56174b",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-projects-page-bridge-controller.ts": {
+    "mtime": 1786332955.3250606,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2539379f3afca2475b2fdfc70513d7de",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-projects-page-command-center-spotlight-surface-controller.ts": {
+    "mtime": 1786332955.3254747,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b6bb5ec193c158f863a4e347900613af",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-projects-page-command-center-surface-controller.ts": {
+    "mtime": 1786332955.3260238,
+    "seen": 1787581915.2026258,
+    "ast_hash": "930d08f3708fba58cee08f763b2bfd8c",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-projects-page-spotlight-selection-surface-controller.ts": {
+    "mtime": 1786332955.3270688,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5a0b62522f8bf9b5aa8f847ed0513457",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-projects-page-spotlight-surface-controller.ts": {
+    "mtime": 1786332955.32759,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b837254051b3e6250724fd9c6ba9e5ed",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-projects-page-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6eb134e3f5f5910e6105e185192af4c9",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-bridge-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "210f67fdf428db673b28954a86dae221",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-command-center-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "88a8c6b13c9029c1effa52c640e959ca",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-command-center-tags-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f9a80c692dde6e0780dbcd070ceefcb5",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-content-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "622c458942a1a2ff405f7787bfd69cbb",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-controller.ts": {
+    "mtime": 1780297157.948393,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f8e55e15e537cf85ba1a22430ed8b004",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-editor-controller.ts": {
+    "mtime": 1780297157.948393,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3b27a8ec0fc77e2a1f5d1c8b8c773692",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-editor-permissions-presentation-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a95cd3318a71554bd78166bcec5d987e",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-editor-presentation-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "859b2b6b4048951e74638625b110023d",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-editor-profile-presentation-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "62f6bc280da59c945a0873d2c5b0c9a2",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-editor-workspace-content-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "fbf4d41ca04ed0c0dad7bd7cfaa1dc85",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-lower-content-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5264f40b5e94bb1f9183ad1ab31c7c1a",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-overview-content-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1f77d85b051f03ed6d585f46bc0311d6",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-overview-header-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "46ebd07f1177198ee27e2131ecab148b",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-overview-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "825ad298ccd329cef9040cdf070a4855",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-posture-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8fb75b70c48a0eb386c8555e8fe4553d",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-registry-editor-members-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "513ba7773a36fd734b1693b2847d21a9",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-registry-editor-permissions-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "064220c626762035298a7c5557ef45aa",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-registry-editor-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "55d4e906efa5f088e6fd6555cc98f1bf",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-registry-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1ddfeb73206d3972b684b3518b439ca1",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-registry-workspace-content-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8d1a61994d3ef8170a3f7b555eda848a",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-spotlight-selection-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7cb898409a5f88d50c994a4268dbb210",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-spotlight-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f5cb7285a5052c386da1dd3a8687aec0",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-roles-page-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0e92f888519c810275ee91cb9cc8a738",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-security-filters-controller.ts": {
+    "mtime": 1780297157.9507139,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e3cb9113d97c6a2b3c99e73f87238b63",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-security-governance-surface-presentation-controller.ts": {
+    "mtime": 1780297157.9517112,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ec2cdc6dc5ffc3305e0b66957207bc4c",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-security-page-surface-controller.ts": {
+    "mtime": 1780297157.9517112,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6fac9472f4841ae2bf520fcd39d6e846",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-services-page-bridge-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0c9829ef08fc0d836bfd9feacbf90a5e",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-services-page-controller.ts": {
+    "mtime": 1780297157.9517112,
+    "seen": 1787581915.2026258,
+    "ast_hash": "78ca15d4498e7885298f965d7523092d",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-services-page-surface-controller.ts": {
+    "mtime": 1780297157.9527085,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f58b193ce7edbed3b6f9d671eda6732b",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-settings-panel-bridge-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7c69beb68ef6fe76f8edba317d56e2cb",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-settings-panel-controller.ts": {
+    "mtime": 1780297157.9527085,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a2110ee07ce2436304ca651e0c1103a8",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-settings-panel-operations-surface-controller.ts": {
+    "mtime": 1786332955.3277404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b59d31a6cf7f395bcc8e909c66516c41",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-settings-panel-runtime-surface-controller.ts": {
+    "mtime": 1786332955.3429852,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0c0eae760a4e2298c2939fc7f79a64c9",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-settings-panel-surface-controller.ts": {
+    "mtime": 1786332955.343982,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a90782e044e2b28439f33e5e8608da6a",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-url-filter-history.ts": {
+    "mtime": 1780297157.953707,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5232610ae535123162d9c01e411b55e4",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-bridge-controller.ts": {
+    "mtime": 1786332955.343982,
+    "seen": 1787581915.2026258,
+    "ast_hash": "888770ce8a5fe133c7973ccb84b01ab1",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-bulk-controller.ts": {
+    "mtime": 1780297157.9547033,
+    "seen": 1787581915.2026258,
+    "ast_hash": "04e3ee89962339ab3d8031295ea44dd5",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-command-center-surface-controller.ts": {
+    "mtime": 1786332955.344981,
+    "seen": 1787581915.2026258,
+    "ast_hash": "03b65ed8dc42ea831514d7b06d1f4720",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-command-center-tags-surface-controller.ts": {
+    "mtime": 1786332955.344981,
+    "seen": 1787581915.2026258,
+    "ast_hash": "892f70813880cf95e5338bb706187064",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-content-surface-controller.ts": {
+    "mtime": 1786332955.3459778,
+    "seen": 1787581915.2026258,
+    "ast_hash": "cd93dbb667892fe627d578f4df76644d",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-controller.ts": {
+    "mtime": 1780297157.9547033,
+    "seen": 1787581915.2026258,
+    "ast_hash": "4e0bf46a86c74d5bf0ebf6650fdf98aa",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-editor-controller.ts": {
+    "mtime": 1780297157.9557014,
+    "seen": 1787581915.2026258,
+    "ast_hash": "dfe73051f4c22ff063836b7c7dad24b2",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-editor-permissions-presentation-controller.ts": {
+    "mtime": 1786332955.346976,
+    "seen": 1787581915.2026258,
+    "ast_hash": "62649e0bb80b91169db097fcb4d121e4",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-editor-presentation-controller.ts": {
+    "mtime": 1786332955.347973,
+    "seen": 1787581915.2026258,
+    "ast_hash": "033743c83a486be8e327acb0e9d71494",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-editor-profile-presentation-controller.ts": {
+    "mtime": 1786332955.347973,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c4ea926de8cad2bc631fbcccb8d10696",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-editor-workspace-content-surface-controller.ts": {
+    "mtime": 1786332955.3489704,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ed80bf76b359acbb757575ca4d2d6982",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-lower-content-surface-controller.ts": {
+    "mtime": 1786332955.3489704,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8bcc428e3e667699775d1e24b8e3bc9d",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-overview-content-surface-controller.ts": {
+    "mtime": 1786332955.3499677,
+    "seen": 1787581915.2026258,
+    "ast_hash": "128d7df5e978045773ee62effc8d06e8",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-overview-header-surface-controller.ts": {
+    "mtime": 1786332955.3499677,
+    "seen": 1787581915.2026258,
+    "ast_hash": "83f03c473d46cd2288847c7f29e1ddaf",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-overview-surface-controller.ts": {
+    "mtime": 1786332955.3509653,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2c8ff4539aca969ddcece6c126adcc56",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-posture-surface-controller.ts": {
+    "mtime": 1786332955.3509653,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0699af132e0a36b26e0be9d55c3e529b",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-registry-editor-permissions-surface-controller.ts": {
+    "mtime": 1786332955.3509653,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2d65477f78f5e4ae66709a021c6bfee0",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-registry-editor-roles-surface-controller.ts": {
+    "mtime": 1786332955.351962,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f9c53fc43f714a7c97804576aedf8d96",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-registry-editor-surface-controller.ts": {
+    "mtime": 1786332955.3529599,
+    "seen": 1787581915.2026258,
+    "ast_hash": "16f8c05785618115aef3645206190c3c",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-registry-surface-controller.ts": {
+    "mtime": 1786332955.3529599,
+    "seen": 1787581915.2026258,
+    "ast_hash": "65ecff15b224d2c24007d41ba267f55d",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-registry-workspace-content-surface-controller.ts": {
+    "mtime": 1786332955.353957,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f4a24e49c47e3018eedd325dfa6146ed",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-spotlight-selection-surface-controller.ts": {
+    "mtime": 1786332955.353957,
+    "seen": 1787581915.2026258,
+    "ast_hash": "30ea12d7fd8fbd65cbcafc58bc68f21b",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-spotlight-surface-controller.ts": {
+    "mtime": 1786332955.353957,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1185d2c42e4deee01c820ac74c6c66f5",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/use-users-page-surface-controller.ts": {
+    "mtime": 1786332955.3549542,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7243a0f12a95bae8ec4a845502719056",
+    "semantic_hash": ""
+  },
+  "MSFront/lib/utils/workspace-surface.ts": {
+    "mtime": 1780297157.956698,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b0f62ce6c9d9d968f93313233d5650e6",
+    "semantic_hash": ""
+  },
+  "MSFront/next-env.d.ts": {
+    "mtime": 1787209242.9975092,
+    "seen": 1787581915.2026258,
+    "ast_hash": "aa94238a90e7d04b7a47ecc3145ba6a0",
+    "semantic_hash": ""
+  },
+  "MSFront/next.config.ts": {
+    "mtime": 1787196007.2733634,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b45817d1e44f8af26f0f1f0b893623df",
+    "semantic_hash": ""
+  },
+  "MSFront/package.json": {
+    "mtime": 1786968897.8513062,
+    "seen": 1787581915.2026258,
+    "ast_hash": "728bea28ff79e87293e9b2a1d09a612b",
+    "semantic_hash": ""
+  },
+  "MSFront/postcss.config.mjs": {
+    "mtime": 1786606124.907133,
+    "seen": 1787581915.2026258,
+    "ast_hash": "deba23aa364348de4dda092121363fd7",
+    "semantic_hash": ""
+  },
+  "MSFront/providers/app-providers.tsx": {
+    "mtime": 1786703367.0318627,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c932ca9141aee6d1bde5659b41eeca43",
+    "semantic_hash": ""
+  },
+  "MSFront/providers/auth-provider.tsx": {
+    "mtime": 1787213685.476113,
+    "seen": 1787581915.2026258,
+    "ast_hash": "30801ea86a65903c3dfce649cf223f30",
+    "semantic_hash": ""
+  },
+  "MSFront/providers/locale-provider.tsx": {
+    "mtime": 1780297157.9602118,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9fa18cecc6de993a7d4f63f4ac415b4e",
+    "semantic_hash": ""
+  },
+  "MSFront/providers/project-provider.tsx": {
+    "mtime": 1786610811.814939,
+    "seen": 1787581915.2026258,
+    "ast_hash": "eb2eaf2e2c06ebd8a85b6240617ea51d",
+    "semantic_hash": ""
+  },
+  "MSFront/providers/theme-provider.tsx": {
+    "mtime": 1786703386.8147812,
+    "seen": 1787581915.2026258,
+    "ast_hash": "282663d39b5a3c999f427ada24b42a9e",
+    "semantic_hash": ""
+  },
+  "MSFront/proxy.ts": {
+    "mtime": 1787213685.818529,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bcf77858610887e7632d49447aae7df9",
+    "semantic_hash": ""
+  },
+  "MSFront/scripts/migrate.mjs": {
+    "mtime": 1786962819.1526496,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2c2b974fc57cc733cbea5514e561f778",
+    "semantic_hash": ""
+  },
+  "MSFront/scripts/migration-lib.mjs": {
+    "mtime": 1786962819.1526496,
+    "seen": 1787581915.2026258,
+    "ast_hash": "25e9eb403bf9285782e07cd19065a3b5",
+    "semantic_hash": ""
+  },
+  "MSFront/tsconfig.json": {
+    "mtime": 1780297157.96121,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0c90c69ee63b20ecc87dd3763027ea5f",
+    "semantic_hash": ""
+  },
+  "MSFront/vitest.config.mts": {
+    "mtime": 1786949989.5224385,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6dd93222625f107a0127a82dd7072624",
+    "semantic_hash": ""
+  },
+  "Proj/Example/cmd/server/main.go": {
+    "mtime": 1787538660.4750214,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9a1770b0a47585d046f244e359bba237",
+    "semantic_hash": ""
+  },
+  "Proj/Example/cmd/server/main_test.go": {
+    "mtime": 1787528658.2282946,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d5e93755a85a79bad019ac10fde7c35d",
+    "semantic_hash": ""
+  },
+  "Proj/Example/go.mod": {
+    "mtime": 1787233401.6898801,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e8f60b45cbdaea61cf02e6517d6361d7",
+    "semantic_hash": ""
+  },
+  "Proj/Example/internal/projectapi/architecture_test.go": {
+    "mtime": 1787215243.8211036,
+    "seen": 1787581915.2026258,
+    "ast_hash": "323cd225a436077a1262fdbf715ca009",
+    "semantic_hash": ""
+  },
+  "Proj/Example/internal/projectapi/openapi_contract_test.go": {
+    "mtime": 1787555177.7689888,
+    "seen": 1787581915.2026258,
+    "ast_hash": "444d6310182e51a573d7ede68c3314cd",
+    "semantic_hash": ""
+  },
+  "Proj/Example/internal/projectapi/routes.go": {
+    "mtime": 1787519776.1378458,
+    "seen": 1787581915.2026258,
+    "ast_hash": "364267f1a869d31b58c0392da26dc471",
+    "semantic_hash": ""
+  },
+  "Proj/Example/internal/projectapi/routes_test.go": {
+    "mtime": 1787519802.6020668,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3928984ec8f245181705c8ee383fae0b",
+    "semantic_hash": ""
+  },
+  "Proj/Example/internal/projectapi/transport_benchmark_test.go": {
+    "mtime": 1787410507.3151462,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b4aa4126b72dbef23970268025a45d33",
+    "semantic_hash": ""
+  },
+  "Proj/Example/internal/projectapp/architecture_test.go": {
+    "mtime": 1787018336.7024925,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c83f16c2ca750ea1be0308ff8faea704",
+    "semantic_hash": ""
+  },
+  "Proj/Example/internal/projectapp/authorization.go": {
+    "mtime": 1787519336.4570627,
+    "seen": 1787581915.2026258,
+    "ast_hash": "1ee5f315a160ce3f8f3a410e130f525d",
+    "semantic_hash": ""
+  },
+  "Proj/Example/internal/projectapp/authorization_test.go": {
+    "mtime": 1787519336.4575665,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0f04e2c7211a659d97248dc4310d0787",
+    "semantic_hash": ""
+  },
+  "Proj/Example/internal/projectapp/service.go": {
+    "mtime": 1787242182.1281435,
+    "seen": 1787581915.2026258,
+    "ast_hash": "95136aca9ca1e01c8165c40d7987f57f",
+    "semantic_hash": ""
+  },
+  "Proj/Example/internal/projectapp/service_test.go": {
+    "mtime": 1787242182.1291435,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b57f8c7639c5e77ca2c6cc14b29157b1",
+    "semantic_hash": ""
+  },
+  "SDK/GoExample/client.gen.go": {
+    "mtime": 1787554721.1119688,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c7e6758b69e2e2a8a6273c0e9ac4b717",
+    "semantic_hash": ""
+  },
+  "SDK/GoExample/client_test.go": {
+    "mtime": 1787542185.590183,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ab49b443f254760b72422ce206e555b2",
+    "semantic_hash": ""
+  },
+  "SDK/GoExample/go.mod": {
+    "mtime": 1787280898.420564,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9a1fb0e7da0554bbeb01cf261fd201be",
+    "semantic_hash": ""
+  },
+  "__test__/contract/msfront-route-authorization.mjs": {
+    "mtime": 1786960706.1759746,
+    "seen": 1787581915.2026258,
+    "ast_hash": "17c3fca0db093c2aa8e1353741438ca2",
+    "semantic_hash": ""
+  },
+  "__test__/e2e/msfront/auth-and-accessibility.spec.ts": {
+    "mtime": 1787147745.5219576,
+    "seen": 1787581915.2026258,
+    "ast_hash": "890a2da85b1ce9f7b2d87d764ea43c75",
+    "semantic_hash": ""
+  },
+  "__test__/integration/msfront/database-migration.mjs": {
+    "mtime": 1786969057.0669951,
+    "seen": 1787581915.2026258,
+    "ast_hash": "aed791978cbbc6a49070c252a9155b91",
+    "semantic_hash": ""
+  },
+  "__test__/node/go-download.test.mjs": {
+    "mtime": 1786952212.434797,
+    "seen": 1787581915.2026258,
+    "ast_hash": "92f89c2b254b9725d0f0d44d0b67e62f",
+    "semantic_hash": ""
+  },
+  "__test__/node/kubernetes-manifest.test.mjs": {
+    "mtime": 1787581332.105755,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2128f42365ab2ddc273423951cf45f26",
+    "semantic_hash": ""
+  },
+  "__test__/node/nginx-edge.test.mjs": {
+    "mtime": 1787581332.1067538,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d697f21705fc58907ddfe6b7cae9895a",
+    "semantic_hash": ""
+  },
+  "__test__/node/openapi-compat.test.mjs": {
+    "mtime": 1787210081.7416072,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bb993d38221c736891c2161f3c50d204",
+    "semantic_hash": ""
+  },
+  "__test__/node/postgres-recovery-report.test.mjs": {
+    "mtime": 1787411478.6258726,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b753c699540263024e5bd2b94c4fdc20",
+    "semantic_hash": ""
+  },
+  "__test__/node/project-contracts.test.mjs": {
+    "mtime": 1787555288.3924463,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8491b6e728a313fc0ac6763c9729babb",
+    "semantic_hash": ""
+  },
+  "__test__/node/script-guards.test.mjs": {
+    "mtime": 1787581746.8826764,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f4df8bd0dca8974435f705fca7299c5c",
+    "semantic_hash": ""
+  },
+  "__test__/node/server-release.test.mjs": {
+    "mtime": 1787416161.415155,
+    "seen": 1787581915.2026258,
+    "ast_hash": "880f90b9d8d645713d5ba5d513d15f25",
+    "semantic_hash": ""
+  },
+  "__test__/node/transport-benchmark-report.test.mjs": {
+    "mtime": 1787410647.7050257,
+    "seen": 1787581915.2026258,
+    "ast_hash": "044d72666f17127448790d1d51c3dc9e",
+    "semantic_hash": ""
+  },
+  "__test__/node/transport-soak-report.test.mjs": {
+    "mtime": 1787410711.9745958,
+    "seen": 1787581915.2026258,
+    "ast_hash": "74d0633b9bf623f83f1c2b522cb6aaf3",
+    "semantic_hash": ""
+  },
+  "contracts/projects.json": {
+    "mtime": 1787554104.0504997,
+    "seen": 1787581915.2026258,
+    "ast_hash": "970305cc8086697491998571b1513955",
+    "semantic_hash": ""
+  },
+  "docs/openapi/openapi.json": {
+    "mtime": 1787538688.859483,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0f006eadaa224dfac5c5cac456a382a6",
+    "semantic_hash": ""
+  },
+  "package.json": {
+    "mtime": 1787554524.1027896,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8f122cb1e077ab0188d896df7c8d5ed5",
+    "semantic_hash": ""
+  },
+  "playwright.config.ts": {
+    "mtime": 1786971753.5109615,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bb58681a75642f6969fe50cf2a398f90",
+    "semantic_hash": ""
+  },
+  "scripts/e2e-msfront.mjs": {
+    "mtime": 1786970111.9411557,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d3d31439461b9e5af45697bae9674721",
+    "semantic_hash": ""
+  },
+  "scripts/environment.mjs": {
+    "mtime": 1787416326.5785396,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b08940e83def2537bb39e84b495796ec",
+    "semantic_hash": ""
+  },
+  "scripts/evidence-manifest.mjs": {
+    "mtime": 1787578110.704365,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5a44fc25f09076cfbd66494c7dee877c",
+    "semantic_hash": ""
+  },
+  "scripts/evidence-verify.mjs": {
+    "mtime": 1787518472.8121376,
+    "seen": 1787581915.2026258,
+    "ast_hash": "eb2a97d6cc0d669701ce8f7285dfb8a7",
+    "semantic_hash": ""
+  },
+  "scripts/go-project.mjs": {
+    "mtime": 1787410507.3177443,
+    "seen": 1787581915.2026258,
+    "ast_hash": "73d7fa5a9281a4e14ea4591553834f7a",
+    "semantic_hash": ""
+  },
+  "scripts/go-sdk.mjs": {
+    "mtime": 1787554613.3945167,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9eb66737117d9f5b31d7cdd278b9d0e9",
+    "semantic_hash": ""
+  },
+  "scripts/kubernetes-manifest.mjs": {
+    "mtime": 1787581332.1027637,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b0c5025296157b32dfacc4c63dc62e53",
+    "semantic_hash": ""
+  },
+  "scripts/lib/go-download.mjs": {
+    "mtime": 1786952185.41167,
+    "seen": 1787581915.2026258,
+    "ast_hash": "cf4d934c35cf4c163c856616fcc36a52",
+    "semantic_hash": ""
+  },
+  "scripts/lib/openapi-compat.mjs": {
+    "mtime": 1787210081.740605,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3741bee7886da9d3ab0fe10c21d49199",
+    "semantic_hash": ""
+  },
+  "scripts/lib/project-contracts.mjs": {
+    "mtime": 1787554962.5198874,
+    "seen": 1787581915.2026258,
+    "ast_hash": "696b2304c7efb2fb2d0798db764cbc80",
+    "semantic_hash": ""
+  },
+  "scripts/msfront.mjs": {
+    "mtime": 1786968897.85281,
+    "seen": 1787581915.2026258,
+    "ast_hash": "56524bac345d4cc9415cef6bf6a020a5",
+    "semantic_hash": ""
+  },
+  "scripts/nginx-edge-contract.mjs": {
+    "mtime": 1787581332.1047592,
+    "seen": 1787581915.2026258,
+    "ast_hash": "311821d981799960651738ba7c7efabb",
+    "semantic_hash": ""
+  },
+  "scripts/nginx-edge.mjs": {
+    "mtime": 1787581332.1037614,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2bc26a49c3e08061afd95bc195dd863a",
+    "semantic_hash": ""
+  },
+  "scripts/openapi-compat.mjs": {
+    "mtime": 1787555108.1673098,
+    "seen": 1787581915.2026258,
+    "ast_hash": "351c3186a35de649f42a51940cdbcffe",
+    "semantic_hash": ""
+  },
+  "scripts/postgres-recovery-contract.mjs": {
+    "mtime": 1787411595.1083672,
+    "seen": 1787581915.2026258,
+    "ast_hash": "96aaa5079fd2b522bdff90aed5be3b97",
+    "semantic_hash": ""
+  },
+  "scripts/postgres-recovery-report.mjs": {
+    "mtime": 1787411478.6258726,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8b86ab2b7a57393745d77c692cfa1aea",
+    "semantic_hash": ""
+  },
+  "scripts/project-contracts.mjs": {
+    "mtime": 1787554486.8946831,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f5c055f7832da61ad367cb487073b539",
+    "semantic_hash": ""
+  },
+  "scripts/redis-sentinel-contract.mjs": {
+    "mtime": 1787408739.2989507,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2aa327d6ba2a857a06769859cf278af1",
+    "semantic_hash": ""
+  },
+  "scripts/server-recovery-drill.mjs": {
+    "mtime": 1787238542.6309347,
+    "seen": 1787581915.2026258,
+    "ast_hash": "be7cb6303301deb44f3eea395a441916",
+    "semantic_hash": ""
+  },
+  "scripts/server-release.mjs": {
+    "mtime": 1787416257.458472,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bb4300e130c8b48af14eaf8e598695d7",
+    "semantic_hash": ""
+  },
+  "scripts/transport-benchmark-report.mjs": {
+    "mtime": 1787409915.722403,
+    "seen": 1787581915.2026258,
+    "ast_hash": "4e3aa63b3c87d4eeed9b7c42c8b2dd61",
+    "semantic_hash": ""
+  },
+  "scripts/transport-soak-report.mjs": {
+    "mtime": 1787410711.9735985,
+    "seen": 1787581915.2026258,
+    "ast_hash": "6d8f325ec32bae5ada30d86deb3c6b8c",
+    "semantic_hash": ""
+  },
+  "support/api-contracts/openapi/openapi.json": {
+    "mtime": 1787552909.6878371,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8c1bb35ab804199dadf10a78b60fce3e",
+    "semantic_hash": ""
+  },
+  "support/api-contracts/package.json": {
+    "mtime": 1787552909.6888351,
+    "seen": 1787581915.2026258,
+    "ast_hash": "4984ff6633ef1b834fd058bc7e958d8e",
+    "semantic_hash": ""
+  },
+  "support/api-contracts/tools/validate-openapi.mjs": {
+    "mtime": 1787552909.6898344,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c9ab786eb5d8e9ab292c02520bf1539d",
+    "semantic_hash": ""
+  },
+  "support/consumer/HealthProbe/cmd/healthprobe/main.go": {
+    "mtime": 1787281055.1359372,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0c8f63b1ad3894abfb9c38c4c85ba9ef",
+    "semantic_hash": ""
+  },
+  "support/consumer/HealthProbe/cmd/healthprobe/main_test.go": {
+    "mtime": 1787281055.1359372,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e388263c95af1f63330c3a256080236b",
+    "semantic_hash": ""
+  },
+  "support/consumer/HealthProbe/go.mod": {
+    "mtime": 1787580551.3318627,
+    "seen": 1787581915.2026258,
+    "ast_hash": "701117571351549be3f56534fd1c74fe",
+    "semantic_hash": ""
+  },
+  "support/deploy/edge/goexample-nginx.contract.json": {
+    "mtime": 1787405672.373325,
+    "seen": 1787581915.2026258,
+    "ast_hash": "75ffc023d4b6353e13eb369f5530e93a",
+    "semantic_hash": ""
+  },
+  "support/deploy/kubernetes/goexample-api.template.json": {
+    "mtime": 1787297474.3500483,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9a455277d91a859f361103639423e0e9",
+    "semantic_hash": ""
+  },
+  ".codex/skills/graphify/SKILL.md": {
+    "mtime": 1787564805.4379148,
+    "seen": 1787581915.2026258,
+    "ast_hash": "212b55d95333d84e14262f8ec83faa2b",
+    "semantic_hash": ""
+  },
+  ".codex/skills/graphify/references/add-watch.md": {
+    "mtime": 1787563217.6840403,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d59d027fe449f06aa03905a01184e779",
+    "semantic_hash": ""
+  },
+  ".codex/skills/graphify/references/exports.md": {
+    "mtime": 1787563217.6850376,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9da2a2152e60a22f07f05fed5158f287",
+    "semantic_hash": ""
+  },
+  ".codex/skills/graphify/references/extraction-spec.md": {
+    "mtime": 1787563217.6860347,
+    "seen": 1787581915.2026258,
+    "ast_hash": "bf895ec4d4e40f5f66f7d31c2a9bd4a7",
+    "semantic_hash": ""
+  },
+  ".codex/skills/graphify/references/github-and-merge.md": {
+    "mtime": 1787563217.6860347,
+    "seen": 1787581915.2026258,
+    "ast_hash": "cde13df085e4c492aeb7ba298a996d0d",
+    "semantic_hash": ""
+  },
+  ".codex/skills/graphify/references/hooks.md": {
+    "mtime": 1787563217.6870322,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3f545db6ce646650bb9de588f5512a27",
+    "semantic_hash": ""
+  },
+  ".codex/skills/graphify/references/query.md": {
+    "mtime": 1787563217.6870322,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3c46f8ad006874260614ed8657d02307",
+    "semantic_hash": ""
+  },
+  ".codex/skills/graphify/references/transcribe.md": {
+    "mtime": 1787563217.6880293,
+    "seen": 1787581915.2026258,
+    "ast_hash": "67b6a5fa6c0974e18f60db9f8932fbd8",
+    "semantic_hash": ""
+  },
+  ".codex/skills/graphify/references/update.md": {
+    "mtime": 1787563217.6890273,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9378bd03d56baaf78bd738ab3848f142",
+    "semantic_hash": ""
+  },
+  ".github/dependabot.yml": {
+    "mtime": 1786969186.65649,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2aafb8a5a33638f0e52b9ae204e2192f",
+    "semantic_hash": ""
+  },
+  ".github/workflows/dependency-review.yml": {
+    "mtime": 1786969186.65649,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3f4a5346c72df349137eb3c58b748dce",
+    "semantic_hash": ""
+  },
+  ".github/workflows/go-quality.yml": {
+    "mtime": 1787581369.9929962,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2d4f72ad09f7164ebd27df2576f5dbae",
+    "semantic_hash": ""
+  },
+  ".github/workflows/go-transport-benchmark.yml": {
+    "mtime": 1787410588.8096404,
+    "seen": 1787581915.2026258,
+    "ast_hash": "33e6a33dd102c9404698d6ec1dce9247",
+    "semantic_hash": ""
+  },
+  ".github/workflows/msfront-browser.yml": {
+    "mtime": 1786970111.944413,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c5961e8257b5bb782b76edbff94a2d78",
+    "semantic_hash": ""
+  },
+  ".github/workflows/msfront-quality.yml": {
+    "mtime": 1786968897.853889,
+    "seen": 1787581915.2026258,
+    "ast_hash": "fe100ddf8b9edd8c9da14cb7ce5c9762",
+    "semantic_hash": ""
+  },
+  ".github/workflows/node-tools-quality.yml": {
+    "mtime": 1787581332.1087468,
+    "seen": 1787581915.2026258,
+    "ast_hash": "07182a5ea0d18a92b1e2d3460ae87de1",
+    "semantic_hash": ""
+  },
+  ".github/workflows/security-analysis.yml": {
+    "mtime": 1786969186.6514902,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d82bd497c5fac957382a7ade6b24c554",
+    "semantic_hash": ""
+  },
+  ".github/workflows/supply-chain.yml": {
+    "mtime": 1786963155.9090173,
+    "seen": 1787581915.2026258,
+    "ast_hash": "fb65b29ebe9496f0d66d376537b4747a",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1787564805.4399107,
+    "seen": 1787581915.2026258,
+    "ast_hash": "21ceb6533048be51308e69e7b74a35cf",
+    "semantic_hash": ""
+  },
+  "Framework/CHANGELOG.md": {
+    "mtime": 1787580818.8482118,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d4cd606721aa0a17da2a51a2a84deadf",
+    "semantic_hash": ""
+  },
+  "Framework/COMPATIBILITY.md": {
+    "mtime": 1787542252.7017112,
+    "seen": 1787581915.2026258,
+    "ast_hash": "2b31f3d4822afe165fedef917581e6c7",
+    "semantic_hash": ""
+  },
+  "Framework/README.md": {
+    "mtime": 1787580818.84721,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0eebfa8816ffb9e94e45517619a213cf",
+    "semantic_hash": ""
+  },
+  "MSFront/AGENTS.md": {
+    "mtime": 1786694849.7413237,
+    "seen": 1787581915.2026258,
+    "ast_hash": "01e8142356e15c3404e0d84c48187cd0",
+    "semantic_hash": ""
+  },
+  "MSFront/CLAUDE.md": {
+    "mtime": 1786694849.7413237,
+    "seen": 1787581915.2026258,
+    "ast_hash": "5c27369b226fcf2be8a6cfe52224e767",
+    "semantic_hash": ""
+  },
+  "MSFront/README.md": {
+    "mtime": 1786970150.420786,
+    "seen": 1787581915.2026258,
+    "ast_hash": "92d2c02ad38ed113352424d9bf532924",
+    "semantic_hash": ""
+  },
+  "MSFront/database/README.md": {
+    "mtime": 1786969420.6054153,
+    "seen": 1787581915.2026258,
+    "ast_hash": "91b7f8eee32ecb2765ac7b02fc089b37",
+    "semantic_hash": ""
+  },
+  "Proj/Example/README.md": {
+    "mtime": 1787581332.109744,
+    "seen": 1787581915.2026258,
+    "ast_hash": "54fc6a6372f0f679daf1794e65201f44",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1787581746.880678,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b95a57942f6809da564be3d3029bf51a",
+    "semantic_hash": ""
+  },
+  "SDK/GoExample/CHANGELOG.md": {
+    "mtime": 1787542252.6708562,
+    "seen": 1787581915.2026258,
+    "ast_hash": "780bd251bc188542563033f2ea6c3175",
+    "semantic_hash": ""
+  },
+  "SDK/GoExample/README.md": {
+    "mtime": 1787542252.6648717,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e74e45f83a5ce90ffd5676a4ea11b3ac",
+    "semantic_hash": ""
+  },
+  "__test__/README.md": {
+    "mtime": 1786970111.9459171,
+    "seen": 1787581915.2026258,
+    "ast_hash": "0978ff28927874e870b5c9bca1ed2786",
+    "semantic_hash": ""
+  },
+  "docs/adr/0001-http-framework-selection.md": {
+    "mtime": 1787410841.0942628,
+    "seen": 1787581915.2026258,
+    "ast_hash": "25f2b7b21e2f896d5e55d2697d0748e7",
+    "semantic_hash": ""
+  },
+  "docs/adr/0002-http-request-lifecycle-and-protocol-boundary.md": {
+    "mtime": 1787581096.1849546,
+    "seen": 1787581915.2026258,
+    "ast_hash": "4d1075bc13a8833703dcc03ed62c65e1",
+    "semantic_hash": ""
+  },
+  "docs/observability/SLO-and-alerts.md": {
+    "mtime": 1787569096.9849906,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f7da23cbcc98b5f7e251f9dc1e6ab038",
+    "semantic_hash": ""
+  },
+  "docs/openapi/compatibility-policy.md": {
+    "mtime": 1787578110.6992445,
+    "seen": 1787581915.2026258,
+    "ast_hash": "104be6a3229e91e64fa9016f46421f08",
+    "semantic_hash": ""
+  },
+  "docs/openapi/consumer-matrix.md": {
+    "mtime": 1787578110.6992445,
+    "seen": 1787581915.2026258,
+    "ast_hash": "083a8a38cecba68e1ac1d82dfe87bf29",
+    "semantic_hash": ""
+  },
+  "docs/openapi/health-endpoint-migration.md": {
+    "mtime": 1787578110.6982465,
+    "seen": 1787581915.2026258,
+    "ast_hash": "d72d9b1b86e94d3d24613884528f7cec",
+    "semantic_hash": ""
+  },
+  "docs/openapi/project-contracts.md": {
+    "mtime": 1787569232.8386881,
+    "seen": 1787581915.2026258,
+    "ast_hash": "4fc4f7a2c44ce39b199f855b71c70f1b",
+    "semantic_hash": ""
+  },
+  "docs/recovery/server-failure-matrix.md": {
+    "mtime": 1787518593.477269,
+    "seen": 1787581915.2026258,
+    "ast_hash": "16ce65ed3da731633b51c22f28bd7000",
+    "semantic_hash": ""
+  },
+  "docs/security/server-audit-events.md": {
+    "mtime": 1787524582.6139693,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8dbe128a3543dc2d9484861fd6c8a47c",
+    "semantic_hash": ""
+  },
+  "docs/security/server-threat-model.md": {
+    "mtime": 1787569096.960057,
+    "seen": 1787581915.2026258,
+    "ast_hash": "cf1bd3e33c85522f72b9d29b588f3ef6",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V1.md": {
+    "mtime": 1786939666.1327066,
+    "seen": 1787581915.2026258,
+    "ast_hash": "c623465f3f7795648b2660e31b2c71eb",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V10.md": {
+    "mtime": 1787569232.840685,
+    "seen": 1787581915.2026258,
+    "ast_hash": "54462edb18b371b6927a39861c834410",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V11.md": {
+    "mtime": 1787276338.6176689,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a227d0e2efb95c95827ab0d4e2152fbe",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V12.md": {
+    "mtime": 1787581840.1251268,
+    "seen": 1787581915.2026258,
+    "ast_hash": "958963b92316e3bc2f4ae1a21f10586d",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V2.md": {
+    "mtime": 1786939666.1332362,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7fbe6f2eee89a061688a085f7407528b",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V3.md": {
+    "mtime": 1786950212.872527,
+    "seen": 1787581915.2026258,
+    "ast_hash": "9f1bffaa01232f912eb0c74f54b68ea8",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V4.md": {
+    "mtime": 1786956430.616479,
+    "seen": 1787581915.2026258,
+    "ast_hash": "a5b1bb8c2cb31e1b60607cacecfd7d8b",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V5.md": {
+    "mtime": 1786961541.977073,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f20ef8aef5720d79925509aa46317660",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V6.md": {
+    "mtime": 1786963944.4968295,
+    "seen": 1787581915.2026258,
+    "ast_hash": "77c0a91c063b9973ed182bc142a84745",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V7.md": {
+    "mtime": 1786969420.6054153,
+    "seen": 1787581915.2026258,
+    "ast_hash": "b7ec3c80feba1f654c9c1130568894e9",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V8.md": {
+    "mtime": 1786971707.623938,
+    "seen": 1787581915.2026258,
+    "ast_hash": "7028d08120b819c706e1244c940a6c49",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V9.md": {
+    "mtime": 1787569096.95906,
+    "seen": 1787581915.2026258,
+    "ast_hash": "cb72dc16c882520e89546310c3dcf33e",
+    "semantic_hash": ""
+  },
+  "docs/\u8bc4\u4f30/\u9879\u76ee\u67b6\u6784\u4e0e\u6027\u80fd\u8bc4\u4f30.md": {
+    "mtime": 1787581840.1261241,
+    "seen": 1787581915.2026258,
+    "ast_hash": "37d28afed6f43f7171f26557869a8145",
+    "semantic_hash": ""
+  },
+  "support/api-contracts/.github/workflows/contract.yml": {
+    "mtime": 1787552909.6838498,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3ecb4312e9b6a3f0616537259f6059dc",
+    "semantic_hash": ""
+  },
+  "support/api-contracts/README.md": {
+    "mtime": 1787552909.684847,
+    "seen": 1787581915.2026258,
+    "ast_hash": "f65c8b832441cc0e997f7b4d925d6d66",
+    "semantic_hash": ""
+  },
+  "support/api-contracts/docs/nestjs-integration.md": {
+    "mtime": 1787552909.6868403,
+    "seen": 1787581915.2026258,
+    "ast_hash": "8f03873ed5c3d2daeafc65064d864939",
+    "semantic_hash": ""
+  },
+  "support/consumer/HealthProbe/README.md": {
+    "mtime": 1787281055.1343124,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ed9dc877cf6b131f18eb44be97c60c00",
+    "semantic_hash": ""
+  },
+  "support/deploy/edge/README.md": {
+    "mtime": 1787405928.7928314,
+    "seen": 1787581915.2026258,
+    "ast_hash": "759f5e59d61e74e952b815b006eceaba",
+    "semantic_hash": ""
+  },
+  "support/deploy/kubernetes/README.md": {
+    "mtime": 1787297666.8109052,
+    "seen": 1787581915.2026258,
+    "ast_hash": "fcb9b00a490c7ffe271a4c63563a11d2",
+    "semantic_hash": ""
+  },
+  "support/deploy/prometheus/rules/goexample-slo.yml": {
+    "mtime": 1787512803.9039326,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e3309ec8d1dde8f8c3407bd44e0cb44d",
+    "semantic_hash": ""
+  },
+  "tools/README.md": {
+    "mtime": 1786886551.9225602,
+    "seen": 1787581915.2026258,
+    "ast_hash": "3a55ec39956224247cd8a92f93638fa9",
+    "semantic_hash": ""
+  },
+  "MSFront/public/gva-cover.svg": {
+    "mtime": 1786799387.019057,
+    "seen": 1787581915.2026258,
+    "ast_hash": "15fecbfcf983cd11cf0d3812d80451ff",
+    "semantic_hash": ""
+  },
+  "MSFront/public/gva-docs.png": {
+    "mtime": 1786799395.0229738,
+    "seen": 1787581915.2026258,
+    "ast_hash": "19f80259e233ea8a9113ae3c6ebf939e",
+    "semantic_hash": ""
+  },
+  "MSFront/public/gva-github.png": {
+    "mtime": 1786799399.269671,
+    "seen": 1787581915.2026258,
+    "ast_hash": "e43b149d1b56435ba3efb7f31a0a3a6a",
+    "semantic_hash": ""
+  },
+  "MSFront/public/gva-logo.png": {
+    "mtime": 1786799390.7951615,
+    "seen": 1787581915.2026258,
+    "ast_hash": "17d02a49b00cecf8bd8279042804ec07",
+    "semantic_hash": ""
+  },
+  "MSFront/public/gva-support.png": {
+    "mtime": 1786799392.32992,
+    "seen": 1787581915.2026258,
+    "ast_hash": "dfd38a641c892594cac7f86e25d63ee5",
+    "semantic_hash": ""
+  },
+  "MSFront/public/gva-video.png": {
+    "mtime": 1786799393.6557126,
+    "seen": 1787581915.2026258,
+    "ast_hash": "ab92e41d46b2dba42793367cb9eacb8f",
+    "semantic_hash": ""
+  }
+}

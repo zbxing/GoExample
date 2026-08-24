@@ -53,6 +53,6 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
-replace github.com/zbxing/goexample/Framework => ../../Framework
+replace github.com/zbxing/goexample/Framework => ../../../Framework
 
-replace github.com/zbxing/goexample/SDK/GoExample => ../../SDK/GoExample
+replace github.com/zbxing/goexample/SDK/GoExample => ../../../SDK/GoExample

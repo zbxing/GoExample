@@ -53,7 +53,7 @@ All notable Framework changes are recorded here. Versions follow Semantic Versio
 - `ApplicationCommand.WithMethod` for validated JSON PUT, PATCH, and DELETE routes while retaining POST as the default.
 - `ApplicationQuery.WithMethod` for bounded GET or explicit HEAD routes, with method-scoped conflict validation and shared response/authentication boundaries.
 - `httpapi.NewHTTPHandler` for composing a Framework app with standard `net/http` middleware at the edge boundary.
-- Standard-handler lifecycle contracts for bounded Framework deadlines, explicit Fiber shutdown cancellation, and the documented lack of automatic `http.Request.Context` cancellation propagation.
+- A one-shot in-process request-context bridge for `NewHTTPHandler` that propagates standard cancellation, caller deadlines, and middleware values without exposing its random capability header to routes. Active cancellation, real TCP disconnect, native-header injection, and explicit Fiber shutdown remain behavior-tested; the native Fiber listener keeps its documented fasthttp cancellation boundary.
 - Bounded `server.RunHTTP` ownership for standard `http.Handler` services, with accepted-connection and read-header/read/write/idle limits, draining readiness, a shared graceful-shutdown budget, forced connection convergence, and an optional application shutdown hook. The Example service now uses this path by default while the Fiber-specific `server.Run` API remains compatible.
 - Optional `server.HTTPConnectionObserver` integration with observer-panic isolation; `observability.Metrics` implements fixed-state standard-server connection capacity/open/event metrics, and Example wires it into the default `RunHTTP` path.
 - Public API snapshot and target-branch compatibility gate.

@@ -11,7 +11,7 @@ Proj/
 SDK/
   GoExample/    从 OpenAPI 生成的版本化 Go client
 support/
-  Consumer/      独立 SDK 消费者与健康端点迁移演练
+  consumer/      独立 SDK 消费者与健康端点迁移演练
   api-contracts/ 外部 OpenAPI 子模块
   deploy/        部署、边缘和告警基线
 MSFront/        Next.js 16、React 19 和 TypeScript 管理台

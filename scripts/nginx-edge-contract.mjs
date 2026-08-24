@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
-const contractPath = path.join(repositoryRoot, 'deploy', 'edge', 'goexample-nginx.contract.json');
+const contractPath = path.join(repositoryRoot, 'support', 'deploy', 'edge', 'goexample-nginx.contract.json');
 const contract = JSON.parse(await readFile(contractPath, 'utf8'));
 const image = contract.implementation.image;
 const runID = randomUUID();

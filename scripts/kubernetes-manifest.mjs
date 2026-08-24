@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
-const defaultTemplate = path.join(repositoryRoot, 'deploy', 'kubernetes', 'goexample-api.template.json');
+const defaultTemplate = path.join(repositoryRoot, 'support', 'deploy', 'kubernetes', 'goexample-api.template.json');
 const defaultOutput = path.join(repositoryRoot, '.temp', 'deployment', 'kubernetes', 'goexample-api.json');
 const imagePlaceholder = '__GOEXAMPLE_IMAGE_DIGEST__';
 const originPlaceholder = '__GOEXAMPLE_ALLOWED_ORIGIN__';

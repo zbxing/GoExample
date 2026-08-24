@@ -118,11 +118,11 @@ test('generated Go SDK and independent consumer stay aligned with OpenAPI', asyn
     readFile(path.join(repositoryRoot, 'SDK', 'GoExample', 'client.gen.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'go-sdk.mjs'), 'utf8'),
     readFile(
-      path.join(repositoryRoot, 'Consumer', 'HealthProbe', 'cmd', 'healthprobe', 'main.go'),
+      path.join(repositoryRoot, 'support', 'consumer', 'HealthProbe', 'cmd', 'healthprobe', 'main.go'),
       'utf8',
     ),
     readFile(
-      path.join(repositoryRoot, 'Consumer', 'HealthProbe', 'cmd', 'healthprobe', 'main_test.go'),
+      path.join(repositoryRoot, 'support', 'consumer', 'HealthProbe', 'cmd', 'healthprobe', 'main_test.go'),
       'utf8',
     ),
     readFile(path.join(repositoryRoot, 'docs', 'openapi', 'consumer-matrix.md'), 'utf8'),
@@ -161,7 +161,7 @@ test('generated Go SDK and independent consumer stay aligned with OpenAPI', asyn
   assert.match(consumerMatrix, /repository-local consumer only/);
 
   assert.match(workspace, /\.\/SDK\/GoExample/);
-  assert.match(workspace, /\.\/Consumer\/HealthProbe/);
+  assert.match(workspace, /\.\/support\/consumer\/HealthProbe/);
   assert.match(goRunner, /workspacePatterns/);
   assert.match(goRunner, /\.\.\.workspacePatterns/);
   assert.match(environment, /go\.work must declare workspace modules in a use block/);
@@ -768,7 +768,7 @@ test('server security audit events stay correlated, bounded, and credential-safe
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'security_audit_sink_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'observability', 'metrics_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', 'security', 'server-audit-events.md'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'deploy', 'prometheus', 'rules', 'goexample-slo.yml'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'support', 'deploy', 'prometheus', 'rules', 'goexample-slo.yml'), 'utf8'),
   ]);
   assert.match(auditSource, /"security_audit"/);
   for (const field of ['request_id', 'trace_id', 'span_id']) {
@@ -855,12 +855,12 @@ test('V12 evaluation score matches its weighted evidence table and backlog', asy
 
   const declared = evaluation.match(/精确加权值 \*\*([\d.]+)\/10\*\*/);
   assert.ok(declared, 'V12 evaluation must declare an exact weighted score');
-	assert.equal(declared[1], '9.430', 'V12 score must include hash-keyed cross-replica OIDC state, bounded self-service browser session inventory and subject-bound revocation, explicit device-name metadata, ID-token assurance, CSRF, tenant/resource authorization, and local recovery evidence without claiming target IdP MFA deployment, device UI, production policy, target recovery, identity, or HA evidence');
+  assert.equal(declared[1], '9.451', 'V12 score must include the standard request-context bridge, hash-keyed cross-replica OIDC state, bounded self-service browser session inventory and subject-bound revocation, explicit device-name metadata, project contract pinning, ID-token assurance, CSRF, tenant/resource authorization, and local recovery evidence without claiming target IdP MFA deployment, native Fiber cancellation, device UI, production policy, target recovery, identity, or HA evidence');
   const roundedCalculatedTotal = Math.round((calculatedTotal + 1e-9) * 1000) / 1000;
   assert.equal(roundedCalculatedTotal.toFixed(3), declared[1]);
   assert.match(backlog, /V12-01/);
   assert.match(backlog, /V12-10/);
-	assert.match(backlog, /当前精确综合评分：\*\*9\.430\/10\*\*/);
+  assert.match(backlog, /当前精确综合评分：\*\*9\.451\/10\*\*/);
 	assert.match(backlog, /hash-only opaque session\/CSRF\/logout/);
 	assert.match(backlog, /AuthorizationRequestStore/);
 	assert.match(backlog, /并发恰好一个成功/);
@@ -880,7 +880,7 @@ test('V12 evaluation score matches its weighted evidence table and backlog', asy
   assert.match(backlog, /localNatsSnapshotRestore=recorded/);
   assert.match(backlog, /主动篡改拒绝/);
   assert.match(backlog, /SecurityAuditSink/);
-  assert.match(backlog, /Consumer\/HealthProbe/);
+  assert.match(backlog, /support\/consumer\/HealthProbe/);
   assert.match(backlog, /Framework\/sqlclient/);
   assert.match(backlog, /Framework\/queueclient/);
   assert.match(backlog, /V12-06 本身仍未完成/);
@@ -948,10 +948,16 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
   assert.match(applicationCommand, /func \(command ApplicationCommand\) WithMethod\(method string\)/);
   assert.match(applicationCommand, /router\.Add\(\[\]string\{command\.method\}/);
   assert.match(standardHandler, /func NewHTTPHandler\(app \*fiber\.App\) \(http\.Handler, error\)/);
-  assert.match(standardHandler, /does not propagate request\.Context cancellation/);
+  assert.match(standardHandler, /request\.Clone\(request\.Context\(\)\)/);
+  assert.match(standardHandler, /standardRequestContexts\.LoadAndDelete/);
+  assert.match(standardHandler, /Header\.Del\(standardRequestContextHeader\)/);
+  assert.match(app, /app\.Use\(standardRequestContextBridge\(\)\)/);
   assert.match(standardHandler, /app\.ShutdownWithContext/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerComposesWithStandardMiddleware/);
-  assert.match(standardHandlerTests, /TestNewHTTPHandlerDocumentsCancellationAndDeadlineBoundary/);
+  assert.match(standardHandlerTests, /TestNewHTTPHandlerPropagatesRequestCancellation/);
+  assert.match(standardHandlerTests, /TestNewHTTPHandlerPropagatesStandardClientDisconnect/);
+  assert.match(standardHandlerTests, /TestNewHTTPHandlerPreservesCallerDeadlineAndContextValue/);
+  assert.match(standardHandlerTests, /TestNewHTTPHandlerRemovesInternalContextHeader/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerShutdownCancelsApplicationWork/);
   assert.match(standardServer, /func RunHTTP\(ctx context\.Context, options HTTPOptions\) error/);
   assert.match(standardServer, /ReadHeaderTimeout:/);
@@ -1261,7 +1267,7 @@ test('Go and MSFront auth responses and JWT claims remain hardened', async () =>
 
 test('server observability rules define executable SLO evidence', async () => {
   const [rules, runbook, metrics, metricsTests, tracingProvider, tracingTests, outboundClient, outboundTests, entrypoint, projectService, projectRouteTests, exampleEnvironment] = await Promise.all([
-    readFile(path.join(repositoryRoot, 'deploy', 'prometheus', 'rules', 'goexample-slo.yml'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'support', 'deploy', 'prometheus', 'rules', 'goexample-slo.yml'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', 'observability', 'SLO-and-alerts.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'observability', 'metrics.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'observability', 'metrics_test.go'), 'utf8'),
@@ -1482,7 +1488,7 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
     readFile(path.join(repositoryRoot, 'Framework', 'README.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'CHANGELOG.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'deploy', 'prometheus', 'rules', 'goexample-slo.yml'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'support', 'deploy', 'prometheus', 'rules', 'goexample-slo.yml'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', 'observability', 'SLO-and-alerts.md'), 'utf8'),
   ]);
 
@@ -1821,7 +1827,7 @@ test('external OIDC/JWKS bearer verification stays bounded and separate from dem
     readFile(path.join(repositoryRoot, 'Proj', 'Example', 'cmd', 'server', 'main_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapi', 'routes.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Proj', 'Example', '.env.example'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'deploy', 'kubernetes', 'goexample-api.template.json'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'support', 'deploy', 'kubernetes', 'goexample-api.template.json'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'README.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'CHANGELOG.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs'), 'utf8'),
@@ -2155,13 +2161,13 @@ test('Redis Sentinel contract stays ACL-separated, pinned, archived, and target-
 
 test('Nginx edge baseline stays pinned, bounded, archived, and target-explicit', async () => {
   const [contractDocument, renderer, realRunner, edgeTests, workflow, packageDocument, readme, evidenceManifest] = await Promise.all([
-    readFile(path.join(repositoryRoot, 'deploy', 'edge', 'goexample-nginx.contract.json'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'support', 'deploy', 'edge', 'goexample-nginx.contract.json'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'nginx-edge.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'nginx-edge-contract.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, '__test__', 'node', 'nginx-edge.test.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, '.github', 'workflows', 'node-tools-quality.yml'), 'utf8'),
     readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'deploy', 'edge', 'README.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'support', 'deploy', 'edge', 'README.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs'), 'utf8'),
   ]);
   const contract = JSON.parse(contractDocument);

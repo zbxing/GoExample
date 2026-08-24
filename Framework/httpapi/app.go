@@ -112,6 +112,7 @@ func New(options Options) *fiber.App {
 		return nil
 	})
 
+	app.Use(standardRequestContextBridge())
 	app.Use(requestIDBoundary(options.Metrics))
 	app.Use(requestid.New())
 	app.Use(observability.TraceMiddlewareWithProvider(options.TracerProvider))

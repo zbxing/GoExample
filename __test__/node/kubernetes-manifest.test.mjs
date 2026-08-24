@@ -10,7 +10,7 @@ const repositoryRoot = path.resolve(testDirectory, '..', '..');
 const tempRoot = path.join(repositoryRoot, '.temp');
 const deploymentTempRoot = path.join(tempRoot, 'deployment');
 const scriptPath = path.join(repositoryRoot, 'scripts', 'kubernetes-manifest.mjs');
-const templatePath = path.join(repositoryRoot, 'deploy', 'kubernetes', 'goexample-api.template.json');
+const templatePath = path.join(repositoryRoot, 'support', 'deploy', 'kubernetes', 'goexample-api.template.json');
 const immutableImage = `ghcr.io/zbxing/goexample-api@sha256:${'a'.repeat(64)}`;
 const oidcArguments = [
   '--oidc-issuer',

@@ -10,7 +10,7 @@ const repositoryRoot = path.resolve(testDirectory, '..', '..');
 const tempRoot = path.join(repositoryRoot, '.temp');
 const deploymentRoot = path.join(tempRoot, 'deployment');
 const scriptPath = path.join(repositoryRoot, 'scripts', 'nginx-edge.mjs');
-const contractPath = path.join(repositoryRoot, 'deploy', 'edge', 'goexample-nginx.contract.json');
+const contractPath = path.join(repositoryRoot, 'support', 'deploy', 'edge', 'goexample-nginx.contract.json');
 
 function run(args) {
   return spawnSync(process.execPath, [scriptPath, ...args], {

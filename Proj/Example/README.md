@@ -50,7 +50,7 @@ go test ./Framework/... ./Proj/Example/...
 - 请求体、读写、空闲和业务 deadline 限制；真实 TCP 契约验证慢读背压会触发 `HTTP_WRITE_TIMEOUT`，并覆盖 keep-alive 复用与回收、半关闭响应和 shutdown 连接归零。
 - `/api/v1` 有界并发 admission；达到 `HTTP_MAX_IN_FLIGHT` 或实例进入 draining 时快速返回 `503`，并在 metrics 中分别累计无标签拒绝计数，健康探针不受影响，已有请求继续完成。
 - 标准 listener 接受的连接并发由 `HTTP_MAX_CONNECTIONS=4096` 限制；容量耗尽时停止 `Accept` 新连接直至已有连接关闭，调用方需依靠自身连接 timeout，edge 仍应提供更早的容量拒绝。该等待发生在应用 middleware 前，不计入应用 admission counter。
-- composition root 通过 `httpapi.NewHTTPHandler` 将 Fiber 路由适配为标准 `http.Handler`，并默认交给 `server.RunHTTP` 管理 listener、accepted connection/read-header/read/write/idle 上限、固定状态连接指标、draining 和有界关闭；Fiber application shutdown hook 与标准 server 共享停机预算。
+- composition root 通过 `httpapi.NewHTTPHandler` 将 Fiber 路由适配为标准 `http.Handler`，把标准请求取消、caller deadline 和 middleware context value 传入 application handler，并默认交给 `server.RunHTTP` 管理 listener、accepted connection/read-header/read/write/idle 上限、固定状态连接指标、draining 和有界关闭；Fiber application shutdown hook 与标准 server 共享停机预算。
 - API 与登录独立限流；选定写接口只对相同请求指纹执行幂等重放，同 key 的不同请求返回禁缓存 `409 Conflict`。
 - JSON 和 `application/*+json` media type 契约与结构验证。
 - 可互斥选择演示 HS256 JWT，或生产 RS256 OIDC/JWKS Bearer 验证；外部模式可显式启用浏览器 Authorization Code + PKCE start/callback/logout 与会话清单/撤销 API，使用 Secure、HttpOnly、SameSite=Lax 的一次性 state 与 opaque session cookie，并校验 ID/access token 主体一致。成功回调固定 204、不回传 provider token；cookie 认证的写请求还要求 Strict CSRF cookie 与 `X-CSRF-Token` 双提交。
@@ -178,6 +178,6 @@ docker build -f Proj/Example/Dockerfile -t goexample-api --build-arg VERSION=1.0
 
 镜像使用固定 digest 的 Go builder 和 distroless nonroot runtime。交付环境仍应生成 SBOM、签名并执行镜像扫描。
 
-仓库根级 `yarn kubernetes:check` 校验 Example 的多副本编排模板；`yarn kubernetes:render` 只接受真实 `@sha256` 镜像引用、精确 HTTPS Origin 和安全的生产 OIDC 参数，并把产物写入 `.temp/deployment`。外部 Secret、JWKS egress、PDB/HPA、探针、资源、安全上下文、NetworkPolicy 和 rollout/rollback 边界见 [Kubernetes 编排基线](../../deploy/kubernetes/README.md)。该本地契约不能替代目标集群演练。
+仓库根级 `yarn kubernetes:check` 校验 Example 的多副本编排模板；`yarn kubernetes:render` 只接受真实 `@sha256` 镜像引用、精确 HTTPS Origin 和安全的生产 OIDC 参数，并把产物写入 `.temp/deployment`。外部 Secret、JWKS egress、PDB/HPA、探针、资源、安全上下文、NetworkPolicy 和 rollout/rollback 边界见 [Kubernetes 编排基线](../../support/deploy/kubernetes/README.md)。该本地契约不能替代目标集群演练。
 
-仓库级 [Nginx Edge 基线](../../deploy/edge/README.md) 固定 TLS 1.2/1.3、HTTP/2、16 KiB 单 header、4 MiB body、2 秒上游连接、10 秒上游读写、禁用请求/响应缓冲和非幂等重试，并以 SIGQUIT 保留在途响应。部署时 `TRUSTED_PROXIES` 只能包含真实 edge 地址；静态配置与 GitHub loopback 容器测试都不代表目标 ingress、真实证书或 HTTP/3 已验证。
+仓库级 [Nginx Edge 基线](../../support/deploy/edge/README.md) 固定 TLS 1.2/1.3、HTTP/2、16 KiB 单 header、4 MiB body、2 秒上游连接、10 秒上游读写、禁用请求/响应缓冲和非幂等重试，并以 SIGQUIT 保留在途响应。部署时 `TRUSTED_PROXIES` 只能包含真实 edge 地址；静态配置与 GitHub loopback 容器测试都不代表目标 ingress、真实证书或 HTTP/3 已验证。

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
-const defaultContract = path.join(repositoryRoot, 'deploy', 'edge', 'goexample-nginx.contract.json');
+const defaultContract = path.join(repositoryRoot, 'support', 'deploy', 'edge', 'goexample-nginx.contract.json');
 const defaultOutput = path.join(repositoryRoot, '.temp', 'deployment', 'edge', 'goexample-nginx.conf');
 const expectedImage = 'nginx:1.30.4-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46';
 

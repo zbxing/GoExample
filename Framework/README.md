@@ -35,7 +35,7 @@ apiOptions.ApplicationCommands = projectapi.Commands(apiOptions)
 app := httpapi.New(apiOptions)
 ```
 
-旧式 `ApplicationQuery` handler 只接收 `context.Context`；`NewQuery`/`NewJSONCommand` handler 额外接收编译期确定的 request，authenticated/authorized 版本再接收只包含 subject、username 和 role IDs 的 `ApplicationPrincipal`，token/JWT/Fiber claims 不越过 adapter；authorized 版本声明任一满足（any-of）的精确角色 ID 集合。Framework 内部 Fiber adapter 负责显式输入源绑定、结构校验、认证/授权、JSON media type、幂等请求指纹、`{code,data,msg}` envelope、错误脱敏和既有 middleware。未覆盖的 HTTP method 或定制 middleware 仍可使用高级 `RegisterRoutes` 逃生口；application query/command 不能与该逃生口同时配置。`NewHTTPHandler` 可将组装后的 app 暴露为标准 `net/http.Handler`，Example 默认再由 `server.RunHTTP` 承担标准 listener 生命周期；这仍不改变 Fiber adaptor 的客户端断连语义。`httpapi.RegisterDefaultRoutes` 提供认证可选的 echo/validate/delay 路由；本地 `/auth/login` 只有 demo `Auth` 启用时才注册，注入外部 `TokenVerifier` 只注册 Bearer 路由。
+旧式 `ApplicationQuery` handler 只接收 `context.Context`；`NewQuery`/`NewJSONCommand` handler 额外接收编译期确定的 request，authenticated/authorized 版本再接收只包含 subject、username 和 role IDs 的 `ApplicationPrincipal`，token/JWT/Fiber claims 不越过 adapter；authorized 版本声明任一满足（any-of）的精确角色 ID 集合。Framework 内部 Fiber adapter 负责显式输入源绑定、结构校验、认证/授权、JSON media type、幂等请求指纹、`{code,data,msg}` envelope、错误脱敏和既有 middleware。未覆盖的 HTTP method 或定制 middleware 仍可使用高级 `RegisterRoutes` 逃生口；application query/command 不能与该逃生口同时配置。`NewHTTPHandler` 可将组装后的 app 暴露为标准 `net/http.Handler`，Example 默认再由 `server.RunHTTP` 承担标准 listener 生命周期；该标准入口会把 caller deadline、取消和 context value 传入 application context，原生 Fiber listener 仍保留 fasthttp 的断连语义。`httpapi.RegisterDefaultRoutes` 提供认证可选的 echo/validate/delay 路由；本地 `/auth/login` 只有 demo `Auth` 启用时才注册，注入外部 `TokenVerifier` 只注册 Bearer 路由。
 
 typed query request 的每个导出字段必须显式且只能声明一个 `uri`、`query` 或 `header` tag，URI tags 必须与路径中的 `:name` 一一对应；各来源先绑定到隔离的临时值再复制目标字段，query/header 无法覆盖 URI。动态 query 只允许命名参数，通配符、转义、反斜杠、控制字符、重复分隔符、相对段、query/fragment、重复参数及静态/动态重叠都会在启动前失败。旧式 query 与 command 仍要求规范静态路径；同 method 路径和默认 GET/POST 路由碰撞按大小写不敏感及动态匹配语义判断。所有定义会在注册任何 application route 前完成校验，避免 Fiber 注册顺序导致 handler 静默不可达。
 
@@ -238,7 +238,7 @@ client, err := httpclient.New(httpclient.Config{TracerProvider: provider})
 
 `server.RunHTTP` 接受标准 `http.Handler`、监听地址、health checker、logger、accepted connection/read-header/read/write/idle/header 上限、可选 `HTTPConnectionObserver` 和 shutdown 预算。收到取消信号后先设置 draining，再等待可选传播延迟；标准 server shutdown 与可选 application shutdown hook 共享一个总预算，超时后强制关闭连接以保证返回。连接 observer 只接收容量和固定 `net/http` 状态，panic 被隔离。Example 默认使用该路径。原 `server.Run` Fiber listener API 保留兼容。
 
-`httpapi.NewHTTPHandler` 提供标准 `net/http.Handler` 组合边界。Fiber 官方 adaptor 不会把 `http.Request.Context()` 的取消信号复制为 application context 取消，因此 Framework 的有限 `RequestTimeout` 仍是必要兜底。Example 把原 `*fiber.App` 的 `ShutdownWithContext` 作为 `HTTPOptions.ApplicationShutdown` 注入，使 Framework pre-shutdown hook 与标准 server 关闭共享预算并取消正在运行的 application work；行为测试锁定预取消请求不被误宣称为传播、deadline 存在、显式 shutdown 取消 handler、慢 header 超时和超时强制收敛。
+`httpapi.NewHTTPHandler` 提供标准 `net/http.Handler` 组合边界。它用每请求随机 128-bit、一次性、仅进程内可解析的令牌跨越 Fiber 官方 adaptor；令牌在第一个 Framework middleware 中删除，原始 `http.Request.Context()` 本身不会序列化到 header、日志或响应。caller 的较短 deadline、取消和 middleware context value 会进入 application context，真实标准 TCP 客户端断开也会取消协作式 handler；原生 Fiber listener 不经过该桥，仍依赖有限 `RequestTimeout`。Example 另把原 `*fiber.App` 的 `ShutdownWithContext` 作为 `HTTPOptions.ApplicationShutdown` 注入，使 Framework pre-shutdown hook 与标准 server 关闭共享预算并取消所有正在运行的 application work。
 
 ## 验证
 
