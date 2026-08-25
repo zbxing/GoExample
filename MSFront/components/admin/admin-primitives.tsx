@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type PropsWithChildren,
   type ReactNode,
 } from 'react';
@@ -20,6 +21,12 @@ import {
   IconUser,
   IconWarningFilled,
 } from '@/components/admin/admin-icons';
+import {
+  getGvaActiveRequestCount,
+  getGvaContentLoadingVisible,
+  subscribeGvaPageLoading,
+} from '@/lib/utils/gva-page-loading';
+import { showGvaMessage } from '@/lib/utils/gva-message';
 
 export function AdminPage({
   children,
@@ -139,6 +146,7 @@ export function AdminTable({
   columns,
   rows,
   emptyText = '暂无数据',
+  loading = false,
   stripe = false,
   border = true,
   selectable = false,
@@ -152,6 +160,8 @@ export function AdminTable({
   columns: AdminTableColumn[];
   rows: Array<Record<string, unknown>>;
   emptyText?: string;
+  /** 显式加载中；未传时也会在全局请求/列表首屏等待期间隐藏「暂无数据」 */
+  loading?: boolean;
   stripe?: boolean;
   border?: boolean;
   selectable?: boolean;
@@ -162,6 +172,17 @@ export function AdminTable({
   sortOrder?: 'ascending' | 'descending' | null;
   onSortChange?: (key: string) => void;
 }) {
+  const contentLoading = useSyncExternalStore(
+    subscribeGvaPageLoading,
+    getGvaContentLoadingVisible,
+    () => false,
+  );
+  const activeRequests = useSyncExternalStore(
+    subscribeGvaPageLoading,
+    getGvaActiveRequestCount,
+    () => 0,
+  );
+  const showEmptyPlaceholder = loading || contentLoading || activeRequests > 0;
   const selected = selectedIds ?? [];
   const rowIds = rows.map((row, index) => String(row.id ?? index));
   const allSelected = rowIds.length > 0 && rowIds.every((id) => selected.includes(id));
@@ -186,7 +207,11 @@ export function AdminTable({
   return (
     <div className={border ? 'adminTableWrap gvaTableBox' : 'adminTableWrap'}>
       {rows.length === 0 ? (
-        <div className="adminEmpty gvaTableEmpty">{emptyText}</div>
+        showEmptyPlaceholder ? (
+          <div className="adminEmpty gvaTableEmpty gvaTableEmptyPending" aria-hidden="true" />
+        ) : (
+          <div className="adminEmpty gvaTableEmpty">{emptyText}</div>
+        )
       ) : (
         <table
           className={[
@@ -917,39 +942,22 @@ export function AdminConfirmDialog({
 }
 
 export function useAdminToast() {
-  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning'; message: string } | null>(
-    null,
-  );
-
-  useEffect(() => {
-    if (!toast) {
-      return;
-    }
-    const timer = window.setTimeout(() => setToast(null), 2200);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
-
   const showSuccess = (message: string) => {
-    setToast({ type: 'success', message });
+    showGvaMessage.success(message);
   };
   const showError = (message: string) => {
-    setToast({ type: 'error', message });
+    showGvaMessage.error(message);
   };
   const showWarning = (message: string) => {
-    setToast({ type: 'warning', message });
+    showGvaMessage.warning(message);
   };
 
   return {
-    toast,
     showSuccess,
     showError,
     showWarning,
-    ToastHost: toast ? (
-      <div className={`gvaMessage gvaMessage-${toast.type}`} role="status">
-        <span className="gvaMessageIcon" aria-hidden="true" />
-        <span>{toast.message}</span>
-      </div>
-    ) : null,
+    /** @deprecated 已改用全局 GvaMessageHost，保留空节点以兼容现有页面写法 */
+    ToastHost: null as ReactNode,
   };
 }
 

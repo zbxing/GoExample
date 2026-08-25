@@ -6,9 +6,14 @@ import {
   beginGvaRouteProgress,
   endGvaRouteProgress,
   getGvaContentLoadingVisible,
+  getGvaRouteProgressBarTranslatePercent,
+  getGvaRouteProgressEasing,
+  getGvaRouteProgressSnapHidden,
+  getGvaRouteProgressSpeedMs,
   getGvaRouteProgressVisible,
   subscribeGvaPageLoading,
 } from '@/lib/utils/gva-page-loading';
+import { readGvaShellSettings, subscribeGvaShellSettings } from '@/lib/utils/gva-shell-settings';
 import { triggerGvaPageLeave } from '@/lib/utils/gva-page-leave';
 
 function isInternalDashboardHref(href: string, currentPath: string) {
@@ -32,7 +37,12 @@ function isInternalDashboardHref(href: string, currentPath: string) {
   }
 }
 
-/** 监听站内跳转：立即顶栏进度，超过 400ms 内容区 loading（对齐 GVA） */
+/**
+ * 对齐 GVA permission.js + nprogress@0.2.0：
+ * - beforeEach → NProgress.start()
+ * - afterEach → NProgress.done()
+ * - configure({ showSpinner: false, ease: 'ease', speed: 500 })
+ */
 export function GvaRouteLoadingEffects() {
   const pathname = usePathname();
   const contentVisible = useSyncExternalStore(
@@ -45,11 +55,45 @@ export function GvaRouteLoadingEffects() {
     getGvaRouteProgressVisible,
     () => false,
   );
+  const barTranslate = useSyncExternalStore(
+    subscribeGvaPageLoading,
+    getGvaRouteProgressBarTranslatePercent,
+    () => -100,
+  );
+  const snapHidden = useSyncExternalStore(
+    subscribeGvaPageLoading,
+    getGvaRouteProgressSnapHidden,
+    () => false,
+  );
+  const showProgress = useSyncExternalStore(
+    subscribeGvaShellSettings,
+    () => readGvaShellSettings().tab.showProgress,
+    () => true,
+  );
+  const speedMs = useSyncExternalStore(
+    subscribeGvaPageLoading,
+    getGvaRouteProgressSpeedMs,
+    () => 500,
+  );
+  const easing = useSyncExternalStore(
+    subscribeGvaPageLoading,
+    getGvaRouteProgressEasing,
+    () => 'ease',
+  );
 
+  // afterEach → done()
   useEffect(() => {
     endGvaRouteProgress();
   }, [pathname]);
 
+  // 关闭「展示进度条」时立刻收起当前进度
+  useEffect(() => {
+    if (!showProgress) {
+      endGvaRouteProgress(true);
+    }
+  }, [showProgress]);
+
+  // beforeEach → start()
   useEffect(() => {
     function onPointerDown(event: MouseEvent) {
       if (
@@ -72,8 +116,9 @@ export function GvaRouteLoadingEffects() {
         return;
       }
       const leaving = triggerGvaPageLeave();
-      beginGvaRouteProgress();
-      // 内容区 loading 仅由接口请求触发，与 GVA 一致
+      if (readGvaShellSettings().tab.showProgress) {
+        beginGvaRouteProgress();
+      }
       void leaving;
     }
 
@@ -81,12 +126,23 @@ export function GvaRouteLoadingEffects() {
     return () => document.removeEventListener('click', onPointerDown, true);
   }, [pathname]);
 
+  const barTransition = snapHidden ? 'all 0ms linear' : `all ${speedMs}ms ${easing}`;
+
   return (
     <>
-      <div
-        className={progressVisible ? 'gvaRouteProgress is-active' : 'gvaRouteProgress'}
-        aria-hidden="true"
-      />
+      {progressVisible && showProgress ? (
+        <div className="gvaRouteProgress is-active" aria-hidden="true">
+          <div
+            className="gvaRouteProgressBar"
+            style={{
+              transform: `translate3d(${barTranslate}%, 0, 0)`,
+              transition: barTransition,
+            }}
+          >
+            <div className="gvaRouteProgressPeg" />
+          </div>
+        </div>
+      ) : null}
       {contentVisible ? (
         <div className="gvaContentLoading" role="status" aria-live="polite" aria-busy="true">
           <span className="gvaContentLoadingSpinner" aria-hidden="true" />

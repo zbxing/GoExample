@@ -17,7 +17,7 @@ export function SystemCasbinPage() {
   const [reloadToken, setReloadToken] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  useGvaListLoad(() => {
     let cancelled = false;
 
     async function sync() {

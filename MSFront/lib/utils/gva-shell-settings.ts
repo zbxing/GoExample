@@ -46,6 +46,8 @@ export interface GvaShellSettings {
     shadow: GvaShadow;
     mode: GvaTabMode;
     showIcon: boolean;
+    /** 顶栏路由进度条，默认开启 */
+    showProgress: boolean;
   };
   menu: {
     theme: GvaMenuTheme;
@@ -121,6 +123,7 @@ export const defaultGvaShellSettings: GvaShellSettings = {
     shadow: 'sm',
     mode: 'chrome',
     showIcon: true,
+    showProgress: true,
   },
   menu: {
     theme: 'light',
@@ -165,7 +168,7 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
       themeColor: '#2264f2',
       themeRadius: 0.625,
       layout: { mode: 'normal', sideWidth: 256, sideCollapsedWidth: 80, sideItemHeight: 48 },
-      tab: { mode: 'chrome', showIcon: true, visible: true, shadow: 'sm', bg: '' },
+      tab: { mode: 'chrome', showIcon: true, showProgress: true, visible: true, shadow: 'sm', bg: '' },
       menu: { theme: 'light', collapseMode: 'current', darkSider: false },
       card: { mode: 'border' },
     },
@@ -205,7 +208,14 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
         bg: 'rgba(255, 255, 255, 0)',
         shadow: 'none',
       },
-      tab: { visible: true, shadow: 'none', mode: 'button', bg: 'rgba(255, 255, 255, 0)', showIcon: true },
+      tab: {
+        visible: true,
+        shadow: 'none',
+        mode: 'button',
+        bg: 'rgba(255, 255, 255, 0)',
+        showIcon: true,
+        showProgress: true,
+      },
       menu: { theme: 'design', collapseMode: 'current', darkSider: false },
       card: { mode: 'border' },
     },
@@ -310,6 +320,9 @@ export function normalizeGvaShellSettings(raw: unknown): GvaShellSettings {
   if (!Number.isFinite(merged.layout.sideItemHeight) || merged.layout.sideItemHeight < 32) {
     merged.layout.sideItemHeight = 48;
   }
+  if (typeof merged.tab.showProgress !== 'boolean') {
+    merged.tab.showProgress = true;
+  }
 
   return merged;
 }
@@ -362,7 +375,11 @@ export function applyGvaShellCss(settings: GvaShellSettings) {
   root.style.setProperty('--accent-primary', settings.themeColor);
   root.style.setProperty('--el-color-primary', settings.themeColor);
   root.style.setProperty('--gva-sidebar-active', settings.themeColor);
-  root.style.setProperty('--gva-radius', `${settings.themeRadius}rem`);
+  // 对齐 GVA applyElementPlusTheme：内容圆角 + Element 系控件圆角同源
+  const radius = `${settings.themeRadius}rem`;
+  root.style.setProperty('--gva-radius', radius);
+  root.style.setProperty('--el-border-radius-base', radius);
+  root.style.setProperty('--el-card-border-radius', radius);
   root.style.setProperty('--gva-side-width', `${settings.layout.sideWidth}px`);
   root.style.setProperty('--gva-side-collapsed-width', `${settings.layout.sideCollapsedWidth}px`);
   root.style.setProperty('--gva-side-item-height', `${settings.layout.sideItemHeight}px`);

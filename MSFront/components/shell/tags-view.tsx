@@ -1,7 +1,7 @@
 'use client';
 
 import { createElement, Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { usePathname, useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import type { Route } from 'next';
@@ -142,8 +142,110 @@ function ensureTag(
   ];
 }
 
+interface TabRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  marginRight: number;
+  /** 该标签在 flex 布局中向前推进的距离（含 gap / 负 margin），用于重排后计算真实 left */
+  slotAdvance: number;
+}
+
 function overlapX(aLeft: number, aRight: number, bLeft: number, bRight: number): number {
   return Math.max(0, Math.min(aRight, bRight) - Math.max(aLeft, bLeft));
+}
+
+/** 将 fromIdx 处的项移动到 insertAt（原始数组「插入到该下标前」语义） */
+function moveToIndex(items: TagsViewItem[], fromIdx: number, insertAt: number): TagsViewItem[] {
+  if (fromIdx < 0 || insertAt < 0 || fromIdx === insertAt) {
+    return items;
+  }
+  const next = [...items];
+  const [moved] = next.splice(fromIdx, 1);
+  const to = insertAt > fromIdx ? insertAt - 1 : insertAt;
+  next.splice(to, 0, moved);
+  return next;
+}
+
+function captureTabRects(
+  items: TagsViewItem[],
+  tabEls: Map<string, HTMLDivElement>,
+): Map<string, TabRect> {
+  const measured: Array<{
+    path: string;
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    marginRight: number;
+  }> = [];
+
+  for (const item of items) {
+    const el = tabEls.get(item.path);
+    if (!el) {
+      continue;
+    }
+    const rect = el.getBoundingClientRect();
+    const marginRight = Number.parseFloat(window.getComputedStyle(el).marginRight) || 0;
+    measured.push({
+      path: item.path,
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+      marginRight,
+    });
+  }
+
+  const rects = new Map<string, TabRect>();
+  for (let i = 0; i < measured.length; i++) {
+    const current = measured[i];
+    const next = measured[i + 1];
+    let slotAdvance: number;
+    if (next) {
+      // 非末项：相邻 left 差已包含 gap / 负 margin
+      slotAdvance = next.left - current.left;
+    } else if (i > 0) {
+      // 末项：复用与前一项之间的间距，避免宽度不同时重排后少算一段 gap
+      const prev = measured[i - 1];
+      const spacing = current.left - prev.left - prev.width;
+      slotAdvance = current.width + spacing;
+    } else {
+      slotAdvance = current.width + current.marginRight;
+    }
+    rects.set(current.path, {
+      left: current.left,
+      top: current.top,
+      width: current.width,
+      height: current.height,
+      marginRight: current.marginRight,
+      slotAdvance,
+    });
+  }
+  return rects;
+}
+
+/**
+ * 按重排后的顺序，用各标签自己的 slotAdvance 累加出真实目标 left。
+ * 不能直接用「原下标槽位的 left」：相邻标签宽度不同时会偏。
+ */
+function getReorderedLefts(
+  items: TagsViewItem[],
+  fromIdx: number,
+  insertAt: number,
+  rects: Map<string, TabRect>,
+): Map<string, number> {
+  const reordered = moveToIndex(items, fromIdx, insertAt);
+  const originLeft = items[0] ? rects.get(items[0].path)?.left : undefined;
+  let cursor = originLeft ?? 0;
+  const result = new Map<string, number>();
+  for (const item of reordered) {
+    result.set(item.path, cursor);
+    const advance = rects.get(item.path)?.slotAdvance ?? rects.get(item.path)?.width ?? 0;
+    cursor += advance;
+  }
+  return result;
 }
 
 /**
@@ -157,7 +259,7 @@ function computeInsertIndex(
   ghostWidth: number,
   items: TagsViewItem[],
   dragPath: string,
-  rects: Map<string, DOMRect>,
+  rects: Map<string, TabRect>,
   currentInsert: number,
 ): number {
   const fromIdx = items.findIndex((item) => item.path === dragPath);
@@ -171,7 +273,12 @@ function computeInsertIndex(
 
   const originRect = rects.get(dragPath);
   if (originRect) {
-    const homeOverlap = overlapX(ghostLeft, ghostRight, originRect.left, originRect.right);
+    const homeOverlap = overlapX(
+      ghostLeft,
+      ghostRight,
+      originRect.left,
+      originRect.left + originRect.width,
+    );
     if (homeOverlap >= originRect.width * 0.5) {
       return clamp(fromIdx);
     }
@@ -188,7 +295,7 @@ function computeInsertIndex(
     if (!rect || rect.width <= 0) {
       continue;
     }
-    const overlap = overlapX(ghostLeft, ghostRight, rect.left, rect.right);
+    const overlap = overlapX(ghostLeft, ghostRight, rect.left, rect.left + rect.width);
     const ratio = overlap / rect.width;
     if (ratio > bestRatio) {
       bestRatio = ratio;
@@ -204,39 +311,48 @@ function computeInsertIndex(
   return clamp(insertAt);
 }
 
-/** 拖拽中：非拖动项根据插入位置平移让位 */
-function getShiftX(
+/** 拖拽中：非拖动项根据重排后真实目标 left 与快照 left 计算平移量 */
+function getTabShiftX(
   index: number,
   fromIdx: number,
   insertAt: number,
-  slotWidth: number,
+  items: TagsViewItem[],
+  rects: Map<string, TabRect>,
 ): number {
-  if (index === fromIdx) {
+  if (index === fromIdx || insertAt === fromIdx) {
     return 0;
   }
-  if (fromIdx < insertAt) {
-    if (index > fromIdx && index < insertAt) {
-      return -slotWidth;
-    }
-  } else if (fromIdx > insertAt) {
-    if (index >= insertAt && index < fromIdx) {
-      return slotWidth;
-    }
+  const path = items[index]?.path;
+  if (!path) {
+    return 0;
   }
-  return 0;
+  const currentLeft = rects.get(path)?.left;
+  if (currentLeft === undefined) {
+    return 0;
+  }
+
+  const targetLeft = getReorderedLefts(items, fromIdx, insertAt, rects).get(path);
+  if (targetLeft === undefined) {
+    return 0;
+  }
+  return targetLeft - currentLeft;
 }
 
-/** 将 fromIdx 处的项移动到 insertAt（原始数组「插入到该下标前」语义） */
-function moveToIndex(items: TagsViewItem[], fromIdx: number, insertAt: number): TagsViewItem[] {
-  if (fromIdx < 0 || insertAt < 0 || fromIdx === insertAt) {
-    return items;
+/** 松手后拖拽标签应收拢到的水平位置（按重排后真实占位累加） */
+function getDropTargetLeft(
+  items: TagsViewItem[],
+  dragPath: string,
+  fromIdx: number,
+  insertAt: number,
+  rects: Map<string, TabRect>,
+): number | null {
+  if (insertAt === fromIdx) {
+    return rects.get(dragPath)?.left ?? null;
   }
-  const next = [...items];
-  const [moved] = next.splice(fromIdx, 1);
-  const to = insertAt > fromIdx ? insertAt - 1 : insertAt;
-  next.splice(to, 0, moved);
-  return next;
+  return getReorderedLefts(items, fromIdx, insertAt, rects).get(dragPath) ?? null;
 }
+
+const TAB_SHIFT_MS = 250;
 
 function ChromeTabBg({ symbolId }: { symbolId: string }) {
   return (
@@ -275,25 +391,41 @@ export function TagsView({
     width: number;
     height: number;
   } | null>(null);
+  const [isSettling, setIsSettling] = useState(false);
+  const [settleAnim, setSettleAnim] = useState<{
+    anchorLeft: number;
+    translateX: number;
+  } | null>(null);
+  const [settlingAnim, setSettlingAnim] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
   const dragRef = useRef<{
     path: string;
     fromIdx: number;
-    slotWidth: number;
     anchorTop: number;
     startX: number;
     startY: number;
     offsetX: number;
     width: number;
     height: number;
+    marginRight: number;
+    slotAdvance: number;
     active: boolean;
   } | null>(null);
   const baseTagsRef = useRef<TagsViewItem[]>(tags);
+  const frozenActivePathRef = useRef<string | null>(null);
   const insertIndexRef = useRef<number | null>(null);
-  const tabRectsRef = useRef<Map<string, DOMRect>>(new Map());
+  const tabRectsRef = useRef<Map<string, TabRect>>(new Map());
   const tabRefs = useRef(new Map<string, HTMLDivElement>());
   const tagsRef = useRef(tags);
+  const pathnameRef = useRef(pathname);
   const navigateRef = useRef<(path: string) => void>(() => {});
+  const settleTimerRef = useRef<number | null>(null);
+  const isSettlingRef = useRef(false);
+  const settleFinalizedRef = useRef(false);
+  const dragGhostRef = useRef(dragGhost);
+  const beginSettleDropRef = useRef<(insertAt: number) => void>(() => {});
+  /** 主动关闭的路径：在路由尚未离开前禁止 ensureTag 再把它加回来 */
+  const suppressEnsurePathsRef = useRef(new Set<string>());
 
   useEffect(() => {
     setPortalReady(true);
@@ -302,6 +434,18 @@ export function TagsView({
   useEffect(() => {
     tagsRef.current = tags;
   }, [tags]);
+
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  useEffect(() => {
+    isSettlingRef.current = isSettling;
+  }, [isSettling]);
+
+  useEffect(() => {
+    dragGhostRef.current = dragGhost;
+  }, [dragGhost]);
 
   const metaMap = useMemo(() => {
     const map = new Map<string, { title: string; icon?: string }>([
@@ -323,12 +467,39 @@ export function TagsView({
     if (!pathname || pathname === '/login') {
       return;
     }
+
+    // 路由已离开被关闭的路径后，解除抑制
+    for (const closedPath of [...suppressEnsurePathsRef.current]) {
+      if (closedPath !== pathname) {
+        suppressEnsurePathsRef.current.delete(closedPath);
+      }
+    }
+
+    // 关闭当前标签后 router.push 完成前，pathname 仍是旧路径；此时不可再 ensure 回去
+    if (suppressEnsurePathsRef.current.has(pathname)) {
+      return;
+    }
+
     const next = ensureTag(tags, pathname, meta.title, meta.icon);
     if (tagsEqual(next, tags)) {
       return;
     }
     persistTags(next);
   }, [tags, pathname, meta.title, meta.icon]);
+
+  function suppressEnsureForRemoved(previous: TagsViewItem[], next: TagsViewItem[]) {
+    for (const item of previous) {
+      if (!next.some((candidate) => candidate.path === item.path)) {
+        suppressEnsurePathsRef.current.add(item.path);
+      }
+    }
+  }
+
+  function commitTags(next: TagsViewItem[]) {
+    const normalized = next.length ? next : SERVER_SNAPSHOT;
+    suppressEnsureForRemoved(tagsRef.current, normalized);
+    persistTags(normalized);
+  }
 
   function navigateTo(path: string) {
     if (pathname === path) {
@@ -350,21 +521,99 @@ export function TagsView({
       : -1;
 
   function resetDragVisuals() {
+    if (settleTimerRef.current !== null) {
+      window.clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = null;
+    }
     setDraggingPath(null);
     setInsertIndex(null);
     setDragGhost(null);
+    setIsSettling(false);
+    setSettlingAnim(false);
+    setSettleAnim(null);
+    isSettlingRef.current = false;
+    frozenActivePathRef.current = null;
     insertIndexRef.current = null;
     tabRectsRef.current = new Map();
     for (const el of tabRefs.current.values()) {
-      el.style.transition = '';
+      el.style.willChange = 'auto';
+      el.style.backfaceVisibility = '';
+      el.style.transition = 'none';
       el.style.transform = '';
+      el.style.transition = '';
     }
   }
+
+  function completeDrop(fromIdx: number, insertAt: number) {
+    const next = moveToIndex(baseTagsRef.current, fromIdx, insertAt);
+    for (const el of tabRefs.current.values()) {
+      el.style.willChange = 'auto';
+      el.style.backfaceVisibility = '';
+    }
+    flushSync(() => {
+      if (!tagsEqual(next, tagsRef.current)) {
+        persistTags(next);
+      }
+      resetDragVisuals();
+    });
+    dragRef.current = null;
+    settleFinalizedRef.current = false;
+  }
+
+  function finishSettleDrop(fromIdx: number, insertAt: number) {
+    if (settleFinalizedRef.current) {
+      return;
+    }
+    settleFinalizedRef.current = true;
+    completeDrop(fromIdx, insertAt);
+  }
+
+  function beginSettleDrop(insertAt: number) {
+    const drag = dragRef.current;
+    if (!drag) {
+      return;
+    }
+
+    const targetLeft = getDropTargetLeft(
+      baseTagsRef.current,
+      drag.path,
+      drag.fromIdx,
+      insertAt,
+      tabRectsRef.current,
+    );
+    const resolvedTarget = targetLeft === null ? null : Math.round(targetLeft);
+    const anchorLeft = Math.round(dragGhostRef.current?.left ?? resolvedTarget ?? 0);
+
+    if (resolvedTarget === null || resolvedTarget - anchorLeft === 0) {
+      completeDrop(drag.fromIdx, insertAt);
+      return;
+    }
+
+    const deltaX = resolvedTarget - anchorLeft;
+
+    flushSync(() => {
+      setIsSettling(true);
+      isSettlingRef.current = true;
+      setSettlingAnim(false);
+      setSettleAnim({ anchorLeft, translateX: 0 });
+    });
+
+    settleTimerRef.current = window.setTimeout(() => {
+      finishSettleDrop(drag.fromIdx, insertAt);
+    }, TAB_SHIFT_MS + 80);
+
+    requestAnimationFrame(() => {
+      setSettlingAnim(true);
+      setSettleAnim({ anchorLeft, translateX: deltaX });
+    });
+  }
+
+  beginSettleDropRef.current = beginSettleDrop;
 
   useEffect(() => {
     function onMouseMove(event: MouseEvent) {
       const drag = dragRef.current;
-      if (!drag) {
+      if (!drag || isSettlingRef.current) {
         return;
       }
 
@@ -373,19 +622,22 @@ export function TagsView({
       if (!drag.active && Math.hypot(dx, dy) > 5) {
         drag.active = true;
         baseTagsRef.current = tagsRef.current;
-        const rects = new Map<string, DOMRect>();
-        for (const item of baseTagsRef.current) {
-          const el = tabRefs.current.get(item.path);
-          if (el) {
-            rects.set(item.path, el.getBoundingClientRect());
-          }
-        }
+        const rects = captureTabRects(baseTagsRef.current, tabRefs.current);
         tabRectsRef.current = rects;
+        const dragRect = rects.get(drag.path);
+        if (dragRect) {
+          drag.slotAdvance = dragRect.slotAdvance;
+          drag.width = dragRect.width;
+          drag.height = dragRect.height;
+          drag.anchorTop = dragRect.top;
+          drag.marginRight = dragRect.marginRight;
+        }
+        frozenActivePathRef.current = pathnameRef.current;
         insertIndexRef.current = drag.fromIdx;
         setDraggingPath(drag.path);
         setInsertIndex(drag.fromIdx);
         setMenuOpen(false);
-        document.body.style.cursor = 'grabbing';
+        document.body.style.cursor = 'pointer';
         setDragGhost({
           left: event.clientX - drag.offsetX,
           top: drag.anchorTop,
@@ -422,7 +674,7 @@ export function TagsView({
 
     function onMouseUp() {
       const drag = dragRef.current;
-      if (!drag) {
+      if (!drag || isSettlingRef.current) {
         return;
       }
 
@@ -431,15 +683,11 @@ export function TagsView({
 
       if (drag.active) {
         const insertAt = insertIndexRef.current ?? drag.fromIdx;
-        const next = moveToIndex(baseTagsRef.current, drag.fromIdx, insertAt);
-        if (!tagsEqual(next, tagsRef.current)) {
-          persistTags(next);
-        }
-        resetDragVisuals();
-      } else {
-        navigateRef.current(drag.path);
+        beginSettleDropRef.current(insertAt);
+        return;
       }
 
+      navigateRef.current(drag.path);
       dragRef.current = null;
     }
 
@@ -450,6 +698,10 @@ export function TagsView({
       window.removeEventListener('mouseup', onMouseUp);
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
+      if (settleTimerRef.current !== null) {
+        window.clearTimeout(settleTimerRef.current);
+        settleTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -459,7 +711,7 @@ export function TagsView({
       return;
     }
     const next = tags.filter((item) => item.path !== path);
-    persistTags(next.length ? next : SERVER_SNAPSHOT);
+    commitTags(next.length ? next : SERVER_SNAPSHOT);
     if (pathname === path) {
       const fallback = next[index] ?? next[index - 1] ?? HOME_TAB;
       navigateTo(fallback.path);
@@ -467,7 +719,7 @@ export function TagsView({
   }
 
   function closeAll() {
-    persistTags(SERVER_SNAPSHOT);
+    commitTags(SERVER_SNAPSHOT);
     navigateTo(HOME_TAB.path);
     setMenuOpen(false);
   }
@@ -484,7 +736,7 @@ export function TagsView({
         : normalizeTagOrder([...pinned, { ...keep, closable: true }]).filter(
             (item, idx, arr) => arr.findIndex((candidate) => candidate.path === item.path) === idx,
           );
-    persistTags(next.length ? next : SERVER_SNAPSHOT);
+    commitTags(next.length ? next : SERVER_SNAPSHOT);
     navigateTo(keep.path);
     setMenuOpen(false);
   }
@@ -498,7 +750,7 @@ export function TagsView({
       return;
     }
     const next = normalizeTagOrder(tags.slice(0, index + 1));
-    persistTags(next);
+    commitTags(next);
     if (!next.some((item) => item.path === pathname)) {
       navigateTo(next[next.length - 1].path);
     }
@@ -513,16 +765,13 @@ export function TagsView({
     if (index < 0) {
       return;
     }
-    const target = tags[index];
-    const pinned = tags.filter((item) => !item.closable);
+    // 保留固定标签，以及右键目标及其右侧标签；只关掉左侧可关闭标签
     const next = normalizeTagOrder(
-      !target.closable ? pinned : [...pinned, target],
-    ).filter(
-      (item, idx, arr) => arr.findIndex((candidate) => candidate.path === item.path) === idx,
+      tags.filter((item, itemIndex) => !item.closable || itemIndex >= index),
     );
-    persistTags(next.length ? next : SERVER_SNAPSHOT);
+    commitTags(next.length ? next : SERVER_SNAPSHOT);
     if (!next.some((item) => item.path === pathname)) {
-      navigateTo(target.path);
+      navigateTo(tags[index].path);
     }
     setMenuOpen(false);
   }
@@ -541,23 +790,43 @@ export function TagsView({
       </svg>
       <div className="gvaTagsScroll">
         {dragTags.map((tag, index) => {
-          const active = pathname === tag.path;
+          const active = draggingPath
+            ? frozenActivePathRef.current === tag.path
+            : pathname === tag.path;
           const Icon = tag.icon ? resolveMenuIcon(tag.icon) : null;
           const draggable = tag.closable;
           const isDragging = draggingPath === tag.path;
-          const slotWidth = dragRef.current?.slotWidth ?? 0;
           const shiftX =
             draggingPath && insertIndex !== null && dragFromIdx >= 0 && !isDragging
-              ? getShiftX(index, dragFromIdx, insertIndex, slotWidth)
+              ? getTabShiftX(
+                  index,
+                  dragFromIdx,
+                  insertIndex,
+                  dragTags,
+                  tabRectsRef.current,
+                )
               : 0;
+          const roundedShiftX = Math.round(shiftX);
+          const isShifting = draggingPath && !isDragging;
+          const isShiftingActive = isShifting && roundedShiftX !== 0;
+          const ghostLeft =
+            isDragging && isSettling && settleAnim
+              ? settleAnim.anchorLeft
+              : dragGhost?.left ?? 0;
+          const ghostTransform =
+            isDragging && isSettling && settlingAnim && settleAnim && settleAnim.translateX !== 0
+              ? `translate3d(${Math.round(settleAnim.translateX)}px, 0, 0)`
+              : undefined;
           return (
             <Fragment key={tag.path}>
               {isDragging && dragGhost ? (
                 <div
                   className="gvaPageTabPlaceholder"
                   style={{
+                    // 占位用标签自身宽 + margin，保留父级 gap；slotAdvance 含 gap 不能当 width
                     width: dragGhost.width,
                     height: dragGhost.height,
+                    marginRight: dragRef.current?.marginRight ?? 0,
                     flexShrink: 0,
                   }}
                   aria-hidden="true"
@@ -579,7 +848,9 @@ export function TagsView({
                 active ? 'is-active' : '',
                 draggable ? 'is-draggable' : 'is-pinned',
                 isDragging ? 'is-dragging' : '',
-                draggingPath && !isDragging ? 'is-shifting' : '',
+                isDragging && isSettling && settlingAnim ? 'is-settling-anim' : '',
+                isShifting ? 'is-shifting' : '',
+                isShiftingActive ? 'is-shifting-active' : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
@@ -587,18 +858,34 @@ export function TagsView({
                 ...(isDragging && dragGhost
                   ? {
                       position: 'fixed',
-                      left: dragGhost.left,
+                      left: ghostLeft,
                       top: dragGhost.top,
                       width: dragGhost.width,
                       height: dragGhost.height,
                       zIndex: 4000,
-                      marginRight: 0,
                       opacity: 1,
+                      ...(ghostTransform ? { transform: ghostTransform } : {}),
                     }
                   : undefined),
-                ...(draggingPath && !isDragging
-                  ? { transform: `translateX(${shiftX}px)` }
+                ...(isShiftingActive
+                  ? { transform: `translate3d(${roundedShiftX}px, 0, 0)` }
                   : undefined),
+              }}
+              onTransitionEnd={(event) => {
+                if (
+                  !isDragging ||
+                  !settlingAnim ||
+                  event.propertyName !== 'transform' ||
+                  event.currentTarget !== event.target
+                ) {
+                  return;
+                }
+                const drag = dragRef.current;
+                if (!drag) {
+                  return;
+                }
+                const insertAt = insertIndexRef.current ?? drag.fromIdx;
+                finishSettleDrop(drag.fromIdx, insertAt);
               }}
               onClick={() => {
                 if (!draggable) {
@@ -626,24 +913,22 @@ export function TagsView({
                 const tabEl = event.currentTarget;
                 const rect = tabEl.getBoundingClientRect();
                 const fromIdx = tagsRef.current.findIndex((item) => item.path === tag.path);
-                const nextEl = tabEl.nextElementSibling as HTMLElement | null;
-                let slotWidth = rect.width;
-                if (nextEl?.dataset.tabPath) {
-                  slotWidth = nextEl.getBoundingClientRect().left - rect.left;
-                }
+                const marginRight =
+                  Number.parseFloat(window.getComputedStyle(tabEl).marginRight) || 0;
                 // 禁止浏览器把内部文本拖成 URL/文字幽灵图
                 event.preventDefault();
                 document.body.style.userSelect = 'none';
                 dragRef.current = {
                   path: tag.path,
                   fromIdx,
-                  slotWidth,
                   anchorTop: rect.top,
                   startX: event.clientX,
                   startY: event.clientY,
                   offsetX: event.clientX - rect.left,
                   width: rect.width,
                   height: rect.height,
+                  marginRight,
+                  slotAdvance: rect.width + marginRight,
                   active: false,
                 };
               }}

@@ -1,96 +1,96 @@
-# Graph Report - GoExample  (2026-08-24)
+# Graph Report - GoExample  (2026-08-25)
 
 ## Corpus Check
-- 613 files · ~352,782 words
+- 616 files · ~355,467 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5367 nodes · 14173 edges · 222 communities (197 shown, 25 thin omitted)
-- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 769 edges (avg confidence: 0.85)
+- 5427 nodes · 14317 edges · 217 communities (191 shown, 26 thin omitted)
+- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 779 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `31c3946d`
+- Built from commit: `e060d1a9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- LocaleCode
-- ProjectStatus
+- formatNumber
+- governance-filters.ts
 - New
 - go-sdk.mjs
-- use-project-management-console-controller.ts
+- use-project-management-console-presentation-controller.ts
+- types/management.ts
+- use-roles-page-surface-controller.ts
 - useLocale
-- AccessManagedRoleEntry
-- use-settings-panel-controller.ts
-- system-apis-page.tsx
-- testing.T
-- governance-filters.ts
-- use-project-detail-page-surface-controller.ts
-- request-schemas.ts
-- FeedbackState
+- admin-primitives.tsx
+- New
 - registerApplicationCommands
+- use-project-detail-page-surface-controller.ts
+- readJsonBody
+- AccessManagedRoleEntry
+- registerAuthRoutes
 - Request
 - use-command-palette-controller.ts
 - project-surface.tsx
 - gva-setting-drawer.tsx
 - context.Context
 - access-management-repository.ts
-- system.ts
+- SystemAdapter
 - api/management.ts
 - apiFetch
 - use-roles-page-bridge-controller.ts
 - auth-token.ts
-- AccessNavigationContext
+- access-governance-surface.tsx
 - requireApiAccess
 - use-users-page-editor-presentation-controller.ts
 - project-repository.ts
-- sqlclient/client.go
+- time.Duration
 - AccessManagedUserEntry
 - security-repository.ts
-- management-primitives.tsx
+- dashboard-shell.tsx
 - cluster_integration_test.go
 - scripts
-- time.Time
+- BrowserSessionManager
 - use-environments-page-controller.ts
 - WorkerGroup
-- types/management.ts
+- overview.ts
 - evidence-manifest.mjs
-- Load
+- testing.T
 - transport_benchmark_test.go
 - Metrics
-- access-filters.ts
+- access-navigation.ts
 - security_audit_chain.go
-- NewMetrics
+- TraceMiddlewareWithProvider
 - apisnapshot/main.go
-- registerRoutes
+- idempotencyMiddleware
 - sqlclient/client_test.go
 - runtime.ts
 - oidc_client.go
 - Options
 - system-user-repository.ts
+- request-schemas.ts
 - New
-- TestRealNATSJetStreamRestartRecovery
 - SessionManager
-- lifecycle_contract_test.go
+- net.Conn
 - oidc_browser_test.go
-- tracing_provider.go
-- dashboard-shell.tsx
-- security-credential-surface.tsx
+- NewMetrics
+- gva-page-loading.ts
+- LocaleCode
 - compilerOptions
 - transport-soak-report.mjs
 - JWKSVerifier
-- locale-provider.tsx
+- FeedbackState
 - tags-view.tsx
 - system-api-sync.ts
 - New
 - Redis
-- redis_test.go
+- Redis
 - evidence-verify.mjs
 - README.md
 - GoExample 待优化 V9
 - security-filters.ts
-- use-users-page-bridge-controller.ts
+- use-settings-panel-controller.ts
 - server-release.mjs
 - transport-benchmark-report.mjs
 - What You Must Do When Invoked
@@ -98,14 +98,14 @@
 - RunHTTP
 - go-project.mjs
 - nginx-edge-contract.mjs
-- NewLogger
+- New
 - api-contracts/package.json
 - server-recovery-drill.mjs
 - topbar.tsx
 - kubernetes-manifest.mjs
-- time.Duration
-- security-workbench-controls.tsx
-- NewService
+- contractStorage
+- redis_test.go
+- application_query.go
 - environment.mjs
 - postgres-recovery-report.mjs
 - redis-sentinel-contract.mjs
@@ -118,29 +118,29 @@
 - run
 - postgres-recovery-contract.mjs
 - 1. 本轮已完成
-- security-page-workbench-content.tsx
+- metrics.go
 - sidebar.tsx
 - dependencies
 - 2. 已完成优化
 - 6. 全量优缺点
 - jwks_test.go
-- clusterRouteProxy
-- Redis
-- gva-page-loading.ts
+- sync.Once
+- idempotency_fingerprint.go
+- useProjectManagementConsoleController
 - Claims
 - 1. 本轮已完成
 - NewService
-- checkReadiness
+- gva-message.ts
 - nginx-edge.mjs
-- AuthorizationRequestManager
+- GvaSettingDrawer
 - 2. 优化清单
 - success
 - snapshot_integration_test.go
-- security-credential-results-sections-content.tsx
+- Redis
 - migrate.mjs
-- redis.go
-- ThemeMode
-- authorization/authorization.go
+- theme-provider.tsx
+- users-page-editor-permissions-content.tsx
+- TestResourceAuthorizedQueryFailsClosedWithoutExecutingHandler
 - 1. 本轮完成项
 - fakeMessage
 - api-inventory-parser.ts
@@ -150,24 +150,24 @@
 - GoExample 项目架构与性能评估（V12）
 - Checker
 - finishRedisSpan
-- scriptedConnection
-- SecuritySessionEntry
-- system-menu-repository.ts
-- access-navigation.ts
-- AuthorizationRequestRecord
-- sync.Mutex
+- AccessManagementView
+- net/http.ConnState
+- use-security-governance-surface-presentation-controller.ts
+- http_test.go
+- time.Time
+- authorization/authorization.go
 - Framework
-- Redis
-- SystemMenusPage
+- requireInternalToken
+- New
 - scripts
 - GoExample 待优化清单（V12）
 - newTestBrowserSessionManager
 - openRealPostgresClient
 - namespacedStorage
-- use-roles-page-content-surface-controller.ts
+- registerRoutes
 - package.json
 - GoExample Server Threat Model
-- net/http.ConnState
+- NewResourceAuthorizer
 - newRedisBrowserSessionManagerWithSubjectLimit
 - reference-dashboard.tsx
 - database-migration.mjs
@@ -176,7 +176,7 @@
 - graphify reference: extra exports and benchmark
 - GoExample Server Security Audit Events
 - newRedisSentinelIntegrationClient
-- system-casbin-repository.ts
+- Q: graphify-out中的cache有必要上传仓库吗
 - GoExample
 - transport-benchmark-report.test.mjs
 - MSFront/package.json
@@ -185,9 +185,7 @@
 - nginx-edge.test.mjs
 - devDependencies
 - ADR 0001：Example HTTP transport 选择与测量门槛
-- registerHealthRoutes
-- failoverDeliveryObserver
-- ColorSwatch
+- eslint-config-next
 - msfront.mjs
 - Changelog
 - API Contracts
@@ -198,15 +196,13 @@
 - Server Failure Matrix And Local Recovery Drill
 - MSFront
 - Unreleased
-- panicDeliveryObserver
 - validate-openapi.mjs
 - graphify reference: add a URL and watch a folder
 - graphify reference: commit hook and native CLAUDE.md integration
 - graphify reference: incremental update and cluster-only
-- scriptedDriver
+- login-page-content.tsx
 - sidebar-navigation-content.tsx
 - github.com/zbxing/goexample/Framework
-- panicWorkerObserver
 - script-guards.test.mjs
 - graphify reference: GitHub clone and cross-repo merge
 - graphify reference: transcribe video and audio
@@ -216,7 +212,6 @@
 - 测试目录
 - AGENTS.md
 - extraction-spec.md
-- eslint-config-next
 - MSFront/AGENTS.md
 - database/README.md
 - eslint.config.mjs
@@ -247,127 +242,127 @@
   Proj/Example/cmd/server/main.go → Framework/auth/jwks.go
 - `run()` --calls--> `NewOIDCClient()`  [EXTRACTED]
   Proj/Example/cmd/server/main.go → Framework/auth/oidc_client.go
-- `run()` --calls--> `NewAuthorizationRequestManager()`  [EXTRACTED]
-  Proj/Example/cmd/server/main.go → Framework/auth/oidc_flow.go
 - `issueProjectTestToken()` --references--> `User`  [EXTRACTED]
+  Proj/Example/internal/projectapi/routes_test.go → Framework/auth/service.go
+- `issueProjectTestToken()` --references--> `Service`  [EXTRACTED]
   Proj/Example/internal/projectapi/routes_test.go → Framework/auth/service.go
 
 ## Import Cycles
 - None detected.
 
-## Communities (222 total, 25 thin omitted)
+## Communities (217 total, 26 thin omitted)
 
-### Community 0 - "LocaleCode"
+### Community 0 - "formatNumber"
 Cohesion: 0.05
-Nodes (91): ProjectMetricItem, SecurityAuditTimeline(), SecurityAuditTimelineProps, SecurityUserResults(), SecurityUserResultsProps, SecurityUserResultsTable(), SecurityUserResultsTableProps, Translate (+83 more)
+Nodes (87): ProjectCommandCenterSurface(), ProjectCommandCenterSurfaceProps, ProjectSpotlightSection(), ProjectSpotlightSectionProps, ProjectMetricItem, ProjectSpotlightCard(), SecurityUserResultsTable(), SecurityOverviewPanel() (+79 more)
 
-### Community 1 - "ProjectStatus"
+### Community 1 - "governance-filters.ts"
 Cohesion: 0.06
-Nodes (80): ProjectEndpointSurfaceCardProps, ProjectBadgeGroupProps, ProjectBadgeGroupProps, ResultsWorkbenchControls(), ResultsWorkbenchControlsProps, StatusBadgeProps, PortfolioGrid(), PortfolioGridProps (+72 more)
+Nodes (76): dynamic, normalizeEnvironment(), normalizeSort(), normalizeStatus(), ProjectsRoute(), ProjectEndpointSurfaceCardProps, ProjectBadgeGroupProps, ProjectBadgeGroupProps (+68 more)
 
 ### Community 2 - "New"
-Cohesion: 0.07
-Nodes (85): AuthorizerFunc, fiber.App, New(), assertBearerChallenge(), assertHealthDeprecationHeaders(), assertNoStoreResponse(), decodeEnvelope(), doJSONRequest() (+77 more)
+Cohesion: 0.06
+Nodes (98): fiber.App, New(), assertBearerChallenge(), assertHealthDeprecationHeaders(), assertNoStoreResponse(), decodeEnvelope(), doJSONRequest(), fiber.App (+90 more)
 
 ### Community 3 - "go-sdk.mjs"
 Cohesion: 0.06
 Nodes (78): args, checkPath, checkRoot, collectOperations(), currentDirectory, document, fail(), generated (+70 more)
 
-### Community 4 - "use-project-management-console-controller.ts"
-Cohesion: 0.04
-Nodes (66): ProjectEntityEditorCard(), ProjectEntityEditorCardProps, ProjectEntityEditorSection(), ProjectEntityEditorSectionProps, ProjectManagementConsoleRegistryContent(), ProjectManagementConsoleEditorActionsContent(), ProjectManagementConsoleEditorActionsContentProps, ProjectManagementConsoleEditorContent() (+58 more)
+### Community 4 - "use-project-management-console-presentation-controller.ts"
+Cohesion: 0.06
+Nodes (46): ProjectEntityEditorCard(), ProjectEntityEditorCardProps, ProjectEntityEditorSection(), ProjectEntityEditorSectionProps, ProjectManagementConsoleRegistryContent(), ProjectManagementConsoleRegistryContentProps, ProjectManagementConsoleEditorActionsContent(), ProjectManagementConsoleEditorActionsContentProps (+38 more)
 
-### Community 5 - "useLocale"
+### Community 5 - "types/management.ts"
 Cohesion: 0.07
-Nodes (63): SummaryCard(), OverviewSummarySection(), OverviewSummarySectionProps, DashboardPageContent(), EnvironmentsPageOverviewContent(), EnvironmentsPageOverviewContentProps, IntegrationsPage(), IntegrationsPageProps (+55 more)
+Nodes (63): ProjectEndpointField, ProjectEndpointFieldGridProps, ProjectEndpointFooterLink(), ProjectEndpointFooterLinkProps, ProjectEndpointIdentity, ProjectEndpointMetric, ProjectEndpointSurfaceCard(), IntegrationsPageResultsContent() (+55 more)
 
-### Community 6 - "AccessManagedRoleEntry"
-Cohesion: 0.06
-Nodes (60): RolesPageProps, RolesRegistryWorkspaceContentProps, UsersPageProps, AccessManagedRoleDefinition, AccessManagedRoleEntry, AccessManagementView, formatDecimal(), UseRolesPageBridgeControllerOptions (+52 more)
+### Community 6 - "use-roles-page-surface-controller.ts"
+Cohesion: 0.14
+Nodes (23): formatDecimal(), buildRolesPageOverviewStats(), RolesPageOverviewStats, TranslationFn, useRolesPageCommandCenterSurfaceController(), UseRolesPageCommandCenterSurfaceControllerOptions, TranslationFn, useRolesPageCommandCenterTagsSurfaceController() (+15 more)
 
-### Community 7 - "use-settings-panel-controller.ts"
-Cohesion: 0.06
-Nodes (59): SectionHeader(), SectionHeaderProps, SettingsPage(), SettingsPageProps, LocaleMode, SettingsPreferencesContent(), SettingsPreferencesContentProps, ThemeMode (+51 more)
+### Community 7 - "useLocale"
+Cohesion: 0.05
+Nodes (55): AttentionCardProps, ManagementContextStrip(), ManagementContextStripProps, SummaryCard(), SummaryCardProps, TonePillProps, OverviewSummarySection(), OverviewSummarySectionProps (+47 more)
 
-### Community 8 - "system-apis-page.tsx"
-Cohesion: 0.08
-Nodes (53): baseProps(), IconArrowDown(), IconArrowLeft(), IconArrowRight(), IconCompass(), IconDelete(), IconDownload(), IconEdit() (+45 more)
+### Community 8 - "admin-primitives.tsx"
+Cohesion: 0.07
+Nodes (60): baseProps(), IconArrowDown(), IconArrowLeft(), IconArrowRight(), IconCompass(), IconDelete(), IconDownload(), IconEdit() (+52 more)
 
-### Community 9 - "testing.T"
-Cohesion: 0.06
-Nodes (48): NewAuthorizationRequestManager(), TestAuthorizationRequestManagerBuildsSingleUsePKCERequest(), TestAuthorizationRequestManagerExpiresAndBoundsPendingState(), TestAuthorizationRequestStoreSharesHashOnlyStateAcrossManagers(), TestNewAuthorizationRequestManagerRejectsUnsafeConfiguration(), New(), TestCanceledCallerDoesNotCancelSharedRefresh(), TestReadinessCachesAndCopiesReports() (+40 more)
+### Community 9 - "New"
+Cohesion: 0.07
+Nodes (29): New(), NewWorkerGroup(), TestMinimumDeliveryLeaseRejectsInvalidAndOverflowingBudgets(), TestMinimumDeliveryLeaseUsesEffectiveRetryBudget(), TestNewWorkerGroupValidatesCallbacksAndConcurrency(), TestWorkerGroupBoundsAndRedactsDeliverySettlementFailure(), TestWorkerGroupBoundsAndRedactsLeaseExtensionFailure(), TestWorkerGroupCancellationDuringRetryDoesNotSettleDelivery() (+21 more)
 
-### Community 10 - "governance-filters.ts"
-Cohesion: 0.06
-Nodes (61): ProjectMetricItem, ProjectMetricListProps, ProjectSpotlightCardContent(), ProjectSpotlightCardContentProps, apiInventoryAreaFilters, appendProjectsPortfolioSearchParams(), buildDashboardHref(), buildEnvironmentsHref() (+53 more)
+### Community 10 - "registerApplicationCommands"
+Cohesion: 0.12
+Nodes (30): applicationPrincipalFromContext(), authorizeApplicationResource(), authorizeApplicationRoles(), cloneAuthorizationResource(), fiber.Ctx, Options, resolveApplicationResource(), validApplicationRoleID() (+22 more)
 
 ### Community 11 - "use-project-detail-page-surface-controller.ts"
-Cohesion: 0.06
-Nodes (52): ProjectDetailPanelSection(), ProjectDetailPanelSectionProps, ProjectEndpointField, ProjectEndpointFieldGridProps, ProjectEndpointFooterLink(), ProjectEndpointFooterLinkProps, ProjectEndpointIdentity, ProjectEndpointMetric (+44 more)
+Cohesion: 0.05
+Nodes (69): ProjectDetailPanelSection(), ProjectDetailPanelSectionProps, EnvironmentCard(), ProjectDetailActionsContent(), ProjectDetailActionsContentProps, ProjectDetailAttentionSection(), ProjectDetailPageContent(), ProjectDetailPageContentProps (+61 more)
 
-### Community 12 - "request-schemas.ts"
-Cohesion: 0.08
-Nodes (56): DELETE(), GET(), POST(), PUT(), addOneSchema, applySyncSchema, GET(), httpMethod (+48 more)
+### Community 12 - "readJsonBody"
+Cohesion: 0.22
+Nodes (28): DELETE(), GET(), POST(), PUT(), GET(), GET(), PUT(), GET() (+20 more)
 
-### Community 13 - "FeedbackState"
-Cohesion: 0.07
-Nodes (48): AccessCustomInputField(), AccessCustomInputFieldProps, AccessSelectionGrid(), AccessSelectionGridProps, AccessSelectionOptionCard(), AccessSelectionOptionCardProps, EditorSection(), EditorSectionProps (+40 more)
+### Community 13 - "AccessManagedRoleEntry"
+Cohesion: 0.11
+Nodes (33): EditorWorkspaceShell(), RolesPageContent(), RolesPageContentProps, RolesEditorActionsContent(), RolesEditorActionsContentProps, RolesEditorMembersContent(), RolesEditorMembersContentProps, RolesEditorPermissionsContent() (+25 more)
 
-### Community 14 - "registerApplicationCommands"
-Cohesion: 0.06
-Nodes (54): applicationPrincipalFromContext(), authorizeApplicationRoles(), fiber.Ctx, Options, fiber.Router, Options, registerApplicationCommands(), applicationPreconditionFromContext() (+46 more)
+### Community 14 - "registerAuthRoutes"
+Cohesion: 0.10
+Nodes (23): browserSessionRequiresCSRF(), currentClaims(), fiber.Ctx, fiber.Handler, Options, requireAuth(), requireBrowserSession(), bindBody() (+15 more)
 
 ### Community 15 - "Request"
-Cohesion: 0.09
-Nodes (56): Authorizer, Request, Resource, TestApplicationCommandsRejectAmbiguousDefinitions(), TestTypedApplicationQueriesRejectUnsafeBindingsAndOverlappingRoutes(), authorizeApplicationResource(), cloneAuthorizationResource(), evaluateApplicationAuthorization() (+48 more)
+Cohesion: 0.16
+Nodes (33): Authorizer, Decision, Request, Resource, TestApplicationCommandsRejectAmbiguousDefinitions(), TestTypedApplicationQueriesRejectUnsafeBindingsAndOverlappingRoutes(), evaluateApplicationAuthorization(), validateApplicationResourceAuthorization() (+25 more)
 
 ### Community 16 - "use-command-palette-controller.ts"
-Cohesion: 0.06
-Nodes (47): metadata, CommandPalette(), CommandPaletteContent(), CommandPaletteShell(), CommandPaletteShellCopy, CommandPaletteShellProps, NavigationItem, navigationItems (+39 more)
+Cohesion: 0.10
+Nodes (28): CommandPalette(), CommandPaletteContent(), CommandPaletteShell(), CommandPaletteShellCopy, CommandPaletteShellProps, NavigationItem, navigationItems, buildCommandPaletteItemDomId() (+20 more)
 
 ### Community 17 - "project-surface.tsx"
-Cohesion: 0.06
-Nodes (42): ProjectCommandCenterSurface(), ProjectCommandCenterSurfaceProps, ProjectSpotlightSection(), ProjectSpotlightSectionProps, ProjectBadgeGroup(), ProjectMetricList(), ProjectMetricListProps, ProjectSpotlightCard() (+34 more)
+Cohesion: 0.10
+Nodes (25): ProjectMetricItem, ProjectMetricListProps, ProjectSpotlightCardContent(), ProjectSpotlightCardContentProps, ProjectBadgeGroup(), ProjectMetricList(), ProjectMetricListProps, ProjectSpotlightCardProps (+17 more)
 
 ### Community 18 - "gva-setting-drawer.tsx"
 Cohesion: 0.06
-Nodes (41): LayoutModeCard(), MenuThemeSelector(), PresetCard(), PresetsPane(), applyPreset(), handleExport(), handleImport(), shadowOptions (+33 more)
+Nodes (44): handleShellSettingsChange(), LayoutModeCard(), MenuThemeSelector(), PresetCard(), PresetsPane(), applyPreset(), handleExport(), handleImport() (+36 more)
 
 ### Community 19 - "context.Context"
-Cohesion: 0.10
-Nodes (26): classifyResult(), finishSpan(), context.Context, net/http.Header, net/url.Values, BrowserSessionDeviceNameRequest, BrowserSessionInfo, BrowserSessionListEnvelope (+18 more)
+Cohesion: 0.06
+Nodes (41): context.Context, go.opentelemetry.io/otel/sdk/trace.ReadWriteSpan, go.opentelemetry.io/otel/sdk/trace.SpanProcessor, net/http.Header, net/url.Values, sync.RWMutex, BrowserSessionDeviceNameRequest, BrowserSessionInfo (+33 more)
 
 ### Community 20 - "access-management-repository.ts"
 Cohesion: 0.11
 Nodes (54): AccessPermissionCatalogEntry, AccessRoleSeedDefinition, filterValidPermissionIdentifiers(), isValidPermissionIdentifier(), isValidRoleIdentifier(), MSFRONT_DEFAULT_ROLE_DEFINITIONS, MSFRONT_PERMISSION_CATALOG, MSFRONT_SUPPORTED_PERMISSIONS (+46 more)
 
-### Community 21 - "system.ts"
+### Community 21 - "SystemAdapter"
 Cohesion: 0.07
-Nodes (25): LoginPageContent(), fiberSystemAdapter, SystemAdapter, CasbinFile, MenusFile, RolesFile, AuthSessionUser, AuthTokenPayload (+17 more)
+Nodes (18): fiberSystemAdapter, SystemAdapter, ApisFile, SyncApiPreview, MenusFile, AuthSessionUser, CreateSystemApiInput, CreateSystemMenuInput (+10 more)
 
 ### Community 22 - "api/management.ts"
 Cohesion: 0.07
-Nodes (42): GET(), DashboardRoute(), dynamic, dynamic, EnvironmentsRoute(), dynamic, IntegrationsRoute(), dynamic (+34 more)
+Nodes (45): DashboardRoute(), dynamic, dynamic, EnvironmentsRoute(), dynamic, IntegrationsRoute(), dynamic, ProjectDetailRoute() (+37 more)
 
 ### Community 23 - "apiFetch"
-Cohesion: 0.05
-Nodes (27): downloadText(), methodLabel(), SystemApisPage(), addOneSyncApi(), confirmBatchDelete(), confirmDelete(), downloadTemplate(), exportApis() (+19 more)
+Cohesion: 0.04
+Nodes (30): downloadText(), methodLabel(), SystemApisPage(), addOneSyncApi(), confirmBatchDelete(), confirmDelete(), downloadTemplate(), exportApis() (+22 more)
 
 ### Community 24 - "use-roles-page-bridge-controller.ts"
-Cohesion: 0.08
-Nodes (44): RolesPageContent(), RolesPage(), refreshAccessManagement(), TranslationFn, useRolesPageBridgeController(), createRoleDraft(), dedupeStrings(), RoleEditorDraft (+36 more)
+Cohesion: 0.10
+Nodes (36): refreshAccessManagement(), TranslationFn, useRolesPageBridgeController(), createRoleDraft(), dedupeStrings(), RoleEditorDraft, selectManagedRole(), toDraft() (+28 more)
 
 ### Community 25 - "auth-token.ts"
 Cohesion: 0.09
 Nodes (36): POST(), POST(), GET(), register(), jsonFail(), requireSession(), AUTH_COOKIE_NAME, buildAuthCookie() (+28 more)
 
-### Community 26 - "AccessNavigationContext"
-Cohesion: 0.11
-Nodes (42): AccessCommandCenterSurfaceContent(), AccessCommandCenterSurfaceContentProps, AccessSurfaceMetricGridProps, SummaryCardProps, TonePillProps, AccessCommandCenterSurface(), AccessCommandCenterSurfaceProps, AccessCoverageCard() (+34 more)
+### Community 26 - "access-governance-surface.tsx"
+Cohesion: 0.08
+Nodes (49): AccessCommandCenterSurfaceContent(), AccessCommandCenterSurfaceContentProps, AccessSurfaceMetricGridProps, SummaryCardProps, TonePillProps, AccessCommandCenterSurface(), AccessCommandCenterSurfaceProps, AccessCoverageCard() (+41 more)
 
 ### Community 27 - "requireApiAccess"
-Cohesion: 0.14
-Nodes (34): GET(), GET(), DELETE(), GET(), PUT(), GET(), POST(), POST() (+26 more)
+Cohesion: 0.16
+Nodes (27): GET(), GET(), GET(), DELETE(), GET(), PUT(), GET(), POST() (+19 more)
 
 ### Community 28 - "use-users-page-editor-presentation-controller.ts"
 Cohesion: 0.08
@@ -375,135 +370,131 @@ Nodes (44): ManagedUserUpdateInput, FrameworkUserStatus, collectPermissionsForRo
 
 ### Community 29 - "project-repository.ts"
 Cohesion: 0.09
-Nodes (50): writeJsonPath(), clampInteger(), compareProjectSummaries(), createProject(), createProjectInDatabase(), deleteProject(), deleteProjectInDatabase(), getProjectById() (+42 more)
+Nodes (49): getManagedProjectCatalog(), getManagedProjectSummaries(), clampInteger(), compareProjectSummaries(), createProject(), createProjectInDatabase(), deleteProject(), deleteProjectInDatabase() (+41 more)
 
-### Community 30 - "sqlclient/client.go"
-Cohesion: 0.10
-Nodes (31): boundedContext(), classifyResult(), exec(), execVersioned(), finishSpan(), isRetryablePostgresError(), jitteredBackoff(), New() (+23 more)
+### Community 30 - "time.Duration"
+Cohesion: 0.12
+Nodes (28): boundedContext(), classifyResult(), exec(), execVersioned(), finishSpan(), isRetryablePostgresError(), jitteredBackoff(), nextRetryBackoff() (+20 more)
 
 ### Community 31 - "AccessManagedUserEntry"
-Cohesion: 0.12
-Nodes (37): UsersPageContentProps, UsersEditorActionsContentProps, PermissionSectionModel, ProfileSectionModel, renderUsersProfileField(), UsersEditorProfileContent(), UsersEditorProfileContentProps, RoleSectionModel (+29 more)
+Cohesion: 0.09
+Nodes (44): RegistryWorkspaceShell(), UsersPageContent(), UsersPageContentProps, UsersEditorActionsContentProps, PermissionSectionModel, ProfileSectionModel, renderUsersProfileField(), UsersEditorProfileContent() (+36 more)
 
 ### Community 32 - "security-repository.ts"
-Cohesion: 0.06
-Nodes (44): buildSecurityGovernanceView(), rankCredentialStatus(), rankUserStatus(), resolveAuditTone(), resolveCredentialStatus(), DatabasePoolOptions, EnvironmentValues, readBoundedInteger() (+36 more)
+Cohesion: 0.07
+Nodes (40): buildSecurityGovernanceView(), rankCredentialStatus(), rankUserStatus(), resolveAuditTone(), resolveCredentialStatus(), DatabasePoolOptions, EnvironmentValues, readBoundedInteger() (+32 more)
 
-### Community 33 - "management-primitives.tsx"
-Cohesion: 0.08
-Nodes (38): AttentionCard(), AttentionCardProps, ManagementContextStripProps, SummaryCardProps, TonePill(), TonePillProps, toneValueFromManagementTone(), SecurityGovernanceOverviewPanelShell() (+30 more)
+### Community 33 - "dashboard-shell.tsx"
+Cohesion: 0.12
+Nodes (22): DashboardShell(), onPointerDown(), GvaPageTransition(), useGvaListLoad(), run(), finishLeave(), GVA_LEAVE_DURATIONS, isGvaPageLeaving() (+14 more)
 
 ### Community 34 - "cluster_integration_test.go"
-Cohesion: 0.11
-Nodes (46): calibrateExistingContractConsumer(), clusterAttemptContext(), clusterAvailable(), clusterReady(), connectClusterJetStream(), createClusterConsumer(), createClusterStream(), nats.Conn (+38 more)
+Cohesion: 0.07
+Nodes (59): calibrateExistingContractConsumer(), clusterAttemptContext(), clusterAvailable(), clusterReady(), connectClusterJetStream(), createClusterConsumer(), createClusterStream(), disableClusterRouteProxies() (+51 more)
 
 ### Community 35 - "scripts"
 Cohesion: 0.04
 Nodes (48): scripts, api:compat, api:snapshot, bench:server, bench:transports, build, build:front, build:server (+40 more)
 
-### Community 36 - "time.Time"
-Cohesion: 0.11
-Nodes (23): BrowserSessionConfig, BrowserSessionInventoryStore, BrowserSessionMetadataStore, testBrowserSessionStore, browserSessionInfo(), cloneClaims(), BrowserSessionCredentials, BrowserSessionInfo (+15 more)
+### Community 36 - "BrowserSessionManager"
+Cohesion: 0.20
+Nodes (16): BrowserSessionConfig, BrowserSessionInventoryStore, BrowserSessionMetadataStore, browserSessionInfo(), cloneClaims(), BrowserSessionCredentials, BrowserSessionInfo, BrowserSessionManager (+8 more)
 
 ### Community 37 - "use-environments-page-controller.ts"
-Cohesion: 0.08
-Nodes (34): ResultsWorkspaceShell(), WorkbenchResultsBar(), WorkbenchResultsBarProps, WorkbenchResultsTag, EnvironmentsPageResultsContent(), EnvironmentsPage(), EnvironmentsPageLowerContent(), EnvironmentsPageLowerContentProps (+26 more)
+Cohesion: 0.06
+Nodes (42): SecurityHeroOverview(), WorkbenchResultsBar(), WorkbenchResultsBarProps, WorkbenchResultsTag, EnvironmentsPageWorkbenchResultsBarContent(), EnvironmentsPageWorkbenchResultsBarContentProps, SecurityPage(), ProjectManagementConsoleRegistryWorkbenchResultsBarContent() (+34 more)
 
 ### Community 38 - "WorkerGroup"
 Cohesion: 0.10
-Nodes (22): addDeliveryBudget(), callDeliveryLeaseExtension(), callDeliverySettlement(), defaultDeliveryRetryConfig(), deliveryBackoff(), deliveryLeaseExtensionEnabled(), Client, DeliveryRetryConfig (+14 more)
+Nodes (23): addDeliveryBudget(), callDeliveryLeaseExtension(), callDeliverySettlement(), defaultDeliveryRetryConfig(), deliveryBackoff(), deliveryLeaseExtensionEnabled(), Client, Delivery (+15 more)
 
-### Community 39 - "types/management.ts"
-Cohesion: 0.07
-Nodes (33): dynamic, normalizeEnvironment(), normalizeSort(), normalizeStatus(), ProjectsRoute(), StatusBadge(), ProjectsRegistryPage(), ServerTable() (+25 more)
+### Community 39 - "overview.ts"
+Cohesion: 0.24
+Nodes (13): buildActivitySignals(), buildAlertSignals(), buildManagementOverview(), countByStatus(), createSummaryDraft(), findHottestServer(), healthScore(), highSeverityThresholds (+5 more)
 
 ### Community 40 - "evidence-manifest.mjs"
 Cohesion: 0.05
 Nodes (40): benchmarkArtifactPaths, benchmarkArtifactsComplete, benchmarkFiles, benchmarkStatusArtifact, collectEvidence(), defaultOutput, describeFile(), describeInput() (+32 more)
 
-### Community 41 - "Load"
-Cohesion: 0.11
-Nodes (39): boolValue(), csvValues(), durationValue(), floatValue(), Config, intValue(), Load(), millisecondDurationValue() (+31 more)
+### Community 41 - "testing.T"
+Cohesion: 0.08
+Nodes (53): boolValue(), csvValues(), durationValue(), floatValue(), Config, intValue(), Load(), millisecondDurationValue() (+45 more)
 
 ### Community 42 - "transport_benchmark_test.go"
-Cohesion: 0.10
-Nodes (36): BenchmarkReadiness(), BenchmarkMetricsMiddlewareParallel(), decrementNonnegative(), net/http.Client, sync/atomic.Int64, testing.B, testing.TB, BenchmarkProjectTransportTCP() (+28 more)
-
-### Community 43 - "Metrics"
 Cohesion: 0.07
-Nodes (13): formatDurationBucket(), fiber.Ctx, Metrics, responseStatus(), routePath(), securityLabelIndex(), writeRuntimeMetrics(), strings.Builder (+5 more)
+Nodes (53): BenchmarkReadiness(), BenchmarkMetricsMiddlewareParallel(), net/http.Client, net/http.Handler, sync/atomic.Int64, testing.B, testing.TB, BenchmarkProjectTransportTCP() (+45 more)
 
-### Community 44 - "access-filters.ts"
-Cohesion: 0.10
-Nodes (29): RolesPageOverviewContent(), UsersPageOverviewContent(), accessUserStatusFilters, buildRolesHref(), BuildRolesHrefOptions, buildUsersHref(), BuildUsersHrefOptions, normalizeAccessSearch() (+21 more)
+### Community 44 - "access-navigation.ts"
+Cohesion: 0.06
+Nodes (55): groupEntriesByStatus(), SecurityApiKeyResultsSection(), SecurityCredentialResults(), SecurityCredentialResultsProps, SecuritySessionResultsSection(), TranslationFn, SecurityCredentialCardBadgeActions(), toneFromCredentialStatus() (+47 more)
 
 ### Community 45 - "security_audit_chain.go"
 Cohesion: 0.11
 Nodes (30): auditChainDigest(), auditEventReasonTargetValid(), boundedAuditValue(), maxAuditEncryptionEnvelopeBytes(), newAuditChainVerifier(), NewEncryptedAuditWriter(), NewHashChainAuditSink(), TestEncryptedAuditWriterEncryptsAndSupportsKeyRotation() (+22 more)
 
-### Community 46 - "NewMetrics"
-Cohesion: 0.09
-Nodes (31): NewMetrics(), TestMetricsMapsDeadlineToRequestTimeout(), TestMetricsRecordsBoundedHTTPConnectionLifecycle(), TestMetricsRecordsBoundedQueueWorkerLifecycle(), TestMetricsRecordsNormalizedRoute(), TestMetricsRenderAdmissionRejections(), TestMetricsRenderSecurityAuditSinkOutcomesWithFixedLabels(), TestMetricsRenderSecurityEventsWithFixedLabels() (+23 more)
+### Community 46 - "TraceMiddlewareWithProvider"
+Cohesion: 0.10
+Nodes (26): fiber.Ctx, fiber.Handler, parseLevel(), requestContext(), RequestLogger(), responseBytes(), TestRequestLoggerSkipsConfiguredPaths(), TestResponseBytesDoesNotMaterializeStream() (+18 more)
 
 ### Community 47 - "apisnapshot/main.go"
 Cohesion: 0.12
 Nodes (35): semanticVersion, snapshot, addSymbol(), allowsBreakingChange(), collectDeclaration(), collectPackageSymbols(), collectSnapshot(), compareSemanticVersions() (+27 more)
 
-### Community 48 - "registerRoutes"
-Cohesion: 0.09
-Nodes (31): atomicRateLimiter(), boundedConcurrency(), fiber.Ctx, fiber.Handler, fiber.Storage, idempotencyMiddleware(), rateLimiter(), rejectWhenDraining() (+23 more)
+### Community 48 - "idempotencyMiddleware"
+Cohesion: 0.15
+Nodes (21): atomicRateLimiter(), boundedConcurrency(), fiber.Ctx, fiber.Handler, fiber.Storage, idempotencyMiddleware(), rateLimiter(), rejectWhenDraining() (+13 more)
 
 ### Community 49 - "sqlclient/client_test.go"
-Cohesion: 0.14
-Nodes (25): assertDatabaseSpanAttributes(), assertSpanExcludes(), consumeFailure(), Client, Config, newTracedClient(), openScriptedDatabase(), spanAttribute() (+17 more)
+Cohesion: 0.08
+Nodes (37): New(), assertDatabaseSpanAttributes(), assertSpanExcludes(), consumeFailure(), Client, Config, newTracedClient(), openScriptedDatabase() (+29 more)
 
 ### Community 50 - "runtime.ts"
-Cohesion: 0.11
-Nodes (31): RuntimeSurfacePanelDetailsContent(), RuntimeSurfacePanelDetailsContentProps, getToneStyle(), RuntimeSurfacePanel(), RuntimeSurfacePanelProps, RuntimeSurfacePreviewProps, RuntimeSurfacePanelSummaryContent(), RuntimeSurfacePanelSummaryContentProps (+23 more)
+Cohesion: 0.17
+Nodes (24): asRecord(), buildBackendRuntimeSummary(), buildProjectRuntimeSummary(), buildRuntimeSurfaceSummary(), formatCompactNumber(), formatIdentity(), formatRuntimeRole(), formatUptime() (+16 more)
 
 ### Community 51 - "oidc_client.go"
-Cohesion: 0.13
-Nodes (28): OIDCCallbackResult, OIDCClientConfig, OIDCProviderMetadata, OIDCTokenResponse, CompleteOIDCCallback(), TestCompleteOIDCCallbackConsumesStateAndBindsIDTokenNonce(), TestCompleteOIDCCallbackFailsClosedAndDoesNotLeakProviderErrors(), boundedToken() (+20 more)
+Cohesion: 0.17
+Nodes (22): OIDCClientConfig, OIDCProviderMetadata, OIDCTokenResponse, TestCompleteOIDCCallbackConsumesStateAndBindsIDTokenNonce(), TestCompleteOIDCCallbackFailsClosedAndDoesNotLeakProviderErrors(), boundedToken(), containsString(), isJSONResponse() (+14 more)
 
 ### Community 52 - "Options"
-Cohesion: 0.11
-Nodes (31): AuthenticationEnabled(), fiber.Storage, fiber.StructValidator, Options, withDefaults(), validResourceAuthorizationTimeout(), RouteRegistrar, Commands() (+23 more)
+Cohesion: 0.14
+Nodes (27): AuthenticationEnabled(), fiber.Storage, fiber.StructValidator, Options, withDefaults(), RouteRegistrar, Commands(), Endpoints() (+19 more)
 
 ### Community 53 - "system-user-repository.ts"
-Cohesion: 0.17
-Nodes (30): localSystemAdapter, loginWithPassword(), createId(), nowIso(), compareHash(), derivePassword(), hashPassword(), needsPasswordRehash() (+22 more)
+Cohesion: 0.10
+Nodes (44): localSystemAdapter, loginWithPassword(), readCookieValue(), resolveSessionFromRequest(), nowIso(), compareHash(), derivePassword(), hashPassword() (+36 more)
 
-### Community 54 - "New"
-Cohesion: 0.11
-Nodes (25): applicationHeaders(), deadLetterID(), fromJetStreamMessage(), nats.Header, jetStreamControlHeader(), New(), nilInterface(), TestAdapterDeadLetterIsPublishBeforeAckAndDedupeStable() (+17 more)
+### Community 54 - "request-schemas.ts"
+Cohesion: 0.08
+Nodes (25): createSystemApiSchema, createSystemMenuSchema, createSystemRoleSchema, createSystemUserSchema, httpMethod, identifier, loginRequestSchema, longText (+17 more)
 
-### Community 55 - "TestRealNATSJetStreamRestartRecovery"
-Cohesion: 0.11
-Nodes (23): PreflightConsumer(), stopClusterServersConcurrently(), calibrateContractConsumer(), connectRealJetStream(), createContractStream(), nats.Conn, newContractDeliveryObserver(), newContractLeaseObserver() (+15 more)
+### Community 55 - "New"
+Cohesion: 0.08
+Nodes (35): applicationHeaders(), deadLetterID(), fromJetStreamMessage(), nats.Header, jetStreamControlHeader(), New(), nilInterface(), PreflightConsumer() (+27 more)
 
 ### Community 56 - "SessionManager"
-Cohesion: 0.13
-Nodes (23): sessionFamily, SessionManager, SessionStore, randomID(), SessionConfig, hashRefreshToken(), newRefreshToken(), NewSessionManager() (+15 more)
+Cohesion: 0.14
+Nodes (22): sessionFamily, SessionManager, SessionStore, SessionConfig, hashRefreshToken(), newRefreshToken(), NewSessionManager(), hashForTest() (+14 more)
 
-### Community 57 - "lifecycle_contract_test.go"
-Cohesion: 0.15
-Nodes (28): fiber.App, startLifecycleApp(), startLifecycleAppOnListener(), TestAPIAdmissionRejectsExcessRequestsAndKeepsReadinessAvailable(), TestClientDisconnectIsNotPropagatedToApplicationContext(), TestConnectionConcurrencyRejectsExcessConnectionsOverTCP(), TestDrainingRejectsNewAPIRequestsButKeepsExistingWorkAndProbeContract(), TestKeepAliveReuseAndIdleTimeoutOverTCP() (+20 more)
+### Community 57 - "net.Conn"
+Cohesion: 0.47
+Nodes (4): net.Conn, net.Listener, connectionTrackingListener, writeBufferListener
 
 ### Community 58 - "oidc_browser_test.go"
 Cohesion: 0.19
 Nodes (25): completeOIDCBrowserSession(), fiber.App, jwt.Claims, newOIDCBrowserTestApp(), newOIDCBrowserTestAppWithSessionStore(), newOIDCBrowserTestProvider(), oidcBrowserCallback(), responseCookie() (+17 more)
 
-### Community 59 - "tracing_provider.go"
-Cohesion: 0.11
-Nodes (22): newTraceExporterHTTPClient(), newTraceQueueBudget(), NewTracerProvider(), newTracerProvider(), traceBudgetFraction(), traceExporterRetryConfig(), validateTracingConfig(), withTracingDefaults() (+14 more)
+### Community 59 - "NewMetrics"
+Cohesion: 0.10
+Nodes (33): NewMetrics(), TestMetricsMapsDeadlineToRequestTimeout(), TestMetricsRecordsBoundedHTTPConnectionLifecycle(), TestMetricsRecordsBoundedQueueWorkerLifecycle(), TestMetricsRecordsNormalizedRoute(), TestMetricsRenderAdmissionRejections(), TestMetricsRenderSecurityAuditSinkOutcomesWithFixedLabels(), TestMetricsRenderSecurityEventsWithFixedLabels() (+25 more)
 
-### Community 60 - "dashboard-shell.tsx"
+### Community 60 - "gva-page-loading.ts"
 Cohesion: 0.12
-Nodes (21): BottomInfo(), DashboardShell(), handleShellSettingsChange(), GvaPageTransition(), finishLeave(), GVA_LEAVE_DURATIONS, isGvaPageLeaving(), LeaveEndListener (+13 more)
+Nodes (35): GvaRouteLoadingEffects(), isInternalDashboardHref(), applyProgressVisual(), beginGvaContentLoading(), beginGvaRouteProgress(), clamp(), clearContentTimers(), clearFinishTimers() (+27 more)
 
-### Community 61 - "security-credential-surface.tsx"
-Cohesion: 0.09
-Nodes (25): SecurityApiKeyCardContent(), SecurityApiKeyCardContentProps, SecurityCredentialCardBadgeActionsProps, SecurityCredentialCardFooterLinkProps, SecurityCredentialCardProps, TranslationFn, SecurityApiKeyResultsSectionProps, SecurityCredentialStatusGroup (+17 more)
+### Community 61 - "LocaleCode"
+Cohesion: 0.05
+Nodes (61): SecurityApiKeyCardContent(), SecurityApiKeyCardContentProps, SecurityCredentialCardBadgeActionsProps, SecurityCredentialCardFooterLinkProps, SecurityCredentialCardProps, TranslationFn, SecurityApiKeyResultsSectionProps, SecurityCredentialStatusGroup (+53 more)
 
 ### Community 62 - "compilerOptions"
 Cohesion: 0.06
@@ -514,32 +505,32 @@ Cohesion: 0.08
 Nodes (26): durations, evidenceRoot, fail(), measurements, median(), options, parseArguments(), parseMeasurements() (+18 more)
 
 ### Community 64 - "JWKSVerifier"
-Cohesion: 0.15
-Nodes (22): IDTokenClaims, jwk, JWKSConfig, jwksDocument, refreshReason, JWKSVerifier, jwt.Claims, jwt.RegisteredClaims (+14 more)
+Cohesion: 0.07
+Nodes (44): AuthorizationCode, AuthorizationRequest, AuthorizationRequestConfig, IDTokenClaims, jwk, JWKSConfig, jwksDocument, OIDCCallbackResult (+36 more)
 
-### Community 65 - "locale-provider.tsx"
-Cohesion: 0.11
-Nodes (21): ManagementContextStrip(), RegistryWorkbenchControls(), RegistryWorkbenchControlsProps, RolesRegistryWorkbenchContent(), RolesRegistryWorkbenchContentProps, RolesPageRegistryWorkbenchContextActionsContent(), RolesPageRegistryWorkbenchContextActionsContentProps, RolesPageRegistryWorkbenchFiltersContent() (+13 more)
+### Community 65 - "FeedbackState"
+Cohesion: 0.07
+Nodes (48): EditorWorkspaceShellProps, FeedbackBanner(), FeedbackBannerProps, FeedbackState, RegistryWorkspaceShellProps, ResultsWorkspaceShell(), ResultsWorkspaceShellProps, EnvironmentsPageResultsContent() (+40 more)
 
 ### Community 66 - "tags-view.tsx"
-Cohesion: 0.15
-Nodes (27): computeInsertIndex(), emitStorage(), ensureTag(), getServerSnapshot(), getShiftX(), HOME_TAB, listeners, moveToIndex() (+19 more)
+Cohesion: 0.11
+Nodes (35): captureTabRects(), computeInsertIndex(), emitStorage(), ensureTag(), getDropTargetLeft(), getReorderedLefts(), getServerSnapshot(), getTabShiftX() (+27 more)
 
 ### Community 67 - "system-api-sync.ts"
-Cohesion: 0.17
-Nodes (24): dataRootPath(), readJsonFile(), resolveDataFilePath(), writeJsonFile(), ApisFile, createSystemApi(), deleteSystemApi(), listSystemApis() (+16 more)
+Cohesion: 0.08
+Nodes (44): addOneSchema, applySyncSchema, httpMethod, ignoreSchema, POST(), syncItemSchema, syncMutationSchema, inventoryFilePath (+36 more)
 
 ### Community 68 - "New"
-Cohesion: 0.16
-Nodes (22): classifyError(), cloneTLSConfig(), New(), spanMethod(), onlyEndedSpan(), spanAttributes(), TestClientCreatesLowSensitivitySpanAndPropagatesW3CContext(), TestClientEnforcesResponseHeaderLimit() (+14 more)
+Cohesion: 0.15
+Nodes (23): cloneTLSConfig(), New(), spanMethod(), onlyEndedSpan(), spanAttributes(), TestClientCreatesLowSensitivitySpanAndPropagatesW3CContext(), TestClientEnforcesResponseHeaderLimit(), TestClientNormalizesCustomMethodInSpan() (+15 more)
 
 ### Community 69 - "Redis"
 Cohesion: 0.21
 Nodes (9): decodeBrowserSessionPayload(), formatRedisMillis(), Redis, parseBrowserSessionMetadata(), validBrowserSessionDeviceName(), validBrowserSessionPublicID(), validBrowserSessionStoredSubject(), validSHA256Hex() (+1 more)
 
-### Community 70 - "redis_test.go"
-Cohesion: 0.13
-Nodes (26): NewRedis(), encodeRedisSpan(), miniredis.Miniredis, Redis, isFixedRedisStatus(), newRedisTestTracerProvider(), newTestRedis(), newTestRedisWithProvider() (+18 more)
+### Community 70 - "Redis"
+Cohesion: 0.09
+Nodes (29): applyRedisClientBudgets(), RateLimitResult, Redis, NewRedis(), newRedisClient(), redisFailure(), redisSentinelOptions(), TestRealRedisIntegration() (+21 more)
 
 ### Community 71 - "evidence-verify.mjs"
 Cohesion: 0.15
@@ -554,12 +545,12 @@ Cohesion: 0.07
 Nodes (26): 10. 完成定义, 1. 本轮状态, 2. 优化原则, 3. 优先级总表, 4. P0 实施项, 5. P1 实施项, 6. P2 实施项, 7. 执行顺序与依赖 (+18 more)
 
 ### Community 74 - "security-filters.ts"
-Cohesion: 0.14
-Nodes (23): dynamic, SecurityRoute(), SecurityPage(), BuildSecurityHrefOptions, filterSecurityApiKeys(), filterSecurityAuditEvents(), filterSecuritySessions(), filterSecurityUsers() (+15 more)
+Cohesion: 0.06
+Nodes (52): SecurityFiltersWorkbench(), SecurityFiltersWorkbenchProps, SecurityWorkbenchControlsProps, SecurityWorkbenchOption, SecurityFiltersWorkbenchFiltersContent(), SecurityFiltersWorkbenchFiltersContentProps, SecurityWorkbenchOption, SecurityFiltersWorkbenchResultsBarContent() (+44 more)
 
-### Community 75 - "use-users-page-bridge-controller.ts"
-Cohesion: 0.12
-Nodes (19): UsersPageContent(), UsersPage(), refreshAccessManagement(), selectManagedUser(), TranslationFn, useUsersPageBridgeController(), dedupeStrings(), useUsersPageBulkController() (+11 more)
+### Community 75 - "use-settings-panel-controller.ts"
+Cohesion: 0.07
+Nodes (50): SettingsPageProps, LocaleMode, SettingsPreferencesContent(), SettingsPreferencesContentProps, ThemeMode, SettingsHeroContentProps, SettingsPanelLowerContent(), SettingsPanelLowerContentProps (+42 more)
 
 ### Community 76 - "server-release.mjs"
 Cohesion: 0.15
@@ -578,8 +569,8 @@ Cohesion: 0.08
 Nodes (24): 1. 结论, 2. 扫描发现, 3. 优先级总表, 4. 本轮实施设计, 5. 后续实施细节, 6. 评分规则, 7. 本轮评分变化, GoExample 待优化 V11（非 MSFront） (+16 more)
 
 ### Community 80 - "RunHTTP"
-Cohesion: 0.19
-Nodes (23): callApplicationShutdown(), defaultHTTPOptions(), isExpectedHTTPServerClose(), notifyHTTPConnectionCapacity(), notifyHTTPConnectionState(), RunHTTP(), shutdownHTTP(), containsHTTPConnectionState() (+15 more)
+Cohesion: 0.29
+Nodes (12): callApplicationShutdown(), defaultHTTPOptions(), isExpectedHTTPServerClose(), notifyHTTPConnectionCapacity(), notifyHTTPConnectionState(), RunHTTP(), shutdownHTTP(), TestRunHTTPReturnsListenErrorBeforeStartedLog() (+4 more)
 
 ### Community 81 - "go-project.mjs"
 Cohesion: 0.08
@@ -589,9 +580,9 @@ Nodes (23): buildTime, commandIsAvailable(), currentDirectory, findWindowsGcc(),
 Cohesion: 0.12
 Nodes (24): artifactDirectory, beginInterruptedUpload(), certificatePath, commandError(), configPath, contract, contractPath, deploymentDirectory (+16 more)
 
-### Community 83 - "NewLogger"
-Cohesion: 0.12
-Nodes (19): fiber.Ctx, fiber.Handler, NewLogger(), parseLevel(), requestContext(), RequestLogger(), responseBytes(), TestRequestLoggerSkipsConfiguredPaths() (+11 more)
+### Community 83 - "New"
+Cohesion: 0.17
+Nodes (15): New(), TestCanceledCallerDoesNotCancelSharedRefresh(), TestReadinessCachesAndCopiesReports(), TestReadinessChecksAndDraining(), TestReadinessCheckTimeout(), TestReadinessMergesConcurrentRefreshes(), TestRegisterDuringRefreshInvalidatesResult(), TestRegisterRejectsInvalidChecks() (+7 more)
 
 ### Community 84 - "api-contracts/package.json"
 Cohesion: 0.08
@@ -602,24 +593,20 @@ Cohesion: 0.08
 Nodes (19): args, environment, gitCommitResult, goCacheRoot, goCandidates, goTemporaryRoot, goVersionResult, outputRoot (+11 more)
 
 ### Community 86 - "topbar.tsx"
-Cohesion: 0.12
-Nodes (16): GvaMorphButton(), GvaMorphButtonProps, GvaSettingDrawer(), patch(), resetConfig(), scheduleSaveToast(), GvaSettingDrawerProps, syncThemeScheme() (+8 more)
+Cohesion: 0.15
+Nodes (12): GvaMorphButton(), GvaMorphButtonProps, GvaSettingDrawerProps, BREADCRUMB_FALLBACKS, buildBreadcrumbs(), findMenuTitleChain(), Topbar(), clearCloseTimer() (+4 more)
 
 ### Community 87 - "kubernetes-manifest.mjs"
 Cohesion: 0.22
 Nodes (22): defaultOutput, defaultTemplate, fail(), integerAtLeast(), isWithin(), main(), parseArguments(), parseSeconds() (+14 more)
 
-### Community 88 - "time.Duration"
+### Community 89 - "redis_test.go"
 Cohesion: 0.18
-Nodes (6): fingerprintLifetime(), RateLimitResult, time.Duration, atomicContractStorage, contractLock, contractStorage
+Nodes (20): newRedisAuthorizationRequestManager(), TestRedisAuthorizationRequestStoreConsumesAcrossClientsExactlyOnce(), TestRedisAuthorizationRequestStoreEnforcesGlobalLimitExpiryTamperAndOutage(), encodeRedisSpan(), miniredis.Miniredis, Redis, isFixedRedisStatus(), newRedisTestTracerProvider() (+12 more)
 
-### Community 89 - "security-workbench-controls.tsx"
-Cohesion: 0.12
-Nodes (16): SecurityFiltersWorkbench(), SecurityFiltersWorkbenchProps, SecurityWorkbenchControlsProps, SecurityWorkbenchOption, SecurityFiltersWorkbenchFiltersContent(), SecurityFiltersWorkbenchFiltersContentProps, SecurityWorkbenchOption, SecurityFiltersWorkbenchResultsBarContent() (+8 more)
-
-### Community 90 - "NewService"
-Cohesion: 0.18
-Nodes (17): Service, NewService(), TestDescribeProjectHonorsContextCancellation(), TestDescribeProjectReturnsTypedResultAndSpan(), TestGetProjectCreatesApplicationSpan(), TestGetProjectHonorsContextCancellation(), TestGetProjectReturnsTypedResult(), TestPreviewProjectHonorsContextCancellation() (+9 more)
+### Community 90 - "application_query.go"
+Cohesion: 0.17
+Nodes (19): applicationBindingAlias(), applicationQueryMethod(), applicationQueryRoutesOverlap(), bindApplicationQuery(), defaultApplicationRoutePaths(), fiber.Ctx, fiber.StructValidator, newTypedQuery() (+11 more)
 
 ### Community 91 - "environment.mjs"
 Cohesion: 0.18
@@ -646,20 +633,20 @@ Cohesion: 0.10
 Nodes (21): eslint, @eslint/eslintrc, devDependencies, eslint, @eslint/eslintrc, postcss, tailwindcss, @types/node (+13 more)
 
 ### Community 97 - "registerOIDCBrowserRoutes"
-Cohesion: 0.19
-Nodes (18): OIDCClient, browserRequestContext(), clearBrowserSessionCookies(), clearOIDCStateCookie(), fiber.Ctx, fiber.Handler, fiber.Router, Options (+10 more)
+Cohesion: 0.24
+Nodes (14): browserRequestContext(), clearBrowserSessionCookies(), clearOIDCStateCookie(), fiber.Ctx, fiber.Handler, fiber.Router, Options, oidcStateBinding() (+6 more)
 
 ### Community 98 - "Client"
 Cohesion: 0.20
-Nodes (15): Client, Message, isTraceHeader(), removeTraceHeaders(), traceCarrier(), validateConfig(), validateHeaders(), validHeaderName() (+7 more)
+Nodes (16): classifyResult(), finishSpan(), Client, Message, isTraceHeader(), removeTraceHeaders(), traceCarrier(), validateConfig() (+8 more)
 
 ### Community 99 - "go.opentelemetry.io/otel/sdk/trace.ReadOnlySpan"
-Cohesion: 0.22
-Nodes (17): assertMessagingResult(), assertMessagingSpan(), assertSpanExcludes(), Client, Config, newTracedClient(), spanAttribute(), TestCallbackPanicEndsSpanAndIsRethrown() (+9 more)
+Cohesion: 0.19
+Nodes (19): assertMessagingResult(), assertMessagingSpan(), assertSpanExcludes(), Client, Config, newTracedClient(), spanAttribute(), TestCallbackPanicEndsSpanAndIsRethrown() (+11 more)
 
 ### Community 100 - "run"
-Cohesion: 0.17
-Nodes (16): Message(), New(), TestValidateAndMessage(), main(), redisTLSConfig(), run(), setServerTestEnvironment(), TestRedisTLSConfigLoadsBoundedCAWithoutWeakeningVerification() (+8 more)
+Cohesion: 0.20
+Nodes (16): NewAuthorizationRequestManager(), TestAuthorizationRequestManagerBuildsSingleUsePKCERequest(), TestAuthorizationRequestManagerExpiresAndBoundsPendingState(), TestAuthorizationRequestStoreSharesHashOnlyStateAcrossManagers(), TestNewAuthorizationRequestManagerRejectsUnsafeConfiguration(), main(), redisTLSConfig(), run() (+8 more)
 
 ### Community 101 - "postgres-recovery-contract.mjs"
 Cohesion: 0.12
@@ -669,9 +656,9 @@ Nodes (17): archive(), args, artifactDirectory, backupHostPath, checkpoint(), co
 Cohesion: 0.10
 Nodes (19): 1. 本轮已完成, 2. 本轮验证结果, 3. 仍需完成, 4. 评分影响, 5. 进入 V7 的准入条件, V6-01 PostgreSQL 初始 schema, V6-02 事务型 migration runner, V6-03 PostgreSQL 连接池边界 (+11 more)
 
-### Community 103 - "security-page-workbench-content.tsx"
-Cohesion: 0.18
-Nodes (15): SecurityHeroOverview(), SecurityPageLowerContent(), SecurityPageLowerContentProps, SecurityPageResultsContent(), SecurityPageResultsShell(), SecurityPageProps, SecurityPageWorkbenchContent(), SecurityPageWorkbenchContentProps (+7 more)
+### Community 103 - "metrics.go"
+Cohesion: 0.17
+Nodes (11): formatDurationBucket(), fiber.Ctx, responseStatus(), routePath(), securityLabelIndex(), writeRuntimeMetrics(), strings.Builder, sync/atomic.Uint64 (+3 more)
 
 ### Community 104 - "sidebar.tsx"
 Cohesion: 0.19
@@ -693,41 +680,41 @@ Nodes (19): 6.10 可观测性与 SRE：9.95, 6.11 数据一致性与持久化：
 Cohesion: 0.33
 Nodes (18): generateRSAKey(), jwkMap(), jwksJSON(), mutateOIDCClaims(), newJWKSServer(), newTestJWKSVerifier(), oidcTestClaims(), signIDToken() (+10 more)
 
-### Community 109 - "clusterRouteProxy"
-Cohesion: 0.16
-Nodes (9): disableClusterRouteProxies(), newClusterRouteProxy(), totalClusterRouteProxyConnections(), waitClusterRouteProxiesDrained(), waitClusterRouteProxyConnections(), sync.Once, clusterRouteProxy, clusterRouteProxyConnection (+1 more)
+### Community 109 - "sync.Once"
+Cohesion: 0.18
+Nodes (6): classifyError(), io.ReadCloser, sync.Once, spanBody, clusterRouteProxyConnection, signalingDeliveryObserver
 
-### Community 110 - "Redis"
-Cohesion: 0.29
-Nodes (3): Redis, redisFailure(), localGate
+### Community 110 - "idempotency_fingerprint.go"
+Cohesion: 0.27
+Nodes (11): fingerprintLifetime(), fiber.Ctx, fiber.Storage, idempotencyPrincipal(), idempotencyRequestFingerprint(), newIdempotencyFingerprintRegistry(), normalizedMediaType(), writeFingerprintPart() (+3 more)
 
-### Community 111 - "gva-page-loading.ts"
-Cohesion: 0.24
-Nodes (17): GvaRouteLoadingEffects(), onPointerDown(), isInternalDashboardHref(), beginGvaContentLoading(), beginGvaRouteProgress(), clearTimers(), emit(), endGvaContentLoading() (+9 more)
+### Community 111 - "useProjectManagementConsoleController"
+Cohesion: 0.09
+Nodes (30): ManagedProjectCatalogEntry, ManagedProjectSummary, createEmptyDraft(), selectManagedProject(), shouldPushProjectsHistory(), toDraft(), upsertProject(), useProjectManagementConsoleController() (+22 more)
 
 ### Community 112 - "Claims"
-Cohesion: 0.19
-Nodes (9): Config, Claims, Service, TokenVerifier, User, jwt.RegisteredClaims, validClaims(), fixedTokenVerifier (+1 more)
+Cohesion: 0.16
+Nodes (10): Config, Claims, Service, TokenVerifier, User, jwt.RegisteredClaims, randomID(), validClaims() (+2 more)
 
 ### Community 113 - "1. 本轮已完成"
 Cohesion: 0.11
 Nodes (17): 1. 本轮已完成, 2. 本轮验证结果, 3. 仍需完成, 4. 评分影响, 5. 进入 V8 的准入条件, V7-01 PostgreSQL CI service integration, V7-02 migration 并发、幂等与约束集成测试, V7-03 OpenAPI 引用与 security 完整性 (+9 more)
 
 ### Community 114 - "NewService"
-Cohesion: 0.18
-Nodes (16): NewService(), newTestService(), TestDisabledService(), TestServiceIssueAndVerify(), TestServiceRejectsCredentialsAndExpiredToken(), TestServiceRejectsMalformedAndOverageClaims(), encoding/json.RawMessage, ErrorEnvelope (+8 more)
+Cohesion: 0.15
+Nodes (18): NewService(), newTestService(), TestDisabledService(), TestServiceIssueAndVerify(), TestServiceRejectsCredentialsAndExpiredToken(), TestServiceRejectsMalformedAndOverageClaims(), TestExternalTokenVerifierFailureUsesPrivateBearerResponse(), TestExternalTokenVerifierProtectsRoutesWithoutDemoLogin() (+10 more)
 
-### Community 115 - "checkReadiness"
-Cohesion: 0.16
-Nodes (15): ClientOption, Operation, HTTPClient, NewClient(), PublishedOperations(), WithHTTPClient(), WithMaxResponseBytes(), WithRequestEditor() (+7 more)
+### Community 115 - "gva-message.ts"
+Cohesion: 0.17
+Nodes (18): GvaMessageCard(), GvaMessageHost(), clearTimer(), closeGvaMessage(), closeTimers, emit(), getGvaMessages(), getGvaMessageTops() (+10 more)
 
 ### Community 116 - "nginx-edge.mjs"
 Cohesion: 0.24
 Nodes (17): defaultContract, defaultOutput, fail(), isWithin(), kibibytes(), main(), mebibytes(), parseArguments() (+9 more)
 
-### Community 117 - "AuthorizationRequestManager"
-Cohesion: 0.24
-Nodes (11): AuthorizationCode, AuthorizationRequest, AuthorizationRequestConfig, authorizationCodeChallenge(), buildAuthorizationURL(), AuthorizationRequestManager, AuthorizationRequestStore, hashAuthorizationState() (+3 more)
+### Community 117 - "GvaSettingDrawer"
+Cohesion: 0.19
+Nodes (10): ColorSwatch(), onKey(), placePopover(), toggleOpen(), GvaSettingDrawer(), patch(), resetConfig(), scheduleSaveToast() (+2 more)
 
 ### Community 118 - "2. 优化清单"
 Cohesion: 0.12
@@ -741,25 +728,21 @@ Nodes (14): concurrentMutation(), fiber.App, miniredis.Miniredis, newHTTPTestRed
 Cohesion: 0.24
 Nodes (15): deterministicSnapshotPayload(), nats.Conn, newSnapshotContractClient(), requireJetStreamAPIResponse(), restoreStreamSnapshot(), takeStreamSnapshot(), TestRealNATSJetStreamSnapshotRestoreRecovery(), verifySnapshotArchive() (+7 more)
 
-### Community 121 - "security-credential-results-sections-content.tsx"
-Cohesion: 0.15
-Nodes (15): groupEntriesByStatus(), SecurityApiKeyResultsSection(), SecurityCredentialResults(), SecurityCredentialResultsProps, SecuritySessionResultsSection(), TranslationFn, SecurityCredentialCardBadgeActions(), SecurityCredentialGroupSection() (+7 more)
-
 ### Community 122 - "migrate.mjs"
 Cohesion: 0.15
 Nodes (11): allowedArguments, argumentsSet, databaseUrl, frontRoot, migrationsDirectory, pool, scriptDirectory, workspaceRoot (+3 more)
 
-### Community 123 - "redis.go"
-Cohesion: 0.24
-Nodes (15): applyRedisClientBudgets(), newRedisClient(), redisSentinelOptions(), TestRedisSentinelOptionsStayBoundedAndCredentialSeparated(), validateConfig(), validateRedisAddress(), validateSentinelConfig(), validSentinelMasterName() (+7 more)
+### Community 123 - "theme-provider.tsx"
+Cohesion: 0.19
+Nodes (13): metadata, siteConfig, ProjectStorageDriver, ThemeMode, themeClassMap, UseSettingsPanelSurfaceControllerOptions, AppProviders(), applyTheme() (+5 more)
 
-### Community 124 - "ThemeMode"
-Cohesion: 0.17
-Nodes (10): TopbarContextContent(), TopbarContextContentProps, TopbarQuickLink, TopbarQuickLink, TopbarSelectOption, TopbarShellProps, TopbarSelectOption, TopbarWorkbenchContent() (+2 more)
+### Community 124 - "users-page-editor-permissions-content.tsx"
+Cohesion: 0.08
+Nodes (29): AccessCustomInputField(), AccessCustomInputFieldProps, AccessSelectionGrid(), AccessSelectionGridProps, AccessSelectionOptionCard(), AccessSelectionOptionCardProps, EditorSection(), EditorSectionProps (+21 more)
 
-### Community 125 - "authorization/authorization.go"
-Cohesion: 0.21
-Nodes (10): Principal, boundedValue(), Decision, optionalBoundedValue(), TestValidateRequestAcceptsBoundedTenantResourceAndAttributes(), TestValidateRequestRejectsUnboundedOrMalformedInput(), validRequest(), ValidateRequest() (+2 more)
+### Community 125 - "TestResourceAuthorizedQueryFailsClosedWithoutExecutingHandler"
+Cohesion: 0.31
+Nodes (10): AuthorizerFunc, Options, resourceAuthorizationToken(), TestResourceAuthorizationConfigurationFailsAtStartup(), TestResourceAuthorizedCommandDoesNotPolluteIdempotencyOnDeny(), TestResourceAuthorizedQueryChecksRolesAndResourceShapeBeforePolicy(), TestResourceAuthorizedQueryFailsClosedWithoutExecutingHandler(), TestResourceAuthorizedVersionedCommandChecksPolicyBeforePrecondition() (+2 more)
 
 ### Community 126 - "1. 本轮完成项"
 Cohesion: 0.13
@@ -797,37 +780,41 @@ Nodes (6): canceledReport(), cloneReport(), drainingReport(), Checker, Check, Re
 Cohesion: 0.25
 Nodes (9): TestRedisTraceClassificationIsBounded(), boundedRedisPipelineSize(), classifyRedisTraceResult(), finishRedisSpan(), redisSpanOperation(), redis.DialHook, redis.ProcessHook, redis.ProcessPipelineHook (+1 more)
 
-### Community 135 - "scriptedConnection"
-Cohesion: 0.18
-Nodes (7): database/sql/driver.NamedValue, database/sql/driver.Result, database/sql/driver.Rows, database/sql/driver.Stmt, database/sql/driver.Tx, database/sql/driver.TxOptions, scriptedConnection
+### Community 135 - "AccessManagementView"
+Cohesion: 0.07
+Nodes (41): RolesPageProps, AccessManagementView, UseRolesPageBridgeControllerOptions, UseRolesPageEditorControllerOptions, refreshAccessManagement(), selectManagedUser(), TranslationFn, useUsersPageBridgeController() (+33 more)
 
-### Community 136 - "SecuritySessionEntry"
-Cohesion: 0.21
-Nodes (11): SecuritySessionResultsSectionProps, SecurityCredentialRefreshWorkbench(), handleRevokeApiKey(), handleRevokeSession(), refreshGovernanceData(), SecurityCredentialRefreshWorkbenchProps, TranslationFn, SecurityCredentialWorkbench() (+3 more)
+### Community 136 - "net/http.ConnState"
+Cohesion: 0.24
+Nodes (5): decrementNonnegative(), httpConnectionStateIndex(), net/http.ConnState, panicHTTPConnectionObserver, recordingHTTPConnectionObserver
 
-### Community 137 - "system-menu-repository.ts"
-Cohesion: 0.27
-Nodes (11): buildMenuTree(), collectAllowedPaths(), createSystemMenu(), deleteSystemMenu(), listAsyncMenusForRoles(), listSystemMenus(), listSystemMenuTree(), loadMenus() (+3 more)
+### Community 137 - "use-security-governance-surface-presentation-controller.ts"
+Cohesion: 0.08
+Nodes (38): AttentionCard(), TonePill(), toneValueFromManagementTone(), SecurityEmptyState(), SecurityEmptyStateProps, SecurityGovernanceOverviewPanelShell(), SecurityGovernanceOverviewPanelShellProps, SecurityPermissionResultsSection() (+30 more)
 
-### Community 138 - "access-navigation.ts"
-Cohesion: 0.23
-Nodes (13): resolveAccessUserStatusFilter(), BuildContextualRolesHrefOptions, BuildContextualUsersHrefOptions, mapAccessStatusToSecurityStatus(), normalizeAccessEntityId(), normalizeAccessRoleFilterValue(), normalizeSecurityRoleValue(), resolveAccessNavigationContext() (+5 more)
+### Community 138 - "http_test.go"
+Cohesion: 0.44
+Nodes (10): containsHTTPConnectionState(), reserveHTTPAddress(), TestRunHTTPBoundsAcceptedConnections(), TestRunHTTPBoundsApplicationShutdownHook(), TestRunHTTPBoundsSlowRequestHeaders(), TestRunHTTPForcesBoundedShutdown(), TestRunHTTPIsolatesApplicationShutdownPanic(), TestRunHTTPIsolatesConnectionObserverPanic() (+2 more)
 
-### Community 139 - "AuthorizationRequestRecord"
-Cohesion: 0.29
-Nodes (5): testAuthorizationRequestStore, AuthorizationRequestRecord, Redis, validAuthorizationRequestSecret(), authorizationRequestPayload
+### Community 139 - "time.Time"
+Cohesion: 0.12
+Nodes (12): testAuthorizationRequestStore, testBrowserSessionStore, BrowserSessionRecord, AuthorizationRequestRecord, Redis, validAuthorizationRequestSecret(), time.Time, oidcBrowserLegacySessionStore (+4 more)
 
-### Community 140 - "sync.Mutex"
-Cohesion: 0.27
-Nodes (11): fiber.Ctx, fiber.Storage, idempotencyPrincipal(), idempotencyRequestFingerprint(), newIdempotencyFingerprintRegistry(), normalizedMediaType(), writeFingerprintPart(), hash.Hash (+3 more)
+### Community 140 - "authorization/authorization.go"
+Cohesion: 0.38
+Nodes (8): Principal, boundedValue(), optionalBoundedValue(), TestValidateRequestAcceptsBoundedTenantResourceAndAttributes(), TestValidateRequestRejectsUnboundedOrMalformedInput(), validRequest(), ValidateRequest(), validIdentifier()
 
 ### Community 141 - "Framework"
 Cohesion: 0.17
 Nodes (12): API 生命周期, Bearer 验证, Framework, 关系数据库, 兼容治理, 出站 HTTP, 包, 可观测性 (+4 more)
 
-### Community 143 - "SystemMenusPage"
-Cohesion: 0.20
-Nodes (5): SystemMenusPage(), confirmDelete(), saveMenu(), collectLeafPaths(), flattenMenuTree()
+### Community 142 - "requireInternalToken"
+Cohesion: 0.32
+Nodes (7): fiber.App, fiber.Ctx, fiber.Handler, Options, noStore(), registerDiagnostics(), requireInternalToken()
+
+### Community 143 - "New"
+Cohesion: 0.32
+Nodes (5): Message(), New(), TestValidateAndMessage(), StructValidator, validator.Validate
 
 ### Community 144 - "scripts"
 Cohesion: 0.17
@@ -842,12 +829,12 @@ Cohesion: 0.45
 Nodes (10): NewBrowserSessionManager(), newTestBrowserSessionManager(), TestBrowserSessionCapsLifetimeBindsCSRFAndCopiesClaims(), testBrowserSessionClaims(), TestBrowserSessionDeviceNameLocalUpdateClearAndValidation(), TestBrowserSessionInventoryEnforcesSubjectLimitAndScopesRevocation(), TestBrowserSessionLegacyStoreKeepsStartCompatibilityWithoutInventory(), TestBrowserSessionLimitEndAndInputValidation() (+2 more)
 
 ### Community 147 - "openRealPostgresClient"
-Cohesion: 0.38
-Nodes (10): createRealPostgresCounterTable(), Client, Config, openRealPostgresClient(), TestRealPostgresLockWaitHonorsDeadlineAndRecovers(), TestRealPostgresRetryTransactionDeadlock(), TestRealPostgresRetryTransactionSerializationConflict(), TestRealPostgresVersionedHTTPPrecondition() (+2 more)
+Cohesion: 0.42
+Nodes (9): createRealPostgresCounterTable(), Client, Config, openRealPostgresClient(), TestRealPostgresLockWaitHonorsDeadlineAndRecovers(), TestRealPostgresRetryTransactionDeadlock(), TestRealPostgresRetryTransactionSerializationConflict(), TestRealPostgresVersionedHTTPPrecondition() (+1 more)
 
-### Community 149 - "use-roles-page-content-surface-controller.ts"
-Cohesion: 0.33
-Nodes (8): useRolesPageContentSurfaceController(), UseRolesPageContentSurfaceControllerOptions, useRolesPageEditorWorkspaceContentSurfaceController(), useRolesPageLowerContentSurfaceController(), UseRolesPageLowerContentSurfaceControllerOptions, useRolesPageOverviewContentSurfaceController(), useRolesPageRegistryWorkspaceContentSurfaceController(), UseRolesPageRegistryWorkspaceContentSurfaceControllerOptions
+### Community 149 - "registerRoutes"
+Cohesion: 0.13
+Nodes (16): DefaultEndpoints(), DefaultEndpointsForAuth(), fiber.App, fiber.Router, Options, deprecatedEndpoint(), fiber.App, fiber.Handler (+8 more)
 
 ### Community 150 - "package.json"
 Cohesion: 0.18
@@ -857,9 +844,9 @@ Nodes (10): dependencies, @simple-prism/core, engines, node, name, packageManage
 Cohesion: 0.20
 Nodes (9): 1. Purpose And Evidence Boundary, 2. Assets And Data Classification, 3. Trust Boundaries And Data Flow, 4. STRIDE Threat Register, 5. Security Invariants, 6. Open Production Risks, 7. Review Triggers And Ownership, 8. References (+1 more)
 
-### Community 152 - "net/http.ConnState"
-Cohesion: 0.27
-Nodes (4): httpConnectionStateIndex(), net/http.ConnState, panicHTTPConnectionObserver, recordingHTTPConnectionObserver
+### Community 152 - "NewResourceAuthorizer"
+Cohesion: 0.47
+Nodes (4): NewResourceAuthorizer(), TestResourceAuthorizerEnforcesTenantActionAndEnvironment(), TestResourceAuthorizerHonorsCancellation(), ResourceAuthorizer
 
 ### Community 153 - "newRedisBrowserSessionManagerWithSubjectLimit"
 Cohesion: 0.49
@@ -893,9 +880,9 @@ Nodes (8): 1. Contract, 2. Event Catalog, 3.1 Local Hash-Chain Adapter, 3. Sink 
 Cohesion: 0.36
 Nodes (8): Redis, newRedisSentinelIntegrationClient(), requiredRedisSentinelTestEnvironment(), splitRedisSentinelTestAddresses(), TestRedisSentinelFailoverReconnectsSharedStateClients(), waitForRedisSentinelClients(), waitForRedisSentinelMasterChange(), redis.SentinelClient
 
-### Community 161 - "system-casbin-repository.ts"
-Cohesion: 0.39
-Nodes (7): isPathAllowedForRoles(), listCasbinPolicies(), loadPolicies(), matchApiPath(), replaceCasbinPoliciesForRole(), savePolicies(), mocks
+### Community 161 - "Q: graphify-out中的cache有必要上传仓库吗"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: graphify-out中的cache有必要上传仓库吗, Source Nodes
 
 ### Community 162 - "GoExample"
 Cohesion: 0.22
@@ -928,18 +915,6 @@ Nodes (7): @axe-core/playwright, devDependencies, @axe-core/playwright, playwrig
 ### Community 169 - "ADR 0001：Example HTTP transport 选择与测量门槛"
 Cohesion: 0.29
 Nodes (6): ADR 0001：Example HTTP transport 选择与测量门槛, 决策门槛, 固定工作负载, 当前实现与命令, 结果与复评, 背景
-
-### Community 170 - "registerHealthRoutes"
-Cohesion: 0.33
-Nodes (6): deprecatedEndpoint(), fiber.App, fiber.Handler, fiber.Router, Options, registerHealthRoutes()
-
-### Community 171 - "failoverDeliveryObserver"
-Cohesion: 0.29
-Nodes (3): newFailoverDeliveryObserver(), waitFailoverSettlements(), failoverDeliveryObserver
-
-### Community 172 - "ColorSwatch"
-Cohesion: 0.33
-Nodes (5): ColorSwatch(), onKey(), placePopover(), toggleOpen(), normalizeHexColor()
 
 ### Community 173 - "msfront.mjs"
 Cohesion: 0.29
@@ -997,33 +972,34 @@ Nodes (3): For git commit hook, For native CLAUDE.md integration, graphify refer
 Cohesion: 0.50
 Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
 
-### Community 188 - "scriptedDriver"
-Cohesion: 0.50
-Nodes (3): database/sql/driver.Conn, sync.Map, scriptedDriver
-
 ### Community 190 - "github.com/zbxing/goexample/Framework"
 Cohesion: 0.50
 Nodes (4): github.com/zbxing/goexample/Framework, github.com/zbxing/goexample/Proj/Example, github.com/zbxing/goexample/SDK/GoExample, github.com/zbxing/goexample/support/consumer/HealthProbe
 
 ## Knowledge Gaps
-- **1152 isolated node(s):** `applicationCommandRequestContextKey`, `applicationPreconditionContextKey`, `resourceQueryRequest`, `resourceCommandRequest`, `authClaimsKey` (+1147 more)
+- **1165 isolated node(s):** `applicationCommandRequestContextKey`, `applicationPreconditionContextKey`, `resourceQueryRequest`, `resourceCommandRequest`, `authClaimsKey` (+1160 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **25 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **26 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+
+## Work-memory lessons
+
+**Known dead ends** — questions that led nowhere; don't re-derive.
+- "graphify-out中的cache有必要上传仓库吗" -> `graphify`, `cacheRoot()`
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `useLocale()` connect `useLocale` to `LocaleCode`, `ProjectStatus`, `use-project-management-console-controller.ts`, `use-settings-panel-controller.ts`, `governance-filters.ts`, `use-project-detail-page-surface-controller.ts`, `FeedbackState`, `use-command-palette-controller.ts`, `project-surface.tsx`, `use-roles-page-bridge-controller.ts`, `AccessNavigationContext`, `AccessManagedUserEntry`, `use-environments-page-controller.ts`, `types/management.ts`, `access-filters.ts`, `runtime.ts`, `locale-provider.tsx`, `security-filters.ts`, `use-users-page-bridge-controller.ts`, `security-page-workbench-content.tsx`?**
+- **Why does `useLocale()` connect `useLocale` to `formatNumber`, `governance-filters.ts`, `FeedbackState`, `use-project-management-console-presentation-controller.ts`, `use-environments-page-controller.ts`, `types/management.ts`, `use-project-detail-page-surface-controller.ts`, `access-navigation.ts`, `AccessManagedRoleEntry`, `use-settings-panel-controller.ts`, `use-command-palette-controller.ts`, `project-surface.tsx`, `access-governance-surface.tsx`, `users-page-editor-permissions-content.tsx`, `LocaleCode`, `AccessManagedUserEntry`?**
   _High betweenness centrality (0.011) - this node is a cross-community bridge._
-- **Why does `LocaleCode` connect `LocaleCode` to `ProjectStatus`, `use-project-management-console-controller.ts`, `useLocale`, `AccessManagedRoleEntry`, `use-settings-panel-controller.ts`, `SecuritySessionEntry`, `governance-filters.ts`, `use-project-detail-page-surface-controller.ts`, `use-roles-page-bridge-controller.ts`, `use-users-page-editor-presentation-controller.ts`, `management-primitives.tsx`, `use-environments-page-controller.ts`, `types/management.ts`, `runtime.ts`, `security-credential-surface.tsx`, `locale-provider.tsx`, `use-users-page-bridge-controller.ts`, `security-workbench-controls.tsx`, `security-page-workbench-content.tsx`, `security-credential-results-sections-content.tsx`, `ThemeMode`?**
-  _High betweenness centrality (0.008) - this node is a cross-community bridge._
-- **Why does `Metrics` connect `Metrics` to `time.Time`, `transport_benchmark_test.go`, `NewMetrics`, `registerRoutes`, `Options`, `net/http.ConnState`, `tracing_provider.go`, `scriptedDriver`?**
+- **Why does `LocaleCode` connect `LocaleCode` to `formatNumber`, `governance-filters.ts`, `use-project-management-console-presentation-controller.ts`, `types/management.ts`, `use-roles-page-surface-controller.ts`, `useLocale`, `AccessManagementView`, `use-security-governance-surface-presentation-controller.ts`, `use-project-detail-page-surface-controller.ts`, `use-roles-page-bridge-controller.ts`, `use-users-page-editor-presentation-controller.ts`, `AccessManagedUserEntry`, `use-environments-page-controller.ts`, `access-navigation.ts`, `runtime.ts`, `FeedbackState`, `security-filters.ts`, `use-settings-panel-controller.ts`, `theme-provider.tsx`?**
+  _High betweenness centrality (0.009) - this node is a cross-community bridge._
+- **Why does `ProjectStatus` connect `governance-filters.ts` to `formatNumber`, `FeedbackState`, `use-project-management-console-presentation-controller.ts`, `types/management.ts`, `use-environments-page-controller.ts`, `useLocale`, `overview.ts`, `project-surface.tsx`, `api/management.ts`, `project-repository.ts`?**
   _High betweenness centrality (0.008) - this node is a cross-community bridge._
 - **What connects `applicationCommandRequestContextKey`, `applicationPreconditionContextKey`, `resourceQueryRequest` to the rest of the system?**
-  _1152 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `LocaleCode` be split into smaller, more focused modules?**
-  _Cohesion score 0.050997425997425995 - nodes in this community are weakly interconnected._
-- **Should `ProjectStatus` be split into smaller, more focused modules?**
-  _Cohesion score 0.05688215880411571 - nodes in this community are weakly interconnected._
+  _1165 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `formatNumber` be split into smaller, more focused modules?**
+  _Cohesion score 0.045787545787545784 - nodes in this community are weakly interconnected._
+- **Should `governance-filters.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.060781786941580755 - nodes in this community are weakly interconnected._
 - **Should `New` be split into smaller, more focused modules?**
-  _Cohesion score 0.06521739130434782 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06098901098901099 - nodes in this community are weakly interconnected._

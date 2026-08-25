@@ -14,6 +14,7 @@ import {
 import { AdminSelect } from '@/components/admin/admin-primitives';
 import { useTheme } from '@/providers/theme-provider';
 import type { ThemeMode } from '@/lib/types/management';
+import { showGvaMessage } from '@/lib/utils/gva-message';
 import {
   addCustomPreset,
   addOpacityToColor,
@@ -71,7 +72,6 @@ export function GvaSettingDrawer({
 }: GvaSettingDrawerProps) {
   const { setTheme } = useTheme();
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('appearance');
-  const [toast, setToast] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ title: string; message: string; onConfirm: () => void } | null>(
     null,
   );
@@ -99,21 +99,13 @@ export function GvaSettingDrawer({
   }, [presented, onClose]);
 
   useEffect(() => {
-    if (!toast) {
-      return;
-    }
-    const timer = window.setTimeout(() => setToast(null), 1800);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
-
-  useEffect(() => {
     return () => window.clearTimeout(saveToastTimer.current);
   }, []);
 
   function scheduleSaveToast() {
     window.clearTimeout(saveToastTimer.current);
     saveToastTimer.current = window.setTimeout(() => {
-      setToast('保存成功');
+      showGvaMessage.success('保存成功');
     }, 500);
   }
 
@@ -128,7 +120,7 @@ export function GvaSettingDrawer({
   function resetConfig() {
     window.clearTimeout(saveToastTimer.current);
     patch(cloneGvaShellSettings(), { silent: true });
-    setToast('配置已重置');
+    showGvaMessage.success('配置已重置');
   }
 
   if (!presented || typeof document === 'undefined') {
@@ -190,7 +182,6 @@ export function GvaSettingDrawer({
               <PresetsPane
                 settings={settings}
                 onChange={patch}
-                onToast={setToast}
                 onConfirm={setConfirm}
               />
             ) : null}
@@ -209,18 +200,6 @@ export function GvaSettingDrawer({
           </div>
         </div>
       </aside>
-
-      {toast && typeof document !== 'undefined'
-        ? createPortal(
-            <div className="gvaMessage gvaMessage-success" role="status">
-              <span className="gvaMessageIcon" aria-hidden="true">
-                <Check size={10} strokeWidth={3} />
-              </span>
-              <span>{toast}</span>
-            </div>,
-            document.body,
-          )
-        : null}
 
       {confirm ? (
         <ConfirmDialog
@@ -331,6 +310,15 @@ function AppearancePane({
               checked={settings.tab.showIcon}
               label="展示图标"
               onChange={(showIcon) => onChange({ ...settings, tab: { ...settings.tab, showIcon } })}
+            />
+          </SettingItem>
+          <SettingItem label="加载进度条">
+            <ThemeSwitch
+              checked={settings.tab.showProgress}
+              label="加载进度条"
+              onChange={(showProgress) =>
+                onChange({ ...settings, tab: { ...settings.tab, showProgress } })
+              }
             />
           </SettingItem>
         </div>
@@ -627,12 +615,10 @@ function LayoutPane({
 function PresetsPane({
   settings,
   onChange,
-  onToast,
   onConfirm,
 }: {
   settings: GvaShellSettings;
   onChange: (next: GvaShellSettings) => void;
-  onToast: (message: string) => void;
   onConfirm: (value: { title: string; message: string; onConfirm: () => void }) => void;
 }) {
   const [customPresets, setCustomPresets] = useState(loadCustomPresets);
@@ -654,7 +640,7 @@ function PresetsPane({
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    onToast('配置已导出');
+    showGvaMessage.success('配置已导出');
   }
 
   function handleImport(file: File | undefined) {
@@ -665,10 +651,11 @@ function PresetsPane({
     reader.onload = () => {
       const preset = parseImportedPreset(String(reader.result ?? ''));
       if (!preset?.theme) {
-        onToast('配置文件不兼容或为空');
+        showGvaMessage.warning('配置文件不兼容或为空');
         return;
       }
       onChange(applyPresetToSettings(preset, settings));
+      showGvaMessage.success('配置已导入');
     };
     reader.readAsText(file);
   }
@@ -698,7 +685,7 @@ function PresetsPane({
                     message: `确定删除预设「${preset.name}」吗？`,
                     onConfirm: () => {
                       setCustomPresets(removeCustomPreset(preset.name));
-                      onToast('预设已删除');
+                      showGvaMessage.success('预设已删除');
                     },
                   });
                 }}
@@ -723,7 +710,7 @@ function PresetsPane({
             onConfirm={(name) => {
               setCustomPresets(addCustomPreset(exportCurrentPreset(settings, name)));
               setPromptOpen(false);
-              onToast('预设已保存');
+              showGvaMessage.success('预设已保存');
             }}
           />
         ) : null}

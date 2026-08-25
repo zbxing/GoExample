@@ -21,6 +21,7 @@ import {
   GvaSettingDrawer,
   type GvaShellSettings,
 } from '@/components/shell/gva-setting-drawer';
+import type { SystemMenuTreeNode } from '@/lib/types/system';
 
 interface TopbarProps {
   sidebarId: string;
@@ -274,23 +275,40 @@ export function Topbar({
   );
 }
 
-function buildBreadcrumbs(
+const BREADCRUMB_FALLBACKS: Record<string, string> = {
+  '/dashboard': '仪表盘',
+  '/settings': '系统设置',
+  '/403': '无权限',
+};
+
+/** 在菜单树中按 path 精确匹配，返回从根到该节点的标题链（子 path 可不带父前缀） */
+function findMenuTitleChain(
+  menus: SystemMenuTreeNode[],
   pathname: string,
-  menus: Array<{ title: string; path: string; children: Array<{ title: string; path: string }> }>,
-) {
-  const crumbs = ['首页'];
+  ancestors: string[] = [],
+): string[] | null {
   for (const menu of menus) {
-    if (pathname === menu.path || pathname.startsWith(`${menu.path}/`)) {
-      crumbs.push(menu.title);
-      for (const child of menu.children) {
-        if (pathname === child.path || pathname.startsWith(`${child.path}/`)) {
-          crumbs.push(child.title);
-        }
+    const titles = menu.title ? [...ancestors, menu.title] : ancestors;
+    if (menu.path === pathname) {
+      return titles;
+    }
+    if (menu.children.length > 0) {
+      const found = findMenuTitleChain(menu.children, pathname, titles);
+      if (found) {
+        return found;
       }
     }
   }
-  if (crumbs.length === 1) {
-    crumbs.push(pathname === '/dashboard' ? '仪表盘' : pathname);
+  return null;
+}
+
+function buildBreadcrumbs(pathname: string, menus: SystemMenuTreeNode[]) {
+  const crumbs = ['首页'];
+  const chain = findMenuTitleChain(menus, pathname);
+  if (chain && chain.length > 0) {
+    crumbs.push(...chain);
+    return crumbs;
   }
+  crumbs.push(BREADCRUMB_FALLBACKS[pathname] ?? pathname);
   return crumbs;
 }

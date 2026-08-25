@@ -5,6 +5,7 @@ import { AuthProvider } from '@/providers/auth-provider';
 import { LocaleProvider } from '@/providers/locale-provider';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { ProjectProvider, ProjectProviderFallback } from '@/providers/project-provider';
+import { GvaMessageHost } from '@/components/shell/gva-message-host';
 
 export function AppProviders({ children }: PropsWithChildren) {
   return (
@@ -14,6 +15,7 @@ export function AppProviders({ children }: PropsWithChildren) {
           <Suspense fallback={<ProjectProviderFallback>{children}</ProjectProviderFallback>}>
             <ProjectProvider>{children}</ProjectProvider>
           </Suspense>
+          <GvaMessageHost />
         </AuthProvider>
       </LocaleProvider>
     </ThemeProvider>
