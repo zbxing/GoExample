@@ -917,7 +917,7 @@ test('V12 completion and V13 backlog match the weighted evaluation', async () =>
 
   const declared = evaluation.match(/精确加权值 \*\*([\d.]+)\/10\*\*/);
   assert.ok(declared, 'current evaluation must declare an exact weighted score');
-  assert.equal(declared[1], '9.505', 'current score must include the second independent Framework service, six-module workspace, Billing OpenAPI/SDK contract, multi-project build, and all prior V12 evidence without claiming remote Linux results, target payload/IdP/dependency/TLS edge capacity, target IdP MFA deployment, native Fiber cancellation, device UI, production policy, target recovery, identity, or HA evidence');
+  assert.equal(declared[1], '9.508', 'current score must include the second independent Framework service, six-module workspace, Billing OpenAPI/SDK contract, all-public-operation request mapping, package-level behavior coverage, and generated-SDK-to-real-Framework-service integration coverage without claiming remote Linux results, target payload/IdP/dependency/TLS edge capacity, target IdP MFA deployment, native Fiber cancellation, device UI, production policy, target recovery, identity, or HA evidence');
   const roundedCalculatedTotal = Math.round((calculatedTotal + 1e-9) * 1000) / 1000;
   assert.equal(roundedCalculatedTotal.toFixed(3), declared[1]);
   assert.match(backlog, /V12-01/);
@@ -926,7 +926,7 @@ test('V12 completion and V13 backlog match the weighted evaluation', async () =>
   assert.match(backlog, /原有“V12 本身仍未完成”均由本次收口决定取代/);
   assert.match(backlog, /当前精确综合评分：\*\*9\.493\/10\*\*/);
   assert.match(nextBacklog, /状态：\*\*实施中\*\*/);
-  assert.match(nextBacklog, /当前精确综合评分：\*\*9\.505\/10\*\*/);
+  assert.match(nextBacklog, /当前精确综合评分：\*\*9\.508\/10\*\*/);
   assert.match(nextBacklog, /V13-01/);
   assert.match(nextBacklog, /V13-09/);
   assert.match(nextBacklog, /V12-06/);
@@ -958,6 +958,7 @@ test('V12 completion and V13 backlog match the weighted evaluation', async () =>
   assert.match(backlog, /SecurityAuditSink/);
   assert.match(backlog, /support\/consumer\/HealthProbe/);
   assert.match(nextBacklog, /Services\/Billing/);
+  assert.match(nextBacklog, /每个公开方法到清单 method\/path 的实际请求映射/);
   assert.match(backlog, /Framework\/sqlclient/);
   assert.match(backlog, /Framework\/queueclient/);
   assert.match(nextBacklog, /V13-05/);
