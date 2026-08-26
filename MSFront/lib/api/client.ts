@@ -1,5 +1,5 @@
 import { siteConfig } from '@/lib/config/site';
-import { beginGvaContentLoading, endGvaContentLoading } from '@/lib/utils/gva-page-loading';
+import { beginGvaContentLoading, endGvaContentLoading } from '@/lib/utils/ga-page-loading';
 
 export function createApiClient(baseUrl?: string) {
   const resolvedBaseUrl = (baseUrl ?? siteConfig.apiBaseUrl).replace(/\/+$/, '');

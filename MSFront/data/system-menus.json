@@ -34,7 +34,7 @@
       "component": "system/users",
       "title": "用户管理",
       "icon": "Users",
-      "hidden": false,
+      "hidden": true,
       "sort": 1,
       "keepAlive": true,
       "menuBtns": ["user:add", "user:edit", "user:delete"]
@@ -48,9 +48,17 @@
       "title": "角色管理",
       "icon": "ShieldAlert",
       "hidden": false,
-      "sort": 2,
+      "sort": 1,
       "keepAlive": true,
-      "menuBtns": ["role:add", "role:edit", "role:delete", "role:bind"]
+      "menuBtns": [
+        "role:add",
+        "role:edit",
+        "role:delete",
+        "role:bind",
+        "user:add",
+        "user:edit",
+        "user:delete"
+      ]
     },
     {
       "id": "5",

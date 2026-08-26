@@ -1,11 +1,13 @@
 import type {
   AuthSessionUser,
   CasbinPolicyRecord,
+  CopySystemRoleInput,
   CreateSystemApiInput,
   CreateSystemMenuInput,
   CreateSystemRoleInput,
   CreateSystemUserInput,
   ReplaceCasbinPoliciesInput,
+  SetRoleUsersInput,
   SystemApiRecord,
   SystemMenuRecord,
   SystemMenuTreeNode,
@@ -24,10 +26,12 @@ export interface SystemAdapter {
   createUser(input: CreateSystemUserInput): Promise<SystemUserPublic>;
   updateUser(input: UpdateSystemUserInput): Promise<SystemUserPublic>;
   deleteUser(userId: string): Promise<{ id: string }>;
+  setRoleUsers(input: SetRoleUsersInput): Promise<{ roleId: string; userIds: string[] }>;
   listRoles(): Promise<SystemRoleRecord[]>;
   createRole(input: CreateSystemRoleInput): Promise<SystemRoleRecord>;
   updateRole(input: UpdateSystemRoleInput): Promise<SystemRoleRecord>;
   deleteRole(roleId: string): Promise<{ id: string }>;
+  copyRole(input: CopySystemRoleInput): Promise<SystemRoleRecord>;
   listMenus(): Promise<SystemMenuRecord[]>;
   listMenuTree(): Promise<SystemMenuTreeNode[]>;
   listAsyncMenus(menuIds: string[]): Promise<SystemMenuTreeNode[]>;

@@ -161,10 +161,24 @@ export function IconArrowDown(props: IconProps) {
   );
 }
 
-export function IconSort(props: IconProps) {
+export function IconSetting(props: IconProps) {
   return (
-    <svg {...baseProps({ size: 14, ...props })} className={props.className ?? 'gvaSortIcon'}>
-      <path fill="currentColor" d="M512 128l192 256H320l192-256zm0 768l-192-256h384L512 896z" />
+    <svg {...baseProps(props)}>
+      <path
+        fill="currentColor"
+        d="M764.8 360.96l-54.4-93.76a32 32 0 00-43.84-11.52l-71.36 41.28a256.64 256.64 0 00-82.24 0l-71.36-41.28a32 32 0 00-43.84 11.52l-54.4 93.76a32 32 0 004.16 38.4l57.28 62.08a255.36 255.36 0 000 82.24l-57.28 62.08a32 32 0 00-4.16 38.4l54.4 93.76a32 32 0 0043.84 11.52l71.36-41.28a256.64 256.64 0 0082.24 0l71.36 41.28a32 32 0 0043.84-11.52l54.4-93.76a32 32 0 00-4.16-38.4l-57.28-62.08a255.36 255.36 0 000-82.24l57.28-62.08a32 32 0 004.16-38.4zM512 640a128 128 0 110-256 128 128 0 010 256z"
+      />
+    </svg>
+  );
+}
+
+export function IconCopy(props: IconProps) {
+  return (
+    <svg {...baseProps(props)}>
+      <path
+        fill="currentColor"
+        d="M768 832a128 128 0 01-128 128H192A128 128 0 0164 832V384a128 128 0 01128-128v64a64 64 0 00-64 64v448a64 64 0 0064 64h448a64 64 0 0064-64zM384 128a64 64 0 00-64 64v448a64 64 0 0064 64h448a64 64 0 0064-64V192a64 64 0 00-64-64zm0-64h448a128 128 0 01128 128v448a128 128 0 01-128 128H384a128 128 0 01-128-128V192A128 128 0 01384 64z"
+      />
     </svg>
   );
 }

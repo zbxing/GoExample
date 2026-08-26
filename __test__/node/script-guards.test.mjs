@@ -17,7 +17,7 @@ function runScript(relativePath, args = [], environment = {}) {
   });
 }
 
-test('Go project runner rejects project paths outside Proj', () => {
+test('Go project runner rejects unsafe project selectors', () => {
   const result = runScript('scripts/go-project.mjs', ['test'], { GO_PROJECT: '../Framework' });
 
   assert.equal(result.status, 1);
@@ -64,7 +64,7 @@ test('OpenAPI compatibility gate compares pull requests with their base commit',
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'routes_health.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'app.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'app_test.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapi', 'openapi_contract_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapi', 'openapi_contract_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', 'openapi', 'openapi.json'), 'utf8'),
     readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
   ]);
@@ -220,7 +220,7 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   const transportBenchmark = await readFile(
     path.join(
       repositoryRoot,
-      'Proj',
+      'Solutions',
       'Example',
       'internal',
       'projectapi',
@@ -230,6 +230,14 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   );
   const transportReport = await readFile(
     path.join(repositoryRoot, 'scripts', 'transport-benchmark-report.mjs'),
+    'utf8',
+  );
+  const transportBaseline = await readFile(
+    path.join(repositoryRoot, 'scripts', 'transport-benchmark-baseline.mjs'),
+    'utf8',
+  );
+  const transportEnvironment = await readFile(
+    path.join(repositoryRoot, 'scripts', 'lib', 'transport-benchmark-environment.mjs'),
     'utf8',
   );
   const transportSoakReport = await readFile(
@@ -258,9 +266,23 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   );
 
   assert.match(workflow, /runs-on:\s*ubuntu-24\.04/);
+  assert.match(workflow, /actions:\s*read/);
+  assert.match(workflow, /trusted-baseline:[\s\S]*github\.event_name != 'pull_request'/);
+  assert.match(workflow, /transport-benchmark:[\s\S]*needs:\s*trusted-baseline/);
+  assert.match(workflow, /pull_request_not_eligible/);
+  assert.match(workflow, /actions\/github-script@[a-f0-9]{40}/);
+  assert.match(workflow, /actions\/download-artifact@[a-f0-9]{40}/);
+  assert.match(workflow, /default_branch/);
+  assert.match(workflow, /\['push', 'workflow_dispatch'\]/);
+  assert.match(workflow, /head_repository\?\.full_name/);
+  assert.match(workflow, /transport-benchmark-baseline\.mjs prepare/);
+  assert.match(workflow, /transport-benchmark-baseline\.mjs unavailable/);
+  assert.match(workflow, /baseline-source\.json/);
   assert.match(workflow, /yarn bench:transports/);
   assert.match(workflow, /lscpu/);
   assert.match(workflow, /GOMAXPROCS=2 \/usr\/bin\/time -v/);
+  assert.match(workflow, /GOMAXPROCS:\s*"2"/);
+  assert.match(workflow, /TRANSPORT_BENCHMARK_GO_VERSION/);
   assert.match(workflow, /transport-benchmark\.txt/);
   assert.match(workflow, /PIPESTATUS\[0\]/);
   assert.match(workflow, /benchmark-status\.txt/);
@@ -276,6 +298,9 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(workflow, /benchmark-trend\.txt/);
   assert.match(workflow, /scripts\/transport-benchmark-report\.mjs/);
   assert.match(workflow, /transport-capacity-report\.json/);
+  assert.match(workflow, /baseline_args=\(\)/);
+  assert.match(workflow, /--baseline \.temp\/transport-benchmark\/baseline\.json/);
+  assert.match(workflow, /baseline-candidate\.json/);
   assert.match(workflow, /scripts\/transport-soak-report\.mjs/);
   assert.match(workflow, /transport-soak-report\.json/);
   assert.match(workflow, /go tool pprof -top -nodecount=30/);
@@ -288,6 +313,14 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(workflow, /manifest\.json/);
   assert.match(workflow, /actions\/upload-artifact@[a-f0-9]{40}/);
   assert.match(workflow, /if:\s*always\(\)/);
+  assert.match(transportBaseline, /compatible_candidate_missing/);
+  assert.match(transportBaseline, /candidate workload matrix is incompatible/);
+  assert.match(transportBaseline, /candidate scenario matrix is incompatible/);
+  assert.match(transportBaseline, /candidate must be a schemaVersion 4/);
+  assert.match(transportBaseline, /event must be push or workflow_dispatch/);
+  assert.match(transportBaseline, /createHash\('sha256'\)/);
+  assert.match(transportBaseline, /validateEnvironmentFingerprint/);
+  assert.match(transportBaseline, /environmentFingerprintSha256/);
   assert.match(goProjectRunner, /'bench-transports'[\s\S]*'-count=5'/);
   assert.match(goProjectRunner, /-run=\^TestProjectTransport/);
   assert.match(goProjectRunner, /-cpuprofile=transport\.cpu\.pprof/);
@@ -304,6 +337,11 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(transportBenchmark, /TestProjectTransportCapacityMatrixTCP/);
   assert.match(transportBenchmark, /connection-churn-c16/);
   assert.match(transportBenchmark, /TRANSPORT_CAPACITY/);
+  assert.match(transportBenchmark, /TestProjectTransportScenarioMatrixTCP/);
+  assert.match(transportBenchmark, /TRANSPORT_SCENARIO/);
+  assert.match(transportBenchmark, /response-32k-c16/);
+  assert.match(transportBenchmark, /auth-reject-c16/);
+  assert.match(transportBenchmark, /dependency-delay-5ms-c32/);
   assert.match(transportBenchmark, /httptrace\.ClientTrace/);
   assert.match(transportBenchmark, /\/proc\/self\/fd/);
   assert.match(transportBenchmark, /TestProjectTransportSoakTCP/);
@@ -311,9 +349,30 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(transportBenchmark, /TRANSPORT_SOAK/);
   assert.match(transportReport, /const expectedRounds = 5/);
   assert.match(transportReport, /steady-c1/);
+  assert.match(transportReport, /steady-c2/);
+  assert.match(transportReport, /steady-c4/);
+  assert.match(transportReport, /steady-c8/);
   assert.match(transportReport, /steady-c16/);
+  assert.match(transportReport, /steady-c32/);
   assert.match(transportReport, /steady-c64/);
+  assert.match(transportReport, /steady-c128/);
   assert.match(transportReport, /connection-churn-c16/);
+  assert.match(transportReport, /capacityKnee/);
+  assert.match(transportReport, /peakThroughputFraction/);
+  assert.match(transportReport, /--baseline/);
+  assert.match(transportReport, /maxThroughputRegressionFraction/);
+  assert.match(transportReport, /maxP95IncreaseFraction/);
+  assert.match(transportReport, /maxP99IncreaseFraction/);
+  assert.match(transportReport, /captureEnvironmentFingerprint/);
+  assert.match(transportReport, /environment_fingerprint_mismatch/);
+  assert.match(transportReport, /environmentComparison/);
+  assert.match(transportReport, /parseMeasurements\(raw, 'TRANSPORT_SCENARIO'\)/);
+  assert.match(transportReport, /schemaVersion: 4/);
+  assert.match(transportReport, /scenarioComparisons/);
+  assert.match(transportEnvironment, /runner\.imageVersion/);
+  assert.match(transportEnvironment, /toolchain\.goVersion/);
+  assert.match(transportEnvironment, /execution\.gomaxprocs/);
+  assert.match(transportEnvironment, /sha256 does not match its canonical fields/);
   assert.match(transportReport, /all measurement error rates must be zero/);
   assert.match(transportReport, /payloadBytes must remain stable/);
   assert.match(transportReport, /directionalRatios/);
@@ -353,7 +412,7 @@ test('server admission control remains bounded and probe-safe', async () => {
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'middleware.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'observability', 'metrics.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'config', 'config.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', '.env.example'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', '.env.example'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'lifecycle_contract_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'routes_auth.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'app_test.go'), 'utf8'),
@@ -515,11 +574,13 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === 'support/deploy/kubernetes/README.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/security/server-threat-model.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/security/server-audit-events.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V13.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/evidence-manifest.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/evidence-verify.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/server-recovery-drill.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/server-release.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/transport-benchmark-report.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/transport-benchmark-environment.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/transport-soak-report.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/kubernetes-manifest.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/nginx-edge.mjs' && input.sha256));
@@ -535,10 +596,10 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === '.github/workflows/go-transport-benchmark.yml' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '.github/workflows/node-tools-quality.yml' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/recovery/server-failure-matrix.md' && input.sha256));
-    assert.ok(manifest.inputs.some((input) => input.path === 'Proj/Example/internal/projectapi/routes_test.go' && input.sha256));
-    assert.ok(manifest.inputs.some((input) => input.path === 'Proj/Example/internal/projectapi/openapi_contract_test.go' && input.sha256));
-    assert.ok(manifest.inputs.some((input) => input.path === 'Proj/Example/internal/projectapi/transport_benchmark_test.go' && input.sha256));
-    assert.ok(manifest.inputs.some((input) => input.path === 'Proj/Example/internal/projectapp/service_test.go' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'Solutions/Example/internal/projectapi/routes_test.go' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'Solutions/Example/internal/projectapi/openapi_contract_test.go' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'Solutions/Example/internal/projectapi/transport_benchmark_test.go' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'Solutions/Example/internal/projectapp/service_test.go' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'Framework/queueclient/natsjetstream/cluster_integration_test.go' && input.sha256));
     assert.ok(manifest.boundaries.productionSharedStore.status === 'not_recorded');
     assert.ok(manifest.boundaries.otelCollector.status === 'not_recorded');
@@ -829,10 +890,11 @@ test('server security audit events stay correlated, bounded, and credential-safe
   assert.match(rules, /GoExampleSecurityAuditSinkFailures/);
 });
 
-test('V12 evaluation score matches its weighted evidence table and backlog', async () => {
-  const [evaluation, backlog] = await Promise.all([
+test('V12 completion and V13 backlog match the weighted evaluation', async () => {
+  const [evaluation, backlog, nextBacklog] = await Promise.all([
     readFile(path.join(repositoryRoot, 'docs', '评估', '项目架构与性能评估.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V12.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V13.md'), 'utf8'),
   ]);
   const rows = [
     ...evaluation.matchAll(/^\| (?!\*\*综合评分)([^|]+) \| (\d+)% \| ([\d.]+) \| ([\d.]+) \|/gm),
@@ -854,13 +916,27 @@ test('V12 evaluation score matches its weighted evidence table and backlog', asy
   }
 
   const declared = evaluation.match(/精确加权值 \*\*([\d.]+)\/10\*\*/);
-  assert.ok(declared, 'V12 evaluation must declare an exact weighted score');
-  assert.equal(declared[1], '9.451', 'V12 score must include the standard request-context bridge, hash-keyed cross-replica OIDC state, bounded self-service browser session inventory and subject-bound revocation, explicit device-name metadata, project contract pinning, ID-token assurance, CSRF, tenant/resource authorization, and local recovery evidence without claiming target IdP MFA deployment, native Fiber cancellation, device UI, production policy, target recovery, identity, or HA evidence');
+  assert.ok(declared, 'current evaluation must declare an exact weighted score');
+  assert.equal(declared[1], '9.505', 'current score must include the second independent Framework service, six-module workspace, Billing OpenAPI/SDK contract, multi-project build, and all prior V12 evidence without claiming remote Linux results, target payload/IdP/dependency/TLS edge capacity, target IdP MFA deployment, native Fiber cancellation, device UI, production policy, target recovery, identity, or HA evidence');
   const roundedCalculatedTotal = Math.round((calculatedTotal + 1e-9) * 1000) / 1000;
   assert.equal(roundedCalculatedTotal.toFixed(3), declared[1]);
   assert.match(backlog, /V12-01/);
   assert.match(backlog, /V12-10/);
-  assert.match(backlog, /当前精确综合评分：\*\*9\.451\/10\*\*/);
+  assert.match(backlog, /状态：\*\*已完成\*\*/);
+  assert.match(backlog, /原有“V12 本身仍未完成”均由本次收口决定取代/);
+  assert.match(backlog, /当前精确综合评分：\*\*9\.493\/10\*\*/);
+  assert.match(nextBacklog, /状态：\*\*实施中\*\*/);
+  assert.match(nextBacklog, /当前精确综合评分：\*\*9\.505\/10\*\*/);
+  assert.match(nextBacklog, /V13-01/);
+  assert.match(nextBacklog, /V13-09/);
+  assert.match(nextBacklog, /V12-06/);
+	assert.match(backlog, /capacityKnee/);
+  assert.match(backlog, /9 × 2/);
+  assert.match(backlog, /3 × 2 × 5/);
+  assert.match(backlog, /10%\/20%\/25%/);
+  assert.match(backlog, /baseline-source\.json/);
+  assert.match(backlog, /environmentFingerprint/);
+  assert.match(backlog, /明确排除 PR 运行/);
 	assert.match(backlog, /hash-only opaque session\/CSRF\/logout/);
 	assert.match(backlog, /AuthorizationRequestStore/);
 	assert.match(backlog, /并发恰好一个成功/);
@@ -881,9 +957,11 @@ test('V12 evaluation score matches its weighted evidence table and backlog', asy
   assert.match(backlog, /主动篡改拒绝/);
   assert.match(backlog, /SecurityAuditSink/);
   assert.match(backlog, /support\/consumer\/HealthProbe/);
+  assert.match(nextBacklog, /Services\/Billing/);
   assert.match(backlog, /Framework\/sqlclient/);
   assert.match(backlog, /Framework\/queueclient/);
-  assert.match(backlog, /V12-06 本身仍未完成/);
+  assert.match(nextBacklog, /V13-05/);
+  assert.match(nextBacklog, /目标数据库与消息系统实证/);
   assert.match(backlog, /生产 broker/);
   assert.match(backlog, /NATS_TEST_URL/);
   assert.match(backlog, /OIDC\/JWKS 资源服务器基础/);
@@ -908,11 +986,11 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'routes.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'app.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'app_test.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapi', 'routes.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapp', 'service.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'cmd', 'server', 'main.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapi', 'architecture_test.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapi', 'routes_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapi', 'routes.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapp', 'service.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'cmd', 'server', 'main.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapi', 'architecture_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapi', 'routes_test.go'), 'utf8'),
   ]);
 
   assert.match(applicationQuery, /type ApplicationQuery struct/);
@@ -1039,9 +1117,9 @@ test('resource authorization is bounded, fail-closed, and used by the Example pr
 		readFile(path.join(repositoryRoot, 'Framework', 'authorization', 'authorization_test.go'), 'utf8'),
 		readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_authorization.go'), 'utf8'),
 		readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_resource_authorization_test.go'), 'utf8'),
-		readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapp', 'authorization.go'), 'utf8'),
-		readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapp', 'authorization_test.go'), 'utf8'),
-		readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapi', 'routes.go'), 'utf8'),
+		readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapp', 'authorization.go'), 'utf8'),
+		readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapp', 'authorization_test.go'), 'utf8'),
+		readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapi', 'routes.go'), 'utf8'),
 		readFile(path.join(repositoryRoot, 'docs', 'openapi', 'openapi.json'), 'utf8'),
 	]);
 	assert.match(contract, /type Authorizer interface/);
@@ -1275,10 +1353,10 @@ test('server observability rules define executable SLO evidence', async () => {
     readFile(path.join(repositoryRoot, 'Framework', 'observability', 'tracing_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpclient', 'client.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpclient', 'client_test.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'cmd', 'server', 'main.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapp', 'service.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapi', 'routes_test.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', '.env.example'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'cmd', 'server', 'main.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapp', 'service.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapi', 'routes_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', '.env.example'), 'utf8'),
   ]);
 
   assert.match(rules, /^groups:/m);
@@ -1823,10 +1901,10 @@ test('external OIDC/JWKS bearer verification stays bounded and separate from dem
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'token_verifier_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'config', 'config.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'config', 'config_test.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'cmd', 'server', 'main.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'cmd', 'server', 'main_test.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'internal', 'projectapi', 'routes.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', '.env.example'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'cmd', 'server', 'main.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'cmd', 'server', 'main_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapi', 'routes.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', '.env.example'), 'utf8'),
     readFile(path.join(repositoryRoot, 'support', 'deploy', 'kubernetes', 'goexample-api.template.json'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'README.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'CHANGELOG.md'), 'utf8'),
@@ -2058,8 +2136,8 @@ test('server shared-state boundary keeps production fail-fast explicit', async (
     readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'redis_tracing.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'redis_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'redis_shared_state_test.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', 'cmd', 'server', 'main.go'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', '.env.example'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'cmd', 'server', 'main.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', '.env.example'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'middleware.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'idempotency_fingerprint.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'response.go'), 'utf8'),
@@ -2115,7 +2193,7 @@ test('Redis Sentinel contract stays ACL-separated, pinned, archived, and target-
     readFile(path.join(repositoryRoot, 'scripts', 'redis-sentinel-contract.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, '.github', 'workflows', 'go-quality.yml'), 'utf8'),
     readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
-    readFile(path.join(repositoryRoot, 'Proj', 'Example', '.env.example'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', '.env.example'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'README.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'CHANGELOG.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs'), 'utf8'),
@@ -2233,4 +2311,27 @@ test('Nginx edge baseline stays pinned, bounded, archived, and target-explicit',
   assert.match(readme, /targetEdge=not_recorded/);
   assert.match(evidenceManifest, /targetEdge:\s*\{\s*status: 'not_recorded'/s);
   assert.match(evidenceManifest, /no target edge, real certificate\/DNS, HTTP\/3, or target lifecycle artifact/);
+});
+
+test('V13 evidence index keeps production boundaries strict and complete', async () => {
+  const [script, tests, packageDocument, backlog] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'scripts', 'v13-evidence.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, '__test__', 'node', 'v13-evidence.test.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V13.md'), 'utf8'),
+  ]);
+  const scripts = JSON.parse(packageDocument).scripts;
+  for (const id of ['V13-01', 'V13-02', 'V13-03', 'V13-04', 'V13-05', 'V13-06', 'V13-07', 'V13-08', 'V13-09']) {
+    assert.match(script, new RegExp(`\\['${id}',`));
+  }
+  assert.match(script, /statusValues = new Set\(\['not_recorded', 'recorded', 'failed'\]\)/);
+  assert.match(script, /recorded requires a non-local targetEnvironment/);
+  assert.match(script, /recorded requires an https runUrl/);
+  assert.match(script, /recorded requires a complete fingerprint/);
+  assert.match(script, /hashFile\(filePath\) !== item\.sha256/);
+  assert.match(script, /value\.startsWith\('\.temp\/'\)/);
+  assert.match(tests, /rejects forged recorded state and unsafe artifact paths/);
+  assert.equal(scripts['evidence:v13'], 'node scripts/v13-evidence.mjs');
+  assert.equal(scripts['evidence:v13:verify'], 'node scripts/v13-evidence.mjs --verify');
+  assert.match(backlog, /9 个工作包仍保持 `not_recorded`/);
 });

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, type DependencyList } from 'react';
-import { beginGvaListAwaiting, endGvaListAwaiting } from '@/lib/utils/gva-page-loading';
-import { isGvaPageLeaving, subscribeGvaPageLeaveEnd } from '@/lib/utils/gva-page-leave';
+import { beginGvaListAwaiting, endGvaListAwaiting } from '@/lib/utils/ga-page-loading';
+import { isGvaPageLeaving, subscribeGvaPageLeaveEnd } from '@/lib/utils/ga-page-leave';
 
 /**
  * 对齐 GVA `transition mode="out-in"`：

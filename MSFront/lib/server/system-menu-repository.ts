@@ -5,7 +5,7 @@ import type {
   SystemMenuTreeNode,
   UpdateSystemMenuInput,
 } from '@/lib/types/system';
-import { createId, nowIso, readJsonFile, writeJsonFile } from '@/lib/server/json-store';
+import { nowIso, readJsonFile, writeJsonFile } from '@/lib/server/json-store';
 
 interface MenusFile {
   menus: SystemMenuRecord[];
@@ -61,10 +61,22 @@ export async function listAsyncMenusForRoles(menuIds: string[]) {
   return buildMenuTree(menus);
 }
 
+/** GVA SysBaseMenu.ID is auto-increment uint — keep numeric string ids */
+function nextNumericMenuId(menus: SystemMenuRecord[]) {
+  let max = 0;
+  for (const menu of menus) {
+    const value = Number(menu.id);
+    if (Number.isFinite(value) && value > max) {
+      max = value;
+    }
+  }
+  return String(max + 1);
+}
+
 export async function createSystemMenu(input: CreateSystemMenuInput) {
   const menus = await loadMenus();
   const menu: SystemMenuRecord = {
-    id: createId('menu'),
+    id: nextNumericMenuId(menus),
     parentId: input.parentId?.trim() || '0',
     path: input.path.trim(),
     name: input.name.trim(),

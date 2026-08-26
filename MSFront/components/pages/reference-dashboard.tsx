@@ -34,8 +34,7 @@ const updates = [
 const quickLinks = [
   { href: '/settings', label: '菜单管理', icon: Menu },
   { href: '/integrations', label: 'API管理', icon: Link2 },
-  { href: '/roles', label: '角色管理', icon: UserRound },
-  { href: '/users', label: '用户管理', icon: UserRound },
+  { href: '/system/roles', label: '角色管理', icon: UserRound },
   { href: '/services', label: '自动化包', icon: Boxes },
   { href: '/projects', label: '自动代码', icon: Code2 },
 ] as const;

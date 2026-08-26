@@ -57,7 +57,7 @@ const emptySearch: SearchState = {
   email: '',
 };
 
-export function SystemUsersPage() {
+export function SystemUsersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { refresh } = useAuth();
   const { showSuccess, showError, ToastHost } = useAdminToast();
   const [searchDraft, setSearchDraft] = useState<SearchState>(emptySearch);
@@ -265,10 +265,9 @@ export function SystemUsersPage() {
     );
   }
 
-  return (
-    <AdminPage>
-      {ToastHost}
-      <AdminWarningBar title="注：右上角头像下拉可切换角色" />
+  const content = (
+    <>
+      {!embedded ? <AdminWarningBar title="注：右上角头像下拉可切换角色" /> : null}
       <AdminSearchForm
         onSearch={() => {
           setPage(1);
@@ -533,6 +532,22 @@ export function SystemUsersPage() {
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDelete()}
       />
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div id="system-users" className="gvaMergedUsersSection">
+        {ToastHost}
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <AdminPage>
+      {ToastHost}
+      {content}
     </AdminPage>
   );
 }

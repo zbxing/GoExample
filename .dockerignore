@@ -2,6 +2,9 @@
 !go.work
 !Framework/
 !Framework/**
-!Proj/
-!Proj/Example/
-!Proj/Example/**
+!Solutions/
+!Solutions/Example/
+!Solutions/Example/**
+!Services/
+!Services/Billing/
+!Services/Billing/**

@@ -2054,7 +2054,7 @@ select:disabled {
 
 .theme-system,
 .theme-aurora {
-  --page-background: #f5f6f8;
+  --page-background: var(--gva-page-bg, #f5f6f8);
   --surface-primary: #ffffff;
   --surface-secondary: #f7f8fa;
   --surface-strong: #ffffff;
@@ -3034,7 +3034,7 @@ thead th {
 
 /* Gin-Vue-Admin inspired reference surface */
 :root {
-  --page-background: #f5f6f8;
+  --page-background: var(--gva-page-bg, #f5f6f8);
   --surface-primary: #ffffff;
   --surface-secondary: #f7f8fa;
   --surface-strong: #ffffff;
@@ -3051,7 +3051,7 @@ thead th {
 
 html,
 body {
-  background: #f5f6f8;
+  background: var(--gva-page-bg, #f5f6f8);
   color: #1d2129;
 }
 
@@ -3063,7 +3063,7 @@ body {
   grid-template-columns: 248px minmax(0, 1fr);
   grid-template-rows: 88px minmax(0, 1fr);
   min-height: 100vh;
-  background: #f5f6f8;
+  background: var(--gva-page-bg, #f5f6f8);
 }
 
 .appShell[data-sidebar-collapsed='true'] {
@@ -3082,7 +3082,7 @@ body {
   border: 0;
   border-bottom: 1px solid #e5e6eb;
   border-radius: 0;
-  background: #ffffff;
+  background: var(--gva-card-bg, #ffffff);
   box-shadow: 0 1px 4px rgba(29, 33, 41, 0.04);
   backdrop-filter: none;
 }
@@ -3150,7 +3150,7 @@ body {
   padding: 0 24px;
   overflow-x: auto;
   border: 0;
-  background: #ffffff;
+  background: var(--gva-card-bg, #ffffff);
   scrollbar-width: none;
 }
 
@@ -3273,8 +3273,8 @@ body {
   padding: 16px 12px;
   overflow-y: auto;
   border: 0;
-  border-right: 1px solid #e5e6eb;
-  background: #ffffff;
+  border-right: 1px solid var(--el-border-color-lighter, var(--border-subtle, #e5e6eb));
+  background: var(--gva-card-bg, #ffffff);
   color: #4e5969;
   box-shadow: none;
   backdrop-filter: none;
@@ -3380,7 +3380,7 @@ body {
   min-width: 0;
   overflow-x: clip;
   padding: 0;
-  background: #f5f6f8;
+  background: var(--gva-page-bg, #f5f6f8);
 }
 
 .pageContent {
@@ -3404,22 +3404,22 @@ body {
   gap: 24px;
   min-height: 142px;
   padding: 24px 28px;
-  border: 1px solid #dce8ff;
+  border: 1px solid var(--gva-welcome-border, #dce8ff);
   border-radius: 8px;
-  background: linear-gradient(110deg, #eef5ff 0%, #f7fbff 65%, #ffffff 100%);
+  background: var(--gva-welcome-bg, linear-gradient(110deg, #eef5ff 0%, #f7fbff 65%, #ffffff 100%));
 }
 
 .referenceEyebrow,
 .referenceRailLabel {
   display: block;
-  color: #5f6b7a;
+  color: var(--gva-text-sub, #5f6b7a);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
 }
 
 .referenceWelcome h1 {
   margin: 8px 0 6px;
-  color: #1d2129;
+  color: var(--gva-text-main, #1d2129);
   font-size: clamp(1.35rem, 2.1vw, 1.9rem);
   font-weight: 650;
   line-height: 1.35;
@@ -3427,7 +3427,7 @@ body {
 
 .referenceWelcome p {
   margin: 0;
-  color: #5f6b7a;
+  color: var(--gva-text-sub, #5f6b7a);
   font-size: 0.84rem;
 }
 
@@ -3480,19 +3480,19 @@ body {
   min-height: 138px;
   padding: 18px 20px 14px;
   overflow: hidden;
-  border: 1px solid #e5e6eb;
+  border: 1px solid var(--gva-card-border, #e5e6eb);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--gva-card-bg, #ffffff);
 }
 
 .referenceMetricCard strong {
-  color: #1d2129;
+  color: var(--gva-text-main, #1d2129);
   font-size: 0.84rem;
   font-weight: 500;
 }
 
 .referenceMetricValue {
-  color: #1d2129;
+  color: var(--gva-text-main, #1d2129);
   font-size: 1.72rem;
   font-weight: 650;
   line-height: 1.2;
@@ -3552,9 +3552,9 @@ body {
 .referencePanel,
 .referenceLicenseCard {
   min-width: 0;
-  border: 1px solid #e5e6eb;
+  border: 1px solid var(--gva-card-border, #e5e6eb);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--gva-card-bg, #ffffff);
 }
 
 .referencePanel {
@@ -3572,7 +3572,7 @@ body {
 
 .referencePanelTitle h2 {
   margin: 0;
-  color: #1d2129;
+  color: var(--gva-text-main, #1d2129);
   font-size: 1rem;
   font-weight: 600;
 }
@@ -3603,7 +3603,7 @@ body {
 .referenceChartGrid span {
   display: flex;
   align-items: start;
-  color: #1d2129;
+  color: var(--gva-text-main, #1d2129);
   font-size: 0.7rem;
 }
 
@@ -3639,7 +3639,7 @@ body {
   justify-content: space-between;
   gap: 8px;
   padding-top: 8px;
-  color: #5f6b7a;
+  color: var(--gva-text-sub, #5f6b7a);
   font-size: 0.7rem;
 }
 
@@ -3670,19 +3670,19 @@ body {
 }
 
 .referenceTable th {
-  color: #5f6b7a;
+  color: var(--gva-text-sub, #5f6b7a);
   font-size: 0.72rem;
   font-weight: 500;
 }
 
 .referenceTable td:first-child {
   width: 25%;
-  color: #1d2129;
+  color: var(--gva-text-main, #1d2129);
 }
 
 .referenceTable td:last-child {
   width: 17%;
-  color: #5f6b7a;
+  color: var(--gva-text-sub, #5f6b7a);
   white-space: nowrap;
 }
 
@@ -3756,12 +3756,12 @@ body {
 }
 
 .referenceExternalLink svg {
-  color: #5f6b7a;
+  color: var(--gva-text-sub, #5f6b7a);
 }
 
 .referenceExternalLink small {
   flex: 0 0 auto;
-  color: #5f6b7a;
+  color: var(--gva-text-sub, #5f6b7a);
   font-size: 0.7rem;
 }
 
@@ -3808,7 +3808,7 @@ body {
 }
 
 .referenceNotice span:not(.referenceNoticeDot) {
-  color: #5f6b7a;
+  color: var(--gva-text-sub, #5f6b7a);
   font-size: 0.7rem;
 }
 
@@ -3820,7 +3820,7 @@ body {
 }
 
 .referenceNotice time {
-  color: #64748b;
+  color: var(--gva-text-sub, #64748b);
   font-size: 0.7rem;
   white-space: nowrap;
 }
@@ -3854,7 +3854,7 @@ body {
 
 .referenceDocLink svg:last-child {
   margin-left: auto;
-  color: #64748b;
+  color: var(--gva-text-sub, #64748b);
 }
 
 .referenceDocLink:hover {
@@ -3865,8 +3865,8 @@ body {
   display: grid;
   gap: 9px;
   padding: 20px;
-  border-color: #d7e4ff;
-  background: linear-gradient(145deg, #edf4ff, #f8fbff);
+  border-color: var(--gva-welcome-border, #d7e4ff);
+  background: var(--gva-license-bg, linear-gradient(145deg, #edf4ff, #f8fbff));
 }
 
 .referenceLicenseCard > span {
@@ -3877,14 +3877,14 @@ body {
 
 .referenceLicenseCard h3 {
   margin: 0;
-  color: #1d2129;
+  color: var(--gva-text-main, #1d2129);
   font-size: 1rem;
   line-height: 1.45;
 }
 
 .referenceLicenseCard p {
   margin: 0;
-  color: #5f6b7a;
+  color: var(--gva-text-sub, #5f6b7a);
   font-size: 0.76rem;
   line-height: 1.55;
 }
@@ -3988,7 +3988,7 @@ body {
     height: 100vh;
     padding: 14px 12px;
     overflow-y: auto;
-    border-right: 1px solid #e5e6eb;
+    border-right: 1px solid var(--el-border-color-lighter, var(--border-subtle, #e5e6eb));
     box-shadow: 8px 0 24px rgba(29, 33, 41, 0.12);
     transform: translateX(-108%);
     transition: transform 220ms ease;
@@ -4289,7 +4289,7 @@ body {
 
   .sidebar {
     padding: 14px 12px;
-    background: #ffffff;
+    background: var(--gva-card-bg, #ffffff);
     color: #4e5969;
   }
 
@@ -4329,6 +4329,8 @@ body {
   --gva-radius: 0.5rem;
   --gva-header-bg: #ffffff;
   --gva-header-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --gva-tab-bg: #ffffff;
+  --gva-tabs-bg: #ffffff;
 }
 
 .theme-gva body,
@@ -4336,20 +4338,20 @@ html.theme-gva body {
   background: var(--page-background);
 }
 
-/* Shell layout/visuals live in gva-parity.css to match current GVA. */
+/* Shell layout/visuals live in ga-parity.css to match current GVA. */
 
 .authLayout,
 .loginPage {
   min-height: 100vh;
   display: block;
-  background: #fff;
+  background: var(--gva-card-bg, #fff);
 }
 
 .loginPanel {
   width: min(420px, calc(100vw - 32px));
   padding: 32px 28px;
   border-radius: 8px;
-  background: #fff;
+  background: var(--gva-card-bg, #fff);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
 }
 
@@ -4390,7 +4392,7 @@ html.theme-gva body {
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   padding: 0 12px;
-  background: #fff;
+  background: var(--gva-card-bg, #fff);
   color: #303133;
 }
 
@@ -4415,7 +4417,7 @@ html.theme-gva body {
   padding: 0 14px;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
-  background: #fff;
+  background: var(--gva-card-bg, #fff);
   color: #606266;
   cursor: pointer;
   font-size: 13px;
@@ -4462,7 +4464,7 @@ html.theme-gva body {
 }
 
 .adminCard {
-  background: #fff;
+  background: var(--gva-card-bg, #fff);
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
   padding: 16px;
@@ -4518,7 +4520,8 @@ html.theme-gva body {
 
 .adminTable th {
   background: #f5f7fa;
-  color: #909399;
+  /* 对齐 GVA text-gray-700，非 EP secondary 灰 */
+  color: #374151;
   font-weight: 600;
 }
 
@@ -4543,7 +4546,7 @@ html.theme-gva body {
 
 .adminDialog {
   width: min(560px, 100%);
-  background: #fff;
+  background: var(--gva-card-bg, #fff);
   border-radius: var(--el-border-radius-base, var(--gva-radius, 0.625rem));
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
 }

@@ -8,7 +8,6 @@ import {
   Settings,
   Shield,
   ShieldCheck,
-  Users,
 } from 'lucide-react';
 
 export interface NavigationItem {
@@ -22,11 +21,6 @@ export const navigationItems: NavigationItem[] = [
     href: '/dashboard',
     icon: LayoutDashboard,
     translationKey: 'nav.dashboard',
-  },
-  {
-    href: '/system/users',
-    icon: Users,
-    translationKey: 'labels.users',
   },
   {
     href: '/system/roles',

@@ -7,7 +7,7 @@ import { ChevronDown, ChevronsLeft, ChevronsRight, X } from 'lucide-react';
 import type { Route } from 'next';
 import { resolveMenuIcon } from '@/lib/utils/menu-icons';
 import { useAuth } from '@/providers/auth-provider';
-import type { GvaMenuCollapseMode, GvaMenuTheme } from '@/lib/utils/gva-shell-settings';
+import type { GvaMenuCollapseMode, GvaMenuTheme } from '@/lib/utils/ga-shell-settings';
 import type { SystemMenuTreeNode } from '@/lib/types/system';
 
 interface SidebarProps {

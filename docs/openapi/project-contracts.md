@@ -1,15 +1,16 @@
 # Project OpenAPI contracts
 
-`contracts/projects.json` is the mapping between a `Proj/<name>` Go service and
+`contracts/projects.json` is the mapping between a managed Go service under
+`Solutions/<name>` or `Services/<name>` and
 the OpenAPI document that defines its public API. The mapping is intentionally
-outside `Proj/` and `SDK/`, so one workspace can build several services without
+outside the managed service directories and `SDK/`, so one workspace can build several services without
 making their contracts implicit.
 
 Each entry contains:
 
 ```json
 {
-  "projectPath": "Proj/Example",
+  "projectPath": "Solutions/Example",
   "contract": {
     "repository": "workspace",
     "ref": "worktree",
@@ -27,7 +28,7 @@ the commit resolved from that ref:
 
 ```json
 {
-  "projectPath": "Proj/Billing",
+  "projectPath": "Services/Billing",
   "contract": {
     "repository": "https://github.com/example/openapi-contracts.git",
     "ref": "refs/tags/billing-v2.3.0",
@@ -60,12 +61,12 @@ yarn sdk:check --project Billing
 yarn openapi:compat --project Billing --base-ref <git-sha>
 ```
 
-The current `Proj/Example` entry intentionally uses the workspace document. The
+The current `Solutions/Example` entry intentionally uses the workspace document. The
 existing `support/api-contracts` submodule contains the NestJS/RNExample contract and
-has no demonstrated `Proj/Example` route mapping, so it is not silently reused
+has no demonstrated `Solutions/Example` route mapping, so it is not silently reused
 for Example. Once the owning OpenAPI repository and document path are confirmed,
 add a new manifest entry (and the corresponding SDK module) rather than adding
-one submodule checkout per project.
+one submodule checkout per service.
 
 Git submodules are a poor fit for this mapping: a checkout has one working-tree
 ref, while projects need independent refs from the same source repository;

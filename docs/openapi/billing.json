@@ -1,0 +1,222 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GoExample Billing API",
+    "version": "1.0.0",
+    "summary": "A second Framework service consumer used for contract and migration checks"
+  },
+  "servers": [{ "url": "http://localhost:3001", "description": "Local Billing server" }],
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "getServiceInfo",
+        "responses": {
+          "200": {
+            "description": "Service metadata",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "operationId": "getMetrics",
+        "responses": { "200": { "description": "Prometheus metrics" } }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "operationId": "getLegacyHealth",
+        "deprecated": true,
+        "externalDocs": { "url": "./health-endpoint-migration.md" },
+        "responses": { "200": { "$ref": "#/components/responses/DeprecatedSuccess" } }
+      }
+    },
+    "/api/health/ready": {
+      "get": {
+        "operationId": "getLegacyReadiness",
+        "deprecated": true,
+        "externalDocs": { "url": "./health-endpoint-migration.md" },
+        "responses": {
+          "200": { "$ref": "#/components/responses/DeprecatedSuccess" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/health/startup": {
+      "get": {
+        "operationId": "getLegacyStartup",
+        "deprecated": true,
+        "externalDocs": { "url": "./health-endpoint-migration.md" },
+        "responses": { "200": { "$ref": "#/components/responses/DeprecatedSuccess" } }
+      }
+    },
+    "/api/system/info": {
+      "get": {
+        "operationId": "getSystemInfo",
+        "responses": {
+          "200": {
+            "description": "System metadata",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+          }
+        }
+      }
+    },
+    "/livez": {
+      "get": {
+        "operationId": "getLiveness",
+        "responses": {
+          "200": {
+            "description": "Liveness status",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+          }
+        }
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "getReadiness",
+        "responses": {
+          "200": {
+            "description": "Service readiness",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+          },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/startupz": {
+      "get": {
+        "operationId": "getStartup",
+        "responses": {
+          "200": {
+            "description": "Startup status",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/example/hello": {
+      "get": {
+        "operationId": "getExampleHello",
+        "parameters": [{
+          "name": "name",
+          "in": "query",
+          "required": false,
+          "schema": { "type": "string" }
+        }],
+        "responses": {
+          "200": {
+            "description": "Example greeting",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/example/echo": {
+      "post": {
+        "operationId": "postExampleEcho",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EchoRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Echo response",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/example/validate": {
+      "post": {
+        "operationId": "postExampleValidate",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProfileRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Validated profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" }
+        }
+      }
+    },
+    "/api/v1/example/delay": {
+      "get": {
+        "operationId": "getExampleDelay",
+        "parameters": [{
+          "name": "ms",
+          "in": "query",
+          "required": false,
+          "schema": { "type": "integer", "minimum": 0, "maximum": 5000 }
+        }],
+        "responses": {
+          "200": {
+            "description": "Delayed response",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+          },
+          "400": { "$ref": "#/components/responses/InvalidRequest" }
+        }
+      }
+    },
+    "/api/v1/billing/summary": {
+      "get": {
+        "operationId": "getBillingSummary",
+        "responses": {
+          "200": {
+            "description": "Billing service summary",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Envelope": {
+        "type": "object",
+        "required": ["code", "data", "msg"],
+        "properties": {
+          "code": { "type": "integer" },
+          "data": { "type": "object", "additionalProperties": true },
+          "msg": { "type": "string" }
+        }
+      },
+      "EchoRequest": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ProfileRequest": {
+        "type": "object",
+        "required": ["name", "email"],
+        "properties": {
+          "name": { "type": "string" },
+          "email": { "type": "string" },
+          "age": { "type": "integer" }
+        }
+      }
+    },
+    "responses": {
+      "DeprecatedSuccess": {
+        "description": "Successful response from a deprecated compatibility endpoint",
+        "headers": {
+          "Deprecation": { "schema": { "type": "string" } },
+          "Sunset": { "schema": { "type": "string" } },
+          "Link": { "schema": { "type": "string" } }
+        },
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+      },
+      "Unavailable": {
+        "description": "Service is not ready",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+      },
+      "InvalidRequest": {
+        "description": "Request validation failed",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } }
+      }
+    }
+  }
+}

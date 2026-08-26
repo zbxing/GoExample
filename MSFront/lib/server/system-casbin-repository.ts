@@ -43,6 +43,20 @@ export async function replaceCasbinPoliciesForRole(input: ReplaceCasbinPoliciesI
   return nextPolicies;
 }
 
+export async function copyCasbinPoliciesForRole(fromRoleId: string, toRoleId: string) {
+  const policies = await loadPolicies();
+  const source = policies.filter((policy) => policy.roleId === fromRoleId);
+  const retained = policies.filter((policy) => policy.roleId !== toRoleId);
+  const copied = source.map((policy) => ({
+    id: createId('p'),
+    roleId: toRoleId,
+    path: policy.path,
+    method: policy.method,
+  }));
+  await savePolicies([...retained, ...copied]);
+  return copied;
+}
+
 export async function isPathAllowedForRoles(
   roleIds: string[],
   method: string,

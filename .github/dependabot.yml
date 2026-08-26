@@ -19,7 +19,13 @@ updates:
     open-pull-requests-limit: 10
 
   - package-ecosystem: gomod
-    directory: /Proj/Example
+    directory: /Solutions/Example
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  - package-ecosystem: gomod
+    directory: /Services/Billing
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
@@ -31,7 +37,7 @@ updates:
     open-pull-requests-limit: 10
 
   - package-ecosystem: docker
-    directory: /Proj/Example
+    directory: /Solutions/Example
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

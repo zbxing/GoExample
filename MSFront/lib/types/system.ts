@@ -26,6 +26,8 @@ export interface SystemRoleRecord {
   description: string;
   parentId: string;
   defaultRouter: string;
+  /** 数据权限：1全部 2本部门及以下 3本部门 4仅本人 5自定义部门 */
+  dataScope: 1 | 2 | 3 | 4 | 5;
   menuIds: string[];
   btnAuths: string[];
   locked: boolean;
@@ -125,6 +127,7 @@ export interface CreateSystemRoleInput {
   description?: string;
   parentId?: string;
   defaultRouter?: string;
+  dataScope?: 1 | 2 | 3 | 4 | 5;
   menuIds?: string[];
   btnAuths?: string[];
 }
@@ -135,8 +138,22 @@ export interface UpdateSystemRoleInput {
   description?: string;
   parentId?: string;
   defaultRouter?: string;
+  dataScope?: 1 | 2 | 3 | 4 | 5;
   menuIds?: string[];
   btnAuths?: string[];
+}
+
+export interface CopySystemRoleInput {
+  id: string;
+  name: string;
+  parentId?: string;
+  oldAuthorityId: string;
+  dataScope?: 1 | 2 | 3 | 4 | 5;
+}
+
+export interface SetRoleUsersInput {
+  roleId: string;
+  userIds: string[];
 }
 
 export interface CreateSystemMenuInput {

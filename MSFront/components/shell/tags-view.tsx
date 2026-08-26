@@ -8,8 +8,8 @@ import type { Route } from 'next';
 import { useAuth } from '@/providers/auth-provider';
 import { flattenMenuTree } from '@/lib/utils/menu-access';
 import { resolveMenuIcon } from '@/lib/utils/menu-icons';
-import { beginGvaRouteProgress } from '@/lib/utils/gva-page-loading';
-import { triggerGvaPageLeave } from '@/lib/utils/gva-page-leave';
+import { beginGvaRouteProgress } from '@/lib/utils/ga-page-loading';
+import { triggerGvaPageLeave } from '@/lib/utils/ga-page-leave';
 
 interface TagsViewItem {
   path: string;
@@ -31,6 +31,8 @@ const listeners = new Set<() => void>();
 
 let cachedClientSnapshot: TagsViewItem[] = SERVER_SNAPSHOT;
 let cachedClientRaw: string | null = null;
+/** 水合完成前禁止读 sessionStorage，保证与 getServerSnapshot 同一引用 */
+let tagsHydrated = false;
 
 function emitStorage() {
   for (const listener of listeners) {
@@ -70,8 +72,8 @@ function normalizeTagOrder(current: TagsViewItem[]): TagsViewItem[] {
 }
 
 function readStoredTags(): TagsViewItem[] {
-  if (typeof window === 'undefined') {
-    return SERVER_SNAPSHOT;
+  if (!tagsHydrated || typeof window === 'undefined') {
+    return cachedClientSnapshot;
   }
 
   try {
@@ -95,11 +97,31 @@ function readStoredTags(): TagsViewItem[] {
   }
 }
 
+function hydrateTags() {
+  if (typeof window === 'undefined' || tagsHydrated) {
+    return;
+  }
+  tagsHydrated = true;
+  try {
+    const raw = window.sessionStorage.getItem(storageKey);
+    cachedClientRaw = raw;
+    const next = raw ? normalizeTags(JSON.parse(raw)) : SERVER_SNAPSHOT;
+    if (!tagsEqual(next, cachedClientSnapshot)) {
+      cachedClientSnapshot = next;
+    }
+  } catch {
+    cachedClientRaw = null;
+    cachedClientSnapshot = SERVER_SNAPSHOT;
+  }
+  emitStorage();
+}
+
 function persistTags(next: TagsViewItem[]) {
   if (typeof window === 'undefined') {
     return;
   }
 
+  tagsHydrated = true;
   const normalized = normalizeTagOrder(next);
   const payload = JSON.stringify(normalized);
   window.sessionStorage.setItem(storageKey, payload);
@@ -429,6 +451,10 @@ export function TagsView({
 
   useEffect(() => {
     setPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    hydrateTags();
   }, []);
 
   useEffect(() => {

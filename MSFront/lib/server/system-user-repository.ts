@@ -189,3 +189,29 @@ export async function deleteSystemUser(userId: string) {
   await saveUsers(users.filter((user) => user.id !== userId));
   return { id: userId };
 }
+
+/** 全量覆盖：指定角色绑定到哪些用户（对齐 GVA setRoleUsers） */
+export async function setUsersForRole(roleId: string, userIds: string[]) {
+  const users = await loadUsers();
+  const selected = new Set(userIds);
+  const next = users.map((user) => {
+    const hasRole = user.roleIds.includes(roleId);
+    const shouldHave = selected.has(user.id);
+    if (hasRole === shouldHave) {
+      return user;
+    }
+    let roleIds = user.roleIds;
+    if (shouldHave) {
+      roleIds = [...roleIds, roleId];
+    } else {
+      roleIds = roleIds.filter((id) => id !== roleId);
+      // 若用户仅剩此角色被移除，保留原主角色（GVA：主角色保持不变）
+      if (roleIds.length === 0) {
+        roleIds = [roleId];
+      }
+    }
+    return { ...user, roleIds, updatedAt: nowIso() };
+  });
+  await saveUsers(next);
+  return { roleId, userIds: [...selected] };
+}

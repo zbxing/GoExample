@@ -52,14 +52,14 @@ export function LoginPageContent() {
     <div id="userLayout" className="gvaUserLayout">
       <div className="gvaLoginBanner banner-oblique" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="gvaLoginCoverImg" src="/gva-cover.svg" alt="" />
+        <img className="gvaLoginCoverImg" src="/ga-cover.svg" alt="" />
       </div>
 
       <div className="gvaLoginLeft">
         <div className="gvaLoginCard">
           <div className="gvaEntryBrand">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/gva-logo.png" alt="" className="gvaEntryLogo" />
+            <img src="/ga-logo.png" alt="" className="gvaEntryLogo" />
             <p className="gvaEntryTitle">Go Admin</p>
           </div>
 

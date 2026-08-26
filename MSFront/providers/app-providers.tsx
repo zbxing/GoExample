@@ -5,7 +5,7 @@ import { AuthProvider } from '@/providers/auth-provider';
 import { LocaleProvider } from '@/providers/locale-provider';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { ProjectProvider, ProjectProviderFallback } from '@/providers/project-provider';
-import { GvaMessageHost } from '@/components/shell/gva-message-host';
+import { GvaMessageHost } from '@/components/shell/ga-message-host';
 
 export function AppProviders({ children }: PropsWithChildren) {
   return (

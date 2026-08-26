@@ -2,7 +2,7 @@
 
 - 状态：评估中
 - 日期：2026-08-18
-- 范围：`Proj/Example` 的项目 API transport
+- 范围：`Solutions/Example` 的业务方案 API transport
 - 关联：`docs/待优化/待优化V9.md` V9-01、V9-02、V9-03
 
 ## 背景
@@ -36,22 +36,22 @@
 
 ## 当前实现与命令
 
-`Proj/Example/internal/projectapp` 提供不依赖 HTTP 框架的 typed query/result。`internal/projectapi/transport_benchmark_test.go` 使用同一个 service 启动 Fiber 与标准 `net/http`，通过真实 `net.Listener` 对比响应契约。根命令为：
+`Solutions/Example/internal/projectapp` 提供不依赖 HTTP 框架的 typed query/result。`internal/projectapi/transport_benchmark_test.go` 使用同一个 service 启动 Fiber 与标准 `net/http`，通过真实 `net.Listener` 对比响应契约。根命令为：
 
 ```text
 yarn bench:transports
 ```
 
-该命令在固定 Linux runner 上运行 5 轮 benchmark；Windows/macOS 只执行真实 TCP 契约测试，benchmark 会明确跳过，不能产生可比结论。容量矩阵固定为 `steady-c1`（600 请求/并发 1/keep-alive）、`steady-c16`（2000/16/keep-alive）、`steady-c64`（4000/64/keep-alive）和 `connection-churn-c16`（800/16/关闭 keep-alive），两个 transport 使用相同 application service、响应字段和值及真实 TCP client。
+该命令在固定 Linux runner 上运行 5 轮 benchmark；Windows/macOS 只执行真实 TCP 契约测试，benchmark 会明确跳过，不能产生可比结论。容量矩阵固定为 keep-alive 并发 1/2/4/8/16/32/64/128 的八级阶梯和 `connection-churn-c16`（800/16/关闭 keep-alive）。独立场景矩阵通过完整 Framework middleware 固定执行 `response-32k-c16`（至少 32 KiB）、`auth-reject-c16`（无效 Bearer、401、application handler 零调用）和 `dependency-delay-5ms-c32`（可取消的 5ms 依赖延迟），两个 transport 均使用真实 TCP client。
 
-`.github/workflows/go-transport-benchmark.yml` 固定使用 `ubuntu-24.04` 和 `GOMAXPROCS=2`，采集 runner、内核、CPU、Go、commit、进程 CPU/RSS、前后 socket/网络/内存/FD limit 快照、CPU/heap profile 及文本摘要。每轮结构化记录 payload、throughput、p50/p95/p99、连接获取 p95、拨号、在途峰值、alloc/malloc、GC、goroutine 和 Linux FD；其中内存、GC、goroutine 与 FD 是 loopback client/server 共处的 harness 进程增量，不能解释为服务端独占成本。报告器严格要求 5 轮、4 × 2 完整矩阵、零错误与稳定 payload，再输出中位数和 Fiber/`net/http` 方向比；标准 Go benchmark 行另存为后续趋势输入。
+`.github/workflows/go-transport-benchmark.yml` 固定使用 `ubuntu-24.04` 和 `GOMAXPROCS=2`，采集 runner、内核、CPU、Go、commit、进程 CPU/RSS、前后 socket/网络/内存/FD limit 快照、CPU/heap profile 及文本摘要。容量测量结构化记录 payload、throughput、p50/p95/p99、连接获取 p95、拨号、在途峰值、alloc/malloc、GC、goroutine 和 Linux FD；其中内存、GC、goroutine 与 FD 是 loopback client/server 共处的 harness 进程增量，不能解释为服务端独占成本。报告器严格要求 5 轮、9 × 2 容量矩阵和 3 × 2 场景矩阵、零错误与稳定 payload，再输出中位数、Fiber/`net/http` 方向比，并分别计算首次达到观测峰值吞吐 90% 的经验饱和并发、峰值并发、相对 c1 的吞吐/p95 变化和末端吞吐保持率。若提供上一轮 schema v4 报告，容量和场景均固定比较吞吐/p95/p99 10%/20%/25% 阈值；`environmentFingerprint` 规范化记录 runner OS/arch/image、CPU model/logical CPUs、Go version 与 `GOMAXPROCS=2`，其 SHA-256 由报告器生成并由准入器复算，只有当前与历史字段一致才执行阈值，环境差异会优先列出 mismatch 并标记 `not_checked`。workflow 只从同仓库默认分支成功的 push/manual run 选择未过期候选，排除 PR 来源；准入器校验来源、2 MiB 上限、schema/scope、两组完整矩阵、median 与 GitHub Actions/Linux 指纹，并记录 run/commit/artifact、候选及环境摘要，缺失时清理陈旧 baseline。这三种场景是固定 loopback 合成契约，不代表目标 payload、目标 IdP、目标依赖或 TLS edge；经验饱和点和回归阈值也不是生产容量上限。
 
 workflow 还以并发 32 对每个 transport 执行 30 秒有界 loopback soak。5 秒窗口必须全部有请求且零错误，最低窗口吞吐不得低于窗口中位数的 50%；关闭 idle connection、执行 GC 并等待后，报告器限制 goroutine、heap in-use 和 FD 的粗粒度残留增长。该短时 harness 门禁只能捕获明显回归，不证明无泄漏、目标依赖长稳、生产资源隔离或 RPO/RTO。
 
-workflow 存在不等于已经获得 Linux 结果。当前仓库内固定 workload、报告门禁和制品路径已完成，但没有可引用的远端 artifact、目标 payload/依赖/edge、容量拐点或长稳数据。
+workflow 存在不等于已经获得 Linux 结果。当前仓库内固定容量/场景 workload、经验饱和点、受信历史制品自动选择、环境可比性校验、跨运行回归报告门禁及制品路径已完成，但没有可引用的远端 artifact 或已选择且指纹可比的历史 baseline，也没有目标 payload/IdP/依赖/TLS edge、目标负载容量拐点或长稳数据。
 
 真实 TCP 生命周期实验还确认：主动 deadline 和 server shutdown 可以取消协作式 application context，但客户端关闭连接不会及时传播。该限制及迁移条件记录在 `docs/adr/0002-http-request-lifecycle-and-protocol-boundary.md`。
 
 ## 结果与复评
 
-截至 2026-08-22，尚无固定 Linux runner 的成功原始 artifact，因此 ADR 保持“评估中”。收集到完整结果后，补充 run URL、原始 artifact、统计摘要、profile、容量拐点和“保留 Fiber/迁移/延后决策”结论，再更新评估分数。
+截至 2026-08-25，尚无固定 Linux runner 的成功原始 artifact，因此 ADR 保持“评估中”。收集到完整结果后，补充 run URL、原始 artifact、统计摘要、profile、容量拐点和“保留 Fiber/迁移/延后决策”结论，再更新评估分数。

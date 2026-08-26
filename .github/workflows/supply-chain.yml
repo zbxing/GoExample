@@ -4,7 +4,8 @@ on:
   push:
     paths:
       - "Framework/**"
-      - "Proj/**"
+      - "Solutions/**"
+      - "Services/**"
       - "MSFront/package.json"
       - "MSFront/yarn.lock"
       - "package.json"
@@ -13,7 +14,8 @@ on:
   pull_request:
     paths:
       - "Framework/**"
-      - "Proj/**"
+      - "Solutions/**"
+      - "Services/**"
       - "MSFront/package.json"
       - "MSFront/yarn.lock"
       - "package.json"

@@ -4,7 +4,8 @@ on:
   push:
     paths:
       - "Framework/**"
-      - "Proj/**"
+      - "Solutions/**"
+      - "Services/**"
       - "SDK/**"
       - "support/consumer/**"
       - "contracts/**"
@@ -30,7 +31,8 @@ on:
   pull_request:
     paths:
       - "Framework/**"
-      - "Proj/**"
+      - "Solutions/**"
+      - "Services/**"
       - "SDK/**"
       - "support/consumer/**"
       - "contracts/**"
@@ -95,7 +97,7 @@ jobs:
         run: |
           workspace="$(go work edit -json)"
           modules="$(jq -c '[.Use[].DiskPath]' <<<"${workspace}")"
-          projects="$(jq -c '[.Use[].DiskPath | select(startswith("./Proj/"))]' <<<"${workspace}")"
+          projects="$(jq -c '[.Use[].DiskPath | select(startswith("./Solutions/") or startswith("./Services/"))]' <<<"${workspace}")"
           test "$(jq 'length' <<<"${modules}")" -gt 0
           test "$(jq 'length' <<<"${projects}")" -gt 0
           echo "modules=${modules}" >> "${GITHUB_OUTPUT}"
@@ -123,13 +125,13 @@ jobs:
             ${{ matrix.module }}/go.sum
 
       - name: Set up Node
-        if: startsWith(matrix.module, './Proj/')
+        if: startsWith(matrix.module, './Solutions/') || startsWith(matrix.module, './Services/')
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 24
 
       - name: Materialize pinned project OpenAPI contracts
-        if: startsWith(matrix.module, './Proj/')
+        if: startsWith(matrix.module, './Solutions/') || startsWith(matrix.module, './Services/')
         run: node scripts/project-contracts.mjs materialize --fetch
 
       - name: Check Framework public API compatibility
@@ -371,7 +373,7 @@ jobs:
           go-version-file: Framework/go.mod
           cache-dependency-path: |
             Framework/go.sum
-            Proj/Example/go.sum
+            Solutions/Example/go.sum
 
       - name: Run bounded local server recovery drill
         run: yarn drill:server
@@ -419,7 +421,7 @@ jobs:
           go-version: 1.25.13
           cache-dependency-path: |
             Framework/go.sum
-            Proj/Example/go.sum
+            Solutions/Example/go.sum
 
       - name: Build deterministic Linux server release
         env:

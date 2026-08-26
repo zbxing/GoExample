@@ -17,7 +17,7 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
 const tempRoot = path.join(repositoryRoot, '.temp');
 const task = process.argv[2];
-const entrypoint = './Proj/Example/cmd/server';
+const entrypoint = './Solutions/Example/cmd/server';
 const maxArtifactBytes = 128 * 1024 * 1024;
 const sha256Pattern = /^[a-f0-9]{64}$/;
 

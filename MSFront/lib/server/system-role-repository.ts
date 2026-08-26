@@ -22,7 +22,12 @@ async function saveRoles(roles: SystemRoleRecord[]) {
 }
 
 export async function listSystemRoles() {
-  return loadRoles();
+  const roles = await loadRoles();
+  return roles.map((role) => ({
+    ...role,
+    dataScope: role.dataScope ?? 1,
+    parentId: role.parentId || '0',
+  }));
 }
 
 export async function getSystemRolesByIds(roleIds: string[]) {
@@ -44,6 +49,7 @@ export async function createSystemRole(input: CreateSystemRoleInput) {
     description: input.description?.trim() || '',
     parentId: input.parentId?.trim() || '0',
     defaultRouter: input.defaultRouter?.trim() || '/dashboard',
+    dataScope: input.dataScope ?? 1,
     menuIds: input.menuIds ?? [],
     btnAuths: input.btnAuths ?? [],
     locked: false,
@@ -69,6 +75,7 @@ export async function updateSystemRole(input: UpdateSystemRoleInput) {
     description: input.description?.trim() ?? current.description,
     parentId: input.parentId?.trim() ?? current.parentId,
     defaultRouter: input.defaultRouter?.trim() ?? current.defaultRouter,
+    dataScope: input.dataScope ?? current.dataScope ?? 1,
     menuIds: input.menuIds ?? current.menuIds,
     btnAuths: input.btnAuths ?? current.btnAuths,
     updatedAt: nowIso(),
@@ -87,8 +94,45 @@ export async function deleteSystemRole(roleId: string) {
   if (target.locked) {
     throw new Error(`Role is locked: ${roleId}`);
   }
+  if (roles.some((role) => role.parentId === roleId)) {
+    throw new Error(`Role has children: ${roleId}`);
+  }
   await saveRoles(roles.filter((role) => role.id !== roleId));
   return { id: roleId };
+}
+
+export async function copySystemRole(input: {
+  id: string;
+  name: string;
+  parentId?: string;
+  oldAuthorityId: string;
+  dataScope?: 1 | 2 | 3 | 4 | 5;
+}) {
+  const roles = await loadRoles();
+  const source = roles.find((role) => role.id === input.oldAuthorityId);
+  if (!source) {
+    throw new Error(`Role not found: ${input.oldAuthorityId}`);
+  }
+  if (roles.some((role) => role.id === input.id)) {
+    throw new Error(`Role already exists: ${input.id}`);
+  }
+
+  const role: SystemRoleRecord = {
+    id: input.id.trim(),
+    name: input.name.trim(),
+    description: source.description,
+    parentId: input.parentId?.trim() || source.parentId || '0',
+    defaultRouter: source.defaultRouter,
+    dataScope: input.dataScope ?? source.dataScope ?? 1,
+    menuIds: [...source.menuIds],
+    btnAuths: [...source.btnAuths],
+    locked: false,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
+  };
+  roles.push(role);
+  await saveRoles(roles);
+  return role;
 }
 
 export function mergeRoleCapabilities(roles: SystemRoleRecord[]) {

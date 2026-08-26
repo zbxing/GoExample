@@ -1,15 +1,34 @@
 name: Go transport benchmark evidence
 
 on:
-  pull_request:
+  push:
+    branches:
+      - "master"
     paths:
       - "Framework/**"
-      - "Proj/Example/**"
+      - "Solutions/Example/**"
       - "scripts/go-project.mjs"
+      - "scripts/transport-benchmark-baseline.mjs"
       - "scripts/transport-benchmark-report.mjs"
       - "scripts/transport-soak-report.mjs"
       - "scripts/evidence-manifest.mjs"
       - "scripts/evidence-verify.mjs"
+      - "__test__/node/transport-benchmark-baseline.test.mjs"
+      - "package.json"
+      - "go.work"
+      - "go.work.sum"
+      - ".github/workflows/go-transport-benchmark.yml"
+  pull_request:
+    paths:
+      - "Framework/**"
+      - "Solutions/Example/**"
+      - "scripts/go-project.mjs"
+      - "scripts/transport-benchmark-baseline.mjs"
+      - "scripts/transport-benchmark-report.mjs"
+      - "scripts/transport-soak-report.mjs"
+      - "scripts/evidence-manifest.mjs"
+      - "scripts/evidence-verify.mjs"
+      - "__test__/node/transport-benchmark-baseline.test.mjs"
       - "package.json"
       - "go.work"
       - "go.work.sum"
@@ -24,9 +43,123 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  trusted-baseline:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Discover latest trusted benchmark baseline
+        id: benchmark-baseline
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const branch = context.payload.repository.default_branch;
+            const response = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'go-transport-benchmark.yml',
+              branch,
+              status: 'success',
+              per_page: 50,
+            });
+            for (const run of response.data.workflow_runs) {
+              const trusted = run.id !== context.runId
+                && run.head_branch === branch
+                && run.head_repository?.full_name === `${context.repo.owner}/${context.repo.repo}`
+                && ['push', 'workflow_dispatch'].includes(run.event);
+              if (!trusted) continue;
+              const artifacts = await github.paginate(
+                github.rest.actions.listWorkflowRunArtifacts,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  run_id: run.id,
+                  per_page: 100,
+                },
+              );
+              const prefix = `go-transport-benchmark-${run.id}-`;
+              const artifact = artifacts.find((item) => !item.expired && item.name.startsWith(prefix));
+              if (!artifact) continue;
+              core.setOutput('run-id', String(run.id));
+              core.setOutput('head-sha', run.head_sha);
+              core.setOutput('head-branch', run.head_branch);
+              core.setOutput('event', run.event);
+              core.setOutput('artifact-name', artifact.name);
+              core.notice(`Selected trusted benchmark baseline run ${run.id} (${run.head_sha}).`);
+              return;
+            }
+            core.notice('No trusted successful default-branch benchmark artifact is available yet.');
+
+      - name: Download trusted benchmark baseline artifact
+        id: download-benchmark-baseline
+        if: steps.benchmark-baseline.outputs.run-id != ''
+        continue-on-error: true
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: ${{ steps.benchmark-baseline.outputs.artifact-name }}
+          path: .temp/transport-baseline-artifact
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ steps.benchmark-baseline.outputs.run-id }}
+
+      - name: Prepare trusted benchmark baseline
+        if: steps.benchmark-baseline.outputs.run-id != '' && steps.download-benchmark-baseline.outcome == 'success'
+        run: >-
+          node scripts/transport-benchmark-baseline.mjs prepare
+          --candidate .temp/transport-baseline-artifact/baseline-candidate.json
+          --output .temp/transport-benchmark/baseline.json
+          --provenance .temp/transport-benchmark/baseline-source.json
+          --repository "${{ github.repository }}"
+          --run-id "${{ steps.benchmark-baseline.outputs.run-id }}"
+          --head-sha "${{ steps.benchmark-baseline.outputs.head-sha }}"
+          --head-branch "${{ steps.benchmark-baseline.outputs.head-branch }}"
+          --event "${{ steps.benchmark-baseline.outputs.event }}"
+          --artifact-name "${{ steps.benchmark-baseline.outputs.artifact-name }}"
+
+      - name: Record unavailable trusted benchmark baseline
+        if: steps.benchmark-baseline.outputs.run-id == ''
+        run: >-
+          node scripts/transport-benchmark-baseline.mjs unavailable
+          --output .temp/transport-benchmark/baseline.json
+          --provenance .temp/transport-benchmark/baseline-source.json
+          --reason no_trusted_successful_run
+
+      - name: Record benchmark baseline download failure
+        if: steps.benchmark-baseline.outputs.run-id != '' && steps.download-benchmark-baseline.outcome != 'success'
+        run: >-
+          node scripts/transport-benchmark-baseline.mjs unavailable
+          --output .temp/transport-benchmark/baseline.json
+          --provenance .temp/transport-benchmark/baseline-source.json
+          --reason artifact_download_failed
+
+      - name: Upload trusted benchmark baseline selection
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: trusted-transport-baseline-${{ github.run_id }}
+          path: |
+            .temp/transport-benchmark/baseline.json
+            .temp/transport-benchmark/baseline-source.json
+          if-no-files-found: error
+          retention-days: 1
+
   transport-benchmark:
+    needs: trusted-baseline
+    if: always() && (needs.trusted-baseline.result == 'success' || needs.trusted-baseline.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -37,12 +170,28 @@ jobs:
           node-version: 24
 
       - name: Set up Go
+        id: setup-go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version-file: Framework/go.mod
           cache-dependency-path: |
             Framework/go.sum
-            Proj/Example/go.sum
+            Solutions/Example/go.sum
+
+      - name: Download prepared trusted benchmark baseline
+        if: github.event_name != 'pull_request'
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: trusted-transport-baseline-${{ github.run_id }}
+          path: .temp/transport-benchmark
+
+      - name: Record pull request baseline exclusion
+        if: github.event_name == 'pull_request'
+        run: >-
+          node scripts/transport-benchmark-baseline.mjs unavailable
+          --output .temp/transport-benchmark/baseline.json
+          --provenance .temp/transport-benchmark/baseline-source.json
+          --reason pull_request_not_eligible
 
       - name: Capture runner environment
         shell: bash
@@ -52,6 +201,7 @@ jobs:
             echo "captured_at=$(date --utc --iso-8601=seconds)"
             echo "commit=$(git rev-parse HEAD)"
             echo "runner_image=${ImageOS:-unknown}-${ImageVersion:-unknown}"
+            echo "gomaxprocs=2"
             uname -a
             cat /etc/os-release
             lscpu
@@ -127,10 +277,23 @@ jobs:
       - name: Generate capacity report
         if: always()
         shell: bash
+        env:
+          GOMAXPROCS: "2"
+          TRANSPORT_BENCHMARK_GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
         run: |
+          baseline_args=()
+          if [[ -f .temp/transport-benchmark/baseline.json ]]; then
+            baseline_args+=(--baseline .temp/transport-benchmark/baseline.json)
+          fi
           node scripts/transport-benchmark-report.mjs \
             --input .temp/transport-benchmark/transport-benchmark.txt \
-            --output .temp/transport-benchmark/transport-capacity-report.json
+            --output .temp/transport-benchmark/transport-capacity-report.json \
+            "${baseline_args[@]}"
+
+      - name: Preserve capacity baseline candidate
+        if: always() && hashFiles('.temp/transport-benchmark/transport-capacity-report.json') != ''
+        shell: bash
+        run: cp .temp/transport-benchmark/transport-capacity-report.json .temp/transport-benchmark/baseline-candidate.json
 
       - name: Generate soak report
         if: always()

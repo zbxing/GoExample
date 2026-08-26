@@ -1,6 +1,6 @@
 # Server Failure Matrix And Local Recovery Drill
 
-Scope: Go `Framework`, `Proj/Example`, and server evidence. `MSFront` is out of scope.
+Scope: Go `Framework`, `Solutions/Example`, `Services/Billing`, and server evidence. `MSFront` is out of scope.
 
 ## Purpose And Evidence Boundary
 

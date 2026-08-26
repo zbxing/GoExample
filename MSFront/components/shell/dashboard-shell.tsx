@@ -15,18 +15,20 @@ import { Sidebar } from '@/components/shell/sidebar';
 import { TagsView } from '@/components/shell/tags-view';
 import { Topbar } from '@/components/shell/topbar';
 import { BottomInfo } from '@/components/shell/bottom-info';
-import { GvaPageTransition } from '@/components/shell/gva-page-transition';
-import { GvaRouteLoadingEffects } from '@/components/shell/gva-page-loading';
-import { resetGvaPageLeave } from '@/lib/utils/gva-page-leave';
+import { GvaPageTransition } from '@/components/shell/ga-page-transition';
+import { GvaRouteLoadingEffects } from '@/components/shell/ga-page-loading';
+import { resetGvaPageLeave } from '@/lib/utils/ga-page-leave';
 import {
   applyGvaShellCss,
   getGvaShellSettingsServerSnapshot,
+  hydrateGvaShellSettings,
   readGvaShellSettings,
   subscribeGvaShellSettings,
   writeGvaShellSettings,
   type GvaShellSettings,
-} from '@/lib/utils/gva-shell-settings';
+} from '@/lib/utils/ga-shell-settings';
 import { useAuth } from '@/providers/auth-provider';
+import { useTheme } from '@/providers/theme-provider';
 import { collectLeafPaths } from '@/lib/utils/menu-access';
 
 const mobileShellMediaQuery = '(max-width: 920px)';
@@ -36,6 +38,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
   const router = useRouter();
   const sidebarId = useId();
   const { menus, isLoading, user } = useAuth();
+  const { theme, themeReady } = useTheme();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const shellSettings = useSyncExternalStore(
@@ -46,8 +49,12 @@ export function DashboardShell({ children }: PropsWithChildren) {
   const previousPathnameRef = useRef(pathname);
 
   useEffect(() => {
+    hydrateGvaShellSettings();
+  }, []);
+
+  useEffect(() => {
     applyGvaShellCss(shellSettings);
-  }, [shellSettings]);
+  }, [shellSettings, theme, themeReady]);
 
   // 「顶部导航」布局会隐藏侧栏；若本地误存成 head，自动恢复经典布局以露出侧栏
   useEffect(() => {

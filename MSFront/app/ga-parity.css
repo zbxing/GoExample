@@ -1,0 +1,6248 @@
+/* ===== GVA exact parity layer ===== */
+:root {
+  --gva-radius: 0.625rem;
+  --el-border-radius-base: var(--gva-radius);
+  --el-card-border-radius: var(--gva-radius);
+  --gva-primary: 34, 100, 242;
+  --gva-primary-50: 236, 242, 255;
+  --primary-color: 34, 100, 242;
+  --primary-50-color: 236, 242, 255;
+}
+
+.theme-gva {
+  --accent-primary: var(--el-color-primary, #2264f2);
+  --gva-sidebar: #191a23;
+  --gva-sidebar-text: #a3a6b4;
+  --gva-sidebar-active: var(--el-color-primary, #2264f2);
+  --el-color-primary: #2264f2;
+  --el-border-color: #dcdfe6;
+  --el-border-color-light: #e4e7ed;
+  --el-border-color-lighter: #ebeef5;
+  --el-text-color-regular: #606266;
+  --el-text-color-primary: #303133;
+  --el-text-color-secondary: #909399;
+  --el-fill-color-blank: #ffffff;
+  --el-fill-color-light: #f5f7fa;
+  --el-bg-color: #ffffff;
+  --el-bg-color-overlay: #ffffff;
+  --el-bg-color-page: #f2f3f4;
+  --el-table-bg-color: var(--el-fill-color-blank);
+  --el-table-tr-bg-color: var(--el-bg-color);
+  --el-table-header-bg-color: var(--el-bg-color);
+  /* ?? GVA element_visiable.scss?th .cell = text-gray-700 */
+  --el-table-header-text-color: #374151;
+  --el-table-text-color: var(--el-text-color-regular);
+  --el-table-row-hover-bg-color: var(--el-fill-color-light);
+  --el-table-border-color: var(--el-border-color-lighter);
+}
+
+/* ---- Login (match GVA index.vue) ---- */
+.gvaUserLayout {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  background: #fff;
+}
+
+.gvaLoginBanner.banner-oblique {
+  position: absolute;
+  inset: 0 0 0 auto;
+  display: none;
+  width: 56%;
+  overflow: hidden;
+  background: var(--el-color-primary);
+  clip-path: polygon(22% 0, 100% 0, 100% 100%, 4% 100%);
+}
+
+.gvaLoginCoverImg {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: auto;
+  max-width: none;
+}
+
+.gvaLoginLeft {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.gvaLoginCard {
+  width: 80%;
+  max-width: 24rem;
+}
+
+.gvaEntryBrand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 36px;
+}
+
+.gvaEntryLogo {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+}
+
+.gvaEntryTitle {
+  margin: 16px 0 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #1f2937;
+}
+
+.gvaLoginLogoMark {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--gva-radius, 0.625rem);
+  flex: 0 0 auto;
+  background: linear-gradient(135deg, var(--el-color-primary), #4f8cff);
+  box-shadow: 0 8px 18px rgb(var(--gva-primary) / 0.35);
+}
+
+.gvaLoginForm {
+  display: grid;
+}
+
+.gvaLoginFormItem {
+  margin-bottom: 24px;
+}
+
+.gvaElInput {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border: 1px solid var(--el-border-color);
+  border-radius: var(--gva-radius, 0.625rem);
+  background: var(--el-fill-color-blank, #fff);
+  transition: border-color 0.2s;
+}
+
+.gvaElInput:focus-within {
+  border-color: var(--el-color-primary);
+}
+
+.gvaElInputLarge {
+  min-height: 44px;
+}
+
+.gvaElInput input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 0 40px 0 15px;
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+}
+
+.gvaElInputSuffix {
+  position: absolute;
+  right: 12px;
+  color: #a8abb2;
+  display: inline-flex;
+}
+
+.gvaElInputSuffixBtn {
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.gvaBtnPrimary,
+.gvaBtnHollow,
+.elButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 15px;
+  border-radius: var(--gva-radius, 0.625rem);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.gvaBtnLarge {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+.gvaBtnBlock {
+  width: 100%;
+}
+
+.gvaBtnPrimary {
+  border: 1px solid var(--el-color-primary);
+  background: var(--el-color-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px rgb(var(--gva-primary) / 0.28);
+  letter-spacing: 0.2em;
+}
+
+.gvaBtnPrimary:hover {
+  background: #6493f6;
+  border-color: #6493f6;
+}
+
+.gvaBtnPrimary:active {
+  background: #1b50c2;
+  border-color: #1b50c2;
+}
+
+.gvaBtnPrimary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.gvaBtnHollow {
+  border: 1px solid var(--el-color-primary);
+  background: transparent;
+  color: var(--el-color-primary);
+}
+
+.gvaBtnHollow:hover:not(:disabled) {
+  background: #ecf2ff;
+}
+
+.gvaBtnHollow:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.gvaLoginError {
+  margin: -8px 0 16px;
+  color: #f56c6c;
+  font-size: 13px;
+}
+
+.gvaLoginInfo {
+  margin: -8px 0 16px;
+  color: var(--el-color-primary);
+  font-size: 13px;
+}
+
+.gvaBottomInfo,
+.gvaLoginFooter.login-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  font-size: 11px;
+  color: #64748b;
+  text-align: center;
+}
+
+.gvaBottomInfo .text-center,
+.gvaLoginFooter .text-center {
+  margin: 0;
+}
+
+.gvaBottomInfo a,
+.gvaLoginFooter a {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 400;
+}
+
+.gvaBottomInfo .text-center:first-child a,
+.gvaLoginFooter .text-center:first-child a,
+.gvaBottomInfo .gvaBottomBrand,
+.gvaLoginFooter .gvaBottomBrand {
+  color: var(--el-color-primary);
+}
+
+.gvaBottomInfo .gvaBottomPowered {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.gvaLoginFooterLinks {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.gvaLoginFooterLinks .footer-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.gvaLoginFooterLinks a:hover {
+  opacity: 0.85;
+}
+
+.gvaLayoutFooter {
+  padding: 16px 0 24px;
+}
+
+@media (min-width: 768px) {
+  .gvaLoginBanner.banner-oblique {
+    display: block;
+  }
+
+  .gvaLoginLeft {
+    width: 50%;
+  }
+
+  .gvaLoginCard {
+    width: 24rem;
+  }
+
+  .gvaLoginFooterLinks {
+    display: flex;
+  }
+}
+
+/* ???????????????html/body????100vh ????????
+   ????????????????????????????*/
+html.theme-gva:has(.gvaAppShell),
+html.theme-gva:has(.gvaAppShell) body {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ???????????????html/body????100vh ????????
+   ????????????????????????????*/
+html.theme-gva:has(.gvaAppShell),
+html.theme-gva:has(.gvaAppShell) body {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ---- Shell (GVA normal layout) ---- */
+.gvaAppShell,
+.theme-gva .gvaAppShell {
+  display: flex !important;
+  flex-direction: column;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  /* ??????height??????flex:1 + min-height:0 ????/?????? 0 */
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--gva-page-bg, #f2f3f4);
+}
+
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] {
+  grid-template-columns: none !important;
+}
+
+/* ????????sticky???? fixed + padding-top ??????*/
+.gvaTopbar,
+.theme-gva .topbar.gvaTopbar,
+.theme-gva .gvaTopbar {
+  position: sticky !important;
+  top: 0;
+  inset: auto;
+  z-index: 30;
+  flex: 0 0 64px;
+  width: 100%;
+  height: 64px !important;
+  min-height: 64px !important;
+  max-height: 64px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  background: var(--gva-header-bg, #fff);
+  border-bottom: 0;
+  box-shadow: var(--gva-header-shadow, 0 1px 0 rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04));
+  border-radius: 0 !important;
+}
+
+.theme-gva .gvaTopbarMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  height: 64px;
+  padding: 0 8px;
+}
+
+.theme-gva .gvaTopbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.theme-gva .gvaTopbarActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ????????????????????????????*/
+.theme-gva .gvaHeaderBrand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  width: calc(var(--gva-side-width, 256px) - 8px);
+  min-width: calc(var(--gva-side-width, 256px) - 8px);
+  max-width: calc(var(--gva-side-width, 256px) - 8px);
+  flex-shrink: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaHeaderBrand {
+  width: calc(var(--gva-side-collapsed-width, 80px) - 8px);
+  min-width: calc(var(--gva-side-collapsed-width, 80px) - 8px);
+  max-width: calc(var(--gva-side-collapsed-width, 80px) - 8px);
+}
+
+.theme-gva .gvaHeaderLogo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.theme-gva .gvaHeaderBrand strong {
+  font-size: 22px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.theme-gva .gvaMobileMenuBtn {
+  display: none;
+  width: 36px;
+  height: 36px;
+  margin-right: 8px;
+  border: 0;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: transparent;
+  color: #606266;
+  cursor: pointer;
+}
+
+.theme-gva .gvaBreadcrumb {
+  margin-left: 0;
+  padding-left: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #606266;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.theme-gva .gvaBreadcrumbCurrent {
+  color: #303133;
+}
+
+.theme-gva .gvaBreadcrumbSep {
+  margin: 0 6px;
+  opacity: 0.55;
+  font-weight: 400;
+}
+
+.theme-gva .gvaHeaderTools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 12px;
+}
+
+.theme-gva .gvaHeaderDivider {
+  width: 1px;
+  height: 24px;
+  background: #e4e7ed;
+}
+
+.theme-gva .gvaToolSlotHidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-gva .gvaMorphBtn,
+.theme-gva .gvaIconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--gva-radius, 0.5rem);
+  background: transparent;
+  color: #909399;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.theme-gva .gvaMorphBtn:hover,
+.theme-gva .gvaIconButton:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #303133;
+}
+
+.theme-gva .gvaMorphInner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-gva .gvaMorphIconCol,
+.theme-gva .gvaMorphLabelCol {
+  display: grid;
+  transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-gva .gvaMorphIconCol {
+  grid-template-columns: 1fr;
+}
+
+.theme-gva .gvaMorphIconCol.is-collapsed {
+  grid-template-columns: 0fr;
+}
+
+.theme-gva .gvaMorphLabelCol {
+  grid-template-columns: 0fr;
+}
+
+.theme-gva .gvaMorphLabelCol.is-expanded {
+  grid-template-columns: 1fr;
+}
+
+.theme-gva .gvaMorphIconClip,
+.theme-gva .gvaMorphLabelClip {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.theme-gva .gvaMorphIconFace {
+  display: inline-flex;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-gva .gvaMorphIconFace.is-out {
+  transform: translateX(-24px);
+  opacity: 0;
+}
+
+.theme-gva .gvaMorphLabelFace {
+  display: inline-flex;
+  padding: 0 4px;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  transform: translateX(24px);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-gva .gvaMorphLabelFace.is-in {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.theme-gva .gvaSpin {
+  display: inline-flex;
+  animation: gva-spin 0.8s linear infinite;
+}
+
+@keyframes gva-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.theme-gva .gvaUserTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--gva-radius, 0.5rem);
+  background: transparent;
+  cursor: pointer;
+  color: #606266;
+  transition: background-color 0.2s;
+}
+
+.theme-gva .gvaUserTrigger:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.theme-gva .gvaUserName {
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.theme-gva .gvaUserCaret {
+  color: #909399;
+  transition: transform 0.2s ease;
+}
+
+.theme-gva .gvaUserAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #ecf2ff;
+  color: var(--el-color-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.theme-gva .gvaUserMenu {
+  position: relative;
+}
+
+.theme-gva .gvaUserDropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 224px;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: var(--gva-radius, 0.625rem);
+  box-shadow: 2px 0 8px 0 rgba(29, 35, 41, 0.05), 0 8px 24px rgba(0, 0, 0, 0.08);
+  padding: 6px;
+  z-index: 40;
+}
+
+.theme-gva .gvaUserDropdownMeta {
+  padding: 10px 12px 12px;
+  border-bottom: 1px solid #ebeef5;
+  margin-bottom: 4px;
+}
+
+.theme-gva .gvaUserDropdownMeta strong {
+  display: block;
+  font-size: 15px;
+}
+
+.theme-gva .gvaUserDropdownMeta p {
+  margin: 4px 0 0;
+  color: #909399;
+  font-size: 13px;
+}
+
+.theme-gva .gvaUserDropdown button {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: var(--gva-radius, 0.625rem);
+  cursor: pointer;
+  color: #606266;
+}
+
+.theme-gva .gvaUserDropdown button:hover {
+  background: #f5f7fa;
+  color: var(--el-color-primary);
+}
+
+.theme-gva .gvaUserDropdown button.danger:hover {
+  color: #f56c6c;
+  background: #fef0f0;
+}
+
+.gvaBody,
+.theme-gva .gvaBody {
+  display: flex !important;
+  flex-direction: row !important;
+  flex: 1 1 0% !important;
+  align-items: stretch !important;
+  min-height: 0 !important;
+  height: auto !important;
+  padding-top: 0 !important;
+  box-sizing: border-box;
+  overflow: hidden;
+  width: 100%;
+}
+
+.theme-gva .sidebar.gvaSidebar,
+.theme-gva .gvaSidebar,
+.gvaSidebar {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  inset: auto !important;
+  z-index: 10;
+  display: flex !important;
+  flex-direction: column !important;
+  width: var(--gva-side-width, 256px) !important;
+  flex: 0 0 var(--gva-side-width, 256px) !important;
+  align-self: stretch !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: 100% !important;
+  background: #fff !important;
+  color: #606266 !important;
+  /* ?? GVA????????????????????#e5e6eb ?????? */
+  border: 0 !important;
+  border-right: 0 !important;
+  box-shadow: 2px 0 8px 0 rgba(29, 35, 41, 0.05);
+  transition: width 0.3s ease, flex-basis 0.3s ease;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden;
+  transform: none !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaSidebar {
+  width: var(--gva-side-collapsed-width, 80px) !important;
+  flex-basis: var(--gva-side-collapsed-width, 80px) !important;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] {
+  background: #191a23;
+  color: #a3a6b4;
+}
+
+.theme-gva .gvaNav,
+.theme-gva .gvaSidebar .sidebarNav.gvaNav {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  padding: 8px;
+  gap: 2px;
+  display: flex !important;
+  flex-direction: column !important;
+  align-content: stretch;
+  grid-template-columns: none !important;
+  grid-auto-rows: auto !important;
+}
+
+.theme-gva .gvaMenuEmpty {
+  padding: 16px 12px;
+  color: #909399;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaNav {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.theme-gva .gvaSidebar .navItem,
+.theme-gva .gvaSidebar .gvaMenuItem {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--gva-side-item-height, 48px);
+  height: var(--gva-side-item-height, 48px);
+  margin: 0;
+  padding-right: 12px;
+  border: 0 !important;
+  border-radius: var(--gva-radius, 0.5rem);
+  color: #303133 !important;
+  background: transparent !important;
+  justify-content: flex-start;
+  text-decoration: none;
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transform: none !important;
+  box-shadow: none !important;
+  transition: background-color 0.2s, color 0.2s;
+  appearance: none;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.theme-gva .gvaSidebar .gvaMenuItem:hover {
+  color: #303133 !important;
+  background: #f5f7fa !important;
+}
+
+.theme-gva .gvaSidebar .gvaMenuItem.is-active {
+  color: #fff !important;
+  background: rgb(var(--gva-primary, 34, 100, 242)) !important;
+}
+
+.theme-gva .gvaSidebar .gvaMenuItem.is-branch-active {
+  color: rgb(var(--gva-primary, 34, 100, 242)) !important;
+  background: transparent !important;
+  font-weight: 500;
+}
+
+.theme-gva .gvaSidebar .gvaMenuItem.is-branch-active:hover {
+  background: #f5f7fa !important;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem {
+  color: #a3a6b4 !important;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem.is-active {
+  color: #fff !important;
+  background: rgb(var(--gva-primary, 34, 100, 242)) !important;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem.is-branch-active {
+  color: #6493f6 !important;
+  background: transparent !important;
+}
+
+.theme-gva .gvaMenuIcon {
+  flex: 0 0 auto;
+}
+
+.theme-gva .gvaMenuTitle {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.theme-gva .gvaMenuChevron {
+  flex: 0 0 auto;
+  margin-left: auto;
+  opacity: 0.65;
+  transition: transform 0.2s ease;
+}
+
+.theme-gva .gvaMenuChevron.is-open {
+  transform: rotate(180deg);
+}
+
+.theme-gva .gvaMenuChildren {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.2s ease-out;
+}
+
+.theme-gva .gvaMenuChildrenInner {
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.theme-gva .gvaMenuChildren.is-open {
+  grid-template-rows: 1fr;
+}
+
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaMenuItem {
+  justify-content: center;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaMenuTitle,
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaMenuChevron,
+.theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaMenuChildren {
+  display: none !important;
+}
+
+.theme-gva .gvaMenuCaret {
+  display: none;
+}
+
+.theme-gva .gvaCollapseBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  flex: 0 0 40px;
+  border: 0;
+  /* ?? GVA CollapseBar?border-border???? token ?? */
+  border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.theme-gva .gvaCollapseBar:hover {
+  background: var(--el-fill-color-light, #f5f7fa);
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaCollapseBar {
+  border-top-color: var(--el-border-color-lighter, rgba(255, 255, 255, 0.08));
+  color: #a3a6b4;
+}
+
+.theme-gva .gvaSidebar[data-dark='true'] .gvaCollapseBar:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.theme-gva .gvaSidebar .sidebarCollapseToggle,
+.theme-gva .gvaSidebar .sidebarFooterCard,
+.theme-gva .gvaSidebar .sidebarSummary,
+.theme-gva .gvaSidebar .gvaSidebarLogo {
+  display: none !important;
+}
+
+.gvaMainColumn,
+.theme-gva .gvaMainColumn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--gva-page-bg, #f2f3f4);
+}
+
+.gvaAppContent,
+.theme-gva .gvaAppContent,
+.theme-gva .appContent.gvaAppContent {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* ???????? / ???????????????? 8px */
+  padding: 0 !important;
+  margin: 0 !important;
+  grid-column: auto !important;
+  grid-row: auto !important;
+  background: var(--gva-page-bg, #f2f3f4);
+  /* ????????????????*/
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.gvaAppContent::-webkit-scrollbar,
+.theme-gva .gvaAppContent::-webkit-scrollbar,
+.theme-gva .appContent.gvaAppContent::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* ?? GVA App.vue `.gva-body-h`?????????BottomInfo ?????????? */
+.gvaBodyH,
+#gva-base-load-dom {
+  position: relative;
+  min-height: calc(100% - 3rem);
+  background: var(--gva-page-bg, #f2f3f4);
+}
+
+.gvaLayoutFooter,
+.gvaBottomInfo.gvaLayoutFooter {
+  background: var(--gva-page-bg, #f2f3f4);
+}
+
+.theme-gva .gvaPageContent,
+.theme-gva .pageContent.gvaPageContent {
+  --gva-page-gutter: 8px;
+  max-width: none;
+  margin: 0;
+  padding: var(--gva-page-gutter) !important;
+  background: var(--gva-page-bg, #f2f3f4);
+}
+
+/* GVA NProgress?nprogress@0.2.0 + permission.js speed:500 / ease / ??spinner??*/
+.gvaRouteProgress {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2500;
+  width: 100%;
+  height: 2px;
+  opacity: 1;
+}
+
+.gvaRouteProgressBar {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #29d;
+  transform: translate3d(-100%, 0, 0);
+}
+
+.gvaRouteProgressPeg {
+  display: block;
+  position: absolute;
+  right: 0;
+  width: 100px;
+  height: 100%;
+  box-shadow: 0 0 10px #29d, 0 0 5px #29d;
+  opacity: 1;
+  transform: rotate(3deg) translate(0, -4px);
+}
+
+.gvaContentLoading {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #606266;
+  font-size: 14px;
+  pointer-events: all;
+}
+
+.gvaContentLoadingSpinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid #e4e7ed;
+  border-top-color: rgb(var(--gva-primary, 34, 100, 242));
+  border-radius: 999px;
+  animation: gva-spin 0.8s linear infinite;
+}
+
+.gvaTableEmptyPending {
+  min-height: 120px;
+  color: transparent;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gvaRouteProgressBar {
+    transition: none !important;
+  }
+
+  .gvaContentLoadingSpinner {
+    animation: none;
+  }
+}
+
+/* ---- Tabs (match GVA page-tab chrome/button/slider) ---- */
+.gvaTagsView {
+  --gva-base-text: 48, 49, 51;
+  --gva-border: 228, 231, 237;
+  display: flex;
+  align-items: flex-end;
+  flex: 0 0 44px;
+  height: 44px;
+  min-height: 44px;
+  max-height: 44px;
+  width: 100%;
+  padding: 6px 12px 0 8px;
+  margin: 0;
+  background: var(--gva-tab-bg, var(--gva-tabs-bg, #fff));
+  box-shadow: var(--gva-tab-shadow, var(--gva-tabs-shadow, 0 1px 2px rgba(0, 21, 41, 0.08)));
+  overflow-x: auto;
+  overflow-y: visible;
+  isolation: isolate;
+}
+
+.gvaTabs-button {
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 0 8px;
+}
+
+.gvaTabs-chrome {
+  align-items: flex-end;
+  gap: 0;
+}
+
+.gvaTabs-slider {
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.gvaChromeDefs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.gvaTagsScroll {
+  display: flex;
+  align-items: inherit;
+  gap: inherit;
+  overflow: visible;
+  width: 100%;
+  height: 100%;
+}
+
+.gvaTagsView::-webkit-scrollbar,
+.gvaTagsScroll::-webkit-scrollbar {
+  height: 0;
+}
+
+.gvaPageTab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  color: rgb(var(--gva-base-text));
+  font-weight: 400;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.gvaPageTab.is-active,
+.gvaPageTab-chrome.is-active,
+.gvaPageTab-button.is-active,
+.gvaPageTab-slider.is-active {
+  /* ???????????????????? */
+  font-weight: 400;
+}
+
+.gvaPageTabLabel {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: inherit;
+  line-height: 1;
+  height: 16px;
+}
+
+.gvaPageTabIcon {
+  display: block;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  line-height: 0;
+}
+
+.gvaPageTabClose {
+  margin-left: 2px;
+  margin-right: -4px;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #909399;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex: 0 0 auto;
+  line-height: 0;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.gvaPageTabClose svg {
+  display: block;
+}
+
+.gvaPageTabClose:hover {
+  background: rgba(144, 147, 153, 0.2);
+  color: #303133;
+}
+
+/* chrome */
+.gvaPageTab-chrome {
+  z-index: 0;
+  margin-right: -18px;
+  padding: 0 24px;
+  gap: 8px;
+}
+
+.gvaPageTab-chrome:hover {
+  z-index: 9;
+}
+
+.gvaPageTab-chrome.is-active {
+  z-index: 10;
+  color: rgb(var(--gva-primary));
+}
+
+.gvaChromeBg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  color: transparent;
+}
+
+.gvaPageTab-chrome.is-active .gvaChromeBg {
+  color: rgb(var(--gva-primary-50));
+}
+
+.gvaChromeSvg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.gvaChromeHover {
+  position: absolute;
+  inset: 5px 14px;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 8px;
+  background: rgba(var(--gva-primary), 0.08);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.gvaPageTab-chrome:not(.is-active):hover .gvaChromeHover {
+  opacity: 1;
+}
+
+.gvaChromeDivider {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  width: 1px;
+  height: 14px;
+  transform: translateY(-50%);
+  background: rgb(var(--gva-border));
+}
+
+.gvaPageTab-chrome:hover .gvaChromeDivider,
+.gvaPageTab-chrome.is-active .gvaChromeDivider,
+.gvaPageTab-chrome:has(+ .gvaPageTab-chrome:hover) .gvaChromeDivider,
+.gvaPageTab-chrome:has(+ .gvaPageTab-chrome.is-active) .gvaChromeDivider {
+  opacity: 0;
+}
+
+/* button ???????????????? GVA ButtonTab??*/
+.gvaPageTab-button {
+  height: 36px;
+  margin-bottom: 0;
+  padding: 0 14px;
+  border-radius: var(--gva-radius, 0.5rem);
+  border: 1px solid transparent;
+  font-size: 14px;
+  gap: 6px;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+html[data-gva-card='border'] .gvaPageTab-button,
+html[data-gva-card='shadow'] .gvaPageTab-button {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html[data-gva-card='shadow'] .gvaPageTab-button {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 4px 8px rgba(0, 0, 0, 0.06);
+}
+
+.gvaPageTab-button:hover:not(.is-active) {
+  color: rgb(var(--gva-primary));
+  background: rgba(var(--gva-primary), 0.08);
+}
+
+.gvaPageTab-button.is-active {
+  color: rgb(var(--gva-primary));
+  background: rgba(var(--gva-primary), 0.12);
+}
+
+.gvaPageTab-button.is-active:hover {
+  background: rgba(var(--gva-primary), 0.12);
+}
+
+.gvaPageTab-button .gvaPageTabLabel {
+  font-size: 14px;
+}
+
+/* slider */
+.gvaPageTab-slider {
+  gap: 6px;
+  padding: 4px 12px;
+  border-bottom: 2px solid transparent;
+}
+
+.gvaPageTab-slider:hover {
+  color: rgb(var(--gva-primary));
+}
+
+.gvaPageTab-slider.is-active {
+  color: rgb(var(--gva-primary));
+  background: var(--el-fill-color-light, #f5f7fa);
+  border-bottom-color: rgb(var(--gva-primary));
+}
+
+.gvaTagsMenuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3200;
+  border: 0;
+  background: transparent;
+}
+
+.gvaTagsContextMenu {
+  position: fixed;
+  z-index: 3201;
+  min-width: 120px;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+  border-radius: var(--gva-radius, 0.625rem);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 4px 0;
+  display: grid;
+  overflow: hidden;
+}
+
+.gvaTagsContextMenu button {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  min-height: 32px;
+  padding: 6px 16px;
+  cursor: pointer;
+  color: #303133;
+  font-size: 13px;
+}
+
+.gvaTagsContextMenu button:hover {
+  background: #f5f7fa;
+}
+
+.gvaPageTab.is-draggable {
+  cursor: pointer;
+}
+
+.gvaPageTab.is-pinned {
+  cursor: pointer;
+}
+
+.gvaTagsView.is-dragging-tabs .gvaPageTab-chrome:hover {
+  z-index: 0;
+}
+
+.gvaTagsView.is-dragging-tabs .gvaPageTab-chrome:not(.is-active):hover .gvaChromeHover {
+  opacity: 0;
+}
+
+.gvaTagsView.is-dragging-tabs .gvaPageTab:not(.is-shifting):not(.is-dragging) {
+  transition: none;
+}
+
+.gvaTagsView.is-dragging-tabs .gvaChromeDivider {
+  opacity: 0;
+}
+
+.gvaTagsView.is-dragging-tabs .gvaPageTab.is-shifting {
+  pointer-events: none;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gvaTagsView.is-dragging-tabs .gvaPageTab-button:not(.is-active):hover,
+.gvaTagsView.is-dragging-tabs .gvaPageTab-button.is-shifting:not(.is-active) {
+  color: rgb(var(--gva-base-text));
+  background: transparent;
+}
+
+.gvaTagsView.is-dragging-tabs .gvaPageTab-slider:not(.is-active):hover,
+.gvaTagsView.is-dragging-tabs .gvaPageTab-slider.is-shifting:not(.is-active) {
+  color: rgb(var(--gva-base-text));
+  background: transparent;
+  border-bottom-color: transparent;
+}
+
+.gvaTagsView.is-dragging-tabs .gvaPageTab-chrome.is-shifting:not(.is-active) .gvaChromeBg {
+  color: transparent;
+}
+
+.gvaPageTabPlaceholder {
+  flex: 0 0 auto;
+  pointer-events: none;
+}
+
+.gvaPageTab.is-dragging,
+.gvaPageTab.is-shifting {
+  opacity: 1 !important;
+}
+
+.gvaPageTab.is-dragging {
+  cursor: pointer;
+  pointer-events: none;
+  opacity: 1 !important;
+  box-shadow: 0 6px 16px rgba(0, 21, 41, 0.12);
+}
+
+.gvaPageTab.is-dragging.is-settling-anim {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  backface-visibility: hidden;
+}
+
+.gvaPageTab.is-shifting {
+  backface-visibility: hidden;
+}
+
+.gvaPageTab-chrome.is-dragging {
+  z-index: 4000;
+  background: var(--gva-tab-bg, var(--gva-tabs-bg, #fff));
+}
+
+.gvaPageTab-chrome.is-dragging.is-active .gvaChromeBg {
+  color: rgb(var(--gva-primary-50));
+}
+
+.gvaPageTab-button.is-dragging {
+  background: #fff;
+}
+
+.gvaPageTab-button.is-dragging.is-active {
+  background: rgba(var(--gva-primary), 0.12);
+}
+
+.gvaPageTab.is-drag-over {
+  box-shadow: inset 2px 0 0 var(--el-color-primary);
+}
+
+.gvaPageTab-chrome.is-drag-over {
+  box-shadow: none;
+}
+
+.gvaPageTab-chrome.is-drag-over::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--el-color-primary);
+  z-index: 12;
+  pointer-events: none;
+}
+
+/* ---- Settings drawer / command ---- */
+.gvaDrawerRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  overscroll-behavior: contain;
+}
+
+.gvaDrawerMask {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.gvaDrawerRoot.is-enter .gvaDrawerMask {
+  animation: gva-drawer-fade-in 0.3s ease both;
+}
+
+.gvaDrawerRoot.is-leave .gvaDrawerMask {
+  animation: gva-drawer-fade-out 0.3s ease both;
+}
+
+.gvaDrawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(440px, 100vw);
+  height: 100%;
+  background: #fff;
+  box-shadow:
+    0 8px 10px -5px rgba(0, 0, 0, 0.2),
+    0 16px 24px 2px rgba(0, 0, 0, 0.14),
+    0 6px 30px 5px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+}
+
+.gvaDrawerRoot.is-enter .gvaDrawer {
+  animation: gva-rtl-drawer-in 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.gvaDrawerRoot.is-leave .gvaDrawer {
+  animation: gva-rtl-drawer-out 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.gvaDrawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 0 16px;
+  border-bottom: 1px solid #ebeef5;
+  font-size: 16px;
+}
+
+.gvaDrawerHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gvaDrawerBody {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 20px 32px;
+  display: flex;
+  flex-direction: column;
+}
+
+.gvaDrawerTabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  margin: 0 auto 16px;
+  background: #f4f4f5;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaDrawerTabs button {
+  min-width: 60px;
+  min-height: 32px;
+  padding: 6px 16px;
+  border: 0;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: transparent;
+  color: #909399;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.gvaDrawerTabs button:hover:not(.active) {
+  color: #303133;
+}
+
+.gvaDrawerTabs button.active {
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.gvaDrawerTabs button:hover:not(.active) {
+  color: #303133;
+}
+
+.gvaDrawerSection {
+  display: grid;
+  gap: 14px;
+}
+
+.gvaDrawerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 40px;
+  color: #303133;
+  font-size: 14px;
+}
+
+.gvaDrawerLabel {
+  font-size: 13px;
+  color: #909399;
+}
+
+.gvaDrawerChipGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gvaDrawerChipGroup button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  cursor: pointer;
+  color: #606266;
+}
+
+.gvaDrawerChipGroup button.active {
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+  background: #ecf2ff;
+}
+
+.gvaDrawerHint {
+  margin: 0;
+  color: #909399;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.gvaCommandOverlay.commandPaletteOverlay {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+
+.gvaCommandPanel.commandPalettePanel {
+  width: min(420px, calc(100vw - 32px));
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 0;
+  overflow: hidden;
+}
+
+.gvaCommandHeader {
+  padding: 16px 16px 8px;
+}
+
+.gvaQuickInput {
+  width: 100%;
+  min-height: 40px;
+  border: 0;
+  outline: none;
+  font-size: 16px;
+  background: transparent;
+}
+
+.gvaCommandFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px 16px;
+  border-top: 1px solid #ebeef5;
+}
+
+@media (min-width: 921px) {
+  .theme-gva .sidebar.gvaSidebar,
+  .theme-gva .gvaSidebar,
+  .gvaSidebar {
+    position: relative !important;
+    inset: auto !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    width: var(--gva-side-width, 256px) !important;
+    flex: 0 0 var(--gva-side-width, 256px) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    align-self: stretch !important;
+    z-index: 10 !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .theme-gva .gvaAppShell[data-sidebar-collapsed='true'] .gvaSidebar {
+    width: var(--gva-side-collapsed-width, 80px) !important;
+    flex-basis: var(--gva-side-collapsed-width, 80px) !important;
+  }
+
+  /* ??????????????????????? translate/display??*/
+  .theme-gva .gvaAppShell:not([data-layout='head']) .gvaSidebar {
+    display: flex !important;
+    transform: none !important;
+  }
+}
+
+@media (max-width: 920px) {
+  .theme-gva .gvaMobileMenuBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .theme-gva .gvaHeaderBrand {
+    display: none;
+  }
+
+  .theme-gva .gvaBreadcrumb {
+    margin-left: 0;
+  }
+
+  .theme-gva .sidebar.gvaSidebar,
+  .theme-gva .gvaSidebar {
+    position: fixed !important;
+    top: 64px !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: auto !important;
+    width: 256px !important;
+    transform: translateX(-105%) !important;
+    z-index: 25 !important;
+  }
+
+  .theme-gva .gvaAppShell[data-sidebar-open='true'] .sidebar.gvaSidebar[data-mobile-open='true'],
+  .theme-gva .gvaAppShell[data-sidebar-open='true'] .gvaSidebar[data-mobile-open='true'] {
+    transform: translateX(0) !important;
+  }
+}
+
+/* ---- System pages / Element-like ----
+ * ??????????? 8px
+ */
+.theme-gva .gvaPageContent,
+.theme-gva .pageContent.gvaPageContent {
+  --gva-page-gutter: 8px;
+  max-width: none;
+  margin: 0;
+  padding: var(--gva-page-gutter) !important;
+  background: var(--gva-page-bg, #f2f3f4);
+}
+
+.gvaSystemPage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gva-page-gutter, 8px);
+}
+
+/* ??????API ????????? 8px ??????????*/
+.theme-gva .referenceDashboard {
+  display: grid;
+  gap: var(--gva-page-gutter, 8px);
+}
+
+.theme-gva .referenceMetricGrid,
+.theme-gva .referenceMetricMain,
+.theme-gva .referenceDashboardColumns,
+.theme-gva .referenceDashboardMain,
+.theme-gva .referenceDashboardRail {
+  gap: var(--gva-page-gutter, 8px);
+}
+
+.theme-gva .referenceWelcome {
+  padding: 16px;
+  gap: 16px;
+  border: 1px solid var(--gva-welcome-border, #dce8ff);
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.theme-gva .referencePanel,
+.theme-gva .referenceLicenseCard {
+  border: 1px solid var(--gva-card-border, #e5e6eb);
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 16px;
+}
+
+.theme-gva .referenceMetricCard {
+  border: 1px solid var(--gva-card-border, #e5e6eb);
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.theme-gva .referencePanelTitle {
+  margin-bottom: 12px;
+}
+
+.theme-gva .referenceLicenseCard {
+  padding: 16px;
+  border-color: #d7e4ff;
+}
+
+/* gva-search-box????GVA pb-0 */
+.gvaSearchBox {
+  background: var(--gva-card-bg, #fff);
+  color: var(--gva-text-main, #303133);
+  border: 0;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 16px 16px 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.gvaSystemCard {
+  background: var(--gva-card-bg, #fff);
+  color: var(--gva-text-main, #303133);
+  border: 0;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 16px;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.gvaWarningBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* ?? GVA warningBar?px-1.5 py-2?????? .gvaSystemPage gap */
+  margin: 0;
+  padding: 10px 8px;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fffbeb;
+  border: 0;
+  color: #f59e0b;
+  font-size: 14px;
+  line-height: 1.25;
+  box-sizing: border-box;
+}
+
+.gvaWarningBar svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+}
+
+.gvaMergedUsersSection {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
+}
+
+.gvaRoleIdCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ?? Element Plus el-table__expand-icon?ArrowRight + ???? 90? */
+.gvaTreeExpand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--el-text-color-regular, #606266);
+  cursor: pointer;
+  line-height: 1;
+  transition: transform 0.2s ease-in-out;
+  transform: rotate(0deg);
+}
+
+.gvaTreeExpand.is-expanded {
+  transform: rotate(90deg);
+}
+
+.gvaTreeExpand svg {
+  display: block;
+}
+
+.gvaTreeExpandSpacer {
+  display: inline-block;
+  width: 18px;
+  flex-shrink: 0;
+}
+
+/* Element Plus el-table__indent: level * 16px */
+.gvaTreeIndent {
+  display: inline-block;
+  flex-shrink: 0;
+  height: 1px;
+}
+
+.gvaDataScopeDrop {
+  position: relative;
+}
+
+.gvaDataScopeDrop > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.gvaDataScopeDrop > summary::-webkit-details-marker {
+  display: none;
+}
+
+.gvaDataScopeMenu {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  min-width: 140px;
+  margin-top: 4px;
+  padding: 6px 0;
+  border: 1px solid var(--el-border-color-light, #e4e7ed);
+  border-radius: var(--gva-radius, 0.5rem);
+  background: var(--el-bg-color-overlay, #fff);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.gvaDataScopeMenu button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--el-text-color-regular, #606266);
+  text-align: left;
+  cursor: pointer;
+}
+
+.gvaDataScopeMenu button:hover:not(:disabled) {
+  background: var(--el-fill-color-light, #f5f7fa);
+  color: var(--el-color-primary);
+}
+
+.gvaDataScopeMenu button:disabled {
+  color: var(--el-text-color-placeholder, #a8abb2);
+  cursor: not-allowed;
+}
+
+.gvaBorderTabs {
+  border: 1px solid var(--el-border-color-light, #e4e7ed);
+  border-radius: var(--gva-radius, 0.5rem);
+  overflow: hidden;
+}
+
+.gvaBorderTabNav {
+  display: flex;
+  gap: 0;
+  background: var(--el-fill-color-light, #f5f7fa);
+  border-bottom: 1px solid var(--el-border-color-light, #e4e7ed);
+}
+
+.gvaBorderTabNav button {
+  padding: 10px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--el-text-color-regular, #606266);
+  cursor: pointer;
+}
+
+.gvaBorderTabNav button.is-active {
+  background: var(--el-bg-color-overlay, #fff);
+  color: var(--el-color-primary);
+  box-shadow: inset 0 -2px 0 var(--el-color-primary);
+}
+
+.gvaBorderTabBody {
+  padding: 12px;
+  max-height: 52vh;
+  overflow: auto;
+}
+
+/* gva-search-box / gva-table-box ??gva-surface */
+/* gva-search-box / gva-table-box ??gva-surface???????? */
+
+.gvaSystemCard .gvaTableToolbar {
+  margin-top: 0;
+}
+
+.gvaFormDrawerRoot {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+}
+
+.gvaFormDrawerMask {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.gvaFormDrawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(480px, 100vw);
+  height: 100%;
+  background: #fff;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  animation: gva-drawer-in 0.2s ease-out;
+}
+
+@keyframes gva-drawer-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.gvaFormDrawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--el-border-color, #dcdfe6);
+  font-size: 16px;
+}
+
+.gvaFormDrawerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gvaFormDrawerBody {
+  flex: 1;
+  overflow: auto;
+  padding: 20px 16px 32px;
+}
+
+.theme-gva .elButtonIcon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+  line-height: 1;
+  color: inherit;
+}
+
+.theme-gva .gvaSearchActions .elButton {
+  height: 32px;
+  min-height: 32px;
+  margin: 0;
+}
+
+.gvaSearchFormInline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0 32px;
+}
+
+.gvaSearchFields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0 18px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.gvaSearchActions {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+  height: 32px;
+  margin: 0 0 18px;
+}
+
+.gvaFieldInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: auto;
+  height: 32px;
+  margin: 0 0 18px;
+  vertical-align: middle;
+}
+
+.gvaFieldLabel {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  line-height: 32px;
+  color: #606266;
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.gvaFieldControl {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+}
+
+/* GVA el-form--inline?input/select ?? w-52 = 208px */
+.gvaSearchBox .gvaFieldControl > .gvaSelect,
+.gvaSearchBox .gvaFieldControl input,
+.gvaSearchBox .gvaFieldControl select {
+  width: 208px !important;
+  min-width: 208px !important;
+  max-width: 208px !important;
+  box-sizing: border-box !important;
+}
+
+.gvaSearchBox .gvaFieldControl > .gvaSelect .gvaSelectTrigger {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+}
+
+.gvaFieldControl > .gvaSelect {
+  width: 208px;
+  min-width: 208px;
+  max-width: 208px;
+}
+
+.gvaFieldControl input,
+.gvaFieldControl select {
+  height: 32px;
+  min-height: 32px;
+  width: 208px;
+  min-width: 208px;
+  max-width: 208px;
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 0 11px;
+  background: var(--el-bg-color, #fff);
+  color: var(--el-text-color-regular, #606266);
+  font-size: 14px;
+  line-height: 32px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.gvaDialogForm input,
+.gvaDialogForm select,
+.gvaDialogForm textarea {
+  height: 32px;
+  min-height: 32px;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 0 11px;
+  background: var(--el-bg-color, #fff);
+  color: var(--el-text-color-regular, #606266);
+  font-size: 14px;
+  line-height: 32px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.gvaDialogForm textarea {
+  height: auto;
+  min-height: 72px;
+  line-height: 1.5;
+  padding: 8px 11px;
+}
+
+.gvaFieldControl input:hover,
+.gvaFieldControl select:hover,
+.gvaDialogForm input:hover,
+.gvaDialogForm select:hover,
+.gvaDialogForm textarea:hover {
+  border-color: #c0c4cc;
+}
+
+.gvaFieldControl input:focus,
+.gvaFieldControl select:focus,
+.gvaDialogForm input:focus,
+.gvaDialogForm select:focus,
+.gvaDialogForm textarea:focus {
+  border-color: var(--el-color-primary);
+}
+
+.gvaDialogForm {
+  display: grid;
+  gap: 18px;
+}
+
+.gvaDialogForm .gvaField,
+.gvaFormDrawerBody .gvaField {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.gvaDialogForm .gvaField > span:first-child,
+.gvaFormDrawerBody .gvaField > span:first-child {
+  padding-top: 6px;
+  text-align: right;
+  color: #606266;
+  font-size: 14px;
+}
+
+.gvaDialogForm .gvaField > *:last-child,
+.gvaFormDrawerBody .gvaField > *:last-child {
+  min-width: 0;
+}
+
+.gvaFormDrawerBody .gvaField input,
+.gvaFormDrawerBody .gvaField select,
+.gvaFormDrawerBody .gvaField textarea,
+.gvaDialogForm input,
+.gvaDialogForm select,
+.gvaDialogForm textarea {
+  width: 100%;
+  min-width: 0;
+}
+
+.gvaTableToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.gvaSyncSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 20px 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.gvaSyncSectionHint {
+  font-size: 12px;
+  font-weight: 400;
+  color: #909399;
+}
+
+.gvaFormDrawerBody .gvaWarningBar,
+.adminDialogBody .gvaWarningBar {
+  margin-bottom: var(--gva-page-gutter, 8px);
+}
+
+/* ?? GVA .gva-table-box .el-table????? border-x/border-t???????? */
+.adminTableWrap.gvaTableBox,
+.gvaTableBox {
+  border: 1px solid var(--el-table-border-color, var(--el-border-color-lighter, #ebeef5));
+  border-bottom-width: 0;
+  border-radius: var(--gva-radius, 0.625rem);
+  margin-left: -1px;
+  margin-right: -1px;
+  overflow: auto;
+  box-sizing: border-box;
+  background: transparent;
+  box-shadow: none;
+}
+
+.gvaSystemCard > .adminTableWrap.gvaTableBox,
+.gvaSystemCard > .gvaTableBox {
+  /* ?? GVA????? gva-table-box(p-4) ???????????? */
+  width: auto;
+  max-width: none;
+  box-shadow: none !important;
+}
+
+/* Element Plus el-table ?? + GVA element_visiable.scss
+ * EP: th/td.el-table__cell padding 8px 0??cell padding 0 12px?line-height 23px?font 14px
+ * EP thead: color header-text(#909399)?th font-weight 600
+ * GVA: th .cell leading-[36px] text-gray-700?td .cell leading-[32px] text-gray-600
+ */
+.adminTable.gvaElTable,
+.gvaElTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+  table-layout: auto;
+  background: var(--el-table-bg-color, var(--el-fill-color-blank, #fff));
+  color: var(--el-table-text-color, var(--el-text-color-regular, #606266));
+}
+
+.adminTable.gvaElTable.gvaElTableFixed,
+.gvaElTable.gvaElTableFixed {
+  table-layout: fixed;
+}
+
+.adminTable.gvaElTable th,
+.adminTable.gvaElTable td,
+.gvaElTable th,
+.gvaElTable td {
+  padding: 8px 0 !important;
+  border-bottom: 1px solid var(--el-table-border-color, var(--el-border-color-lighter, #ebeef5)) !important;
+  border-right: 0 !important;
+  text-align: left;
+  vertical-align: middle;
+  box-sizing: border-box;
+  background: var(--el-table-tr-bg-color, var(--el-bg-color, #fff));
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--el-table-text-color, var(--el-text-color-regular, #606266));
+  line-height: normal;
+  white-space: nowrap;
+}
+
+.adminTable.gvaElTable thead > tr > th,
+.gvaElTable thead > tr > th,
+.adminTable.gvaElTable thead th,
+.gvaElTable thead th {
+  background: var(--el-table-header-bg-color, var(--el-bg-color, #ffffff)) !important;
+  background-color: var(--el-table-header-bg-color, var(--el-bg-color, #ffffff)) !important;
+  font-weight: 600;
+  /* GVA text-gray-700?? EP secondary ? */
+  color: var(--el-table-header-text-color, #374151) !important;
+  user-select: none;
+}
+
+.adminTable.gvaElTable thead th .gvaElTableCell,
+.gvaElTable thead th .gvaElTableCell {
+  background-color: transparent;
+}
+
+.adminTable.gvaElTable .gvaElTableCell,
+.gvaElTable .gvaElTableCell {
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 23px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--el-table-text-color, #4b5563);
+}
+
+/* GVA header .cell */
+.adminTable.gvaElTable th .gvaElTableCell,
+.gvaElTable th .gvaElTableCell {
+  display: inline-flex;
+  align-items: center;
+  line-height: 36px !important;
+  min-height: 36px;
+  color: var(--el-table-header-text-color, #374151) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  overflow: visible;
+}
+
+.gvaTableHeadLabel {
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  line-height: inherit;
+}
+
+/* GVA body .cell */
+.adminTable.gvaElTable td .gvaElTableCell,
+.gvaElTable td .gvaElTableCell {
+  line-height: 32px !important;
+  min-height: 32px;
+  color: var(--el-table-text-color, #4b5563) !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+
+.gvaTableSortable {
+  cursor: pointer;
+}
+
+/* Element Plus .caret-wrapper / .sort-caret */
+.gvaSortCaret {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 24px;
+  height: 14px;
+  flex: 0 0 auto;
+  vertical-align: middle;
+  overflow: visible;
+}
+
+.gvaSortCaret::before,
+.gvaSortCaret::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+}
+
+.gvaSortCaret::before {
+  top: -5px;
+  border-bottom-color: #c0c4cc;
+}
+
+.gvaSortCaret::after {
+  bottom: -3px;
+  border-top-color: #c0c4cc;
+}
+
+.gvaSortCaret.is-ascending::before {
+  border-bottom-color: var(--el-color-primary);
+}
+
+.gvaSortCaret.is-descending::after {
+  border-top-color: var(--el-color-primary);
+}
+
+.gvaTableCheckCol {
+  width: 55px;
+}
+
+.gvaTableCheckCol .gvaElTableCell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.adminTable.gvaElTable th.gvaTableCheckCol .gvaElTableCell,
+.gvaElTable th.gvaTableCheckCol .gvaElTableCell {
+  min-height: 36px;
+  line-height: 36px !important;
+}
+
+.adminTable.gvaElTable td.gvaTableCheckCol .gvaElTableCell,
+.gvaElTable td.gvaTableCheckCol .gvaElTableCell {
+  min-height: 32px;
+  line-height: 32px !important;
+}
+
+.gvaTableCheckCol input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 1px solid #dcdfe6;
+  border-radius: 2px;
+  background: #fff;
+  box-sizing: border-box;
+  cursor: pointer;
+  position: relative;
+  vertical-align: middle;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+/* ??/???????????? Element Plus checkbox ?? */
+.adminTreeItem input[type='checkbox'],
+.adminCheckboxGrid input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  flex: 0 0 auto;
+  border: 1px solid #dcdfe6;
+  border-radius: 2px;
+  background: #fff;
+  box-sizing: border-box;
+  cursor: pointer;
+  position: relative;
+  vertical-align: middle;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.adminTreeItem input[type='checkbox']:hover,
+.adminCheckboxGrid input[type='checkbox']:hover {
+  border-color: var(--el-color-primary);
+}
+
+.adminTreeItem input[type='checkbox']:checked,
+.adminCheckboxGrid input[type='checkbox']:checked {
+  background-color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+}
+
+.adminTreeItem input[type='checkbox']:checked::after,
+.adminCheckboxGrid input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 3px;
+  height: 7px;
+  border: 1.5px solid #fff;
+  border-left: 0;
+  border-top: 0;
+  transform: rotate(45deg);
+  box-sizing: content-box;
+}
+
+.gvaTableCheckCol input[type='checkbox']:hover {
+  border-color: var(--el-color-primary);
+}
+
+.gvaTableCheckCol input[type='checkbox']:checked,
+.gvaTableCheckCol input[type='checkbox']:indeterminate {
+  background-color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+}
+
+.gvaTableCheckCol input[type='checkbox']:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 3px;
+  height: 7px;
+  border: 1.5px solid #fff;
+  border-left: 0;
+  border-top: 0;
+  transform: rotate(45deg);
+  box-sizing: content-box;
+}
+
+.gvaTableCheckCol input[type='checkbox']:indeterminate::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 5px;
+  height: 2px;
+  background: #fff;
+  border: 0;
+  transform: none;
+}
+
+.gvaTableEmpty {
+  padding: 40px 16px;
+  text-align: center;
+  color: #909399;
+  background: #fff;
+}
+
+.gvaElTable tbody tr:hover > td {
+  background: #f5f7fa;
+}
+
+.gvaElTableStripe tr.is-striped > td {
+  background: #fafafa;
+}
+
+.gvaElTableStripe tr.is-striped:hover > td {
+  background: #f5f7fa;
+}
+
+.gvaElTable tbody tr:last-child > td {
+  border-bottom: 0;
+}
+
+.adminTableWrap.gvaTableBox .gvaElTable tbody tr:last-child > td {
+  border-bottom: 0;
+}
+
+.gvaRowActions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 20px;
+  align-items: center;
+  height: 32px;
+  line-height: 32px;
+}
+
+/* Menu ops 2x2: left-align with header; columns end-aligned; EP-like gaps */
+.adminTable.gvaElTable td .gvaElTableCell:has(.gvaMenuRowActions),
+.gvaElTable td .gvaElTableCell:has(.gvaMenuRowActions) {
+  display: block !important;
+  white-space: normal !important;
+  overflow: visible !important;
+}
+
+.gvaMenuRowActions {
+  display: grid !important;
+  grid-template-columns: max-content max-content;
+  column-gap: 16px;
+  row-gap: 4px;
+  align-items: center;
+  justify-items: end;
+  justify-content: start;
+  margin-left: 0;
+  width: max-content;
+  height: auto !important;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.gvaMenuRowActions .gvaLinkButton {
+  height: 28px;
+  line-height: 28px;
+  justify-content: flex-end;
+  padding: 0 2px;
+}
+
+.gvaLinkButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--el-color-primary);
+  cursor: pointer;
+  padding: 0;
+  font-size: 14px;
+  line-height: 32px;
+  height: 32px;
+  font-weight: 400;
+}
+
+.gvaLinkButtonIcon {
+  display: inline-flex;
+  color: inherit;
+}
+
+.gvaLinkButton.danger {
+  color: var(--el-color-primary);
+}
+
+.gvaLinkButton:hover {
+  color: #6493f6;
+}
+
+.gvaLinkButton.danger:hover {
+  color: #6493f6;
+}
+
+.gvaLinkButton:disabled {
+  color: #c0c4cc;
+  cursor: not-allowed;
+}
+
+.theme-gva .elButton {
+  border: 1px solid #dcdfe6;
+  background: var(--el-bg-color, #fff);
+  color: var(--el-text-color-regular, #606266);
+  padding: 0 15px;
+  gap: 6px;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+/* ?? Element Plus disabled????+ placeholder ??/??????? opacity ?? */
+.theme-gva .elButton:disabled,
+.theme-gva .elButton:disabled:hover,
+.theme-gva .elButton:disabled:focus {
+  color: var(--el-text-color-placeholder, #a8abb2) !important;
+  background: var(--el-fill-color-blank, #fff) !important;
+  border-color: var(--el-border-color-light, #e4e7ed) !important;
+  cursor: not-allowed;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.theme-gva .elButtonIcon {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+}
+
+.theme-gva .elButtonDangerIcon {
+  color: #f56c6c;
+}
+
+.theme-gva .elButton:disabled .elButtonIcon,
+.theme-gva .elButton:disabled .elButtonDangerIcon,
+.theme-gva .elButton:disabled:hover .elButtonIcon,
+.theme-gva .elButton:disabled:hover .elButtonDangerIcon {
+  color: #a8abb2 !important;
+  opacity: 1 !important;
+}
+
+.theme-gva .elButton:hover:not(:disabled) {
+  color: var(--el-color-primary);
+  border-color: #c6d9ff;
+  background: #ecf2ff;
+}
+
+.theme-gva .elButtonPrimary {
+  background: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+  color: #fff;
+}
+
+.theme-gva .elButtonPrimary:hover {
+  background: #6493f6;
+  border-color: #6493f6;
+  color: #fff;
+}
+
+.theme-gva .adminDialogFooter {
+  justify-content: flex-end;
+  gap: 0;
+  padding: 0 16px 16px 0;
+}
+
+.theme-gva .adminDialogFooter .elButton + .elButton {
+  margin-left: 30px;
+}
+
+.theme-gva .adminDialogFooter .elButton {
+  padding: 0 24px;
+}
+
+.theme-gva .adminDialogHeader {
+  padding: 16px 16px 10px;
+  border-bottom: 0;
+}
+
+.theme-gva .adminDialogBody {
+  padding: 10px 16px 16px;
+}
+
+.gvaConfirmMessage {
+  margin: 0;
+  color: #606266;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+/* ?? Element Plus MessageBox????????+ ???????? */
+.gvaMsgboxOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2010;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+}
+
+.gvaMsgboxOverlay.is-enter {
+  animation: gva-v-modal-in 0.2s ease forwards;
+}
+
+.gvaMsgboxOverlay.is-leave {
+  animation: gva-v-modal-out 0.2s ease forwards;
+}
+
+.gvaMsgboxWrap {
+  position: fixed;
+  inset: 0;
+  z-index: 2011;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.gvaMsgboxOverlay .gvaMsgbox {
+  pointer-events: auto;
+  width: min(420px, 100%);
+  max-width: 420px;
+  padding: 0;
+  border-radius: var(--gva-radius, 0.625rem);
+  box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, 0.04), 0px 8px 20px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  opacity: 0;
+  transform: translate3d(0, -20px, 0);
+  backface-visibility: hidden;
+}
+
+.gvaMsgboxOverlay.is-enter .gvaMsgbox {
+  animation: gva-msgbox-fade-in 0.3s ease forwards;
+}
+
+.gvaMsgboxOverlay.is-leave .gvaMsgbox {
+  animation: gva-msgbox-fade-out 0.3s ease forwards;
+}
+
+.gvaMsgboxHeader {
+  padding: 12px 12px 10px !important;
+  border-bottom: 0 !important;
+}
+
+.gvaMsgboxHeader strong {
+  color: #303133;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.gvaMsgboxBody {
+  padding: 10px 12px 12px !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.gvaMsgboxContent {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gvaMsgboxStatus {
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.gvaMsgboxStatus.is-warning {
+  color: #e6a23c;
+}
+
+.gvaMsgboxStatus.is-info {
+  color: #909399;
+}
+
+.gvaMsgboxStatus.is-success {
+  color: #67c23a;
+}
+
+.gvaMsgboxStatus.is-error {
+  color: #f56c6c;
+}
+
+.gvaMsgboxFooter {
+  padding: 0 12px 12px 0 !important;
+  border-top: 0 !important;
+}
+
+@keyframes gva-v-modal-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gva-v-modal-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes gva-msgbox-fade-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateZ(0);
+  }
+}
+
+@keyframes gva-msgbox-fade-out {
+  from {
+    opacity: 1;
+    transform: translateZ(0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, -20px, 0);
+  }
+}
+
+
+.gvaInlineActions {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.gvaInlineActions input {
+  flex: 1;
+}
+
+.gvaSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.gvaSwitchCore {
+  width: 40px;
+  height: 20px;
+  border-radius: 999px;
+  background: #dcdfe6;
+  position: relative;
+  transition: 0.2s;
+}
+
+.gvaSwitchCore::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #fff;
+  transition: 0.2s;
+}
+
+.gvaSwitch.is-on .gvaSwitchCore {
+  background: rgb(var(--gva-primary, 34, 100, 242));
+}
+
+.gvaSwitch.is-on .gvaSwitchCore::after {
+  left: 22px;
+}
+
+.gvaSwitchLabel {
+  font-size: 12px;
+  color: #606266;
+}
+
+.gvaMessageHost {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  pointer-events: none;
+}
+
+.gvaMessage {
+  position: fixed;
+  left: 50%;
+  z-index: 4000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+  max-width: calc(100% - 32px);
+  width: fit-content;
+  padding: 11px 15px;
+  border-radius: var(--el-border-radius-base, var(--gva-radius, 0.625rem));
+  background: var(--el-message-bg-color, #f4f4f5);
+  border: 1px solid var(--el-message-border-color, #e9e9eb);
+  box-sizing: border-box;
+  color: var(--el-message-text-color, #909399);
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateX(-50%);
+  opacity: 1;
+  transition:
+    opacity 0.4s,
+    transform 0.4s,
+    top 0.4s;
+}
+
+.gvaMessage.is-plain {
+  background: #fff;
+  border-color: #fff;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.12);
+}
+
+.gvaMessage.is-enter-from,
+.gvaMessage.is-leave-active {
+  opacity: 0;
+  transform: translate(-50%, -100%);
+}
+
+.gvaMessage.is-enter-active {
+  opacity: 1;
+  transform: translateX(-50%);
+}
+
+.gvaMessageContent {
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  overflow-wrap: break-word;
+}
+
+.gvaMessageIcon {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.gvaMessage-success {
+  --el-message-bg-color: #f0f9eb;
+  --el-message-border-color: #e1f3d8;
+  --el-message-text-color: #67c23a;
+}
+
+.gvaMessage-success .gvaMessageIcon {
+  background: #67c23a;
+}
+
+.gvaMessage-success.is-plain {
+  color: #67c23a;
+}
+
+.gvaMessage-error {
+  --el-message-bg-color: #fef0f0;
+  --el-message-border-color: #fde2e2;
+  --el-message-text-color: #f56c6c;
+}
+
+.gvaMessage-error .gvaMessageIcon {
+  background: #f56c6c;
+}
+
+.gvaMessage-error.is-plain {
+  color: #f56c6c;
+}
+
+.gvaMessage-warning {
+  --el-message-bg-color: #fdf6ec;
+  --el-message-border-color: #faecd8;
+  --el-message-text-color: #e6a23c;
+}
+
+.gvaMessage-warning .gvaMessageIcon {
+  background: #e6a23c;
+}
+
+.gvaMessage-warning.is-plain {
+  color: #e6a23c;
+}
+
+.gvaMessage-info {
+  --el-message-bg-color: #f4f4f5;
+  --el-message-border-color: #e9e9eb;
+  --el-message-text-color: #909399;
+}
+
+.gvaMessage-info .gvaMessageIcon {
+  background: #909399;
+}
+
+.gvaMessage-info.is-plain {
+  color: #909399;
+}
+
+/* ?????????????????? --gva-radius????GVA theme.scss??*/
+.gvaSystemCard,
+.gvaSearchBox,
+.gvaTableBox,
+.adminTableWrap.gvaTableBox,
+.gvaWarningBar,
+.gvaThemeCardBg,
+.gvaThemeCardWhite,
+.adminDialog,
+.gvaDialog,
+.gvaMessage,
+.gvaSelectTrigger,
+.gvaSelectDropdown,
+.gvaPaginationBtn,
+.elButton,
+.gvaFieldControl input,
+.gvaFieldControl select,
+.gvaDialogForm input,
+.gvaDialogForm select,
+.gvaDialogForm textarea,
+.gvaElInput,
+.gvaTagsContextMenu,
+.gvaCommandPanel.commandPalettePanel,
+.theme-gva .gvaUserDropdown,
+.gvaPresetCard,
+.gvaLayoutCard,
+.gvaThemeModeSelector,
+.gvaCardModeSelector,
+.gvaColorPopover,
+.gvaPreviewCard,
+.gvaThemeNumber,
+.gvaDrawerResetBtn,
+.gvaDrawerFlexBtn {
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+/* Element Plus el-pagination ?? */
+.adminPagination.gvaPagination,
+.gvaPagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 32px;
+  color: #606266;
+  font-size: 14px;
+  line-height: 1;
+  user-select: none;
+}
+
+.gvaPaginationTotal {
+  margin-right: 4px;
+  font-weight: 400;
+}
+
+.gvaPaginationSizes {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+}
+
+/* Element Plus el-select / el-select-dropdown???????? */
+.gvaSelect {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  width: auto;
+}
+
+.gvaSelectTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 110px;
+  height: 32px;
+  padding: 0 8px 0 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: var(--el-bg-color, #fff);
+  color: var(--el-text-color-regular, #606266);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.gvaSelectTrigger:hover,
+.gvaSelect.is-open .gvaSelectTrigger {
+  border-color: var(--el-color-primary);
+}
+
+.gvaSelectValue {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gvaSelectValue.is-placeholder {
+  color: #a8abb2;
+}
+
+.gvaSelectCaret {
+  color: #a8abb2;
+  transition: transform 0.3s, color 0.2s;
+  flex: 0 0 auto;
+  display: block;
+}
+
+.gvaSelect.is-open .gvaSelectCaret {
+  transform: rotate(180deg);
+  color: var(--el-color-primary);
+}
+
+.gvaSelectDropdown {
+  position: absolute;
+  left: 50%;
+  z-index: 40;
+  min-width: 100%;
+  padding: 6px 0;
+  border: 1px solid #e4e7ed;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.12);
+  box-sizing: border-box;
+  transform: translateX(-50%) scaleY(0);
+  opacity: 0;
+  transition:
+    transform 0.2s cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+  pointer-events: none;
+}
+
+.gvaSelectDropdown.is-top {
+  bottom: calc(100% + 12px);
+  transform-origin: center bottom;
+}
+
+.gvaSelectDropdown.is-bottom {
+  top: calc(100% + 12px);
+  transform-origin: center top;
+}
+
+.gvaSelectDropdown.is-visible {
+  transform: translateX(-50%) scaleY(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.gvaSelectDropdownArrow {
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: #fff;
+  border: 1px solid #e4e7ed;
+}
+
+.gvaSelectDropdown.is-top .gvaSelectDropdownArrow {
+  bottom: -5px;
+  border-left: 0;
+  border-top: 0;
+  transform: rotate(45deg);
+}
+
+.gvaSelectDropdown.is-bottom .gvaSelectDropdownArrow {
+  top: -5px;
+  border-right: 0;
+  border-bottom: 0;
+  transform: rotate(45deg);
+}
+
+/* ????????????????????? */
+.gvaSelectOptionsWrap {
+  position: relative;
+  max-height: 240px;
+}
+
+.gvaSelectOptions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 240px;
+  overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.gvaSelectOptions::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.gvaSelectScrollRail {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  bottom: 0;
+  width: 6px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.gvaSelectOptionsWrap:hover .gvaSelectScrollRail,
+.gvaSelectDropdown:hover .gvaSelectScrollRail {
+  opacity: 1;
+}
+
+.gvaSelectScrollThumb {
+  position: absolute;
+  left: 0;
+  width: 6px;
+  border-radius: 999px;
+  background: rgba(192, 196, 204, 0.45);
+}
+
+.gvaSelectOption {
+  display: block;
+  width: 100%;
+  padding: 0 20px;
+  border: 0;
+  background: transparent;
+  color: #606266;
+  font-size: 14px;
+  line-height: 34px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.gvaSelectOption:hover {
+  background: #f5f7fa;
+}
+
+.gvaSelectOption.is-selected {
+  color: var(--el-color-primary);
+  font-weight: 700;
+  background: #f0f4ff;
+}
+
+.gvaSelectOption.is-selected:hover {
+  background: #f0f4ff;
+}
+
+.gvaPaginationPager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gvaPaginationBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 4px;
+  border: 1px solid #dcdfe6;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: var(--el-bg-color, #fff);
+  color: var(--el-text-color-regular, #606266);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.gvaPaginationBtn svg {
+  display: block;
+}
+
+.gvaPaginationBtn:hover:not(:disabled):not(.is-active):not(.is-ellipsis) {
+  color: var(--el-color-primary);
+}
+
+.gvaPaginationNav {
+  border-color: transparent;
+  background: transparent;
+}
+
+.gvaPaginationNav:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--el-color-primary);
+}
+
+.gvaPaginationBtn.is-active {
+  background: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+  color: #fff;
+  font-weight: 500;
+  cursor: default;
+}
+
+.gvaPaginationBtn:disabled {
+  color: #c0c4cc;
+  background: transparent;
+  border-color: transparent;
+  cursor: not-allowed;
+}
+
+.gvaPaginationBtn.is-ellipsis {
+  cursor: default;
+  color: #606266;
+  border-color: #dcdfe6;
+  background: #fff;
+  padding: 0;
+  line-height: 32px;
+}
+
+.gvaPaginationEllipsisDots {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  line-height: 1;
+  letter-spacing: 1px;
+  /* ????????????????????????*/
+  transform: translateY(-1px);
+}
+
+.gvaPaginationEllipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+}
+
+.gvaPaginationJump {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  color: #606266;
+}
+
+.gvaPaginationJumpInput {
+  width: 48px;
+  height: 32px;
+  padding: 0 4px;
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  border-radius: var(--gva-radius, 0.625rem);
+  background: var(--el-bg-color, #fff);
+  color: var(--el-text-color-regular, #606266);
+  font-size: 14px;
+  text-align: center;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.gvaPaginationJumpInput:hover,
+.gvaPaginationJumpInput:focus {
+  border-color: var(--el-color-primary);
+}
+
+.authLayout {
+  min-height: 100vh;
+  background: #fff;
+}
+
+@media (max-width: 920px) {
+  .theme-gva .gvaAppShell,
+  .theme-gva .gvaAppShell[data-sidebar-collapsed='true'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.gvaDrawerResetBtn {
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: var(--gva-radius, 0.625rem);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.gvaThemeDrawer .gvaDrawerResetBtn.elButtonPrimary {
+  background: rgb(var(--gva-primary, 34, 100, 242));
+  border-color: rgb(var(--gva-primary, 34, 100, 242));
+  color: #fff;
+}
+
+.gvaThemeDrawer .gvaDrawerResetBtn.elButtonPrimary:hover {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, rgb(var(--gva-primary, 34, 100, 242)) 84%, #000);
+  border-color: color-mix(in srgb, rgb(var(--gva-primary, 34, 100, 242)) 84%, #000);
+  color: #fff;
+}
+
+.gvaDrawerCloseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #303133;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.gvaDrawerCloseBtn:hover {
+  background: #f4f4f5;
+  color: #303133;
+}
+
+.gvaThemeFont {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.gvaThemeSectionContent {
+  animation: gvaFadeInUp 0.3s ease;
+}
+
+@keyframes gvaFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gvaThemeBlock {
+  margin-bottom: 24px;
+}
+
+.gvaThemeSectionHeader {
+  display: flex;
+  align-items: center;
+  margin: 2px 0 8px;
+}
+
+.gvaThemeSectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #909399;
+}
+
+.gvaThemeCardBg {
+  background: #f7fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 2px 14px;
+}
+
+.gvaThemeCardWhite {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 10px 12px;
+}
+
+.gvaThemeSettingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.gvaThemeSettingItem:last-child {
+  border-bottom: 0;
+}
+
+.gvaThemeDrawer .gvaThemeSettingItem:has(.gvaSelect.is-open) {
+  position: relative;
+  z-index: 8;
+}
+
+.gvaThemeDrawer .gvaThemeSettingControl .gvaSelectTrigger {
+  height: 28px;
+  min-width: 0;
+  font-size: 13px;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaThemeDrawer .gvaThemeSettingControl .gvaSelectDropdown {
+  z-index: 50;
+}
+
+.gvaThemeSettingLabelWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gvaThemeSettingLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.gvaThemeSettingControl {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.gvaDrawerHintInline {
+  font-size: 12px;
+  color: #909399;
+}
+
+.gvaDrawerHintRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #909399;
+}
+
+.gvaThemeSelect,
+.gvaThemeNumber {
+  min-width: 96px;
+  height: 28px;
+  border: 1px solid #dcdfe6;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 0 8px;
+  font-size: 13px;
+  background: #fff;
+  color: #303133;
+}
+
+.gvaThemeNumber {
+  width: 7rem;
+}
+
+.gvaColorField {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gvaColorClear {
+  border: 0;
+  background: transparent;
+  color: #909399;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.gvaThemeModeSelectorWrap {
+  display: flex;
+  justify-content: center;
+}
+
+.gvaThemeModeSelector {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #f7fafc;
+}
+
+.gvaThemeModeItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 64px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: transparent;
+  color: #909399;
+  cursor: pointer;
+}
+
+.gvaThemeModeItem span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.gvaThemeModeItem:hover:not(.is-active) {
+  color: #303133;
+  background: #f4f4f5;
+}
+
+.gvaThemeModeItem.is-active {
+  transform: translateY(-2px);
+}
+
+.gvaThemeColorRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.gvaColorDot {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.gvaColorDot:hover {
+  transform: scale(1.1);
+}
+
+.gvaColorDot.is-active {
+  transform: scale(1.1);
+  /* ????+ ??????????????????????????? */
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 4px color-mix(in srgb, var(--tw-ring-color, #2264f2) 40%, transparent);
+}
+
+.gvaColorDot svg {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+
+.gvaColorDivider {
+  width: 1px;
+  height: 20px;
+  background: #e5e7eb;
+}
+
+.gvaThemeColorRow code {
+  margin-left: auto;
+  font-size: 12px;
+  color: #909399;
+}
+
+.gvaSemanticSwatches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gvaColorSwatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  cursor: pointer;
+  color: #303133;
+}
+
+.gvaColorSwatch.is-value {
+  width: auto;
+  min-width: 32px;
+  padding: 0 8px;
+  gap: 8px;
+}
+
+.gvaColorSwatch:hover,
+.gvaColorSwatch.is-open {
+  border-color: rgb(var(--gva-primary, 34, 100, 242));
+}
+
+.gvaColorSwatch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.gvaColorSwatchChip {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--gva-radius, 0.625rem);
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  background-image:
+    linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+    linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+
+.gvaColorSwatch.is-value .gvaColorSwatchChip {
+  width: 16px;
+  height: 16px;
+}
+
+.gvaColorSwatchChip > span {
+  position: absolute;
+  inset: 0;
+}
+
+.gvaColorSwatch em {
+  font-style: normal;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #909399;
+}
+
+.gvaColorNative {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gvaColorPopover {
+  position: fixed;
+  z-index: 3000;
+  width: 240px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.gvaColorPopoverPreview {
+  display: block;
+  width: 100%;
+  height: 32px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  cursor: pointer;
+}
+
+.gvaColorPopoverHex {
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin-top: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-align: center;
+  color: #303133;
+  background: #fff;
+}
+
+.gvaColorPopoverSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.gvaColorPopoverSwatches button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  cursor: pointer;
+}
+
+.gvaColorPopoverSwatches button:hover {
+  transform: scale(1.1);
+}
+
+.gvaColorPopoverSwatches button.is-active {
+  box-shadow: 0 0 0 2px rgb(var(--gva-primary, 34, 100, 242)), 0 0 0 3px #fff;
+}
+
+.gvaColorPopoverClear {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 6px 8px;
+  background: #fff;
+  color: #909399;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.gvaColorPopoverClear:hover {
+  border-color: rgb(var(--gva-primary, 34, 100, 242));
+  color: rgb(var(--gva-primary, 34, 100, 242));
+}
+
+.gvaPreviewGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 4px;
+  width: 100%;
+}
+
+.gvaPreviewCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.gvaPreviewCard:hover {
+  border-color: rgb(var(--gva-primary, 34, 100, 242));
+}
+
+.gvaPreviewCheck {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.gvaMiniLayout {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaMiniSide {
+  width: 33%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+}
+
+.gvaMiniSide span {
+  height: 6px;
+  border-radius: 2px;
+}
+
+.gvaMiniMain {
+  flex: 1;
+}
+
+.gvaTabPreview {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  overflow: hidden;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaTabPreviewButton {
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  background: #fff;
+}
+
+.gvaTabPreviewButton span {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 16px;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #f3f4f6;
+}
+
+.gvaTabPreviewButton i {
+  flex: 0 0 1px;
+  width: 1px;
+  height: 12px;
+  background: #e5e7eb;
+}
+
+.gvaTabPreviewChrome {
+  align-items: flex-end;
+  padding: 0 4px;
+  background: #f3f4f6;
+}
+
+.gvaTabPreviewChrome span {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 20px;
+  border-radius: var(--gva-radius, 0.625rem) var(--gva-radius, 0.625rem) 0 0;
+  background: #e5e7eb;
+}
+
+.gvaTabPreviewChrome span:nth-child(2),
+.gvaTabPreviewChrome span:nth-child(3) {
+  margin-left: -4px;
+}
+
+.gvaTabPreviewChrome span:nth-child(2) {
+  height: 24px;
+}
+
+.gvaTabPreviewSlider {
+  align-items: flex-end;
+  padding: 0 4px;
+  background: #fff;
+}
+
+.gvaTabPreviewSlider > span {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  margin-right: 2px;
+  border-bottom: 2px solid transparent;
+  background: var(--gva-page-bg, #f2f3f4);
+}
+
+.gvaTabPreviewSlider > span:last-child {
+  margin-right: 0;
+}
+
+.gvaTabPreviewSlider em {
+  display: block;
+  width: 20px;
+  height: 8px;
+  border-radius: 2px;
+  background: #e5e7eb;
+}
+
+.gvaTabPreviewSlider em.is-short {
+  width: 16px;
+}
+
+.gvaTabPreviewCard > em {
+  font-size: 12px;
+  font-style: normal;
+  color: #606266;
+}
+
+.gvaLayoutGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 0 4px;
+}
+
+.gvaLayoutCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+}
+
+.gvaLayoutMini {
+  display: flex;
+  gap: 4px;
+  height: 48px;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: var(--gva-page-bg, #f2f3f4);
+}
+
+.gvaLayoutMini.is-column {
+  flex-direction: column;
+}
+
+.gvaLayoutMiniSide {
+  width: 25%;
+  border-radius: 2px;
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.gvaLayoutMiniSide i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.gvaLayoutMiniBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gvaLayoutMiniHeader {
+  height: 25%;
+  border-radius: 2px;
+}
+
+.gvaLayoutMiniContent {
+  flex: 1;
+  border-radius: 2px;
+}
+
+.gvaLayoutCard strong {
+  font-size: 13px;
+  color: #303133;
+}
+
+.gvaLayoutCard span {
+  font-size: 11px;
+  line-height: 1.3;
+  color: #909399;
+}
+
+.gvaRadiusSelector {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 220px;
+}
+
+.gvaSlider {
+  flex: 1;
+  min-width: 0;
+}
+
+.gvaSliderRow {
+  position: relative;
+  height: 20px;
+}
+
+.gvaSliderTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 7px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e4e7ed;
+  pointer-events: none;
+}
+
+.gvaSliderRange {
+  height: 100%;
+  border-radius: 999px;
+  background: rgb(var(--gva-primary, 34, 100, 242));
+}
+
+.gvaSliderInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.gvaSliderInput::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+  border: 0;
+}
+
+.gvaSliderInput::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid rgb(var(--gva-primary, 34, 100, 242));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.gvaSliderInput::-moz-range-track {
+  height: 6px;
+  background: transparent;
+  border: 0;
+}
+
+.gvaSliderInput::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid rgb(var(--gva-primary, 34, 100, 242));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.gvaSliderMarks {
+  position: relative;
+  height: 14px;
+  margin-top: 4px;
+}
+
+.gvaSliderMarks span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  line-height: 1;
+  color: #909399;
+}
+
+.gvaRadiusSelector > span {
+  width: 56px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #303133;
+}
+
+.gvaCardModeSelector {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #f4f4f5;
+  width: fit-content;
+}
+
+.gvaCardModeSelector button {
+  padding: 6px 20px;
+  border: 0;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: transparent;
+  color: #909399;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.gvaPresetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.gvaPresetCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.gvaPresetCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.gvaPresetPreview {
+  display: flex;
+  height: 56px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaPresetPreview > div:first-child {
+  width: 25%;
+}
+
+.gvaPresetPreview > div:last-child {
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gvaPresetPreview > div:last-child > span {
+  height: 8px;
+  width: 66%;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaPresetPreview > div:last-child > div {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.gvaPresetPreview i {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.gvaPresetMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gvaPresetMeta span {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.gvaPresetMeta em {
+  font-style: normal;
+  font-size: 11px;
+  color: #909399;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 1px 6px;
+}
+
+.gvaPresetRemove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #909399;
+}
+
+.gvaPresetEmpty {
+  text-align: center;
+  font-size: 14px;
+  color: #909399;
+  padding: 24px 14px;
+  margin-bottom: 16px;
+}
+
+.gvaDrawerFullBtn,
+.gvaDrawerFlexBtn {
+  width: 100%;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaPresetImportRow {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.gvaInfoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+.gvaInfoCell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.gvaInfoGrid .gvaInfoCell:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.gvaInfoCell span {
+  color: #909399;
+  font-weight: 500;
+}
+
+.gvaInfoCell strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #303133;
+}
+
+.gvaResetCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.gvaResetCardCopy {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gvaResetIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--gva-radius, 0.625rem);
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.gvaResetCard h4,
+.gvaAboutRow h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #303133;
+}
+
+.gvaResetCard p,
+.gvaAboutRow p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #909399;
+}
+
+.gvaAboutRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 12px 0;
+}
+
+.gvaAboutLogo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  padding: 8px;
+}
+
+.gvaAboutRow h4 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.gvaAboutRow p {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.gvaAboutLinks {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.gvaAboutLinks a:hover {
+  text-decoration: underline;
+}
+
+.gvaAboutLinks span {
+  color: #909399;
+}
+
+.gvaAppShell[data-layout='vertical'] {
+  display: grid !important;
+  grid-template-columns: var(--gva-side-width, 256px) minmax(0, 1fr);
+  grid-template-rows: 64px minmax(0, 1fr);
+}
+
+.gvaAppShell[data-layout='vertical'][data-sidebar-collapsed='true'] {
+  grid-template-columns: var(--gva-side-collapsed-width, 80px) minmax(0, 1fr);
+}
+
+.gvaAppShell[data-layout='vertical'] .gvaTopbar {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.gvaAppShell[data-layout='vertical'] .gvaBody {
+  display: contents !important;
+  height: auto !important;
+}
+
+.gvaAppShell[data-layout='vertical'] .gvaSidebar {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.gvaAppShell[data-layout='vertical'] .gvaMainColumn {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+}
+
+/* ????????????????????????? */
+.gvaAppShell:not([data-layout='head']) .gvaSidebar {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.gvaAppShell[data-layout='head'] .gvaSidebar,
+.gvaAppShell[data-layout='head'] .gvaCollapseBar {
+  display: none !important;
+}
+
+.gvaAppShell[data-menu-theme='design'] .gvaSidebar .gvaMenuItem.is-active,
+.gvaAppShell[data-menu-theme='group'] .gvaSidebar .gvaMenuItem.is-active {
+  color: rgb(var(--gva-primary, 34, 100, 242)) !important;
+  background: rgb(var(--gva-primary, 34, 100, 242), 0.12) !important;
+}
+
+.gvaWatermark {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  place-items: center;
+  opacity: 0.08;
+  transform: rotate(-18deg) scale(1.2);
+  font-size: 28px;
+  font-weight: 700;
+  color: #303133;
+}
+
+html.gva-grayscale {
+  filter: grayscale(1);
+}
+
+html.gva-colour-weakness {
+  filter: invert(80%);
+}
+
+html[data-gva-size='large'] .gvaAppShell {
+  font-size: 16px;
+}
+
+html[data-gva-size='small'] .gvaAppShell {
+  font-size: 13px;
+}
+
+/*
+ * ????????? GVA theme.scss
+ * ??????????search / table-box / warning???????? el-table ??
+ */
+html.gva-card--shadow .gvaSystemCard,
+html.gva-card--shadow .gvaSearchBox,
+html.gva-card--shadow .gvaThemeCardBg,
+html.gva-card--shadow .gvaWarningBar,
+html[data-gva-card='shadow'] .gvaSystemCard,
+html[data-gva-card='shadow'] .gvaSearchBox,
+html[data-gva-card='shadow'] .gvaThemeCardBg,
+html[data-gva-card='shadow'] .gvaWarningBar {
+  border-color: transparent !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 6px 18px rgba(0, 0, 0, 0.06) !important;
+}
+
+/*
+ * ????search / table-box / warning?????????????
+ * ??????????????????????? table wrap ???
+ */
+html.gva-card--border .gvaSystemCard,
+html.gva-card--border .gvaSearchBox,
+html.gva-card--border .gvaWarningBar,
+html[data-gva-card='border'] .gvaSystemCard,
+html[data-gva-card='border'] .gvaSearchBox,
+html[data-gva-card='border'] .gvaWarningBar {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.gvaSwitch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/*
+ * ????--gva-page-gutter ????????/????????????????????? */
+.gvaPageTransitionStage {
+  position: relative;
+  width: calc(100% + 2 * var(--gva-page-gutter, 8px));
+  margin-left: calc(-1 * var(--gva-page-gutter, 8px));
+  margin-right: calc(-1 * var(--gva-page-gutter, 8px));
+  padding-left: var(--gva-page-gutter, 8px);
+  padding-right: var(--gva-page-gutter, 8px);
+  box-sizing: border-box;
+  overflow-x: hidden;
+  background: var(--gva-page-bg, #f2f3f4);
+}
+
+.gvaPageLeaveClip,
+.gvaPageLeaveClone {
+  pointer-events: none;
+}
+
+.gvaPageTransition {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gvaPage-fade.is-enter {
+  animation: gva-page-fade-in 0.3s ease both;
+}
+
+.gvaPage-fade.is-leave {
+  animation: gva-page-fade-out 0.3s ease both;
+}
+
+.gvaPage-slide.is-enter {
+  animation: gva-page-slide-in 0.3s ease both;
+}
+
+.gvaPage-slide.is-leave {
+  animation: gva-page-slide-out 0.3s ease both;
+}
+
+.gvaPage-zoom.is-enter {
+  animation: gva-page-zoom-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.gvaPage-zoom.is-leave {
+  animation: gva-page-zoom-out 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes gva-page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gva-page-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* GVA slide-enter-from */
+@keyframes gva-page-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* GVA slide-leave-to */
+@keyframes gva-page-slide-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+}
+
+@keyframes gva-page-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gva-page-zoom-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gvaPage-fade.is-enter,
+  .gvaPage-fade.is-leave,
+  .gvaPage-slide.is-enter,
+  .gvaPage-slide.is-leave,
+  .gvaPage-zoom.is-enter,
+  .gvaPage-zoom.is-leave {
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@keyframes gva-drawer-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gva-drawer-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes gva-rtl-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes gva-rtl-drawer-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.gvaThemeDrawer .elButtonDanger {
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.gvaThemeDrawer .elButtonDanger:hover {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 480px) {
+  .gvaLayoutGrid,
+  .gvaPresetGrid,
+  .gvaInfoGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gvaDrawerResetBtn {
+  height: 32px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: var(--gva-radius, 0.625rem);
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  transition:
+    transform 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.gvaThemeDrawer .gvaDrawerResetBtn.elButtonPrimary {
+  background: rgb(var(--gva-primary, 34, 100, 242));
+  border-color: rgb(var(--gva-primary, 34, 100, 242));
+  color: #fff;
+}
+
+.gvaThemeDrawer .gvaDrawerResetBtn.elButtonPrimary:hover {
+  transform: translateY(-2px);
+  background: color-mix(in srgb, rgb(var(--gva-primary, 34, 100, 242)) 84%, #000);
+  border-color: color-mix(in srgb, rgb(var(--gva-primary, 34, 100, 242)) 84%, #000);
+  color: #fff;
+}
+
+.gvaDrawerCloseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #303133;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.gvaDrawerCloseBtn:hover {
+  background: #f4f4f5;
+  color: #303133;
+}
+
+.gvaThemeFont {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.gvaThemeSectionContent {
+  animation: gvaFadeInUp 0.3s ease;
+}
+
+@keyframes gvaFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gvaThemeBlock {
+  margin-bottom: 24px;
+}
+
+.gvaThemeSectionHeader {
+  display: flex;
+  align-items: center;
+  margin: 2px 0 8px;
+}
+
+.gvaThemeSectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #909399;
+}
+
+.gvaThemeCardBg {
+  background: #f7fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 2px 14px;
+}
+
+.gvaThemeCardWhite {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 10px 12px;
+}
+
+.gvaThemeSettingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.gvaThemeSettingItem:last-child {
+  border-bottom: 0;
+}
+
+.gvaThemeDrawer .gvaThemeSettingItem:has(.gvaSelect.is-open) {
+  position: relative;
+  z-index: 8;
+}
+
+.gvaThemeDrawer .gvaThemeSettingControl .gvaSelectTrigger {
+  height: 28px;
+  min-width: 0;
+  font-size: 13px;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaThemeDrawer .gvaThemeSettingControl .gvaSelectDropdown {
+  z-index: 50;
+}
+
+.gvaThemeSettingLabelWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.gvaThemeSettingLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.gvaThemeSettingControl {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.gvaDrawerHintInline {
+  font-size: 12px;
+  color: #909399;
+}
+
+.gvaDrawerHintRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #909399;
+}
+
+.gvaThemeSelect,
+.gvaThemeNumber {
+  min-width: 96px;
+  height: 28px;
+  border: 1px solid #dcdfe6;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 0 8px;
+  font-size: 13px;
+  background: #fff;
+  color: #303133;
+}
+
+.gvaThemeNumber {
+  width: 7rem;
+}
+
+.gvaColorField {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gvaColorClear {
+  border: 0;
+  background: transparent;
+  color: #909399;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.gvaThemeModeSelectorWrap {
+  display: flex;
+  justify-content: center;
+}
+
+.gvaThemeModeSelector {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #f7fafc;
+}
+
+.gvaThemeModeItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 64px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: transparent;
+  color: #909399;
+  cursor: pointer;
+}
+
+.gvaThemeModeItem span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.gvaThemeModeItem:hover:not(.is-active) {
+  color: #303133;
+  background: #f4f4f5;
+}
+
+.gvaThemeModeItem.is-active {
+  transform: translateY(-2px);
+}
+
+.gvaThemeColorRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.gvaColorDot {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 999px;
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.gvaColorDot:hover {
+  transform: scale(1.1);
+}
+
+.gvaColorDot.is-active {
+  transform: scale(1.1);
+  /* ????+ ??????????????????????????? */
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 4px color-mix(in srgb, var(--tw-ring-color, #2264f2) 40%, transparent);
+}
+
+.gvaColorDot svg {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+
+.gvaColorDivider {
+  width: 1px;
+  height: 20px;
+  background: #e5e7eb;
+}
+
+.gvaThemeColorRow code {
+  margin-left: auto;
+  font-size: 12px;
+  color: #909399;
+}
+
+.gvaSemanticSwatches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gvaColorSwatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  cursor: pointer;
+  color: #303133;
+}
+
+.gvaColorSwatch.is-value {
+  width: auto;
+  min-width: 32px;
+  padding: 0 8px;
+  gap: 8px;
+}
+
+.gvaColorSwatch:hover,
+.gvaColorSwatch.is-open {
+  border-color: rgb(var(--gva-primary, 34, 100, 242));
+}
+
+.gvaColorSwatch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.gvaColorSwatchChip {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--gva-radius, 0.625rem);
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+  background-image:
+    linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+    linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+
+.gvaColorSwatch.is-value .gvaColorSwatchChip {
+  width: 16px;
+  height: 16px;
+}
+
+.gvaColorSwatchChip > span {
+  position: absolute;
+  inset: 0;
+}
+
+.gvaColorSwatch em {
+  font-style: normal;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #909399;
+}
+
+.gvaColorNative {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gvaColorPopover {
+  position: fixed;
+  z-index: 3000;
+  width: 240px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.gvaColorPopoverPreview {
+  display: block;
+  width: 100%;
+  height: 32px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  cursor: pointer;
+}
+
+.gvaColorPopoverHex {
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin-top: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  text-align: center;
+  color: #303133;
+  background: #fff;
+}
+
+.gvaColorPopoverSwatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.gvaColorPopoverSwatches button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  cursor: pointer;
+}
+
+.gvaColorPopoverSwatches button:hover {
+  transform: scale(1.1);
+}
+
+.gvaColorPopoverSwatches button.is-active {
+  box-shadow: 0 0 0 2px rgb(var(--gva-primary, 34, 100, 242)), 0 0 0 3px #fff;
+}
+
+.gvaColorPopoverClear {
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 6px 8px;
+  background: #fff;
+  color: #909399;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.gvaColorPopoverClear:hover {
+  border-color: rgb(var(--gva-primary, 34, 100, 242));
+  color: rgb(var(--gva-primary, 34, 100, 242));
+}
+
+.gvaPreviewGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 4px;
+  width: 100%;
+}
+
+.gvaPreviewCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.gvaPreviewCard:hover {
+  border-color: rgb(var(--gva-primary, 34, 100, 242));
+}
+
+.gvaPreviewCheck {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.gvaMiniLayout {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaMiniSide {
+  width: 33%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+}
+
+.gvaMiniSide span {
+  height: 6px;
+  border-radius: 2px;
+}
+
+.gvaMiniMain {
+  flex: 1;
+}
+
+.gvaTabPreview {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  overflow: hidden;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaTabPreviewButton {
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  background: #fff;
+}
+
+.gvaTabPreviewButton span {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 16px;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #f3f4f6;
+}
+
+.gvaTabPreviewButton i {
+  flex: 0 0 1px;
+  width: 1px;
+  height: 12px;
+  background: #e5e7eb;
+}
+
+.gvaTabPreviewChrome {
+  align-items: flex-end;
+  padding: 0 4px;
+  background: #f3f4f6;
+}
+
+.gvaTabPreviewChrome span {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 20px;
+  border-radius: var(--gva-radius, 0.625rem) var(--gva-radius, 0.625rem) 0 0;
+  background: #e5e7eb;
+}
+
+.gvaTabPreviewChrome span:nth-child(2),
+.gvaTabPreviewChrome span:nth-child(3) {
+  margin-left: -4px;
+}
+
+.gvaTabPreviewChrome span:nth-child(2) {
+  height: 24px;
+}
+
+.gvaTabPreviewSlider {
+  align-items: flex-end;
+  padding: 0 4px;
+  background: #fff;
+}
+
+.gvaTabPreviewSlider > span {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  margin-right: 2px;
+  border-bottom: 2px solid transparent;
+  background: var(--gva-page-bg, #f2f3f4);
+}
+
+.gvaTabPreviewSlider > span:last-child {
+  margin-right: 0;
+}
+
+.gvaTabPreviewSlider em {
+  display: block;
+  width: 20px;
+  height: 8px;
+  border-radius: 2px;
+  background: #e5e7eb;
+}
+
+.gvaTabPreviewSlider em.is-short {
+  width: 16px;
+}
+
+.gvaTabPreviewCard > em {
+  font-size: 12px;
+  font-style: normal;
+  color: #606266;
+}
+
+.gvaLayoutGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 0 4px;
+}
+
+.gvaLayoutCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  cursor: pointer;
+  text-align: center;
+}
+
+.gvaLayoutMini {
+  display: flex;
+  gap: 4px;
+  height: 48px;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: var(--gva-page-bg, #f2f3f4);
+}
+
+.gvaLayoutMini.is-column {
+  flex-direction: column;
+}
+
+.gvaLayoutMiniSide {
+  width: 25%;
+  border-radius: 2px;
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.gvaLayoutMiniSide i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.gvaLayoutMiniBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gvaLayoutMiniHeader {
+  height: 25%;
+  border-radius: 2px;
+}
+
+.gvaLayoutMiniContent {
+  flex: 1;
+  border-radius: 2px;
+}
+
+.gvaLayoutCard strong {
+  font-size: 13px;
+  color: #303133;
+}
+
+.gvaLayoutCard span {
+  font-size: 11px;
+  line-height: 1.3;
+  color: #909399;
+}
+
+.gvaRadiusSelector {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 220px;
+}
+
+.gvaSlider {
+  flex: 1;
+  min-width: 0;
+}
+
+.gvaSliderRow {
+  position: relative;
+  height: 20px;
+}
+
+.gvaSliderTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 7px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e4e7ed;
+  pointer-events: none;
+}
+
+.gvaSliderRange {
+  height: 100%;
+  border-radius: 999px;
+  background: rgb(var(--gva-primary, 34, 100, 242));
+}
+
+.gvaSliderInput {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.gvaSliderInput::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+  border: 0;
+}
+
+.gvaSliderInput::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid rgb(var(--gva-primary, 34, 100, 242));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.gvaSliderInput::-moz-range-track {
+  height: 6px;
+  background: transparent;
+  border: 0;
+}
+
+.gvaSliderInput::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2px solid rgb(var(--gva-primary, 34, 100, 242));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.gvaSliderMarks {
+  position: relative;
+  height: 14px;
+  margin-top: 4px;
+}
+
+.gvaSliderMarks span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 10px;
+  line-height: 1;
+  color: #909399;
+}
+
+.gvaRadiusSelector > span {
+  width: 56px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #303133;
+}
+
+.gvaCardModeSelector {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #f4f4f5;
+  width: fit-content;
+}
+
+.gvaCardModeSelector button {
+  padding: 6px 20px;
+  border: 0;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: transparent;
+  color: #909399;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.gvaPresetGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.gvaPresetCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.gvaPresetCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.gvaPresetPreview {
+  display: flex;
+  height: 56px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaPresetPreview > div:first-child {
+  width: 25%;
+}
+
+.gvaPresetPreview > div:last-child {
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gvaPresetPreview > div:last-child > span {
+  height: 8px;
+  width: 66%;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaPresetPreview > div:last-child > div {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.gvaPresetPreview i {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.gvaPresetMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gvaPresetMeta span {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.gvaPresetMeta em {
+  font-style: normal;
+  font-size: 11px;
+  color: #909399;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 1px 6px;
+}
+
+.gvaPresetRemove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #909399;
+}
+
+.gvaPresetEmpty {
+  text-align: center;
+  font-size: 14px;
+  color: #909399;
+  padding: 24px 14px;
+  margin-bottom: 16px;
+}
+
+.gvaDrawerFullBtn,
+.gvaDrawerFlexBtn {
+  width: 100%;
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaPresetImportRow {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.gvaInfoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+.gvaInfoCell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+.gvaInfoGrid .gvaInfoCell:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.gvaInfoCell span {
+  color: #909399;
+  font-weight: 500;
+}
+
+.gvaInfoCell strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #303133;
+}
+
+.gvaResetCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0;
+}
+
+.gvaResetCardCopy {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gvaResetIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--gva-radius, 0.625rem);
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.gvaResetCard h4,
+.gvaAboutRow h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #303133;
+}
+
+.gvaResetCard p,
+.gvaAboutRow p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #909399;
+}
+
+.gvaAboutRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 12px 0;
+}
+
+.gvaAboutLogo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--gva-radius, 0.625rem);
+  background: #fff;
+  padding: 8px;
+}
+
+.gvaAboutRow h4 {
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.gvaAboutRow p {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.gvaAboutLinks {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.gvaAboutLinks a:hover {
+  text-decoration: underline;
+}
+
+.gvaAboutLinks span {
+  color: #909399;
+}
+
+.gvaAppShell[data-layout='vertical'] {
+  display: grid !important;
+  grid-template-columns: var(--gva-side-width, 256px) minmax(0, 1fr);
+  grid-template-rows: 64px minmax(0, 1fr);
+}
+
+.gvaAppShell[data-layout='vertical'][data-sidebar-collapsed='true'] {
+  grid-template-columns: var(--gva-side-collapsed-width, 80px) minmax(0, 1fr);
+}
+
+.gvaAppShell[data-layout='vertical'] .gvaTopbar {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.gvaAppShell[data-layout='vertical'] .gvaBody {
+  display: contents !important;
+  height: auto !important;
+}
+
+.gvaAppShell[data-layout='vertical'] .gvaSidebar {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.gvaAppShell[data-layout='vertical'] .gvaMainColumn {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+}
+
+/* ????????????????????????? */
+.gvaAppShell:not([data-layout='head']) .gvaSidebar {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.gvaAppShell[data-layout='head'] .gvaSidebar,
+.gvaAppShell[data-layout='head'] .gvaCollapseBar {
+  display: none !important;
+}
+
+.gvaAppShell[data-menu-theme='design'] .gvaSidebar .gvaMenuItem.is-active,
+.gvaAppShell[data-menu-theme='group'] .gvaSidebar .gvaMenuItem.is-active {
+  color: rgb(var(--gva-primary, 34, 100, 242)) !important;
+  background: rgb(var(--gva-primary, 34, 100, 242), 0.12) !important;
+}
+
+.gvaWatermark {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  place-items: center;
+  opacity: 0.08;
+  transform: rotate(-18deg) scale(1.2);
+  font-size: 28px;
+  font-weight: 700;
+  color: #303133;
+}
+
+html.gva-grayscale {
+  filter: grayscale(1);
+}
+
+html.gva-colour-weakness {
+  filter: invert(80%);
+}
+
+html[data-gva-size='large'] .gvaAppShell {
+  font-size: 16px;
+}
+
+html[data-gva-size='small'] .gvaAppShell {
+  font-size: 13px;
+}
+
+/*
+ * ????????? GVA theme.scss
+ * ??????????search / table-box / warning???????? el-table ??
+ */
+html.gva-card--shadow .gvaSystemCard,
+html.gva-card--shadow .gvaSearchBox,
+html.gva-card--shadow .gvaThemeCardBg,
+html.gva-card--shadow .gvaWarningBar,
+html[data-gva-card='shadow'] .gvaSystemCard,
+html[data-gva-card='shadow'] .gvaSearchBox,
+html[data-gva-card='shadow'] .gvaThemeCardBg,
+html[data-gva-card='shadow'] .gvaWarningBar {
+  border-color: transparent !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 6px 18px rgba(0, 0, 0, 0.06) !important;
+}
+
+/*
+ * ????search / table-box / warning?????????????
+ * ??????????????????????? table wrap ???
+ */
+html.gva-card--border .gvaSystemCard,
+html.gva-card--border .gvaSearchBox,
+html.gva-card--border .gvaWarningBar,
+html[data-gva-card='border'] .gvaSystemCard,
+html[data-gva-card='border'] .gvaSearchBox,
+html[data-gva-card='border'] .gvaWarningBar {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.gvaSwitch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/*
+ * ????--gva-page-gutter ????????/????????????????????? */
+.gvaPageTransitionStage {
+  position: relative;
+  width: calc(100% + 2 * var(--gva-page-gutter, 10px));
+  margin-left: calc(-1 * var(--gva-page-gutter, 10px));
+  margin-right: calc(-1 * var(--gva-page-gutter, 10px));
+  padding-left: var(--gva-page-gutter, 10px);
+  padding-right: var(--gva-page-gutter, 10px);
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.gvaPageLeaveClip,
+.gvaPageLeaveClone {
+  pointer-events: none;
+}
+
+.gvaPageTransition {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.gvaPage-fade.is-enter {
+  animation: gva-page-fade-in 0.3s ease both;
+}
+
+.gvaPage-fade.is-leave {
+  animation: gva-page-fade-out 0.3s ease both;
+}
+
+.gvaPage-slide.is-enter {
+  animation: gva-page-slide-in 0.3s ease both;
+}
+
+.gvaPage-slide.is-leave {
+  animation: gva-page-slide-out 0.3s ease both;
+}
+
+.gvaPage-zoom.is-enter {
+  animation: gva-page-zoom-in 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.gvaPage-zoom.is-leave {
+  animation: gva-page-zoom-out 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes gva-page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gva-page-fade-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* GVA slide-enter-from */
+@keyframes gva-page-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* GVA slide-leave-to */
+@keyframes gva-page-slide-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+}
+
+@keyframes gva-page-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gva-page-zoom-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gvaPage-fade.is-enter,
+  .gvaPage-fade.is-leave,
+  .gvaPage-slide.is-enter,
+  .gvaPage-slide.is-leave,
+  .gvaPage-zoom.is-enter,
+  .gvaPage-zoom.is-leave {
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@keyframes gva-drawer-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gva-drawer-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes gva-rtl-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes gva-rtl-drawer-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.gvaThemeDrawer .elButtonDanger {
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.gvaThemeDrawer .elButtonDanger:hover {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 480px) {
+  .gvaLayoutGrid,
+  .gvaPresetGrid,
+  .gvaInfoGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- ??????????.theme-gva??????????????---------- */
+.appShell.gvaAppShell {
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.gvaHeaderLogo,
+.gvaEntryLogo,
+.gvaAboutLogo {
+  width: 32px !important;
+  height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  object-fit: contain !important;
+  display: block;
+}
+
+.gvaTopbarMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  height: 64px;
+  padding: 0 8px;
+}
+
+.gvaHeaderTools {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ---- ????????? GVA menu.vue ???? label? ---- */
+.elButtonSmall {
+  min-height: 24px;
+  height: 24px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+.gvaMenuForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gvaMenuFormSection {
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
+}
+
+.gvaMenuFormSection:last-child {
+  border-bottom: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.gvaMenuFormSection h3 {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary, #303133);
+}
+
+.gvaMenuFormSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.gvaMenuFormSectionHead h3 {
+  margin: 0;
+}
+
+.gvaMenuFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.gvaMenuFormGrid3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.gvaMenuFormItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gvaMenuFormItem > span {
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--el-text-color-regular, #606266);
+}
+
+.gvaMenuFormItemFull {
+  grid-column: 1 / -1;
+}
+
+.gvaMenuFormItem input,
+.gvaMenuFormItem select {
+  width: 100%;
+  height: 32px;
+  min-height: 32px;
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  border-radius: var(--gva-radius, 0.625rem);
+  padding: 0 11px;
+  background: var(--el-bg-color, #fff);
+  color: var(--el-text-color-regular, #606266);
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.gvaMenuFormItem input:hover,
+.gvaMenuFormItem select:hover {
+  border-color: #c0c4cc;
+}
+
+.gvaMenuFormItem input:focus,
+.gvaMenuFormItem select:focus {
+  border-color: var(--el-color-primary);
+}
+
+.gvaMenuFormTip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-text-color-secondary, #909399);
+}
+
+.gvaMenuIconCell {
+  font-size: 13px;
+  color: var(--el-text-color-regular, #606266);
+}
+
+.gvaMenuBtnTableWrap {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  border-radius: var(--gva-radius, 0.625rem);
+}
+
+.gvaMenuBtnTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.gvaMenuBtnTable th,
+.gvaMenuBtnTable td {
+  padding: 8px;
+  border-bottom: 1px solid var(--el-border-color-light, #e4e7ed);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.gvaMenuBtnTable th {
+  background: var(--el-fill-color-light, #f5f7fa);
+  color: var(--el-table-header-text-color, #374151);
+  font-weight: 600;
+}
+
+.gvaMenuBtnTable tr:last-child td {
+  border-bottom: 0;
+}
+
+.gvaMenuBtnTable input {
+  width: 100%;
+  height: 28px;
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  border-radius: var(--gva-radius, 0.5rem);
+  padding: 0 8px;
+  background: var(--el-bg-color, #fff);
+  color: var(--el-text-color-regular, #606266);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.gvaMenuBtnEmpty {
+  color: var(--el-text-color-secondary, #909399);
+  padding: 20px 8px !important;
+}
+
+@media (max-width: 900px) {
+  .gvaMenuFormGrid,
+  .gvaMenuFormGrid3 {
+    grid-template-columns: 1fr;
+  }
+}
+

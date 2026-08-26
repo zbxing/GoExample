@@ -1,5 +1,5 @@
-import { SystemUsersPage } from '@/components/pages/system-users-page';
+import { redirect } from 'next/navigation';
 
 export default function Page() {
-  return <SystemUsersPage />;
+  redirect('/system/roles');
 }

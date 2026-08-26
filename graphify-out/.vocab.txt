@@ -44,6 +44,7 @@ ambiguous
 analyze
 ancestor
 and
+answer
 any
 api
 apis
@@ -90,6 +91,7 @@ authorization
 authorize
 authorized
 authorizer
+auto
 available
 awaiting
 axe
@@ -162,6 +164,7 @@ cancel
 canceled
 cancellation
 cancels
+candidate
 candidates
 cannot
 canonical
@@ -319,6 +322,7 @@ ctx
 current
 custom
 cyclone
+dark
 dashboard
 data
 database
@@ -423,6 +427,7 @@ edited
 editor
 effective
 effects
+element
 elf
 embedded
 emit
@@ -538,6 +543,7 @@ filters
 final
 find
 fingerprint
+fingerprints
 finish
 finite
 first
@@ -546,6 +552,7 @@ fixed
 fixture
 flag
 flags
+flat
 flatten
 flight
 float
@@ -635,6 +642,7 @@ https
 httptest
 hub
 humanize
+hydrate
 icon
 icons
 idempotency
@@ -715,14 +723,17 @@ keyring
 keys
 kibibytes
 kind
+knee
 know
 kubernetes
 label
 labels
+ladder
 large
 last
 latency
 latest
+layer
 layout
 leader
 leaf
@@ -743,6 +754,7 @@ lib
 license
 lifecycle
 lifetime
+light
 limit
 limited
 limiter
@@ -887,6 +899,7 @@ normal
 normalize
 normalized
 normalizes
+nos
 not
 note
 notify
@@ -926,7 +939,9 @@ otlp
 otlphttp
 otlptrace
 otlptracehttp
+out
 outage
+outcome
 outcomes
 output
 outputs
@@ -1080,6 +1095,7 @@ readme
 ready
 real
 reason
+reasons
 receive
 receiver
 receivers
@@ -1112,6 +1128,7 @@ register
 registered
 registrar
 registry
+regression
 regular
 rehash
 reject
@@ -1148,6 +1165,7 @@ require
 required
 requirements
 requires
+reseal
 reserve
 reserves
 reset
@@ -1213,6 +1231,7 @@ schema
 schemas
 scheme
 schemes
+scope
 scoped
 scopes
 score
@@ -1240,6 +1259,7 @@ sentinel
 separate
 separated
 separates
+sequence
 serialization
 serializes
 serious
@@ -1272,6 +1292,7 @@ should
 show
 shutdown
 shuts
+siblings
 sidebar
 sign
 signal
@@ -1322,6 +1343,7 @@ stats
 status
 statuses
 stay
+steady
 step
 stepdown
 steps
@@ -1403,6 +1425,7 @@ then
 this
 threat
 thresholds
+throughput
 tightened
 time
 timeline
@@ -1426,6 +1449,7 @@ topbar
 topology
 tops
 total
+toward
 trace
 traced
 traceparent

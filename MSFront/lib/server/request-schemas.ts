@@ -44,6 +44,7 @@ export const createSystemRoleSchema = z
     description: longText.optional(),
     parentId: z.string().trim().max(128).optional(),
     defaultRouter: z.string().trim().max(2048).optional(),
+    dataScope: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(),
     menuIds: stringList.optional(),
     btnAuths: stringList.optional(),
   })
@@ -52,6 +53,23 @@ export const createSystemRoleSchema = z
 export const updateSystemRoleSchema = createSystemRoleSchema
   .partial()
   .extend({ id: identifier })
+  .strict();
+
+export const copySystemRoleSchema = z
+  .object({
+    id: identifier,
+    name: z.string().trim().min(1).max(256),
+    parentId: z.string().trim().max(128).optional(),
+    oldAuthorityId: identifier,
+    dataScope: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(),
+  })
+  .strict();
+
+export const setRoleUsersSchema = z
+  .object({
+    roleId: identifier,
+    userIds: z.array(identifier).max(5000),
+  })
   .strict();
 
 export const createSystemMenuSchema = z

@@ -1,7 +1,7 @@
 # GoExample Server Threat Model
 
 Review date: 2026-08-24
-Scope: Go `Framework`, `Proj/Example`, server protocols, telemetry, build and deployment boundaries
+Scope: Go `Framework`, `Solutions/Example`, `Services/Billing`, server protocols, telemetry, build and deployment boundaries
 Out of scope: `MSFront` and its browser, BFF, session, database and UI flows
 Method: OWASP threat-modeling workflow with STRIDE categories
 
@@ -76,7 +76,7 @@ The following are release-blocking repository invariants:
 4. Dynamic route values never become metric labels; trace processor metrics remain label-free or use fixed outcomes.
 5. Request body, header, connection, concurrency, rate, downstream and shutdown work all retain finite bounds.
 6. A client-controlled idempotency key cannot replay a response across a different request fingerprint or authenticated principal.
-7. `Proj/Example` application and production project API code do not import Fiber types.
+7. `Solutions/Example` application and production project API code do not import Fiber types.
 8. Resource policy denial, error, timeout, panic or invalid decision cannot execute the application handler, create command idempotency state, or expose subject, tenant, resource, attributes or backend details.
 9. When OIDC assurance is configured, a callback without the exact `acr`, every required `amr` method and a fresh `auth_time` cannot establish an application session.
 10. A browser-session inventory or public-ID revoke operation for one subject cannot enumerate or revoke another subject's session.

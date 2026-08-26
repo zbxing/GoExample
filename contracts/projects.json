@@ -2,7 +2,7 @@
   "version": 1,
   "projects": [
     {
-      "projectPath": "Proj/Example",
+      "projectPath": "Solutions/Example",
       "contract": {
         "repository": "workspace",
         "ref": "worktree",
@@ -11,6 +11,18 @@
       "sdk": {
         "path": "SDK/GoExample",
         "package": "goexample"
+      }
+    },
+    {
+      "projectPath": "Services/Billing",
+      "contract": {
+        "repository": "workspace",
+        "ref": "worktree",
+        "document": "docs/openapi/billing.json"
+      },
+      "sdk": {
+        "path": "SDK/Billing",
+        "package": "billing"
       }
     }
   ]

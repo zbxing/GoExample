@@ -53,9 +53,9 @@ export function DashboardPageContent({
       label: t('nav.security'),
     },
     {
-      href: '/users',
+      href: '/system/roles',
       icon: UsersRound,
-      label: t('labels.users'),
+      label: t('labels.roles'),
     },
   ] as const;
 

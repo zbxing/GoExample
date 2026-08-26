@@ -2,12 +2,13 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readProjectManifest, selectProject } from './lib/project-contracts.mjs';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(currentDirectory, '..');
-const projectsRoot = path.join(repositoryRoot, 'Proj');
 const frameworkRoot = path.join(repositoryRoot, 'Framework');
-const projectName = process.env.GO_PROJECT?.trim() || 'Example';
+const requestedProject = process.env.GO_PROJECT?.trim() || null;
+const projectName = requestedProject || 'Example';
 const task = process.argv[2] ?? 'run';
 
 if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(projectName)) {
@@ -15,19 +16,33 @@ if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(projectName)) {
   process.exit(1);
 }
 
-const projectRoot = path.resolve(projectsRoot, projectName);
-if (!projectRoot.startsWith(`${projectsRoot}${path.sep}`)) {
-  console.error('GO_PROJECT resolves outside the Proj directory.');
-  process.exit(1);
-}
 if (!existsSync(path.join(frameworkRoot, 'go.mod'))) {
   console.error('Framework/go.mod was not found.');
   process.exit(1);
 }
-if (!existsSync(path.join(projectRoot, 'go.mod'))) {
-  console.error(`Go project "${projectName}" was not found under Proj.`);
+let projectManifest;
+try {
+  projectManifest = readProjectManifest(repositoryRoot);
+} catch (error) {
+  console.error(`Unable to read contracts/projects.json: ${error.message}`);
   process.exit(1);
 }
+let projectContract;
+try {
+  projectContract = selectProject(projectManifest, projectName);
+} catch (error) {
+  console.error(`Go project "${projectName}" is missing from contracts/projects.json: ${error.message}`);
+  process.exit(1);
+}
+const projectRoot = path.resolve(repositoryRoot, projectContract.projectPath);
+if (!existsSync(path.join(projectRoot, 'go.mod'))) {
+  console.error(`Go project "${projectName}" was not found at ${projectContract.projectPath}.`);
+  process.exit(1);
+}
+const selectedProjectModulePath = `./${projectContract.projectPath}`;
+const selectedProjectPattern = `${selectedProjectModulePath}/...`;
+const exampleProject = selectProject(projectManifest, 'Example');
+const exampleProjectAPIPath = `./${exampleProject.projectPath}/internal/projectapi`;
 
 const outputRoot = path.join(repositoryRoot, '.temp');
 const transportEvidenceRoot = path.join(outputRoot, 'transport-benchmark');
@@ -61,6 +76,13 @@ for (const modulePath of workspaceModulePaths) {
   }
 }
 const workspacePatterns = workspaceModulePaths.map((modulePath) => `${modulePath}/...`);
+const selectedProjectPatterns = [
+  './Framework/...',
+  selectedProjectPattern,
+  `./${projectContract.sdk.path}/...`,
+];
+const defaultGoTestPatterns = [...workspacePatterns];
+const goTestPatterns = requestedProject ? selectedProjectPatterns : defaultGoTestPatterns;
 const toolchainMatch = workspace.match(/^toolchain\s+go(\d+\.\d+\.\d+)$/m);
 if (!toolchainMatch) {
   console.error('go.work must declare a toolchain version.');
@@ -102,13 +124,13 @@ const frameworkAPIArguments = [
 ];
 const taskDefinitions = {
   run: { cwd: projectRoot, args: ['run', './cmd/server'] },
-  test: { cwd: repositoryRoot, args: ['test', ...workspacePatterns] },
+  test: { cwd: repositoryRoot, args: ['test', ...goTestPatterns] },
   cover: {
     cwd: repositoryRoot,
     args: [
       'test',
       `-coverprofile=${path.join(outputRoot, 'coverage', `${projectName}.out`)}`,
-      ...workspacePatterns,
+      ...goTestPatterns,
     ],
   },
   bench: {
@@ -134,7 +156,7 @@ const taskDefinitions = {
           '-bench=^BenchmarkProjectTransportTCP',
           '-benchmem',
           '-count=5',
-          './Proj/Example/internal/projectapi',
+          exampleProjectAPIPath,
         ],
       },
       ...(process.platform === 'linux'
@@ -150,7 +172,7 @@ const taskDefinitions = {
                 `-outputdir=${transportEvidenceRoot}`,
                 '-cpuprofile=transport.cpu.pprof',
                 '-memprofile=transport.heap.pprof',
-                './Proj/Example/internal/projectapi',
+                exampleProjectAPIPath,
               ],
             },
           ]
@@ -165,17 +187,17 @@ const taskDefinitions = {
       '-count=1',
       '-timeout=12m',
       '-run=^TestProjectTransportSoakTCP$',
-      './Proj/Example/internal/projectapi',
+      exampleProjectAPIPath,
     ],
   },
-  race: { cwd: repositoryRoot, args: ['test', '-race', ...workspacePatterns] },
+  race: { cwd: repositoryRoot, args: ['test', '-race', ...goTestPatterns] },
   vuln: {
-    commands: workspaceModulePaths.map((modulePath) => ({
+    commands: (requestedProject ? [selectedProjectModulePath, `./${projectContract.sdk.path}`, './Framework'] : workspaceModulePaths).map((modulePath) => ({
       cwd: path.resolve(repositoryRoot, modulePath),
       args: ['run', 'golang.org/x/vuln/cmd/govulncheck@v1.1.4', './...'],
     })),
   },
-  vet: { cwd: repositoryRoot, args: ['vet', ...workspacePatterns] },
+  vet: { cwd: repositoryRoot, args: ['vet', ...goTestPatterns] },
   build: {
     cwd: repositoryRoot,
     args: [
@@ -185,7 +207,7 @@ const taskDefinitions = {
       `-s -w -X main.version=${buildVersion} -X main.commit=${buildCommit} -X main.buildTime=${buildTime}`,
       '-o',
       path.join(outputRoot, 'bin', executableName),
-      `./Proj/${projectName}/cmd/server`,
+      `${selectedProjectModulePath}/cmd/server`,
     ],
   },
   'api-compat': {

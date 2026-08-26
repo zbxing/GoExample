@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
 export const PROJECT_CONTRACT_MANIFEST = 'contracts/projects.json';
+export const MANAGED_SERVICE_ROOTS = ['Solutions', 'Services'];
 const SHA256 = /^[a-f0-9]{40}$/;
 const PROJECT_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const REFS = /^refs\/(heads|tags)\/[A-Za-z0-9][A-Za-z0-9._/-]*$/;
@@ -89,8 +90,9 @@ export function normalizeProjectEntry(entry, repositoryRoot) {
     fail('each project entry must be an object');
   }
   const projectPath = normalizedRelativePath(entry.projectPath, 'projectPath');
-  if (!projectPath.startsWith('Proj/') || projectPath.split('/').length !== 2) {
-    fail(`${projectPath}.projectPath must identify exactly one Proj/<name> directory`);
+  const projectSegments = projectPath.split('/');
+  if (projectSegments.length !== 2 || !MANAGED_SERVICE_ROOTS.includes(projectSegments[0])) {
+    fail(`${projectPath}.projectPath must identify exactly one Solutions/<name> or Services/<name> directory`);
   }
   const name = projectName(projectPath);
   if (!PROJECT_NAME.test(name)) {
@@ -115,8 +117,9 @@ export function normalizeProjectEntry(entry, repositoryRoot) {
   }
   const sdk = normalizeSDK(entry.sdk, projectPath);
   const projectRoot = path.resolve(repositoryRoot, projectPath);
-  if (!projectRoot.startsWith(`${path.resolve(repositoryRoot, 'Proj')}${path.sep}`)) {
-    fail(`${projectPath}.projectPath resolves outside Proj/`);
+  const managedRoots = MANAGED_SERVICE_ROOTS.map((root) => path.resolve(repositoryRoot, root));
+  if (!managedRoots.some((root) => projectRoot.startsWith(`${root}${path.sep}`))) {
+    fail(`${projectPath}.projectPath resolves outside Solutions/ or Services/`);
   }
   if (!existsSync(path.join(projectRoot, 'go.mod'))) {
     fail(`${projectPath}.projectPath must contain go.mod`);
@@ -167,8 +170,9 @@ export function readProjectManifest(repositoryRoot) {
 }
 
 export function selectProject(manifest, selector = 'Example') {
-  const normalized = selector.replaceAll('\\', '/').replace(/^Proj\//, '');
-  const match = manifest.projects.find((entry) => entry.name === normalized || entry.projectPath === selector || entry.projectPath === `Proj/${normalized}`);
+  const normalized = selector.replaceAll('\\', '/');
+  const name = normalized.split('/').at(-1);
+  const match = manifest.projects.find((entry) => entry.name === name || entry.projectPath === normalized);
   if (!match) {
     fail(`project ${JSON.stringify(selector)} is not listed in ${PROJECT_CONTRACT_MANIFEST}`);
   }

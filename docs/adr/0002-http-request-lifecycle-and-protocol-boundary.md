@@ -31,7 +31,7 @@
 - 客户端发送完整请求后半关闭写端，服务端仍会返回完整响应并关闭连接；计数 listener 证明 shutdown 后空闲 keep-alive 连接从 active 1 收敛到 0；
 - 原生 Fiber listener 下客户端强制关闭 TCP 连接不会及时取消应用 context，这是兼容入口的已知限制；Example 默认标准 listener 的断连取消由独立契约覆盖。
 
-`Proj/Example/internal/projectapi/transport_benchmark_test.go` 额外验证标准 `net/http` TLS/HTTP/2，以及 loopback HTTP/2 edge 到 Fiber HTTP/1.1 upstream 的 envelope 一致性；这些测试不替代目标平台代理演练。
+`Solutions/Example/internal/projectapi/transport_benchmark_test.go` 额外验证标准 `net/http` TLS/HTTP/2，以及 loopback HTTP/2 edge 到 Fiber HTTP/1.1 upstream 的 envelope 一致性；这些测试不替代目标平台代理演练。
 
 `support/deploy/edge/goexample-nginx.contract.json` 固定 Nginx 1.30.4 digest、TLS 1.2/1.3、HTTP/2、header/body/timeouts、无请求/响应缓冲、禁上游重试和 SIGQUIT drain。`scripts/nginx-edge-contract.mjs` 的 Linux Docker 入口验证 trace/request-ID、431/502/503/504、上传中断和在途 drain，并归档原始日志与 hash；GitHub runner loopback artifact 仍不是目标 edge 证据。
 

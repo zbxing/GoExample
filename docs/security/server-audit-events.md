@@ -1,7 +1,7 @@
 # GoExample Server Security Audit Events
 
 Review date: 2026-08-24
-Scope: Go `Framework` and `Proj/Example` server authentication, application role/resource authorization and privileged diagnostic access
+Scope: Go `Framework`, `Solutions/Example`, and `Services/Billing` server authentication, application role/resource authorization and privileged diagnostic access
 Out of scope: `MSFront`, production sink deployment, retention, immutability, SIEM routing and incident ownership
 
 ## 1. Contract

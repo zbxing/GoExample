@@ -225,8 +225,15 @@ function collectOperations(document) {
 function generateModels(document) {
   const chunks = [];
   for (const [schemaName, schema] of Object.entries(document.components?.schemas ?? {})) {
-    if (schema.type !== 'object' || !schema.properties) {
-      fail(`Component schema ${schemaName} must be an object with properties`);
+    if (schema.type !== 'object') {
+      fail(`Component schema ${schemaName} must be an object`);
+    }
+    if (!schema.properties) {
+      if (schema.additionalProperties === true) {
+        chunks.push(`type ${goName(schemaName)} = map[string]any`);
+        continue;
+      }
+      fail(`Component schema ${schemaName} must define properties or additionalProperties: true`);
     }
     const required = new Set(schema.required ?? []);
     const fields = Object.entries(schema.properties).map(([propertyName, propertySchema]) => {
@@ -338,6 +345,9 @@ function generateSource(document, sourceHash, sourceLabel, packageName) {
     fail('OpenAPI info.version must be an exact semantic version');
   }
   const operations = collectOperations(document);
+  const usesStrconv = operations.some((operation) =>
+    operation.parameters.some((parameter) => parameter.type === 'int' || parameter.type === 'float64' || parameter.type === 'bool'),
+  );
   const operationMetadata = operations
     .map(
       (operation) =>
@@ -361,8 +371,7 @@ import (
 \t"io"
 \t"net/http"
 \t"net/url"
-\t"strconv"
-\t"strings"
+${usesStrconv ? '\t"strconv"\n' : ''}\t"strings"
 )
 
 const APIVersion = ${JSON.stringify(version)}

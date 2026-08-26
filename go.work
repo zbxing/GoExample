@@ -5,6 +5,8 @@ toolchain go1.25.13
 use (
 	./support/consumer/HealthProbe
 	./Framework
-	./Proj/Example
+	./Solutions/Example
+	./Services/Billing
 	./SDK/GoExample
+	./SDK/Billing
 )

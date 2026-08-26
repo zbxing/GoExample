@@ -6,6 +6,7 @@ import {
   updateSystemApi,
 } from '@/lib/server/system-api-repository';
 import {
+  copyCasbinPoliciesForRole,
   listCasbinPolicies,
   replaceCasbinPoliciesForRole,
 } from '@/lib/server/system-casbin-repository';
@@ -18,6 +19,7 @@ import {
   updateSystemMenu,
 } from '@/lib/server/system-menu-repository';
 import {
+  copySystemRole,
   createSystemRole,
   deleteSystemRole,
   listSystemRoles,
@@ -30,6 +32,7 @@ import {
   deleteSystemUser,
   getSystemUserById,
   listSystemUsers,
+  setUsersForRole,
   updateSystemUser,
 } from '@/lib/server/system-user-repository';
 
@@ -52,10 +55,16 @@ export const localSystemAdapter: SystemAdapter = {
   createUser: createSystemUser,
   updateUser: updateSystemUser,
   deleteUser: deleteSystemUser,
+  setRoleUsers: async (input) => setUsersForRole(input.roleId, input.userIds),
   listRoles: listSystemRoles,
   createRole: createSystemRole,
   updateRole: updateSystemRole,
   deleteRole: deleteSystemRole,
+  copyRole: async (input) => {
+    const role = await copySystemRole(input);
+    await copyCasbinPoliciesForRole(input.oldAuthorityId, role.id);
+    return role;
+  },
   listMenus: listSystemMenus,
   listMenuTree: listSystemMenuTree,
   listAsyncMenus: listAsyncMenusForRoles,

@@ -1,5 +1,96 @@
 {
-  "generated_at": "2026-08-25T08:01:20.058642+00:00",
-  "nodes": {},
+  "generated_at": "2026-08-26T02:24:25.683980+00:00",
+  "nodes": {
+    "scripts_transport_benchmark_baseline": {
+      "code_fingerprint": "6362564cfc95cde8a3c2262d009f236a470b3df3589d81ceafc93a3ce5c6017b",
+      "label": "transport-benchmark-baseline.mjs",
+      "last": "2026-08-25T16:10:37.235097+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-25T16:10:37.235097+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-25T15:42:19.758927+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 1.97995012,
+      "source_file": "scripts/transport-benchmark-baseline.mjs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "scripts_transport_benchmark_baseline_validatecandidate": {
+      "code_fingerprint": "6362564cfc95cde8a3c2262d009f236a470b3df3589d81ceafc93a3ce5c6017b",
+      "label": "validateCandidate()",
+      "last": "2026-08-25T16:10:37.235097+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-25T16:10:37.235097+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.990199752,
+      "source_file": "scripts/transport-benchmark-baseline.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_transport_benchmark_report": {
+      "code_fingerprint": "41151665a226563bad1ff2919a0ae37b7436bdda4e4a8d0cc8b9b723ea5dd145",
+      "label": "transport-benchmark-report.mjs",
+      "last": "2026-08-25T16:10:37.235097+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-25T16:10:37.235097+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-25T15:42:19.758927+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 1.97995012,
+      "source_file": "scripts/transport-benchmark-report.mjs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "scripts_transport_benchmark_report_compareagainstbaseline": {
+      "code_fingerprint": "41151665a226563bad1ff2919a0ae37b7436bdda4e4a8d0cc8b9b723ea5dd145",
+      "label": "compareAgainstBaseline()",
+      "last": "2026-08-25T16:10:37.235097+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-25T16:10:37.235097+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.990199752,
+      "source_file": "scripts/transport-benchmark-report.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_transport_benchmark_report_summarizescenarios": {
+      "code_fingerprint": "41151665a226563bad1ff2919a0ae37b7436bdda4e4a8d0cc8b9b723ea5dd145",
+      "label": "summarizeScenarios()",
+      "last": "2026-08-25T16:10:37.235097+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-25T16:10:37.235097+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.990199752,
+      "source_file": "scripts/transport-benchmark-report.mjs",
+      "status": "tentative",
+      "uses": 1
+    }
+  },
   "version": 1
 }

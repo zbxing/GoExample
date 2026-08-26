@@ -4,7 +4,7 @@
 
 ## 生成部署清单
 
-1. 使用 `Proj/Example/Dockerfile` 构建并推送镜像，取得 registry 返回的不可变 digest。
+1. 使用 `Solutions/Example/Dockerfile` 构建并推送镜像，取得 registry 返回的不可变 digest。
 2. 选择精确的生产 HTTPS Origin，不使用通配符、路径、query 或 fragment。
 3. 渲染清单：
 

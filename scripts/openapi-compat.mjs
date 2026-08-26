@@ -107,10 +107,9 @@ function readManifestAtRef(reference) {
 
 function rawProjectEntry(manifest, selector) {
   const normalized = selector.replaceAll('\\', '/');
-  return manifest.projects.find((entry) => (
-    entry?.projectPath === normalized
-    || entry?.projectPath === `Proj/${normalized.replace(/^Proj\//, '')}`
-  ));
+  const name = normalized.split('/').at(-1);
+  return manifest.projects.find((entry) => entry?.projectPath === normalized)
+    ?? manifest.projects.find((entry) => entry?.projectPath?.split('/').at(-1) === name);
 }
 
 function currentProjectDocument(project) {
@@ -181,7 +180,7 @@ if (options.allProjects) {
         continue;
       }
       try {
-        baselineProject = normalizeProjectEntry(raw, repositoryRoot);
+      baselineProject = normalizeProjectEntry({ ...raw, projectPath: project.projectPath }, repositoryRoot);
       } catch (error) {
         fail(`${project.projectPath} baseline manifest entry is invalid: ${error.message}`);
       }
@@ -225,7 +224,7 @@ if (options.project) {
       if (!raw) {
         fail(`${project.projectPath} is not listed at ${options.baseRef}`);
       }
-      const baselineProject = normalizeProjectEntry(raw, repositoryRoot);
+      const baselineProject = normalizeProjectEntry({ ...raw, projectPath: project.projectPath }, repositoryRoot);
       baselineDocument = baselineForProject(options.baseRef, baselineProject, baselineManifest);
     }
   }

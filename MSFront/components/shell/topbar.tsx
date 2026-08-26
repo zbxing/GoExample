@@ -16,11 +16,11 @@ import {
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { CommandPalette } from '@/components/shell/command-palette';
-import { GvaMorphButton } from '@/components/shell/gva-morph-button';
+import { GvaMorphButton } from '@/components/shell/ga-morph-button';
 import {
   GvaSettingDrawer,
   type GvaShellSettings,
-} from '@/components/shell/gva-setting-drawer';
+} from '@/components/shell/ga-setting-drawer';
 import type { SystemMenuTreeNode } from '@/lib/types/system';
 
 interface TopbarProps {
@@ -48,10 +48,16 @@ export function Topbar({
   const [refreshSpin, setRefreshSpin] = useState(false);
   const [commandOpenSignal, setCommandOpenSignal] = useState(0);
   const [arrowDeg, setArrowDeg] = useState(0);
+  /** 仅客户端挂载后切换日月图标，避免 SSR/水合 HTML 不一致 */
+  const [themeIconReady, setThemeIconReady] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const closeTimer = useRef<number | null>(null);
   const crumbs = buildBreadcrumbs(pathname, menus);
-  const isDark = theme === 'graphite';
+  const isDark = themeIconReady && theme === 'graphite';
+
+  useEffect(() => {
+    setThemeIconReady(true);
+  }, []);
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -146,7 +152,7 @@ export function Topbar({
 
             <Link href="/dashboard" className="gvaHeaderBrand">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/gva-logo.png" alt="" className="gvaHeaderLogo" />
+              <img src="/ga-logo.png" alt="" className="gvaHeaderLogo" />
               <strong>Go Admin</strong>
             </Link>
 

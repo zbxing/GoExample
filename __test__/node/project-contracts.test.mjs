@@ -19,7 +19,7 @@ const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 test('project contract manifest maps Example to the workspace OpenAPI document', async () => {
   const manifest = readProjectManifest(repositoryRoot);
   const example = selectProject(manifest, 'Example');
-  assert.equal(example.projectPath, 'Proj/Example');
+  assert.equal(example.projectPath, 'Solutions/Example');
   assert.equal(example.contract.repository, 'workspace');
   assert.equal(example.contract.ref, 'worktree');
   assert.equal(example.contract.document, 'docs/openapi/openapi.json');
@@ -32,9 +32,25 @@ test('project contract manifest maps Example to the workspace OpenAPI document',
   assert.equal(document.info.version, '1.4.0');
 });
 
+test('project contract manifest maps Billing to an independent Framework service contract', async () => {
+  const manifest = readProjectManifest(repositoryRoot);
+  const billing = selectProject(manifest, 'Billing');
+  assert.equal(billing.projectPath, 'Services/Billing');
+  assert.equal(billing.contract.repository, 'workspace');
+  assert.equal(billing.contract.document, 'docs/openapi/billing.json');
+  assert.equal(billing.sdk.path, 'SDK/Billing');
+  assert.equal(billing.sdk.package, 'billing');
+  const document = assertOpenAPIDocument(
+    await readFile(path.join(repositoryRoot, billing.contract.document), 'utf8'),
+    billing.contract.document,
+  );
+  assert.equal(document.info.version, '1.0.0');
+  assert.ok(document.paths['/api/v1/billing/summary']);
+});
+
 test('project contract manifest rejects unpinned remote refs and unsafe mappings', () => {
   const base = {
-    projectPath: 'Proj/Example',
+    projectPath: 'Solutions/Example',
     contract: {
       repository: 'https://example.invalid/contracts.git',
       ref: 'refs/heads/main',
@@ -83,7 +99,7 @@ test('external project contracts materialize a pinned tag without a submodule ch
     const commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: remoteRoot, encoding: 'utf8' }).trim();
     const entry = normalizeProjectEntry(
       {
-        projectPath: 'Proj/Example',
+        projectPath: 'Solutions/Example',
         contract: {
           repository: remoteRoot,
           ref: 'refs/tags/billing-v2.3.0',

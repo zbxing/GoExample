@@ -31,6 +31,6 @@ yarn test
 
 - `node/` 测试根 Node 项目的 `scripts/` 和 `tools/`，不放 MSFront 单元测试。
 - `integration/`、`contract/` 和 `e2e/` 只通过公开 API、HTTP 或进程边界测试系统。
-- 不在根目录导入 `Proj/*/internal`；内部包测试必须保留在所属 Go module 内。
+- 不在根目录导入 `Solutions/*/internal` 或 `Services/*/internal`；内部包测试必须保留在所属 Go module 内。
 - 固定测试数据不得包含口令、令牌、生产数据库导出或其他敏感信息。
 - `reports/` 仅保留忽略规则，测试生成物应可随时重新生成。

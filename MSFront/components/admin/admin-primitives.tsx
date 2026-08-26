@@ -14,10 +14,13 @@ import {
   IconArrowDown,
   IconArrowLeft,
   IconArrowRight,
+  IconCopy,
   IconDelete,
   IconEdit,
+  IconPlus,
   IconRefresh,
   IconSearch,
+  IconSetting,
   IconUser,
   IconWarningFilled,
 } from '@/components/admin/admin-icons';
@@ -25,8 +28,8 @@ import {
   getGvaActiveRequestCount,
   getGvaContentLoadingVisible,
   subscribeGvaPageLoading,
-} from '@/lib/utils/gva-page-loading';
-import { showGvaMessage } from '@/lib/utils/gva-message';
+} from '@/lib/utils/ga-page-loading';
+import { showGvaMessage } from '@/lib/utils/ga-message';
 
 export function AdminPage({
   children,
@@ -42,7 +45,8 @@ export function AdminCard({ children }: PropsWithChildren) {
 export function AdminWarningBar({ title }: { title: string }) {
   return (
     <div className="gvaWarningBar" role="note">
-      {title}
+      <IconWarningFilled size={14} />
+      <span>{title}</span>
     </div>
   );
 }
@@ -815,7 +819,7 @@ export function AdminLinkButton({
   onClick: () => void;
   danger?: boolean;
   disabled?: boolean;
-  icon?: 'edit' | 'delete' | 'user' | ReactNode;
+  icon?: 'edit' | 'delete' | 'user' | 'setting' | 'plus' | 'copy' | ReactNode;
 }>) {
   const iconNode =
     icon === 'edit' ? (
@@ -824,6 +828,12 @@ export function AdminLinkButton({
       <IconDelete size={14} />
     ) : icon === 'user' ? (
       <IconUser size={14} />
+    ) : icon === 'setting' ? (
+      <IconSetting size={14} />
+    ) : icon === 'plus' ? (
+      <IconPlus size={14} />
+    ) : icon === 'copy' ? (
+      <IconCopy size={14} />
     ) : (
       icon
     );

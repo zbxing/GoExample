@@ -1,7 +1,7 @@
 # OpenAPI 兼容性政策
 
-`contracts/projects.json` 是 `Proj/<项目>` 与 OpenAPI 文档的唯一映射。当前
-`Proj/Example` 的 workspace entry 仍指向 `docs/openapi/openapi.json`；其它项目
+`contracts/projects.json` 是 `Solutions/<名称>` 或 `Services/<名称>` 与 OpenAPI 文档的唯一映射。当前
+`Solutions/Example` 的 workspace entry 仍指向 `docs/openapi/openapi.json`；其它服务
 可以指向 OpenAPI 仓库的 `refs/heads/*` 或 `refs/tags/*`，并必须同时记录
 `resolvedCommit`。`scripts/project-contracts.mjs` 在生成 SDK 或兼容性比较前解析
 该映射，远程文档只 materialize 到 `.temp/contracts/`，不会成为运行时依赖。

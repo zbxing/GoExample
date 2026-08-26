@@ -1,0 +1,1090 @@
+/**
+ * 夜间主题（对齐 gin-vue-admin html.dark + Element Plus dark/css-vars）
+ * 布局仍走 .theme-gva；暗色只叠加 html.dark。
+ */
+
+html.dark,
+html.theme-gva.dark {
+  color-scheme: dark;
+
+  /*
+   * 夜间配色对齐参考截图像素（非纯 slate 蓝）：
+   * - 侧栏/卡片 ≈ rgb(17,18,20)
+   * - 页面画布 ≈ rgb(30,31,33)
+   * - 顶栏/标签栏保持 GVA theme.scss：rgb(15,23,42)
+   */
+  --el-bg-color-page: rgb(30, 31, 33);
+  --el-bg-color: rgb(30, 31, 33);
+  --el-bg-color-overlay: rgb(40, 41, 43);
+  --el-text-color-primary: #e5eaf3;
+  --el-text-color-regular: #cfd3dc;
+  --el-text-color-secondary: #a3a6ad;
+  --el-text-color-placeholder: #8d9095;
+  --el-text-color-disabled: #6c6e72;
+  --el-border-color: #414243;
+  --el-border-color-light: #363637;
+  --el-border-color-lighter: #2b2b2c;
+  --el-border-color-extra-light: #1f1f1f;
+  --el-fill-color: #2a2a2b;
+  --el-fill-color-light: #262727;
+  --el-fill-color-lighter: #1d1d1d;
+  --el-fill-color-blank: transparent;
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: var(--gva-card-bg);
+  --el-table-header-bg-color: var(--gva-card-bg);
+  /* 对齐 GVA：dark:text-gray-200 */
+  --el-table-header-text-color: #e5e7eb;
+  --el-table-text-color: var(--el-text-color-regular);
+  --el-table-row-hover-bg-color: #262727;
+  --el-table-border-color: var(--el-border-color-lighter);
+  --el-table-current-row-bg-color: rgba(var(--gva-primary), 0.16);
+  --el-color-danger: #f56c6c;
+  --el-mask-color: rgba(0, 0, 0, 0.8);
+  --el-box-shadow-light: 0 0 12px rgba(0, 0, 0, 0.72);
+
+  --page-background: rgb(30, 31, 33);
+  --surface-primary: rgb(17, 18, 20);
+  --surface-secondary: rgb(30, 31, 33);
+  --surface-strong: rgb(17, 18, 20);
+  --border-subtle: #363637;
+  --text-primary: #e5eaf3;
+  --text-secondary: #a3a6ad;
+  --gva-page-bg: rgb(30, 31, 33);
+  --gva-card-bg: rgb(17, 18, 20);
+  --gva-card-border: #363637;
+  --gva-text-main: #e5eaf3;
+  --gva-text-sub: #a3a6ad;
+  --gva-welcome-bg: linear-gradient(110deg, #1a1b1d 0%, #121314 55%, #1a1b1d 100%);
+  --gva-welcome-border: #2b2b2c;
+  --gva-license-bg: linear-gradient(145deg, #1a1b1d, #121314);
+  --gva-header-bg: rgb(15, 23, 42);
+  --gva-header-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.35);
+  --gva-tab-bg: rgb(15, 23, 42);
+  --gva-tabs-bg: rgb(15, 23, 42);
+  --gva-tab-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --gva-tabs-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --gva-sidebar: rgb(17, 18, 20);
+  --gva-sidebar-text: #a3a6ad;
+  /* chrome 选中底：偏亮主色，避免发黑看不清（对齐参考 ≈ rgb(56,101,186)） */
+  --gva-primary-50: 48, 90, 180;
+  --primary-50-color: 48, 90, 180;
+}
+
+/* ---- Shell chrome ---- */
+html.dark .gvaAppShell,
+html.theme-gva.dark .gvaAppShell {
+  background: var(--el-bg-color-page) !important;
+  color: var(--el-text-color-regular);
+}
+
+html.dark .gvaTopbar,
+html.theme-gva.dark .gvaTopbar,
+html.dark .topbar.gvaTopbar,
+html.theme-gva.dark .topbar.gvaTopbar {
+  background: var(--gva-header-bg, rgb(15, 23, 42)) !important;
+  color: var(--el-text-color-regular);
+  box-shadow: var(--gva-header-shadow);
+}
+
+html.dark .gvaTagsView,
+html.theme-gva.dark .gvaTagsView {
+  background: var(--gva-tab-bg, var(--gva-tabs-bg, rgb(15, 23, 42))) !important;
+  color: var(--el-text-color-regular);
+  box-shadow: var(--gva-tab-shadow, var(--gva-tabs-shadow));
+}
+
+html.dark .gvaMainColumn,
+html.theme-gva.dark .gvaMainColumn,
+html.dark .gvaAppContent,
+html.theme-gva.dark .gvaAppContent,
+html.dark .appContent,
+html.theme-gva.dark .appContent,
+html.dark .gvaBodyH,
+html.theme-gva.dark .gvaBodyH,
+html.dark .gvaPageContent,
+html.theme-gva.dark .gvaPageContent,
+html.dark .pageContent.gvaPageContent,
+html.theme-gva.dark .pageContent.gvaPageContent,
+html.dark .gvaLayoutFooter,
+html.theme-gva.dark .gvaLayoutFooter,
+html.dark .gvaBottomInfo,
+html.theme-gva.dark .gvaBottomInfo {
+  background: var(--gva-page-bg, var(--el-bg-color-page)) !important;
+  color: var(--el-text-color-regular);
+  box-shadow: none;
+}
+
+html.dark .gvaBreadcrumb,
+html.theme-gva.dark .gvaBreadcrumb,
+html.dark .gvaBreadcrumbItem,
+html.theme-gva.dark .gvaBreadcrumbItem,
+html.dark .gvaBreadcrumbSep,
+html.theme-gva.dark .gvaBreadcrumbSep {
+  color: var(--el-text-color-secondary) !important;
+}
+
+html.dark .gvaBreadcrumbCurrent,
+html.theme-gva.dark .gvaBreadcrumbCurrent {
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .gvaHeaderBrand,
+html.theme-gva.dark .gvaHeaderBrand,
+html.dark .gvaHeaderBrand strong,
+html.theme-gva.dark .gvaHeaderBrand strong,
+html.dark .gvaUserName,
+html.theme-gva.dark .gvaUserName {
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .gvaHeaderDivider,
+html.theme-gva.dark .gvaHeaderDivider {
+  background: var(--el-border-color-light);
+}
+
+html.dark .gvaMorphBtn,
+html.theme-gva.dark .gvaMorphBtn {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .gvaMorphBtn:hover,
+html.theme-gva.dark .gvaMorphBtn:hover {
+  color: var(--el-text-color-primary);
+  background: var(--el-fill-color-light);
+}
+
+html.dark .gvaUserTrigger,
+html.theme-gva.dark .gvaUserTrigger {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .gvaUserDropdown,
+html.theme-gva.dark .gvaUserDropdown {
+  background: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color-light) !important;
+  color: var(--el-text-color-regular);
+  box-shadow: var(--el-box-shadow-light);
+}
+
+html.dark .gvaUserDropdown button,
+html.theme-gva.dark .gvaUserDropdown button {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .gvaUserDropdown button:hover,
+html.theme-gva.dark .gvaUserDropdown button:hover {
+  background: var(--el-fill-color-light);
+  color: var(--el-color-primary);
+}
+
+html.dark .gvaSidebar,
+html.theme-gva.dark .gvaSidebar,
+html.dark .gvaSidebar:not([data-dark='true']),
+html.theme-gva.dark .gvaSidebar:not([data-dark='true']),
+html.dark .sidebar.gvaSidebar,
+html.theme-gva.dark .sidebar.gvaSidebar {
+  background: var(--gva-sidebar, rgb(17, 18, 20)) !important;
+  color: var(--el-text-color-secondary) !important;
+  border: 0 !important;
+  border-right: 0 !important;
+  /* 暗色侧栏右缘：用极淡阴影代替浅色描边，避免白线 */
+  box-shadow: 1px 0 0 0 var(--el-border-color-extra-light, #2b2b2c);
+}
+
+html.dark .gvaCollapseBar,
+html.theme-gva.dark .gvaCollapseBar,
+html.dark .gvaSidebar .gvaCollapseBar,
+html.theme-gva.dark .gvaSidebar .gvaCollapseBar,
+html.dark .gvaSidebar[data-dark='true'] .gvaCollapseBar,
+html.theme-gva.dark .gvaSidebar[data-dark='true'] .gvaCollapseBar {
+  border-top-color: var(--el-border-color-lighter, #363637) !important;
+  color: var(--el-text-color-secondary) !important;
+}
+
+html.dark .gvaCollapseBar:hover,
+html.theme-gva.dark .gvaCollapseBar:hover {
+  background: var(--el-fill-color-light) !important;
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .gvaSidebar .gvaMenuItem,
+html.theme-gva.dark .gvaSidebar .gvaMenuItem,
+html.dark .gvaSidebar .navItem,
+html.theme-gva.dark .gvaSidebar .navItem {
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .gvaSidebar .gvaMenuItem:hover,
+html.theme-gva.dark .gvaSidebar .gvaMenuItem:hover,
+html.dark .gvaSidebar .gvaMenuItem.is-branch-active:hover,
+html.theme-gva.dark .gvaSidebar .gvaMenuItem.is-branch-active:hover {
+  background: var(--el-fill-color-light) !important;
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .gvaSidebar .gvaMenuItem.is-branch-active,
+html.theme-gva.dark .gvaSidebar .gvaMenuItem.is-branch-active {
+  color: var(--el-color-primary) !important;
+  background: transparent !important;
+}
+
+/* ---- Tags ---- */
+html.dark .gvaPageTab,
+html.theme-gva.dark .gvaPageTab {
+  color: #e5eaf3;
+}
+
+html.dark .gvaPageTab-button,
+html.theme-gva.dark .gvaPageTab-button,
+html.dark .gvaPageTab-slider,
+html.theme-gva.dark .gvaPageTab-slider {
+  color: #e5eaf3;
+  background: transparent;
+}
+
+html.dark .gvaPageTab-button:hover:not(.is-active),
+html.theme-gva.dark .gvaPageTab-button:hover:not(.is-active),
+html.dark .gvaPageTab-slider:hover:not(.is-active),
+html.theme-gva.dark .gvaPageTab-slider:hover:not(.is-active) {
+  color: rgb(var(--gva-primary));
+  /* --gva-primary 为 "r, g, b"，必须用 rgba(..., a)，不能用 rgb(var() / a) */
+  background: rgba(var(--gva-primary), 0.08);
+}
+
+/*
+ * 对齐 GVA ButtonTab：
+ * hover: primary/0.08；active: primary/0.12 + text-active
+ */
+html.dark .gvaPageTab-button.is-active,
+html.theme-gva.dark .gvaPageTab-button.is-active {
+  color: rgb(var(--gva-primary)) !important;
+  background: rgba(var(--gva-primary), 0.12) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.dark .gvaPageTab-button.is-active:hover,
+html.theme-gva.dark .gvaPageTab-button.is-active:hover {
+  background: rgba(var(--gva-primary), 0.12) !important;
+}
+
+html.dark .gvaPageTab-slider.is-active,
+html.theme-gva.dark .gvaPageTab-slider.is-active {
+  color: rgb(var(--gva-primary)) !important;
+  background: rgba(var(--gva-primary), 0.12) !important;
+  border-bottom-color: rgb(var(--gva-primary)) !important;
+}
+
+/* 选中：仅文字 / 左侧图标跟主色；关闭钮颜色不变 */
+html.dark .gvaPageTab.is-active .gvaPageTabLabel,
+html.theme-gva.dark .gvaPageTab.is-active .gvaPageTabLabel,
+html.dark .gvaPageTab.is-active .gvaPageTabIcon,
+html.theme-gva.dark .gvaPageTab.is-active .gvaPageTabIcon {
+  color: rgb(var(--gva-primary)) !important;
+}
+
+html.dark .gvaPageTab-button.is-dragging,
+html.theme-gva.dark .gvaPageTab-button.is-dragging {
+  background: var(--el-bg-color-overlay) !important;
+}
+
+/* 关闭钮固定次要色，不随选中变主色 */
+html.dark .gvaPageTabClose,
+html.theme-gva.dark .gvaPageTabClose {
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+}
+
+html.dark .gvaPageTabClose:hover,
+html.theme-gva.dark .gvaPageTabClose:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+html.dark .gvaTagsContextMenu,
+html.theme-gva.dark .gvaTagsContextMenu {
+  background: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color-light) !important;
+  color: var(--el-text-color-regular);
+}
+
+html.dark .gvaTagsContextMenu button,
+html.theme-gva.dark .gvaTagsContextMenu button {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .gvaTagsContextMenu button:hover,
+html.theme-gva.dark .gvaTagsContextMenu button:hover {
+  background: var(--el-fill-color-light);
+}
+
+html.dark .gvaChromeHover,
+html.theme-gva.dark .gvaChromeHover {
+  background: rgba(var(--gva-primary), 0.08);
+}
+
+/* ---- Cards / search / tables ---- */
+html.dark .gvaSystemCard,
+html.theme-gva.dark .gvaSystemCard,
+html.dark .gvaSearchBox,
+html.theme-gva.dark .gvaSearchBox {
+  background: var(--gva-card-bg, rgb(17, 18, 20)) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .adminTableWrap.gvaTableBox,
+html.theme-gva.dark .adminTableWrap.gvaTableBox,
+html.dark .gvaTableBox,
+html.theme-gva.dark .gvaTableBox {
+  background: transparent !important;
+  color: var(--el-text-color-regular) !important;
+  border-color: var(--el-table-border-color, var(--el-border-color-lighter)) !important;
+  box-shadow: none !important;
+}
+
+html.dark .gvaWarningBar,
+html.theme-gva.dark .gvaWarningBar {
+  /* 对齐 GVA warningBar：dark:bg-amber-700 dark:text-gray-200 */
+  background: #b45309 !important;
+  color: #e5e7eb !important;
+  border: 0 !important;
+  padding: 10px 8px !important;
+  margin: 0 !important;
+  line-height: 1.25 !important;
+}
+
+html.dark .gvaFieldControl input,
+html.theme-gva.dark .gvaFieldControl input,
+html.dark .gvaFieldControl select,
+html.theme-gva.dark .gvaFieldControl select,
+html.dark .gvaDialogForm input,
+html.theme-gva.dark .gvaDialogForm input,
+html.dark .gvaDialogForm select,
+html.theme-gva.dark .gvaDialogForm select,
+html.dark .gvaDialogForm textarea,
+html.theme-gva.dark .gvaDialogForm textarea,
+html.dark .gvaSelectTrigger,
+html.theme-gva.dark .gvaSelectTrigger,
+html.dark .gvaElInput,
+html.theme-gva.dark .gvaElInput,
+html.dark .gvaPaginationJumpInput,
+html.theme-gva.dark .gvaPaginationJumpInput {
+  background: var(--el-fill-color-blank, transparent) !important;
+  background-color: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .gvaPaginationJump,
+html.theme-gva.dark .gvaPaginationJump {
+  color: var(--el-text-color-regular) !important;
+}
+
+/*
+ * 夜间：输入框 / 下拉触发器 悬浮·聚焦边框统一为下拉框悬浮色（主色）
+ * 需 !important，否则会被上方默认 border-color !important 盖住
+ */
+html.dark .gvaFieldControl input:hover,
+html.theme-gva.dark .gvaFieldControl input:hover,
+html.dark .gvaFieldControl select:hover,
+html.theme-gva.dark .gvaFieldControl select:hover,
+html.dark .gvaDialogForm input:hover,
+html.theme-gva.dark .gvaDialogForm input:hover,
+html.dark .gvaDialogForm select:hover,
+html.theme-gva.dark .gvaDialogForm select:hover,
+html.dark .gvaDialogForm textarea:hover,
+html.theme-gva.dark .gvaDialogForm textarea:hover,
+html.dark .gvaSelectTrigger:hover,
+html.theme-gva.dark .gvaSelectTrigger:hover,
+html.dark .gvaSelect.is-open .gvaSelectTrigger,
+html.theme-gva.dark .gvaSelect.is-open .gvaSelectTrigger,
+html.dark .gvaElInput:hover,
+html.theme-gva.dark .gvaElInput:hover,
+html.dark .gvaElInput:focus-within,
+html.theme-gva.dark .gvaElInput:focus-within,
+html.dark .gvaPaginationJumpInput:hover,
+html.theme-gva.dark .gvaPaginationJumpInput:hover,
+html.dark .gvaPaginationJumpInput:focus,
+html.theme-gva.dark .gvaPaginationJumpInput:focus,
+html.dark .gvaFieldControl input:focus,
+html.theme-gva.dark .gvaFieldControl input:focus,
+html.dark .gvaFieldControl select:focus,
+html.theme-gva.dark .gvaFieldControl select:focus,
+html.dark .gvaDialogForm input:focus,
+html.theme-gva.dark .gvaDialogForm input:focus,
+html.dark .gvaDialogForm select:focus,
+html.theme-gva.dark .gvaDialogForm select:focus,
+html.dark .gvaDialogForm textarea:focus,
+html.theme-gva.dark .gvaDialogForm textarea:focus {
+  border-color: var(--el-color-primary) !important;
+}
+
+html.dark .gvaSelectValue.is-placeholder,
+html.theme-gva.dark .gvaSelectValue.is-placeholder {
+  color: var(--el-text-color-placeholder) !important;
+}
+
+html.dark .gvaSelectDropdown,
+html.theme-gva.dark .gvaSelectDropdown {
+  background: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color-light) !important;
+  color: var(--el-text-color-regular);
+}
+
+html.dark .gvaSelectOption,
+html.theme-gva.dark .gvaSelectOption {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .gvaSelectOption:hover,
+html.theme-gva.dark .gvaSelectOption:hover {
+  background: var(--el-fill-color-light);
+}
+
+html.dark .gvaSelectOption.is-selected,
+html.theme-gva.dark .gvaSelectOption.is-selected {
+  color: var(--el-color-primary);
+  background: rgba(64, 158, 255, 0.12);
+}
+
+html.dark .theme-gva .elButton,
+html.theme-gva.dark .elButton,
+html.dark .elButton {
+  background: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .theme-gva .elButton:hover:not(:disabled),
+html.theme-gva.dark .elButton:hover:not(:disabled),
+html.dark .elButton:hover:not(:disabled) {
+  color: var(--el-color-primary) !important;
+  border-color: rgba(64, 158, 255, 0.45) !important;
+  background: rgba(64, 158, 255, 0.12) !important;
+}
+
+html.dark .theme-gva .elButtonPrimary,
+html.theme-gva.dark .elButtonPrimary,
+html.dark .elButtonPrimary {
+  background: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+  color: #fff !important;
+}
+
+html.dark .gvaElTable,
+html.theme-gva.dark .gvaElTable,
+html.dark .adminTable,
+html.theme-gva.dark .adminTable,
+html.dark .adminTable.gvaElTable,
+html.theme-gva.dark .adminTable.gvaElTable {
+  background: var(--el-table-bg-color, transparent) !important;
+  color: var(--el-table-text-color, var(--el-text-color-regular)) !important;
+}
+
+html.dark .gvaElTable th,
+html.theme-gva.dark .gvaElTable th,
+html.dark .gvaElTable td,
+html.theme-gva.dark .gvaElTable td,
+html.dark .adminTable th,
+html.theme-gva.dark .adminTable th,
+html.dark .adminTable td,
+html.theme-gva.dark .adminTable td,
+html.dark .adminTable.gvaElTable th,
+html.theme-gva.dark .adminTable.gvaElTable th,
+html.dark .adminTable.gvaElTable td,
+html.theme-gva.dark .adminTable.gvaElTable td {
+  background: var(--el-table-tr-bg-color, var(--el-bg-color)) !important;
+  background-color: var(--el-table-tr-bg-color, var(--el-bg-color)) !important;
+  border-bottom-color: var(--el-table-border-color, var(--el-border-color-lighter)) !important;
+  color: var(--el-table-text-color, var(--el-text-color-regular)) !important;
+}
+
+html.dark .gvaElTable thead th,
+html.theme-gva.dark .gvaElTable thead th,
+html.dark .adminTable thead th,
+html.theme-gva.dark .adminTable thead th,
+html.dark .adminTable.gvaElTable thead th,
+html.theme-gva.dark .adminTable.gvaElTable thead th,
+html.dark .gvaElTable thead > tr > th,
+html.theme-gva.dark .gvaElTable thead > tr > th {
+  background: var(--el-table-header-bg-color, var(--el-bg-color)) !important;
+  background-color: var(--el-table-header-bg-color, var(--el-bg-color)) !important;
+  color: var(--el-table-header-text-color, #e5e7eb) !important;
+}
+
+html.dark .gvaElTable th .gvaElTableCell,
+html.theme-gva.dark .gvaElTable th .gvaElTableCell,
+html.dark .adminTable th .gvaElTableCell,
+html.theme-gva.dark .adminTable th .gvaElTableCell {
+  color: var(--el-table-header-text-color, #e5e7eb) !important;
+}
+
+html.dark .gvaElTable td .gvaElTableCell,
+html.theme-gva.dark .gvaElTable td .gvaElTableCell,
+html.dark .adminTable td .gvaElTableCell,
+html.theme-gva.dark .adminTable td .gvaElTableCell,
+html.dark .gvaElTable .gvaElTableCell,
+html.theme-gva.dark .gvaElTable .gvaElTableCell {
+  color: var(--el-table-text-color, var(--el-text-color-regular)) !important;
+}
+
+html.dark .gvaElTable tbody tr:hover > td,
+html.theme-gva.dark .gvaElTable tbody tr:hover > td,
+html.dark .adminTable tbody tr:hover > td,
+html.theme-gva.dark .adminTable tbody tr:hover > td {
+  background: var(--el-table-row-hover-bg-color, var(--el-fill-color-light)) !important;
+  background-color: var(--el-table-row-hover-bg-color, var(--el-fill-color-light)) !important;
+}
+
+html.dark .adminTableWrap.gvaTableBox,
+html.theme-gva.dark .adminTableWrap.gvaTableBox,
+html.dark .gvaTableBox,
+html.theme-gva.dark .gvaTableBox {
+  border-color: var(--el-table-border-color, var(--el-border-color-lighter)) !important;
+  background: transparent !important;
+}
+
+html.dark .adminEmpty,
+html.theme-gva.dark .adminEmpty,
+html.dark .gvaTableEmpty,
+html.theme-gva.dark .gvaTableEmpty {
+  color: var(--el-text-color-secondary);
+}
+
+html.dark .gvaPagination,
+html.theme-gva.dark .gvaPagination,
+html.dark .gvaPaginationTotal,
+html.theme-gva.dark .gvaPaginationTotal {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .gvaPaginationBtn,
+html.theme-gva.dark .gvaPaginationBtn {
+  background: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .gvaPaginationBtn.is-active,
+html.theme-gva.dark .gvaPaginationBtn.is-active {
+  background: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+  color: #fff !important;
+}
+
+html.dark .gvaContentLoading,
+html.theme-gva.dark .gvaContentLoading {
+  background: rgba(10, 10, 10, 0.55);
+  color: var(--el-text-color-regular);
+}
+
+/* ---- Dialogs / drawers / messages ---- */
+html.dark .adminDialog,
+html.theme-gva.dark .adminDialog,
+html.dark .gvaDialog,
+html.theme-gva.dark .gvaDialog,
+html.dark .gvaDrawer,
+html.theme-gva.dark .gvaDrawer,
+html.dark .gvaFormDrawer,
+html.theme-gva.dark .gvaFormDrawer,
+html.dark .gvaThemeDrawer .gvaDrawer,
+html.theme-gva.dark .gvaThemeDrawer .gvaDrawer {
+  background: var(--el-bg-color-overlay) !important;
+  color: var(--el-text-color-regular) !important;
+  border-color: var(--el-border-color-light);
+}
+
+html.dark .adminDialogHeader,
+html.theme-gva.dark .adminDialogHeader,
+html.dark .adminDialogFooter,
+html.theme-gva.dark .adminDialogFooter,
+html.dark .gvaDrawerHeader,
+html.theme-gva.dark .gvaDrawerHeader {
+  border-color: var(--el-border-color-lighter) !important;
+  color: var(--el-text-color-primary);
+}
+
+html.dark .gvaFormDrawerHeader,
+html.theme-gva.dark .gvaFormDrawerHeader {
+  border-bottom-color: var(--el-border-color, #4c4d4f) !important;
+  color: var(--el-text-color-primary);
+}
+
+html.dark .gvaMessage.is-plain,
+html.theme-gva.dark .gvaMessage.is-plain {
+  background: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-bg-color-overlay) !important;
+  box-shadow: var(--el-box-shadow-light);
+  color: var(--el-text-color-regular);
+}
+
+html.dark .gvaCommandPanel.commandPalettePanel,
+html.theme-gva.dark .gvaCommandPanel.commandPalettePanel {
+  background: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color-light) !important;
+  color: var(--el-text-color-regular);
+}
+
+/* ---- Dashboard / reference page ---- */
+html.dark .referenceWelcome,
+html.theme-gva.dark .referenceWelcome,
+html.dark .theme-gva .referenceWelcome,
+html.theme-gva.dark .theme-gva .referenceWelcome {
+  background: var(--gva-welcome-bg) !important;
+  border-color: var(--gva-welcome-border) !important;
+}
+
+html.dark .referenceWelcome h1,
+html.theme-gva.dark .referenceWelcome h1,
+html.dark .referenceMetricValue,
+html.theme-gva.dark .referenceMetricValue,
+html.dark .referencePanelTitle h2,
+html.theme-gva.dark .referencePanelTitle h2,
+html.dark .referenceLicenseCard h3,
+html.theme-gva.dark .referenceLicenseCard h3,
+html.dark .referenceLicenseCard strong,
+html.theme-gva.dark .referenceLicenseCard strong {
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .referencePanelTitle a,
+html.theme-gva.dark .referencePanelTitle a {
+  color: var(--el-color-primary) !important;
+}
+
+html.dark .referenceWelcome p,
+html.theme-gva.dark .referenceWelcome p,
+html.dark .referenceEyebrow,
+html.theme-gva.dark .referenceEyebrow,
+html.dark .referenceRailLabel,
+html.theme-gva.dark .referenceRailLabel,
+html.dark .referenceMetricCard span,
+html.theme-gva.dark .referenceMetricCard span,
+html.dark .referenceNotice time,
+html.theme-gva.dark .referenceNotice time,
+html.dark .referenceLicenseCard p,
+html.theme-gva.dark .referenceLicenseCard p,
+html.dark .referenceLicenseCard > span,
+html.theme-gva.dark .referenceLicenseCard > span,
+html.dark .referenceChartLabels,
+html.theme-gva.dark .referenceChartLabels,
+html.dark .referenceChartGrid,
+html.theme-gva.dark .referenceChartGrid {
+  color: var(--el-text-color-secondary) !important;
+}
+
+html.dark .referencePanel,
+html.theme-gva.dark .referencePanel,
+html.dark .referenceMetricCard,
+html.theme-gva.dark .referenceMetricCard,
+html.dark .referenceLicenseCard,
+html.theme-gva.dark .referenceLicenseCard,
+html.dark .theme-gva .referencePanel,
+html.theme-gva.dark .theme-gva .referencePanel,
+html.dark .theme-gva .referenceMetricCard,
+html.theme-gva.dark .theme-gva .referenceMetricCard,
+html.dark .theme-gva .referenceLicenseCard,
+html.theme-gva.dark .theme-gva .referenceLicenseCard {
+  background: var(--gva-card-bg, var(--el-bg-color-overlay)) !important;
+  border-color: var(--gva-card-border, var(--el-border-color-light)) !important;
+  color: var(--el-text-color-regular) !important;
+  box-shadow: none !important;
+}
+
+html.dark .referenceMetricCard strong,
+html.theme-gva.dark .referenceMetricCard strong,
+html.dark .referenceNotice span,
+html.theme-gva.dark .referenceNotice span,
+html.dark .referenceNotice p,
+html.theme-gva.dark .referenceNotice p,
+html.dark .referenceTable td strong,
+html.theme-gva.dark .referenceTable td strong {
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .referenceWelcome .secondaryButton,
+html.theme-gva.dark .referenceWelcome .secondaryButton,
+html.dark .referenceWelcome .secondaryButton,
+html.theme-gva.dark .referenceWelcome .secondaryButton {
+  background: var(--el-fill-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .referenceTable,
+html.theme-gva.dark .referenceTable {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .referenceTable th,
+html.theme-gva.dark .referenceTable th,
+html.dark .referenceTable td,
+html.theme-gva.dark .referenceTable td {
+  border-color: var(--el-border-color-lighter) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .referenceTable thead th,
+html.theme-gva.dark .referenceTable thead th {
+  background: var(--el-fill-color-light) !important;
+  color: var(--el-table-header-text-color, #e5e7eb) !important;
+}
+
+html.dark .referenceWelcome .secondaryButton,
+html.theme-gva.dark .referenceWelcome .secondaryButton {
+  background: var(--el-fill-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .referenceQuickLink,
+html.theme-gva.dark .referenceQuickLink,
+html.dark .referenceExternalLink,
+html.theme-gva.dark .referenceExternalLink,
+html.dark .referenceDocLink,
+html.theme-gva.dark .referenceDocLink,
+html.dark .referenceNotice,
+html.theme-gva.dark .referenceNotice {
+  color: var(--el-text-color-regular) !important;
+  background: var(--el-fill-color-light) !important;
+  border-color: var(--el-border-color-lighter) !important;
+}
+
+html.dark .referenceQuickLink:hover,
+html.theme-gva.dark .referenceQuickLink:hover,
+html.dark .referenceExternalLink:hover,
+html.theme-gva.dark .referenceExternalLink:hover,
+html.dark .referenceDocLink:hover,
+html.theme-gva.dark .referenceDocLink:hover {
+  color: var(--el-color-primary) !important;
+  border-color: rgba(64, 158, 255, 0.45) !important;
+}
+
+html.dark .referenceContentChart,
+html.theme-gva.dark .referenceContentChart {
+  background: transparent !important;
+}
+
+html.dark .referenceSparklineBase,
+html.theme-gva.dark .referenceSparklineBase {
+  stroke: var(--el-border-color-light) !important;
+}
+
+html.dark .referenceChartArea,
+html.theme-gva.dark .referenceChartArea {
+  fill: rgba(64, 158, 255, 0.16) !important;
+}
+
+html.dark .gvaSystemPage,
+html.theme-gva.dark .gvaSystemPage {
+  background: transparent !important;
+  color: var(--el-text-color-regular);
+}
+
+html.dark body,
+html.theme-gva.dark body {
+  background: var(--el-bg-color-page) !important;
+  color: var(--el-text-color-regular);
+}
+html.dark .gvaThemeCardBg,
+html.theme-gva.dark .gvaThemeCardBg,
+html.dark .gvaThemeCardWhite,
+html.theme-gva.dark .gvaThemeCardWhite,
+html.dark .gvaPresetCard,
+html.theme-gva.dark .gvaPresetCard,
+html.dark .gvaLayoutCard,
+html.theme-gva.dark .gvaLayoutCard,
+html.dark .gvaPreviewCard,
+html.theme-gva.dark .gvaPreviewCard {
+  background: var(--el-fill-color-light) !important;
+  border-color: var(--el-border-color-light) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .gvaThemeSettingLabel,
+html.theme-gva.dark .gvaThemeSettingLabel,
+html.dark .gvaThemeSectionTitle,
+html.theme-gva.dark .gvaThemeSectionTitle,
+html.dark .gvaThemeTextMain,
+html.theme-gva.dark .gvaThemeTextMain {
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .gvaThemeTextSub,
+html.theme-gva.dark .gvaThemeTextSub,
+html.dark .gvaPresetEmpty,
+html.theme-gva.dark .gvaPresetEmpty {
+  color: var(--el-text-color-secondary) !important;
+}
+
+html.dark .gvaThemeSettingItem,
+html.theme-gva.dark .gvaThemeSettingItem {
+  border-color: var(--el-border-color-lighter) !important;
+}
+
+html.dark .gvaTagsView,
+html.theme-gva.dark .gvaTagsView {
+  --gva-base-text: 226, 232, 240;
+  --gva-border: 51, 65, 85;
+  background: var(--gva-tab-bg, var(--gva-tabs-bg, rgb(15, 23, 42))) !important;
+  color: var(--el-text-color-regular);
+}
+
+html.dark .gvaPageTab-chrome,
+html.theme-gva.dark .gvaPageTab-chrome {
+  color: rgb(var(--gva-base-text));
+}
+
+html.dark .gvaPageTab-chrome.is-active,
+html.theme-gva.dark .gvaPageTab-chrome.is-active {
+  color: rgb(var(--gva-primary)) !important;
+}
+
+html.dark .gvaPageTab-chrome.is-active .gvaPageTabLabel,
+html.theme-gva.dark .gvaPageTab-chrome.is-active .gvaPageTabLabel,
+html.dark .gvaPageTab-chrome.is-active .gvaPageTabIcon,
+html.theme-gva.dark .gvaPageTab-chrome.is-active .gvaPageTabIcon {
+  color: rgb(var(--gva-primary)) !important;
+}
+
+html.dark .gvaPageTab-button.is-active,
+html.theme-gva.dark .gvaPageTab-button.is-active {
+  color: rgb(var(--gva-primary)) !important;
+  background: rgba(var(--gva-primary), 0.12) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.dark .gvaPageTab-slider.is-active,
+html.theme-gva.dark .gvaPageTab-slider.is-active {
+  color: rgb(var(--gva-primary)) !important;
+  background: rgba(var(--gva-primary), 0.12) !important;
+  border-bottom-color: rgb(var(--gva-primary)) !important;
+}
+
+html.dark .gvaPageTab-button,
+html.theme-gva.dark .gvaPageTab-button {
+  /* 对齐 GVA html.gva-card--border .gva-tab-btn：暗色下几乎不可见 */
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html.dark .bottomInfo,
+html.theme-gva.dark .bottomInfo,
+html.dark .gvaBottomInfo,
+html.theme-gva.dark .gvaBottomInfo {
+  background: var(--el-bg-color-page) !important;
+  color: var(--el-text-color-secondary) !important;
+  border-color: var(--el-border-color-lighter) !important;
+}
+
+
+/* ---- dark extras (auto) ---- */
+html.dark .primaryButton,
+html.theme-gva.dark .primaryButton {
+  color: #fff !important;
+}
+
+html.dark .secondaryButton,
+html.theme-gva.dark .secondaryButton,
+html.dark .gvaSystemCard,
+html.theme-gva.dark .gvaSystemCard,
+html.dark .gvaSearchBox,
+html.theme-gva.dark .gvaSearchBox {
+  background: var(--gva-card-bg, var(--el-bg-color-overlay)) !important;
+  color: var(--gva-text-main, var(--el-text-color-regular)) !important;
+}
+
+/* 边框仅由内容块自身默认（无描边）控制，暗色层不强制描边 */
+html.dark.gva-card--border .gvaSystemCard,
+html.theme-gva.dark.gva-card--border .gvaSystemCard,
+html.dark.gva-card--border .gvaSearchBox,
+html.theme-gva.dark.gva-card--border .gvaSearchBox,
+html.dark[data-gva-card='border'] .gvaSystemCard,
+html.theme-gva.dark[data-gva-card='border'] .gvaSystemCard,
+html.dark[data-gva-card='border'] .gvaSearchBox,
+html.theme-gva.dark[data-gva-card='border'] .gvaSearchBox {
+  border: 0 !important;
+}
+
+html.dark .secondaryButton,
+html.theme-gva.dark .secondaryButton {
+  background: var(--el-fill-color) !important;
+}
+
+html.dark .theme-gva .elButton:disabled,
+html.theme-gva.dark .elButton:disabled {
+  background: var(--el-fill-color-light) !important;
+  border-color: var(--el-border-color-lighter) !important;
+  color: var(--el-text-color-placeholder) !important;
+}
+
+html.dark .gvaMobileMenuBtn,
+html.theme-gva.dark .gvaMobileMenuBtn {
+  color: var(--el-text-color-regular) !important;
+}
+
+
+/* ---- content-page dark parity ---- */
+html.dark .gvaLinkButton,
+html.theme-gva.dark .gvaLinkButton {
+  color: var(--el-color-primary) !important;
+}
+
+html.dark .gvaLinkButton.danger,
+html.theme-gva.dark .gvaLinkButton.danger {
+  color: var(--el-color-danger, #f56c6c) !important;
+}
+
+html.dark .gvaTableToolbar,
+html.theme-gva.dark .gvaTableToolbar,
+html.dark .gvaSearchBox .gvaFieldLabel,
+html.theme-gva.dark .gvaSearchBox .gvaFieldLabel,
+html.dark .gvaFieldLabel,
+html.theme-gva.dark .gvaFieldLabel {
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .gvaPagination,
+html.theme-gva.dark .gvaPagination,
+html.dark .gvaPaginationTotal,
+html.theme-gva.dark .gvaPaginationTotal,
+html.dark .adminPagination,
+html.theme-gva.dark .adminPagination {
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .gvaSortCaret::before,
+html.theme-gva.dark .gvaSortCaret::before {
+  border-bottom-color: var(--el-text-color-placeholder) !important;
+}
+
+html.dark .gvaSortCaret::after,
+html.theme-gva.dark .gvaSortCaret::after {
+  border-top-color: var(--el-text-color-placeholder) !important;
+}
+
+html.dark .gvaDialog,
+html.theme-gva.dark .gvaDialog,
+html.dark .adminDialog,
+html.theme-gva.dark .adminDialog,
+html.dark .gvaDrawer,
+html.theme-gva.dark .gvaDrawer {
+  --el-bg-color: #1d1e1f;
+  background: var(--el-bg-color-overlay) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .gvaDialogForm label,
+html.theme-gva.dark .gvaDialogForm label,
+html.dark .adminDialog label,
+html.theme-gva.dark .adminDialog label {
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .gvaTableEmpty,
+html.theme-gva.dark .gvaTableEmpty,
+html.dark .adminEmpty,
+html.theme-gva.dark .adminEmpty {
+  color: var(--el-text-color-secondary) !important;
+  background: transparent !important;
+}
+
+/* 夜间复选框：对齐 Element Plus dark checkbox（非白色底） */
+html.dark .gvaTableCheckCol input[type='checkbox'],
+html.theme-gva.dark .gvaTableCheckCol input[type='checkbox'],
+html.dark .adminTreeItem input[type='checkbox'],
+html.theme-gva.dark .adminTreeItem input[type='checkbox'],
+html.dark .adminCheckboxGrid input[type='checkbox'],
+html.theme-gva.dark .adminCheckboxGrid input[type='checkbox'] {
+  background: var(--el-fill-color-blank, #1d1e1f) !important;
+  border-color: var(--el-border-color, #4c4d4f) !important;
+}
+
+html.dark .gvaTableCheckCol input[type='checkbox']:hover,
+html.theme-gva.dark .gvaTableCheckCol input[type='checkbox']:hover,
+html.dark .adminTreeItem input[type='checkbox']:hover,
+html.theme-gva.dark .adminTreeItem input[type='checkbox']:hover,
+html.dark .adminCheckboxGrid input[type='checkbox']:hover,
+html.theme-gva.dark .adminCheckboxGrid input[type='checkbox']:hover {
+  border-color: var(--el-color-primary) !important;
+}
+
+html.dark .gvaTableCheckCol input[type='checkbox']:checked,
+html.theme-gva.dark .gvaTableCheckCol input[type='checkbox']:checked,
+html.dark .gvaTableCheckCol input[type='checkbox']:indeterminate,
+html.theme-gva.dark .gvaTableCheckCol input[type='checkbox']:indeterminate,
+html.dark .adminTreeItem input[type='checkbox']:checked,
+html.theme-gva.dark .adminTreeItem input[type='checkbox']:checked,
+html.dark .adminCheckboxGrid input[type='checkbox']:checked,
+html.theme-gva.dark .adminCheckboxGrid input[type='checkbox']:checked {
+  background-color: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+}
+
+html.dark .adminCheckboxGrid,
+html.theme-gva.dark .adminCheckboxGrid {
+  border-color: var(--el-border-color-lighter, #2b2b2c) !important;
+  background: transparent !important;
+}
+
+html.dark .gvaTreeExpand,
+html.theme-gva.dark .gvaTreeExpand {
+  color: var(--el-text-color-regular, #cfd3dc) !important;
+}
+
+html.dark .gvaMenuFormSection,
+html.theme-gva.dark .gvaMenuFormSection {
+  border-bottom-color: var(--el-border-color-lighter) !important;
+}
+
+html.dark .gvaMenuFormSection h3,
+html.theme-gva.dark .gvaMenuFormSection h3,
+html.dark .gvaMenuFormItem > span,
+html.theme-gva.dark .gvaMenuFormItem > span {
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .gvaMenuFormItem input,
+html.theme-gva.dark .gvaMenuFormItem input,
+html.dark .gvaMenuFormItem select,
+html.theme-gva.dark .gvaMenuFormItem select,
+html.dark .gvaMenuBtnTable input,
+html.theme-gva.dark .gvaMenuBtnTable input {
+  background: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .gvaMenuFormItem input:hover,
+html.theme-gva.dark .gvaMenuFormItem input:hover,
+html.dark .gvaMenuFormItem select:hover,
+html.theme-gva.dark .gvaMenuFormItem select:hover,
+html.dark .gvaMenuBtnTable input:hover,
+html.theme-gva.dark .gvaMenuBtnTable input:hover {
+  border-color: var(--el-color-primary) !important;
+}
+
+html.dark .gvaMenuFormItem input:focus,
+html.theme-gva.dark .gvaMenuFormItem input:focus,
+html.dark .gvaMenuFormItem select:focus,
+html.theme-gva.dark .gvaMenuFormItem select:focus,
+html.dark .gvaMenuBtnTable input:focus,
+html.theme-gva.dark .gvaMenuBtnTable input:focus {
+  border-color: var(--el-color-primary) !important;
+}
+
+html.dark .gvaMenuBtnTableWrap,
+html.theme-gva.dark .gvaMenuBtnTableWrap {
+  border-color: var(--el-border-color, #4c4d4f) !important;
+}
+
+html.dark .gvaMenuBtnTable th,
+html.theme-gva.dark .gvaMenuBtnTable th {
+  background: var(--el-fill-color-light) !important;
+  color: var(--el-table-header-text-color, #e5e7eb) !important;
+}
+
+html.dark .gvaMenuBtnTable th,
+html.theme-gva.dark .gvaMenuBtnTable th,
+html.dark .gvaMenuBtnTable td,
+html.theme-gva.dark .gvaMenuBtnTable td {
+  border-bottom-color: var(--el-border-color-light, #414243) !important;
+}
