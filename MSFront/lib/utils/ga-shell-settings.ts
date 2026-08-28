@@ -235,9 +235,9 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
 
 const HEADER_SHADOWS_LIGHT: Record<GvaShadow, string> = {
   none: 'none',
-  sm: '0 1px 0 rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04)',
-  md: '0 1px 0 rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.08)',
-  lg: '0 1px 0 rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.12)',
+  sm: '0 1px 3px rgba(0, 0, 0, 0.04)',
+  md: '0 4px 12px rgba(0, 0, 0, 0.08)',
+  lg: '0 8px 24px rgba(0, 0, 0, 0.12)',
 };
 
 const HEADER_SHADOWS_DARK: Record<GvaShadow, string> = {
@@ -249,9 +249,9 @@ const HEADER_SHADOWS_DARK: Record<GvaShadow, string> = {
 
 const TAB_SHADOWS_LIGHT: Record<GvaShadow, string> = {
   none: 'none',
-  sm: '0 1px 2px rgba(0, 21, 41, 0.08)',
-  md: '0 2px 8px rgba(0, 21, 41, 0.12)',
-  lg: '0 6px 18px rgba(0, 21, 41, 0.16)',
+  sm: 'none',
+  md: 'none',
+  lg: 'none',
 };
 
 const TAB_SHADOWS_DARK: Record<GvaShadow, string> = {
@@ -263,6 +263,17 @@ const TAB_SHADOWS_DARK: Record<GvaShadow, string> = {
 
 function isDocumentDark() {
   return typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+}
+
+/** 以 shell 设置的 themeScheme 为准，避免切主题时 class 尚未同步导致阴影/色阶写错 */
+function resolveShellIsDark(settings: GvaShellSettings): boolean {
+  if (settings.themeScheme === 'dark') {
+    return true;
+  }
+  if (settings.themeScheme === 'light') {
+    return false;
+  }
+  return isDocumentDark();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -455,18 +466,18 @@ function mixHexToward(color: string, target: '#ffffff' | '#000000', amount: numb
   return `#${toHex(mix(r, tr))}${toHex(mix(g, tg))}${toHex(mix(b, tb))}`;
 }
 
-/** 对齐 GVA setElementPlusPrimaryColor：写入 primary 明暗阶与菜单悬停色 */
+/** 对齐 GVA setElementPlusColor：明/暗模式下 light-* 与 dark-* 共用同一混合锚点 */
 function applyElementPlusPrimaryLadder(color: string, dark: boolean) {
   const root = document.documentElement.style;
-  const toward = dark ? '#000000' : '#ffffff';
+  const mixTarget = dark ? '#000000' : '#ffffff';
   root.setProperty('--el-color-primary', color);
   for (let times = 1; times <= 2; times += 1) {
-    root.setProperty(`--el-color-primary-dark-${times}`, mixHexToward(color, '#000000', times / 10));
+    root.setProperty(`--el-color-primary-dark-${times}`, mixHexToward(color, mixTarget, times / 10));
   }
   for (let times = 1; times <= 9; times += 1) {
-    root.setProperty(`--el-color-primary-light-${times}`, mixHexToward(color, toward, times / 10));
+    root.setProperty(`--el-color-primary-light-${times}`, mixHexToward(color, mixTarget, times / 10));
   }
-  root.setProperty('--el-color-primary-light-10', mixHexToward(color, toward, 1));
+  root.setProperty('--el-color-primary-light-10', mixHexToward(color, mixTarget, 1));
   root.setProperty('--el-color-primary-bg', addOpacityToColor(color, 0.4));
   root.setProperty('--el-menu-hover-bg-color', addOpacityToColor(color, 0.2));
 }
@@ -477,7 +488,7 @@ export function applyGvaShellCss(settings: GvaShellSettings) {
   }
   const root = document.documentElement;
   const primary = hexToRgbChannels(settings.themeColor);
-  const dark = isDocumentDark();
+  const dark = resolveShellIsDark(settings);
   root.style.setProperty('--gva-primary', primary);
   root.style.setProperty('--primary-color', primary);
   root.style.setProperty('--gva-primary-50', mixPrimarySoft(settings.themeColor, dark));

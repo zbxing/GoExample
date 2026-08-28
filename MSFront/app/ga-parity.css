@@ -15,6 +15,10 @@
   --gva-sidebar-text: #a3a6b4;
   --gva-sidebar-active: var(--el-color-primary, #2264f2);
   --el-color-primary: #2264f2;
+  /* Element Plus primary ladder fallbacks（主题 JS 未跑时仍可用） */
+  --el-color-primary-light-3: #6493f6;
+  --el-color-primary-light-5: #91b2f9;
+  --el-color-primary-dark-2: #4e83f5;
   --el-border-color: #dcdfe6;
   --el-border-color-light: #e4e7ed;
   --el-border-color-lighter: #ebeef5;
@@ -178,6 +182,7 @@
   border-radius: var(--gva-radius, 0.625rem);
   font-size: 14px;
   cursor: pointer;
+  transition: color 0.1s, background-color 0.1s, border-color 0.1s, outline 0.1s;
 }
 
 .gvaBtnLarge {
@@ -197,14 +202,14 @@
   letter-spacing: 0.2em;
 }
 
-.gvaBtnPrimary:hover {
-  background: #6493f6;
-  border-color: #6493f6;
+.gvaBtnPrimary:hover:not(:disabled) {
+  background: var(--el-color-primary-light-3);
+  border-color: var(--el-color-primary-light-3);
 }
 
-.gvaBtnPrimary:active {
-  background: #1b50c2;
-  border-color: #1b50c2;
+.gvaBtnPrimary:active:not(:disabled) {
+  background: var(--el-color-primary-dark-2);
+  border-color: var(--el-color-primary-dark-2);
 }
 
 .gvaBtnPrimary:disabled {
@@ -369,9 +374,32 @@ html.theme-gva:has(.gvaAppShell) body {
   grid-column: auto !important;
   grid-row: auto !important;
   background: var(--gva-header-bg, #fff);
-  border-bottom: 0;
-  box-shadow: var(--gva-header-shadow, 0 1px 0 rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04));
+  /* 默认底边；白天主题由 html.theme-gva:not(.dark) 统一为 --gva-chrome-divider */
+  border: 0 !important;
+  border-bottom: 1px solid var(--gva-chrome-divider, var(--el-border-color-lighter, #ebeef5)) !important;
+  box-shadow: var(--gva-header-shadow, 0 1px 3px rgba(0, 0, 0, 0.04)) !important;
   border-radius: 0 !important;
+}
+
+/* 白天主题：顶栏 / 标签栏共用同一底部分隔色 */
+html.theme-gva:not(.dark) {
+  --gva-chrome-divider: var(--el-border-color-lighter, #ebeef5);
+  --gva-header-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --gva-tabs-shadow: none;
+  --gva-tab-shadow: none;
+}
+
+html.theme-gva:not(.dark) .gvaTopbar,
+html.theme-gva:not(.dark) .topbar.gvaTopbar {
+  border: 0 !important;
+  border-bottom: 1px solid var(--gva-chrome-divider) !important;
+  box-shadow: var(--gva-header-shadow) !important;
+}
+
+html.theme-gva:not(.dark) .gvaTagsView {
+  /* 与顶栏底边同色；不用 box-shadow（会被 overflow-x 裁切） */
+  border-bottom: 1px solid var(--gva-chrome-divider) !important;
+  box-shadow: none !important;
 }
 
 .theme-gva .gvaTopbarMain {
@@ -457,7 +485,7 @@ html.theme-gva:has(.gvaAppShell) body {
 }
 
 .theme-gva .gvaBreadcrumbSep {
-  margin: 0 6px;
+  margin: 0 10px;
   opacity: 0.55;
   font-weight: 400;
 }
@@ -793,7 +821,7 @@ html.theme-gva:has(.gvaAppShell) body {
   box-sizing: border-box;
 }
 
-.theme-gva .gvaSidebar .gvaMenuItem:hover {
+.theme-gva .gvaSidebar .gvaMenuItem:hover:not(.is-active):not(.is-branch-active) {
   color: #303133 !important;
   background: #f5f7fa !important;
 }
@@ -803,32 +831,31 @@ html.theme-gva:has(.gvaAppShell) body {
   background: rgb(var(--gva-primary, 34, 100, 242)) !important;
 }
 
-.theme-gva .gvaSidebar .gvaMenuItem.is-branch-active {
+.theme-gva .gvaSidebar .gvaMenuItem.is-branch-active,
+.theme-gva .gvaSidebar .gvaMenuItem.is-branch-active:hover {
   color: rgb(var(--gva-primary, 34, 100, 242)) !important;
   background: transparent !important;
   font-weight: 500;
-}
-
-.theme-gva .gvaSidebar .gvaMenuItem.is-branch-active:hover {
-  background: #f5f7fa !important;
 }
 
 .theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem {
   color: #a3a6b4 !important;
 }
 
-.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem:hover {
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem:hover:not(.is-active):not(.is-branch-active) {
   color: #fff !important;
   background: rgba(255, 255, 255, 0.06) !important;
 }
 
-.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem.is-active {
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem.is-active,
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem.is-active:hover {
   color: #fff !important;
   background: rgb(var(--gva-primary, 34, 100, 242)) !important;
 }
 
-.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem.is-branch-active {
-  color: #6493f6 !important;
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem.is-branch-active,
+.theme-gva .gvaSidebar[data-dark='true'] .gvaMenuItem.is-branch-active:hover {
+  color: var(--el-color-primary-light-3, #6493f6) !important;
   background: transparent !important;
 }
 
@@ -1061,18 +1088,21 @@ html.theme-gva:has(.gvaAppShell) body {
   --gva-base-text: 48, 49, 51;
   --gva-border: 228, 231, 237;
   display: flex;
-  align-items: flex-end;
-  flex: 0 0 44px;
-  height: 44px;
-  min-height: 44px;
-  max-height: 44px;
+  align-items: center;
+  /* 4 + 36 + 4 + 1(border) = 45，保证上下各 4px */
+  flex: 0 0 45px;
+  box-sizing: border-box;
+  height: 45px;
+  min-height: 45px;
+  max-height: 45px;
   width: 100%;
-  padding: 6px 12px 0 8px;
+  padding: 4px 12px 4px 8px;
   margin: 0;
   background: var(--gva-tab-bg, var(--gva-tabs-bg, #fff));
-  box-shadow: var(--gva-tab-shadow, var(--gva-tabs-shadow, 0 1px 2px rgba(0, 21, 41, 0.08)));
+  border-bottom: 1px solid var(--gva-chrome-divider, var(--el-border-color-lighter, #ebeef5));
+  box-shadow: var(--gva-tab-shadow, var(--gva-tabs-shadow, none));
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: hidden;
   isolation: isolate;
 }
 
@@ -1083,12 +1113,12 @@ html.theme-gva:has(.gvaAppShell) body {
 }
 
 .gvaTabs-chrome {
-  align-items: flex-end;
+  align-items: center;
   gap: 0;
 }
 
 .gvaTabs-slider {
-  align-items: flex-end;
+  align-items: center;
   gap: 4px;
 }
 
@@ -1119,7 +1149,9 @@ html.theme-gva:has(.gvaAppShell) body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 100%;
+  height: 36px;
+  flex-shrink: 0;
+  box-sizing: border-box;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
@@ -1484,7 +1516,8 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
   right: 0;
   width: min(440px, 100vw);
   height: 100%;
-  background: #fff;
+  /* 对齐 Element Plus el-drawer / GVA：夜间为 slate rgb(30,41,59) */
+  background: var(--el-bg-color, #fff);
   box-shadow:
     0 8px 10px -5px rgba(0, 0, 0, 0.2),
     0 16px 24px 2px rgba(0, 0, 0, 0.14),
@@ -1523,6 +1556,14 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
   padding: 16px 20px 32px;
   display: flex;
   flex-direction: column;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.gvaDrawerBody::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .gvaDrawerTabs {
@@ -1823,13 +1864,14 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
   gap: 4px;
 }
 
-/* ?? Element Plus el-table__expand-icon?ArrowRight + ???? 90? */
+/* 对齐 Element Plus el-tree caret / Ant Design：实心三角，展开旋转 90° 向下 */
 .gvaTreeExpand {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -1840,17 +1882,23 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
   transform: rotate(0deg);
 }
 
+.gvaTreeExpand:hover {
+  color: var(--el-color-primary, #409eff);
+}
+
 .gvaTreeExpand.is-expanded {
   transform: rotate(90deg);
 }
 
 .gvaTreeExpand svg {
   display: block;
+  width: 12px;
+  height: 12px;
 }
 
 .gvaTreeExpandSpacer {
   display: inline-block;
-  width: 18px;
+  width: 24px;
   flex-shrink: 0;
 }
 
@@ -1949,41 +1997,58 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
   margin-top: 0;
 }
 
+/* 对齐 Element Plus el-drawer rtl：遮罩淡入 + 整板从右侧 translateX(100%) 滑入 */
 .gvaFormDrawerRoot {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 2000;
+  overscroll-behavior: contain;
 }
 
 .gvaFormDrawerMask {
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.gvaFormDrawerRoot.is-enter .gvaFormDrawerMask {
+  animation: gva-drawer-fade-in 0.3s ease both;
+}
+
+.gvaFormDrawerRoot.is-leave .gvaFormDrawerMask {
+  animation: gva-drawer-fade-out 0.3s ease both;
 }
 
 .gvaFormDrawer {
   position: absolute;
   top: 0;
   right: 0;
-  width: min(480px, 100vw);
+  /* 对齐 GVA appStore.drawerSize 桌面默认 800 */
+  width: min(800px, 100vw);
   height: 100%;
-  background: #fff;
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  /* 对齐 Element Plus el-drawer：随主题 --el-bg-color */
+  background: var(--el-bg-color, #fff);
+  box-shadow:
+    0 8px 10px -5px rgba(0, 0, 0, 0.2),
+    0 16px 24px 2px rgba(0, 0, 0, 0.14),
+    0 6px 30px 5px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
-  animation: gva-drawer-in 0.2s ease-out;
 }
 
-@keyframes gva-drawer-in {
-  from {
-    transform: translateX(24px);
-    opacity: 0.6;
+@media (max-width: 640px) {
+  .gvaFormDrawer {
+    width: 100% !important;
   }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+}
+
+.gvaFormDrawerRoot.is-enter .gvaFormDrawer {
+  animation: gva-rtl-drawer-in 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.gvaFormDrawerRoot.is-leave .gvaFormDrawer {
+  animation: gva-rtl-drawer-out 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 .gvaFormDrawerHeader {
@@ -1991,10 +2056,13 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 56px;
-  padding: 0 16px;
+  /* 对齐 GVA .el-drawer__header：上下各 16px（约 64px，含 32px 按钮） */
+  margin-bottom: 0;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--el-border-color, #dcdfe6);
   font-size: 16px;
+  line-height: 1.5;
+  box-sizing: border-box;
 }
 
 .gvaFormDrawerActions {
@@ -2006,7 +2074,17 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
 .gvaFormDrawerBody {
   flex: 1;
   overflow: auto;
-  padding: 20px 16px 32px;
+  /* 左右边距略增，贴近 Element Plus drawer 默认 20px */
+  padding: 20px 20px 32px;
+  /* 对齐主内容区：可滚动但不显示滚动条 */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.gvaFormDrawerBody::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .theme-gva .elButtonIcon {
@@ -2223,7 +2301,8 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
 
 .gvaFormDrawerBody .gvaWarningBar,
 .adminDialogBody .gvaWarningBar {
-  margin-bottom: var(--gva-page-gutter, 8px);
+  /* 警告条与下方「基础信息」标题间距 */
+  margin-bottom: 12px;
 }
 
 /* ?? GVA .gva-table-box .el-table????? border-x/border-t???????? */
@@ -2481,6 +2560,35 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
   box-sizing: content-box;
 }
 
+/* Element Plus checkbox is-disabled（仅复选框灰态；文字保持正常色） */
+.adminTreeItem.is-disabled,
+.adminCheckboxGrid .adminTreeItem:has(input:disabled) {
+  cursor: not-allowed;
+}
+
+.adminTreeItem input[type='checkbox']:disabled,
+.adminCheckboxGrid input[type='checkbox']:disabled {
+  cursor: not-allowed;
+  background-color: var(--el-fill-color-light, #f5f7fa);
+  border-color: var(--el-border-color, #dcdfe6);
+}
+
+.adminTreeItem input[type='checkbox']:disabled:hover,
+.adminCheckboxGrid input[type='checkbox']:disabled:hover {
+  border-color: var(--el-border-color, #dcdfe6);
+}
+
+.adminTreeItem input[type='checkbox']:disabled:checked,
+.adminCheckboxGrid input[type='checkbox']:disabled:checked {
+  background-color: var(--el-border-color-extra-light, #f2f6fc);
+  border-color: var(--el-border-color, #dcdfe6);
+}
+
+.adminTreeItem input[type='checkbox']:disabled:checked::after,
+.adminCheckboxGrid input[type='checkbox']:disabled:checked::after {
+  border-color: var(--el-text-color-placeholder, #a8abb2);
+}
+
 .gvaTableCheckCol input[type='checkbox']:hover {
   border-color: var(--el-color-primary);
 }
@@ -2583,6 +2691,7 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
   padding: 0 2px;
 }
 
+/* 对齐 Element Plus el-button type="primary" link：hover=light-5，active=dark-2 */
 .gvaLinkButton {
   display: inline-flex;
   align-items: center;
@@ -2596,6 +2705,10 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
   line-height: 32px;
   height: 32px;
   font-weight: 400;
+  outline: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: color 0.1s, background-color 0.1s, border-color 0.1s, outline 0.1s;
 }
 
 .gvaLinkButtonIcon {
@@ -2604,19 +2717,29 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
 }
 
 .gvaLinkButton.danger {
-  color: var(--el-color-primary);
+  color: var(--el-color-danger, #f56c6c);
 }
 
-.gvaLinkButton:hover {
-  color: #6493f6;
+.gvaLinkButton:hover:not(:disabled) {
+  color: var(--el-color-primary-light-5);
+  background: transparent;
 }
 
-.gvaLinkButton.danger:hover {
-  color: #6493f6;
+.gvaLinkButton:active:not(:disabled) {
+  color: var(--el-color-primary-dark-2);
+}
+
+.gvaLinkButton.danger:hover:not(:disabled) {
+  color: var(--el-color-danger-light-5, #f89898);
+  background: transparent;
+}
+
+.gvaLinkButton.danger:active:not(:disabled) {
+  color: var(--el-color-danger-dark-2, #c45656);
 }
 
 .gvaLinkButton:disabled {
-  color: #c0c4cc;
+  color: var(--el-disabled-text-color, #c0c4cc);
   cursor: not-allowed;
 }
 
@@ -2665,15 +2788,22 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
   background: #ecf2ff;
 }
 
-.theme-gva .elButtonPrimary {
+.theme-gva .elButton.elButtonPrimary {
   background: var(--el-color-primary);
   border-color: var(--el-color-primary);
   color: #fff;
 }
 
-.theme-gva .elButtonPrimary:hover {
-  background: #6493f6;
-  border-color: #6493f6;
+/* Element Plus primary：hover=light-3，active=dark-2（色阶由 GVA ladder 写入） */
+.theme-gva .elButton.elButtonPrimary:hover:not(:disabled) {
+  background: var(--el-color-primary-light-3);
+  border-color: var(--el-color-primary-light-3);
+  color: #fff;
+}
+
+.theme-gva .elButton.elButtonPrimary:active:not(:disabled) {
+  background: var(--el-color-primary-dark-2);
+  border-color: var(--el-color-primary-dark-2);
   color: #fff;
 }
 
@@ -4429,6 +4559,40 @@ html[data-gva-card='shadow'] .gvaPageTab-button {
   color: #909399;
 }
 
+.gvaFeaturePlaceholder {
+  display: grid;
+  gap: 12px;
+  padding: 8px 4px 4px;
+}
+
+.gvaFeaturePlaceholderTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--el-text-color-primary, #303133);
+}
+
+.gvaFeaturePlaceholderDesc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--el-text-color-regular, #606266);
+}
+
+.gvaFeaturePlaceholderList {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.gvaAboutPage {
+  display: grid;
+  gap: 20px;
+  padding: 8px 4px;
+}
+
 .gvaAppShell[data-layout='vertical'] {
   display: grid !important;
   grid-template-columns: var(--gva-side-width, 256px) minmax(0, 1fr);
@@ -5742,6 +5906,40 @@ html[data-gva-card='border'] .gvaWarningBar {
   color: #909399;
 }
 
+.gvaFeaturePlaceholder {
+  display: grid;
+  gap: 12px;
+  padding: 8px 4px 4px;
+}
+
+.gvaFeaturePlaceholderTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--el-text-color-primary, #303133);
+}
+
+.gvaFeaturePlaceholderDesc {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--el-text-color-regular, #606266);
+}
+
+.gvaFeaturePlaceholderList {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.gvaAboutPage {
+  display: grid;
+  gap: 20px;
+  padding: 8px 4px;
+}
+
 .gvaAppShell[data-layout='vertical'] {
   display: grid !important;
   grid-template-columns: var(--gva-side-width, 256px) minmax(0, 1fr);
@@ -6107,7 +6305,8 @@ html[data-gva-card='border'] .gvaWarningBar {
   margin: 0 0 16px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--el-text-color-primary, #303133);
+  /* 对齐 GVA font-semibold text-gray-700 */
+  color: #374151;
 }
 
 .gvaMenuFormSectionHead {
@@ -6143,6 +6342,13 @@ html[data-gva-card='border'] .gvaWarningBar {
   font-size: 14px;
   line-height: 1.2;
   color: var(--el-text-color-regular, #606266);
+}
+
+/* Element Plus el-form-item.is-required 星号 */
+.gvaMenuFormItem > span.is-required::before {
+  content: '*';
+  color: var(--el-color-danger, #f56c6c);
+  margin-right: 4px;
 }
 
 .gvaMenuFormItemFull {
@@ -6222,7 +6428,8 @@ html[data-gva-card='border'] .gvaWarningBar {
   border-bottom: 0;
 }
 
-.gvaMenuBtnTable input {
+.gvaMenuBtnTable input,
+.gvaMenuBtnTable select {
   width: 100%;
   height: 28px;
   border: 1px solid var(--el-border-color, #dcdfe6);

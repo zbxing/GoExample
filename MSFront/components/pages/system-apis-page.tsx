@@ -681,7 +681,6 @@ export function SystemApisPage() {
         onClose={() => setDialogOpen(false)}
         onConfirm={() => void saveApi()}
         busy={busy}
-        width="40%"
       >
         <div className="adminForm gvaDialogForm">
           <AdminField label="请求方法">
@@ -732,7 +731,6 @@ export function SystemApisPage() {
         onClose={() => setAssignOpen(false)}
         onConfirm={() => void confirmAssignRole()}
         busy={busy}
-        width={520}
       >
         <div className="adminCheckboxGrid">
           {roles.map((role) => (
@@ -781,7 +779,6 @@ export function SystemApisPage() {
         onClose={() => setSyncOpen(false)}
         onConfirm={() => void applySync()}
         busy={syncBusy}
-        width="70%"
       >
         <AdminWarningBar title="同步API，不输入路由分组将不会被自动同步，如果api不需要参与鉴权，可以按忽略按钮进行忽略。" />
         <h4 className="gvaSyncSectionTitle">

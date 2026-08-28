@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { AdminSelect } from '@/components/admin/admin-primitives';
-import { useTheme } from '@/providers/theme-provider';
+import { applyTheme, useTheme } from '@/providers/theme-provider';
 import type { ThemeMode } from '@/lib/types/management';
 import { showGvaMessage } from '@/lib/utils/ga-message';
 import {
@@ -219,10 +219,12 @@ export function GvaSettingDrawer({
 
 function syncThemeScheme(scheme: GvaThemeScheme, setTheme: (theme: ThemeMode) => void) {
   if (scheme === 'dark') {
+    applyTheme('graphite');
     setTheme('graphite');
     return;
   }
   if (scheme === 'light') {
+    applyTheme('gva');
     setTheme('gva');
     return;
   }

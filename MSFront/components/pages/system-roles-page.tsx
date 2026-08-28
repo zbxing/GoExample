@@ -536,7 +536,6 @@ export function SystemRolesPage() {
         onClose={() => setDialogOpen(false)}
         onConfirm={() => void submitRoleForm()}
         busy={busy}
-        width="40%"
       >
         <div className="adminForm gvaDialogForm">
           <AdminField label="父级角色">
@@ -578,7 +577,6 @@ export function SystemRolesPage() {
         onConfirm={() => void savePermission()}
         busy={busy}
         confirmLabel="确 定"
-        width={720}
       >
         <div className="gvaBorderTabs">
           <div className="gvaBorderTabNav">
@@ -668,7 +666,6 @@ export function SystemRolesPage() {
         onConfirm={() => void confirmAssign()}
         busy={busy}
         confirmLabel="确 定"
-        width={720}
       >
         <AdminWarningBar title="注：保存时将全量覆盖该角色的用户关联关系；若用户仅剩此一个角色，移除后其主角色保持不变" />
         <AdminSearchForm

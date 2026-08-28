@@ -413,7 +413,6 @@ export function SystemUsersPage({ embedded = false }: { embedded?: boolean } = {
         onClose={() => setDialogOpen(false)}
         onConfirm={() => void saveUser()}
         busy={busy}
-        width="40%"
       >
         <div className="adminForm gvaDialogForm">
           {!form.id ? (

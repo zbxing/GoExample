@@ -483,7 +483,8 @@ export function TagsView({
       }
     }
     map.set('/403', { title: '无权限' });
-    map.set('/settings', { title: '系统设置', icon: 'Settings' });
+    map.set('/settings', { title: '配置文件', icon: 'FileCog' });
+    map.set('/about', { title: '关于我们', icon: 'Building2' });
     return map;
   }, [menus]);
 

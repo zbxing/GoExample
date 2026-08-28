@@ -14,7 +14,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { useAuth } from '@/providers/auth-provider';
-import { useTheme } from '@/providers/theme-provider';
+import { applyTheme, useTheme } from '@/providers/theme-provider';
 import { CommandPalette } from '@/components/shell/command-palette';
 import { GvaMorphButton } from '@/components/shell/ga-morph-button';
 import {
@@ -104,7 +104,10 @@ export function Topbar({
 
   function toggleTheme() {
     const nextDark = !isDark;
-    setTheme(nextDark ? 'graphite' : 'gva');
+    const nextTheme = nextDark ? 'graphite' : 'gva';
+    // 先同步 html class，再写 shell 设置，避免 applyGvaShellCss 读到旧的 dark 状态
+    applyTheme(nextTheme);
+    setTheme(nextTheme);
     onShellSettingsChange({
       ...shellSettings,
       themeScheme: nextDark ? 'dark' : 'light',
@@ -283,7 +286,8 @@ export function Topbar({
 
 const BREADCRUMB_FALLBACKS: Record<string, string> = {
   '/dashboard': '仪表盘',
-  '/settings': '系统设置',
+  '/settings': '配置文件',
+  '/about': '关于我们',
   '/403': '无权限',
 };
 

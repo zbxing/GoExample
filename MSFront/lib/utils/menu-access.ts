@@ -21,6 +21,7 @@ export function buildMenuTreeFromFlat(items: SystemMenuRecord[]): SystemMenuTree
     sort: item.sort,
     keepAlive: item.keepAlive,
     menuBtns: item.menuBtns ?? [],
+    parameters: item.parameters ?? [],
   }));
 
   function walk(parentId: string): SystemMenuTreeNode[] {

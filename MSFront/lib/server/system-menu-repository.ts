@@ -87,6 +87,7 @@ export async function createSystemMenu(input: CreateSystemMenuInput) {
     sort: input.sort ?? menus.length + 1,
     keepAlive: Boolean(input.keepAlive),
     menuBtns: input.menuBtns ?? [],
+    parameters: input.parameters ?? [],
   };
   menus.push(menu);
   await saveMenus(menus);
@@ -113,6 +114,7 @@ export async function updateSystemMenu(input: UpdateSystemMenuInput) {
     sort: input.sort ?? current.sort,
     keepAlive: input.keepAlive ?? current.keepAlive,
     menuBtns: input.menuBtns ?? current.menuBtns,
+    parameters: input.parameters ?? current.parameters ?? [],
   };
   menus[index] = next;
   await saveMenus(menus);

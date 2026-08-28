@@ -150,6 +150,15 @@ export function IconArrowRight(props: IconProps) {
   );
 }
 
+/** Element Plus / Ant Design tree caret：实心三角（折叠向右，展开旋转 90° 向下） */
+export function IconCaretRight(props: IconProps) {
+  return (
+    <svg {...baseProps({ size: 12, ...props })}>
+      <path fill="currentColor" d="M384 192v640l384-320.064z" />
+    </svg>
+  );
+}
+
 export function IconArrowDown(props: IconProps) {
   return (
     <svg {...baseProps({ size: 12, ...props })}>

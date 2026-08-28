@@ -5,6 +5,13 @@ const identifier = z.string().trim().min(1).max(128);
 const shortText = z.string().trim().max(256);
 const longText = z.string().trim().max(4096);
 const stringList = z.array(z.string().trim().min(1).max(256)).max(500);
+const menuParameterSchema = z
+  .object({
+    type: z.enum(['query', 'params']),
+    key: z.string().trim().max(256),
+    value: z.string().trim().max(2048),
+  })
+  .strict();
 const httpMethod = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 const userStatus = z.enum(['active', 'disabled']);
 const projectStatus = z.enum(['healthy', 'warning', 'critical']);
@@ -84,6 +91,7 @@ export const createSystemMenuSchema = z
     sort: z.number().int().min(-1_000_000).max(1_000_000).optional(),
     keepAlive: z.boolean().optional(),
     menuBtns: stringList.optional(),
+    parameters: z.array(menuParameterSchema).max(200).optional(),
   })
   .strict();
 

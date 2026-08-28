@@ -28,6 +28,7 @@ import {
 import type { SystemMenuTreeNode, SystemRoleRecord } from '@/lib/types/system';
 
 type MenuBtnRow = { name: string; desc: string };
+type MenuParameterRow = { type: 'query' | 'params'; key: string; value: string };
 
 type MenuFormState = {
   id: string;
@@ -44,6 +45,7 @@ type MenuFormState = {
   defaultMenu: boolean;
   activeName: string;
   transitionType: string;
+  parameters: MenuParameterRow[];
   menuBtns: MenuBtnRow[];
 };
 
@@ -62,6 +64,7 @@ const emptyForm = (parentId = '0', sort = 1): MenuFormState => ({
   defaultMenu: false,
   activeName: '',
   transitionType: '',
+  parameters: [],
   menuBtns: [],
 });
 
@@ -149,6 +152,7 @@ export function SystemMenusPage() {
     [flat],
   );
   const roleTree = useMemo(() => buildRoleTree(roles), [roles]);
+  const assignRoleTreeNodes = useMemo(() => toTreeNodes(roleTree), [roleTree]);
   const dialogTitle = form.id
     ? '编辑菜单'
     : form.parentId && form.parentId !== '0'
@@ -188,6 +192,11 @@ export function SystemMenusPage() {
       defaultMenu: false,
       activeName: '',
       transitionType: '',
+      parameters: (menu.parameters ?? []).map((item) => ({
+        type: item.type === 'params' ? 'params' : 'query',
+        key: item.key ?? '',
+        value: item.value ?? '',
+      })),
       menuBtns: menu.menuBtns.map((name) => ({ name, desc: '' })),
     });
     setDialogOpen(true);
@@ -216,6 +225,13 @@ export function SystemMenusPage() {
       sort: form.sort,
       keepAlive: form.keepAlive,
       menuBtns: form.menuBtns.map((item) => item.name.trim()).filter(Boolean),
+      parameters: form.parameters
+        .map((item) => ({
+          type: item.type,
+          key: item.key.trim(),
+          value: item.value.trim(),
+        }))
+        .filter((item) => item.key || item.value),
     };
     try {
       if (form.id) {
@@ -417,7 +433,6 @@ export function SystemMenusPage() {
         onClose={() => setDialogOpen(false)}
         onConfirm={() => void saveMenu()}
         busy={busy}
-        width="40%"
       >
         <AdminWarningBar title="新增菜单，需要在角色管理内配置权限才可使用" />
         <div className="gvaMenuForm">
@@ -425,7 +440,7 @@ export function SystemMenusPage() {
             <h3>基础信息</h3>
             <div className="gvaMenuFormGrid">
               <label className="gvaMenuFormItem gvaMenuFormItemFull">
-                <span>文件路径</span>
+                <span className="is-required">文件路径</span>
                 <input
                   value={form.component}
                   placeholder="请输入文件路径"
@@ -447,7 +462,7 @@ export function SystemMenusPage() {
                 </p>
               </label>
               <label className="gvaMenuFormItem">
-                <span>展示名称</span>
+                <span className="is-required">展示名称</span>
                 <input
                   value={form.title}
                   placeholder="请输入菜单展示名称"
@@ -457,7 +472,7 @@ export function SystemMenusPage() {
                 />
               </label>
               <label className="gvaMenuFormItem">
-                <span>路由Name</span>
+                <span className="is-required">路由Name</span>
                 <input
                   value={form.name}
                   placeholder="唯一英文字符串"
@@ -489,7 +504,7 @@ export function SystemMenusPage() {
                 </select>
               </label>
               <label className="gvaMenuFormItem">
-                <span>路由Path</span>
+                <span className="is-required">路由Path</span>
                 <input
                   value={form.path}
                   placeholder="建议只在后方拼接参数"
@@ -612,6 +627,114 @@ export function SystemMenusPage() {
 
           <section className="gvaMenuFormSection">
             <div className="gvaMenuFormSectionHead">
+              <h3>菜单参数配置</h3>
+              <button
+                type="button"
+                className="elButton elButtonPrimary elButtonSmall"
+                onClick={() =>
+                  setForm((current) => ({
+                    ...current,
+                    parameters: [...current.parameters, { type: 'query', key: '', value: '' }],
+                  }))
+                }
+              >
+                新增菜单参数
+              </button>
+            </div>
+            <div className="gvaMenuBtnTableWrap">
+              <table className="gvaMenuBtnTable">
+                <thead>
+                  <tr>
+                    <th style={{ width: 150 }}>参数类型</th>
+                    <th style={{ width: 150 }}>参数key</th>
+                    <th>参数值</th>
+                    <th style={{ width: 90 }}>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {form.parameters.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="gvaMenuBtnEmpty">
+                        暂无数据
+                      </td>
+                    </tr>
+                  ) : (
+                    form.parameters.map((param, index) => (
+                      <tr key={`param-${index}`}>
+                        <td>
+                          <select
+                            value={param.type}
+                            onChange={(event) =>
+                              setForm((current) => {
+                                const parameters = [...current.parameters];
+                                parameters[index] = {
+                                  ...parameters[index],
+                                  type: event.target.value === 'params' ? 'params' : 'query',
+                                };
+                                return { ...current, parameters };
+                              })
+                            }
+                          >
+                            <option value="query">query</option>
+                            <option value="params">params</option>
+                          </select>
+                        </td>
+                        <td>
+                          <input
+                            value={param.key}
+                            placeholder="请输入参数key"
+                            onChange={(event) =>
+                              setForm((current) => {
+                                const parameters = [...current.parameters];
+                                parameters[index] = {
+                                  ...parameters[index],
+                                  key: event.target.value,
+                                };
+                                return { ...current, parameters };
+                              })
+                            }
+                          />
+                        </td>
+                        <td>
+                          <input
+                            value={param.value}
+                            placeholder="请输入参数值"
+                            onChange={(event) =>
+                              setForm((current) => {
+                                const parameters = [...current.parameters];
+                                parameters[index] = {
+                                  ...parameters[index],
+                                  value: event.target.value,
+                                };
+                                return { ...current, parameters };
+                              })
+                            }
+                          />
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="elButton elButtonDanger elButtonSmall"
+                            onClick={() =>
+                              setForm((current) => ({
+                                ...current,
+                                parameters: current.parameters.filter((_, i) => i !== index),
+                              }))
+                            }
+                          >
+                            删除
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="gvaMenuFormSection">
+            <div className="gvaMenuFormSectionHead">
               <h3>可控按钮配置</h3>
               <button
                 type="button"
@@ -701,23 +824,19 @@ export function SystemMenusPage() {
         onClose={() => setAssignOpen(false)}
         onConfirm={() => void confirmAssign()}
         busy={busy}
-        width="40%"
       >
         <AdminWarningBar title="注：保存时将全量覆盖该菜单的角色关联关系；作为角色首页的菜单不可取消勾选" />
         <AdminTree
-          nodes={toTreeNodes(roleTree)}
+          nodes={assignRoleTreeNodes}
           selectedIds={assignRoleIds}
+          disabledIds={
+            assignMenu
+              ? roles
+                  .filter((role) => role.defaultRouter === assignMenu.path)
+                  .map((role) => role.id)
+              : []
+          }
           onToggle={(id) => {
-            const role = roles.find((item) => item.id === id);
-            if (
-              role &&
-              assignMenu &&
-              role.defaultRouter === assignMenu.path &&
-              assignRoleIds.includes(id)
-            ) {
-              showError('作为角色首页的菜单不可取消勾选');
-              return;
-            }
             setAssignRoleIds((current) =>
               current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
             );

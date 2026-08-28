@@ -2,6 +2,12 @@ export type SystemUserStatus = 'active' | 'disabled';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
+export interface SystemMenuParameter {
+  type: 'query' | 'params';
+  key: string;
+  value: string;
+}
+
 export interface SystemMenuRecord {
   id: string;
   parentId: string;
@@ -14,6 +20,8 @@ export interface SystemMenuRecord {
   sort: number;
   keepAlive: boolean;
   menuBtns: string[];
+  /** 路由参数配置（对齐 GVA form.parameters） */
+  parameters?: SystemMenuParameter[];
 }
 
 export interface SystemMenuTreeNode extends SystemMenuRecord {
@@ -167,6 +175,7 @@ export interface CreateSystemMenuInput {
   sort?: number;
   keepAlive?: boolean;
   menuBtns?: string[];
+  parameters?: SystemMenuParameter[];
 }
 
 export interface UpdateSystemMenuInput extends Partial<CreateSystemMenuInput> {

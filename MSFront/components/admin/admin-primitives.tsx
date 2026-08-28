@@ -14,6 +14,7 @@ import {
   IconArrowDown,
   IconArrowLeft,
   IconArrowRight,
+  IconCaretRight,
   IconCopy,
   IconDelete,
   IconEdit,
@@ -668,7 +669,7 @@ export function AdminDialog({
   cancelLabel = '取 消',
   children,
   busy = false,
-  width = 560,
+  width = 800,
   variant = 'drawer',
 }: PropsWithChildren<{
   open: boolean;
@@ -678,14 +679,36 @@ export function AdminDialog({
   confirmLabel?: string;
   cancelLabel?: string;
   busy?: boolean;
+  /** 对齐 GVA appStore.drawerSize：桌面 800px，移动端请传 '100%' */
   width?: number | string;
   variant?: 'drawer' | 'dialog';
 }>) {
-  if (!open) {
-    return null;
+  const [presented, setPresented] = useState(open);
+
+  if (open && !presented) {
+    setPresented(true);
   }
 
+  const phase = open ? 'enter' : 'leave';
+
+  useEffect(() => {
+    if (!presented) {
+      return;
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [presented, onClose]);
+
   if (variant === 'dialog') {
+    if (!open) {
+      return null;
+    }
+
     return (
       <div className="adminDialogBackdrop" role="presentation" onClick={onClose}>
         <div
@@ -723,15 +746,32 @@ export function AdminDialog({
     );
   }
 
+  if (!presented) {
+    return null;
+  }
+
   return (
-    <div className="gvaFormDrawerRoot">
+    <div className={`gvaFormDrawerRoot is-${phase}`}>
       <button type="button" className="gvaFormDrawerMask" aria-label="关闭" onClick={onClose} />
       <aside
         className="gvaFormDrawer"
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        style={{ width: typeof width === 'number' ? Math.max(width, 360) : width }}
+        style={{
+          width: typeof width === 'number' ? `${width}px` : width,
+          maxWidth: '100vw',
+        }}
+        onAnimationEnd={(event) => {
+          if (
+            event.target !== event.currentTarget ||
+            open ||
+            event.animationName !== 'gva-rtl-drawer-out'
+          ) {
+            return;
+          }
+          setPresented(false);
+        }}
       >
         <header className="gvaFormDrawerHeader">
           <span>{title}</span>
@@ -761,6 +801,8 @@ export function AdminTree({
   nodes,
   selectedIds,
   onToggle,
+  disabledIds = [],
+  defaultExpandAll = true,
 }: {
   nodes: Array<{
     id: string;
@@ -769,8 +811,62 @@ export function AdminTree({
   }>;
   selectedIds: string[];
   onToggle: (id: string) => void;
+  /** 不可勾选/取消的节点（如角色首页菜单对应角色） */
+  disabledIds?: string[];
+  /** 对齐 GVA el-tree default-expand-all */
+  defaultExpandAll?: boolean;
 }) {
-  return <div className="adminTree">{renderNodes(nodes, selectedIds, onToggle, 0)}</div>;
+  const disabled = useMemo(() => new Set(disabledIds), [disabledIds]);
+  // 用 id 序列作依赖，避免父组件每次 render 传入新 nodes 数组时重置展开态
+  const branchIdKey = useMemo(() => collectBranchIds(nodes).join('\0'), [nodes]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
+    defaultExpandAll ? new Set(collectBranchIds(nodes)) : new Set(),
+  );
+
+  useEffect(() => {
+    if (!defaultExpandAll) {
+      return;
+    }
+    setExpandedIds(new Set(branchIdKey ? branchIdKey.split('\0') : []));
+  }, [branchIdKey, defaultExpandAll]);
+
+  function toggleExpand(id: string) {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  return (
+    <div className="adminTree">
+      {renderNodes(nodes, selectedIds, onToggle, disabled, expandedIds, toggleExpand, 0)}
+    </div>
+  );
+}
+
+function collectBranchIds(
+  nodes: Array<{
+    id: string;
+    children?: Array<{ id: string; children?: unknown[] }>;
+  }>,
+): string[] {
+  const ids: string[] = [];
+  for (const node of nodes) {
+    if (node.children && node.children.length > 0) {
+      ids.push(node.id);
+      ids.push(
+        ...collectBranchIds(
+          node.children as Array<{ id: string; children?: Array<{ id: string; children?: unknown[] }> }>,
+        ),
+      );
+    }
+  }
+  return ids;
 }
 
 function renderNodes(
@@ -781,32 +877,67 @@ function renderNodes(
   }>,
   selectedIds: string[],
   onToggle: (id: string) => void,
+  disabledIds: Set<string>,
+  expandedIds: Set<string>,
+  onToggleExpand: (id: string) => void,
   depth: number,
 ): ReactNode {
-  return nodes.map((node) => (
-    <div key={node.id}>
-      <label className="adminTreeItem" style={{ ['--depth' as string]: depth }}>
-        <input
-          type="checkbox"
-          checked={selectedIds.includes(node.id)}
-          onChange={() => onToggle(node.id)}
-        />
-        <span>{node.title}</span>
-      </label>
-      {node.children && node.children.length > 0
-        ? renderNodes(
-            node.children as Array<{
-              id: string;
-              title: string;
-              children?: Array<{ id: string; title: string; children?: unknown[] }>;
-            }>,
-            selectedIds,
-            onToggle,
-            depth + 1,
-          )
-        : null}
-    </div>
-  ));
+  return nodes.map((node) => {
+    const isDisabled = disabledIds.has(node.id);
+    const hasChildren = Boolean(node.children && node.children.length > 0);
+    const expanded = expandedIds.has(node.id);
+
+    return (
+      <div key={node.id} className="adminTreeNode">
+        <div
+          className={isDisabled ? 'adminTreeItem is-disabled' : 'adminTreeItem'}
+          style={{ ['--depth' as string]: depth }}
+        >
+          {hasChildren ? (
+            <button
+              type="button"
+              className={expanded ? 'gvaTreeExpand is-expanded' : 'gvaTreeExpand'}
+              aria-label={expanded ? '折叠' : '展开'}
+              aria-expanded={expanded}
+              onClick={() => onToggleExpand(node.id)}
+            >
+              <IconCaretRight size={12} />
+            </button>
+          ) : (
+            <span className="gvaTreeExpandSpacer" aria-hidden="true" />
+          )}
+          <label className="adminTreeItemLabel">
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(node.id)}
+              disabled={isDisabled}
+              onChange={() => {
+                if (!isDisabled) {
+                  onToggle(node.id);
+                }
+              }}
+            />
+            <span>{node.title}</span>
+          </label>
+        </div>
+        {hasChildren && expanded
+          ? renderNodes(
+              node.children as Array<{
+                id: string;
+                title: string;
+                children?: Array<{ id: string; title: string; children?: unknown[] }>;
+              }>,
+              selectedIds,
+              onToggle,
+              disabledIds,
+              expandedIds,
+              onToggleExpand,
+              depth + 1,
+            )
+          : null}
+      </div>
+    );
+  });
 }
 
 export function AdminLinkButton({

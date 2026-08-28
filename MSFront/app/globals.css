@@ -4421,6 +4421,7 @@ html.theme-gva body {
   color: #606266;
   cursor: pointer;
   font-size: 13px;
+  transition: color 0.1s, background-color 0.1s, border-color 0.1s, outline 0.1s;
 }
 
 .elButton:hover {
@@ -4438,6 +4439,12 @@ html.theme-gva body {
 .elButtonPrimary:hover {
   background: #66b1ff;
   border-color: #66b1ff;
+  color: #fff;
+}
+
+.elButtonPrimary:active {
+  background: #3a8ee6;
+  border-color: #3a8ee6;
   color: #fff;
 }
 
@@ -4584,16 +4591,34 @@ html.theme-gva body {
 
 .adminTree {
   display: grid;
-  gap: 4px;
+  gap: 2px;
+}
+
+.adminTreeNode {
+  display: grid;
+  gap: 2px;
 }
 
 .adminTreeItem {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   min-height: 32px;
   padding-left: calc(var(--depth, 0) * 16px);
-  font-size: 13px;
+  font-size: 14px;
+  color: var(--el-text-color-regular, #606266);
+}
+
+.adminTreeItemLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.adminTreeItem.is-disabled .adminTreeItemLabel {
+  cursor: not-allowed;
 }
 
 .adminPagination {
