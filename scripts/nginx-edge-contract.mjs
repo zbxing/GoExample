@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import http from 'node:http';
@@ -9,6 +9,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  buildNginxEdgeChecksums,
+  buildNginxEdgeEvidenceReport,
+} from './lib/nginx-edge-evidence.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -24,6 +28,7 @@ const configPath = path.join(deploymentDirectory, 'nginx.conf');
 const certificatePath = path.join(runtimeDirectory, 'tls.crt');
 const privateKeyPath = path.join(runtimeDirectory, 'tls.key');
 const events = [];
+const startedAt = new Date().toISOString();
 let containerCreated = false;
 let upstreamServer;
 
@@ -227,20 +232,17 @@ async function waitForEdge(port) {
   throw new Error(`Nginx did not become ready: ${lastError?.message ?? 'unknown error'}`);
 }
 
-async function sha256(filePath) {
-  const hash = createHash('sha256');
-  hash.update(await readFile(filePath));
-  return hash.digest('hex');
-}
-
 async function writeArtifacts(status, error, containerLogs) {
   await rm(artifactDirectory, { recursive: true, force: true });
   await mkdir(artifactDirectory, { recursive: true });
   const git = await run('git', ['rev-parse', 'HEAD'], { allowFailure: true });
+  const runnerOS = process.env.RUNNER_OS ?? os.platform();
+  const runnerArch = process.env.RUNNER_ARCH ?? os.arch();
+  const gitCommit = git.status === 0 ? git.stdout.trim() : 'unknown';
   const environment = [
-    `runner_os=${process.env.RUNNER_OS ?? os.platform()}`,
-    `runner_arch=${process.env.RUNNER_ARCH ?? os.arch()}`,
-    `git_commit=${git.status === 0 ? git.stdout.trim() : 'unknown'}`,
+    `runner_os=${runnerOS}`,
+    `runner_arch=${runnerArch}`,
+    `git_commit=${gitCommit}`,
     `node=${process.version}`,
     `nginx_image=${image}`,
     `contract=${path.relative(repositoryRoot, contractPath).split(path.sep).join('/')}`,
@@ -254,12 +256,22 @@ async function writeArtifacts(status, error, containerLogs) {
   }, null, 2)}\n`, 'utf8');
   await writeFile(path.join(artifactDirectory, 'nginx.log'), containerLogs || '', 'utf8');
   await writeFile(path.join(artifactDirectory, 'test-status.txt'), `exit_code=${status}\n`, 'utf8');
-  const artifactNames = ['environment.txt', 'test-output.json', 'nginx.log', 'test-status.txt'];
-  const checksums = [];
-  for (const name of artifactNames) {
-    checksums.push(`${await sha256(path.join(artifactDirectory, name))}  ${name}`);
-  }
-  await writeFile(path.join(artifactDirectory, 'SHA256SUMS'), `${checksums.join('\n')}\n`, 'utf8');
+  const report = buildNginxEdgeEvidenceReport({
+    repositoryRoot,
+    evidenceRoot: artifactDirectory,
+    nodeVersion: process.version,
+    platform: process.platform,
+    architecture: process.arch,
+    runnerOS,
+    runnerArch,
+    gitCommit,
+    startedAt,
+    endedAt: new Date().toISOString(),
+    exitCode: status,
+    events,
+  });
+  await writeFile(path.join(artifactDirectory, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeFile(path.join(artifactDirectory, 'SHA256SUMS'), buildNginxEdgeChecksums(artifactDirectory), 'utf8');
 }
 
 async function executeContract() {

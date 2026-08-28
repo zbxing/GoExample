@@ -63,6 +63,7 @@ func TestRedisSentinelFailoverReconnectsSharedStateClients(t *testing.T) {
 	if err != nil || len(oldMaster) != 2 {
 		t.Fatalf("read original Sentinel master: address parts=%d, error=%v", len(oldMaster), err)
 	}
+	t.Log("sentinel-checkpoint=discovery")
 
 	if err := first.SetWithContext(testContext, "replicated", []byte("before-failover"), time.Minute); err != nil {
 		t.Fatalf("write state before failover: %v", err)
@@ -70,6 +71,7 @@ func TestRedisSentinelFailoverReconnectsSharedStateClients(t *testing.T) {
 	if _, err := first.client.Do(testContext, "WAIT", 1, 5000).Result(); err != nil {
 		t.Fatalf("wait for replica before failover: %v", err)
 	}
+	t.Log("sentinel-checkpoint=replication_before_failover")
 	if err := sentinel.Failover(testContext, masterName).Err(); err != nil {
 		t.Fatalf("request Sentinel failover: %v", err)
 	}
@@ -77,6 +79,7 @@ func TestRedisSentinelFailoverReconnectsSharedStateClients(t *testing.T) {
 	if strings.Join(newMaster, ":") == strings.Join(oldMaster, ":") {
 		t.Fatalf("Sentinel master did not change from %s", strings.Join(oldMaster, ":"))
 	}
+	t.Log("sentinel-checkpoint=master_changed")
 
 	waitForRedisSentinelClients(t, testContext, first, second)
 	value, err := second.GetWithContext(testContext, "replicated")
@@ -89,6 +92,7 @@ func TestRedisSentinelFailoverReconnectsSharedStateClients(t *testing.T) {
 	if value, err = first.GetWithContext(testContext, "reconnected"); err != nil || string(value) != "after-failover" {
 		t.Fatalf("cross-client read after failover: value=%q, error=%v", value, err)
 	}
+	t.Log("sentinel-checkpoint=clients_reconnected")
 
 	allowed, err := first.Take(testContext, "limit", 1, time.Minute)
 	if err != nil || !allowed.Allowed {
@@ -98,6 +102,7 @@ func TestRedisSentinelFailoverReconnectsSharedStateClients(t *testing.T) {
 	if err != nil || denied.Allowed {
 		t.Fatalf("second rate-limit take after failover: result=%#v, error=%v", denied, err)
 	}
+	t.Log("sentinel-checkpoint=rate_limit_atomic")
 	if err := first.Lock("lease"); err != nil {
 		t.Fatalf("first lock after failover: %v", err)
 	}
@@ -113,6 +118,7 @@ func TestRedisSentinelFailoverReconnectsSharedStateClients(t *testing.T) {
 	if err := second.Unlock("lease"); err != nil {
 		t.Fatalf("release second lock after failover: %v", err)
 	}
+	t.Log("sentinel-checkpoint=lock_owner_safe")
 }
 
 func newRedisSentinelIntegrationClient(t *testing.T, ctx context.Context, config RedisConfig) *Redis {

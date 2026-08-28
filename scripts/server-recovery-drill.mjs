@@ -3,6 +3,11 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  serverRecoveryGoArguments,
+  serverRecoveryLimitations,
+  serverRecoveryScenarios,
+} from './lib/server-recovery-evidence.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -12,48 +17,7 @@ const outputRoot = path.join(recoveryRoot, 'server-local');
 const workspace = readFileSync(path.join(repositoryRoot, 'go.work'), 'utf8');
 const toolchainMatch = workspace.match(/^toolchain\s+go(\d+\.\d+\.\d+)$/m);
 
-const scenarios = [
-  {
-    id: 'redis_outage_and_lock_safety',
-    package: './Framework/sharedstate',
-    tests: [
-      'TestRedisLockOwnerCannotDeleteReplacementLease',
-      'TestRedisLockWaitIsBounded',
-      'TestRedisOperationsFailWhenBackendStops',
-      'TestRedisFailureDoesNotMasqueradeAsClientDeadline',
-    ],
-  },
-  {
-    id: 'otel_outage_and_recovery',
-    package: './Framework/observability',
-    tests: [
-      'TestBatchSpanProcessorDropsBurstWithoutBlockingWhenExporterIsStalled',
-      'TestOTLPHTTPExporterMetricsRecordCollectorFailureAndRecovery',
-      'TestOTLPHTTPExporterRecordsEachAttemptAndRecoversWithinOneBatch',
-      'TestTraceExporterHTTPClientAndRetryBudgetsAreFinite',
-    ],
-  },
-  {
-    id: 'http_deadline_drain_and_shutdown',
-    package: './Framework/httpapi',
-    tests: [
-      'TestWriteTimeoutStopsSlowReaderOverTCP',
-      'TestShutdownClosesIdleKeepAliveConnectionsOverTCP',
-      'TestDrainingRejectsNewAPIRequestsButKeepsExistingWorkAndProbeContract',
-      'TestRequestDeadlineCancelsHandlerOverTCP',
-      'TestServerShutdownCancelsHandlerOverTCP',
-      'TestSharedStorageFailureIsFailClosed',
-    ],
-  },
-  {
-    id: 'outbound_timeout_and_cancellation',
-    package: './Framework/httpclient',
-    tests: [
-      'TestClientRecordsTimeoutWithoutLeakingTransportError',
-      'TestClientRecordsCallerCancellation',
-    ],
-  },
-];
+const scenarios = serverRecoveryScenarios;
 
 function fail(message) {
   console.error(`Server recovery drill: ${message}`);
@@ -126,8 +90,7 @@ const goVersionResult = spawnSync(goCommand, ['version'], {
 const results = [];
 
 for (const scenario of scenarios) {
-  const testPattern = `^(${scenario.tests.join('|')})$`;
-  const commandArgs = ['test', '-v', '-count=1', '-timeout=45s', `-run=${testPattern}`, scenario.package];
+  const commandArgs = serverRecoveryGoArguments(scenario);
   const startedAt = new Date();
   const started = performance.now();
   const result = spawnSync(goCommand, commandArgs, {
@@ -172,11 +135,7 @@ const summary = {
   repository: { gitCommit: gitCommitResult.status === 0 ? gitCommitResult.stdout.trim() : 'unknown' },
   toolchain: { go: goVersionResult.status === 0 ? goVersionResult.stdout.trim() : 'unavailable' },
   scenarios: results,
-  limitations: [
-    'uses local test dependencies and loopback sockets, not target infrastructure',
-    'does not establish production RPO, RTO, failover, alert delivery, or operator response',
-    'requires a signed remote artifact before it can contribute provenance evidence',
-  ],
+  limitations: [...serverRecoveryLimitations],
 };
 const summaryPath = path.join(outputRoot, 'summary.json');
 writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`, 'utf8');

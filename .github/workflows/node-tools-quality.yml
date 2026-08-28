@@ -12,9 +12,12 @@ on:
       - "docs/openapi/**"
       - "support/deploy/kubernetes/**"
       - "support/deploy/edge/**"
+      - "support/deploy/prometheus/**"
+      - "docs/observability/**"
       - "package.json"
       - "yarn.lock"
-      - ".github/workflows/node-tools-quality.yml"
+      - ".github/workflows/**"
+      - "!.github/workflows/msfront-*.yml"
   pull_request:
     paths:
       - "scripts/**"
@@ -26,9 +29,12 @@ on:
       - "docs/openapi/**"
       - "support/deploy/kubernetes/**"
       - "support/deploy/edge/**"
+      - "support/deploy/prometheus/**"
+      - "docs/observability/**"
       - "package.json"
       - "yarn.lock"
-      - ".github/workflows/node-tools-quality.yml"
+      - ".github/workflows/**"
+      - "!.github/workflows/msfront-*.yml"
   workflow_dispatch:
 
 permissions:
@@ -61,9 +67,41 @@ jobs:
           cache-dependency-path: |
             Framework/go.sum
             Solutions/Example/go.sum
+            tools/actionlint/go.sum
+            tools/promtool/go.sum
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile --non-interactive
+
+      - name: Lint non-MSFront GitHub workflows
+        run: yarn workflow:lint
+
+      - name: Verify workflow lint evidence
+        run: yarn workflow:lint:verify
+
+      - name: Upload workflow lint evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: workflow-lint-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/workflow-artifacts/workflow-lint
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Validate Prometheus config and rules with pinned promtool
+        run: yarn prometheus:rules
+
+      - name: Verify Prometheus config and rule evidence
+        run: yarn prometheus:rules:verify
+
+      - name: Upload Prometheus config and rule evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: prometheus-rules-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/workflow-artifacts/prometheus-rules
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Test root Node tools
         run: yarn test:node
@@ -77,8 +115,23 @@ jobs:
       - name: Verify generated Go SDK
         run: yarn sdk:check
 
-      - name: Verify Kubernetes deployment contract
-        run: yarn kubernetes:check
+      - name: Verify SDK release readiness manifests
+        run: yarn sdk:release:verify
+
+      - name: Generate deterministic Kubernetes deployment evidence
+        run: yarn kubernetes:evidence
+
+      - name: Verify Kubernetes deployment evidence
+        run: yarn kubernetes:evidence:verify
+
+      - name: Upload Kubernetes deployment evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: kubernetes-manifest-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/workflow-artifacts/kubernetes-manifest
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Verify Nginx edge contract
         run: yarn edge:check
@@ -104,6 +157,10 @@ jobs:
 
       - name: Run real Nginx TLS and lifecycle contract
         run: yarn edge:contract
+
+      - name: Verify Nginx edge contract evidence
+        if: always()
+        run: yarn edge:contract:verify
 
       - name: Upload Nginx edge contract evidence
         if: always()

@@ -1,9 +1,13 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  buildRedisSentinelChecksums,
+  buildRedisSentinelEvidenceReport,
+} from './lib/redis-sentinel-evidence.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -18,6 +22,7 @@ const runtimeDirectory = path.join(repositoryRoot, '.temp', 'redis-sentinel-cont
 const artifactDirectory = path.join(repositoryRoot, '.temp', 'workflow-artifacts', 'redis-sentinel-contract');
 const containers = [];
 const contractOutput = [];
+const startedAt = new Date().toISOString();
 let testOutput = '';
 let exitCode = 1;
 let gitCommit = 'unavailable';
@@ -173,11 +178,7 @@ function sentinelCLI(containerName, port, ...commands) {
   ], { allowFailure: true });
 }
 
-async function sha256File(filePath) {
-  return createHash('sha256').update(await readFile(filePath)).digest('hex');
-}
-
-async function archive(environment) {
+async function archive(environment, failure) {
   await mkdir(artifactDirectory, { recursive: true });
   const logDirectory = path.join(artifactDirectory, 'container-logs');
   await mkdir(logDirectory, { recursive: true });
@@ -189,18 +190,28 @@ async function archive(environment) {
   await writeFile(path.join(artifactDirectory, 'contract-output.txt'), `${contractOutput.join('\n')}\n`);
   await writeFile(path.join(artifactDirectory, 'test-output.txt'), testOutput);
   await writeFile(path.join(artifactDirectory, 'test-status.txt'), `exit_code=${exitCode}\n`);
-  const relativeFiles = [
-    'environment.txt',
-    'contract-output.txt',
-    'test-output.txt',
-    'test-status.txt',
-    ...containers.map((container) => `container-logs/${container.name}.log`),
-  ];
-  const sums = [];
-  for (const relativeFile of relativeFiles) {
-    sums.push(`${await sha256File(path.join(artifactDirectory, relativeFile))}  ${relativeFile}`);
-  }
-  await writeFile(path.join(artifactDirectory, 'SHA256SUMS'), `${sums.join('\n')}\n`);
+  const containerNames = containers.map((container) => container.name);
+  const report = buildRedisSentinelEvidenceReport({
+    repositoryRoot,
+    evidenceRoot: artifactDirectory,
+    nodeVersion: process.version,
+    platform: process.platform,
+    architecture: process.arch,
+    goVersion,
+    dockerVersion,
+    gitCommit,
+    startedAt,
+    endedAt: new Date().toISOString(),
+    exitCode,
+    error: failure?.message ?? null,
+    containerNames,
+    ports,
+  });
+  await writeFile(path.join(artifactDirectory, 'report.json'), `${JSON.stringify(report, null, 2)}\n`);
+  await writeFile(
+    path.join(artifactDirectory, 'SHA256SUMS'),
+    buildRedisSentinelChecksums(artifactDirectory, containerNames),
+  );
 }
 
 async function cleanup() {
@@ -305,7 +316,7 @@ try {
     '',
   ].join('\n');
   try {
-    await archive(environment);
+    await archive(environment, failure);
   } finally {
     await cleanup();
   }

@@ -6,6 +6,7 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
 const defaultTemplate = path.join(repositoryRoot, 'support', 'deploy', 'kubernetes', 'goexample-api.template.json');
 const defaultOutput = path.join(repositoryRoot, '.temp', 'deployment', 'kubernetes', 'goexample-api.json');
+const kubernetesEvidenceRoot = path.join(repositoryRoot, '.temp', 'workflow-artifacts', 'kubernetes-manifest');
 const imagePlaceholder = '__GOEXAMPLE_IMAGE_DIGEST__';
 const originPlaceholder = '__GOEXAMPLE_ALLOWED_ORIGIN__';
 const oidcIssuerPlaceholder = '__GOEXAMPLE_OIDC_ISSUER__';
@@ -83,8 +84,11 @@ function parseArguments(args) {
       fail('render requires --image, --allowed-origin, --oidc-issuer, --oidc-audience, and --oidc-jwks-url');
     }
     const deploymentRoot = path.join(repositoryRoot, '.temp', 'deployment');
-    if (!isWithin(deploymentRoot, options.output) || path.extname(options.output).toLowerCase() !== '.json') {
-      fail('output must be a .json file inside .temp/deployment');
+    if (
+      (!isWithin(deploymentRoot, options.output) && !isWithin(kubernetesEvidenceRoot, options.output)) ||
+      path.extname(options.output).toLowerCase() !== '.json'
+    ) {
+      fail('output must be a .json file inside .temp/deployment or the fixed Kubernetes evidence directory');
     }
   }
   return options;
@@ -194,7 +198,7 @@ function validateOIDCAudience(value, allowPlaceholder) {
   }
 }
 
-function validateManifest(manifest, { allowPlaceholders }) {
+export function validateManifest(manifest, { allowPlaceholders }) {
   if (manifest?.apiVersion !== 'v1' || manifest.kind !== 'List' || !Array.isArray(manifest.items)) {
     fail('template root must be a Kubernetes v1 List');
   }
@@ -366,6 +370,25 @@ function replaceExact(value, replacements) {
   return value;
 }
 
+export function renderManifest(template, { image, allowedOrigin, oidcIssuer, oidcAudience, oidcJWKSURL }) {
+  validateManifest(template, { allowPlaceholders: true });
+  requireTemplatePlaceholders(template);
+  validateImage(image, false);
+  validateOrigin(allowedOrigin, false);
+  validateOIDCEndpoint(oidcIssuer, oidcIssuerPlaceholder, 'OIDC issuer', false);
+  validateOIDCEndpoint(oidcJWKSURL, oidcJWKSURLPlaceholder, 'OIDC JWKS URL', false);
+  validateOIDCAudience(oidcAudience, false);
+  const rendered = replaceExact(template, new Map([
+    [imagePlaceholder, image],
+    [originPlaceholder, allowedOrigin],
+    [oidcIssuerPlaceholder, oidcIssuer],
+    [oidcAudiencePlaceholder, oidcAudience],
+    [oidcJWKSURLPlaceholder, oidcJWKSURL],
+  ]));
+  validateManifest(rendered, { allowPlaceholders: false });
+  return rendered;
+}
+
 function main() {
   const options = parseArguments(process.argv.slice(2));
   const template = readManifest(options.template);
@@ -375,27 +398,17 @@ function main() {
     console.log(`Kubernetes template passed: ${path.relative(repositoryRoot, options.template)}`);
     return;
   }
-  validateImage(options.image, false);
-  validateOrigin(options.allowedOrigin, false);
-  validateOIDCEndpoint(options.oidcIssuer, oidcIssuerPlaceholder, 'OIDC issuer', false);
-  validateOIDCEndpoint(options.oidcJWKSURL, oidcJWKSURLPlaceholder, 'OIDC JWKS URL', false);
-  validateOIDCAudience(options.oidcAudience, false);
-  const rendered = replaceExact(template, new Map([
-    [imagePlaceholder, options.image],
-    [originPlaceholder, options.allowedOrigin],
-    [oidcIssuerPlaceholder, options.oidcIssuer],
-    [oidcAudiencePlaceholder, options.oidcAudience],
-    [oidcJWKSURLPlaceholder, options.oidcJWKSURL],
-  ]));
-  validateManifest(rendered, { allowPlaceholders: false });
+  const rendered = renderManifest(template, options);
   mkdirSync(path.dirname(options.output), { recursive: true });
   writeFileSync(options.output, `${JSON.stringify(rendered, null, 2)}\n`, 'utf8');
   console.log(`Kubernetes manifest written to ${path.relative(repositoryRoot, options.output)}`);
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error.message);
-  process.exitCode = 1;
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    main();
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
 }

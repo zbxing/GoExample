@@ -3,6 +3,31 @@ import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileS
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  verifyReleaseAttestationURL,
+  verifyReleaseAttestationVerification,
+  verifyReleaseProvenanceBundleSubjects,
+} from './lib/release-provenance.mjs';
+import { verifyKubernetesEvidence } from './lib/kubernetes-evidence.mjs';
+import { verifyAuditChainEvidence } from './lib/audit-chain-evidence.mjs';
+import { verifyAuthorizationEvidence } from './lib/authorization-evidence.mjs';
+import { verifyOIDCBrowserEvidence } from './lib/oidc-browser-evidence.mjs';
+import {
+  verifyNatsClusterContractArtifacts,
+  verifyNatsClusterEvidence,
+} from './lib/nats-cluster-evidence.mjs';
+import { verifyNatsDeliveryEvidence } from './lib/nats-delivery-evidence.mjs';
+import {
+  verifyNatsRestartContractArtifacts,
+  verifyNatsRestartEvidence,
+} from './lib/nats-restart-evidence.mjs';
+import { verifyNatsSnapshotEvidence } from './lib/nats-snapshot-evidence.mjs';
+import { verifyNginxEdgeEvidence } from './lib/nginx-edge-evidence.mjs';
+import { verifyPostgresRecoveryEvidence } from './lib/postgres-recovery-evidence.mjs';
+import { verifyPrometheusRuleEvidence } from './lib/prometheus-rules.mjs';
+import { verifyRedisSentinelEvidence } from './lib/redis-sentinel-evidence.mjs';
+import { verifyServerRecoveryEvidence } from './lib/server-recovery-evidence.mjs';
+import { verifyWorkflowLintEvidence } from './lib/workflow-lint.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -189,6 +214,217 @@ const outputPath = resolveOutputPath();
 mkdirSync(path.dirname(outputPath), { recursive: true });
 mkdirSync(tempRoot, { recursive: true });
 
+const auditChainEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'audit-chain');
+const auditChainEvidencePresent = [
+  'go-output.txt',
+  'go-error.txt',
+  'go-status.txt',
+  'report.json',
+  'SHA256SUMS',
+].some((name) => existsSync(path.join(auditChainEvidenceRoot, name)));
+if (auditChainEvidencePresent) {
+  try {
+    verifyAuditChainEvidence({ repositoryRoot, evidenceRoot: auditChainEvidenceRoot });
+  } catch (error) {
+    fail(`audit chain evidence is invalid: ${error.message}`);
+  }
+}
+
+const authorizationEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'authorization-policy');
+const authorizationEvidencePresent = [
+  'go-output.txt',
+  'go-error.txt',
+  'go-status.txt',
+  'report.json',
+  'SHA256SUMS',
+].some((name) => existsSync(path.join(authorizationEvidenceRoot, name)));
+if (authorizationEvidencePresent) {
+  try {
+    verifyAuthorizationEvidence({ repositoryRoot, evidenceRoot: authorizationEvidenceRoot });
+  } catch (error) {
+    fail(`authorization evidence is invalid: ${error.message}`);
+  }
+}
+
+const oidcBrowserEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'oidc-browser');
+const oidcBrowserEvidencePresent = [
+  'go-output.txt',
+  'go-error.txt',
+  'go-status.txt',
+  'report.json',
+  'SHA256SUMS',
+].some((name) => existsSync(path.join(oidcBrowserEvidenceRoot, name)));
+if (oidcBrowserEvidencePresent) {
+  try {
+    verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot: oidcBrowserEvidenceRoot });
+  } catch (error) {
+    fail(`OIDC browser evidence is invalid: ${error.message}`);
+  }
+}
+
+const workflowLintEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'workflow-lint');
+if (existsSync(workflowLintEvidenceRoot)) {
+  try {
+    verifyWorkflowLintEvidence({ repositoryRoot, evidenceRoot: workflowLintEvidenceRoot });
+  } catch (error) {
+    fail(`workflow lint evidence is invalid: ${error.message}`);
+  }
+}
+
+const prometheusRuleEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'prometheus-rules');
+if (existsSync(prometheusRuleEvidenceRoot)) {
+  try {
+    verifyPrometheusRuleEvidence({ repositoryRoot, evidenceRoot: prometheusRuleEvidenceRoot });
+  } catch (error) {
+    fail(`Prometheus rule evidence is invalid: ${error.message}`);
+  }
+}
+
+const kubernetesEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'kubernetes-manifest');
+if (existsSync(kubernetesEvidenceRoot)) {
+  try {
+    verifyKubernetesEvidence({ repositoryRoot, evidenceRoot: kubernetesEvidenceRoot });
+  } catch (error) {
+    fail(`Kubernetes evidence is invalid: ${error.message}`);
+  }
+}
+
+const nginxEdgeEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'nginx-edge-contract');
+if (existsSync(nginxEdgeEvidenceRoot)) {
+  try {
+    verifyNginxEdgeEvidence({ repositoryRoot, evidenceRoot: nginxEdgeEvidenceRoot });
+  } catch (error) {
+    fail(`Nginx edge evidence is invalid: ${error.message}`);
+  }
+}
+
+const redisSentinelEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'redis-sentinel-contract');
+if (existsSync(redisSentinelEvidenceRoot)) {
+  try {
+    verifyRedisSentinelEvidence({ repositoryRoot, evidenceRoot: redisSentinelEvidenceRoot });
+  } catch (error) {
+    fail(`Redis Sentinel evidence is invalid: ${error.message}`);
+  }
+}
+
+const postgresRecoveryEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'postgres-recovery-contract');
+const postgresRecoveryEvidencePresent =
+  existsSync(postgresRecoveryEvidenceRoot) &&
+  readdirSync(postgresRecoveryEvidenceRoot, { withFileTypes: true }).some((entry) => entry.isFile());
+if (postgresRecoveryEvidencePresent) {
+  try {
+    verifyPostgresRecoveryEvidence({ repositoryRoot, evidenceRoot: postgresRecoveryEvidenceRoot });
+  } catch (error) {
+    fail(`PostgreSQL recovery evidence is invalid: ${error.message}`);
+  }
+}
+
+const natsDeliveryOuterEvidenceRoot = path.join(
+  tempRoot,
+  'workflow-artifacts',
+  'nats-contract',
+  'delivery',
+);
+const natsDeliveryOuterEvidencePresent = [
+  'environment.txt',
+  'test-output.txt',
+  'test-status.txt',
+  'nats-server',
+  'nats-server-binary.sha256',
+  'report.json',
+  'SHA256SUMS',
+].some((name) => existsSync(path.join(natsDeliveryOuterEvidenceRoot, name)));
+if (natsDeliveryOuterEvidencePresent) {
+  try {
+    verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot: natsDeliveryOuterEvidenceRoot });
+  } catch (error) {
+    fail(`NATS delivery evidence is invalid: ${error.message}`);
+  }
+}
+
+const natsRestartOuterEvidenceRoot = path.join(
+  tempRoot,
+  'workflow-artifacts',
+  'nats-contract',
+  'restart',
+);
+const natsRestartOuterEvidencePresent = [
+  'environment.txt',
+  'test-output.txt',
+  'test-status.txt',
+  'nats-server',
+  'nats-server-binary.sha256',
+  'report.json',
+  'SHA256SUMS',
+].some((name) => existsSync(path.join(natsRestartOuterEvidenceRoot, name)));
+if (natsRestartOuterEvidencePresent) {
+  try {
+    verifyNatsRestartEvidence({ repositoryRoot, evidenceRoot: natsRestartOuterEvidenceRoot });
+  } catch (error) {
+    fail(`NATS restart evidence is invalid: ${error.message}`);
+  }
+}
+
+const natsSnapshotEvidenceRoot = path.join(
+  tempRoot,
+  'workflow-artifacts',
+  'nats-contract',
+  'snapshot',
+);
+const natsSnapshotOuterEvidencePresent = [
+  'environment.txt',
+  'test-output.txt',
+  'test-status.txt',
+  'nats-server',
+  'nats-server-binary.sha256',
+  'report.json',
+  'SHA256SUMS',
+].some((name) => existsSync(path.join(natsSnapshotEvidenceRoot, name)));
+if (natsSnapshotOuterEvidencePresent) {
+  try {
+    verifyNatsSnapshotEvidence({ repositoryRoot, evidenceRoot: natsSnapshotEvidenceRoot });
+  } catch (error) {
+    fail(`NATS snapshot evidence is invalid: ${error.message}`);
+  }
+}
+
+const natsClusterOuterEvidenceRoot = path.join(
+  tempRoot,
+  'workflow-artifacts',
+  'nats-contract',
+  'cluster',
+);
+const natsClusterOuterEvidencePresent = [
+  'environment.txt',
+  'test-output.txt',
+  'test-status.txt',
+  'nats-server',
+  'nats-server-binary.sha256',
+  'report.json',
+  'SHA256SUMS',
+].some((name) => existsSync(path.join(natsClusterOuterEvidenceRoot, name)));
+if (natsClusterOuterEvidencePresent) {
+  try {
+    verifyNatsClusterEvidence({ repositoryRoot, evidenceRoot: natsClusterOuterEvidenceRoot });
+  } catch (error) {
+    fail(`NATS cluster evidence is invalid: ${error.message}`);
+  }
+}
+
+const serverRecoveryEvidenceRoot = path.join(tempRoot, 'recovery', 'server-local');
+const serverRecoveryEvidencePresent = [
+  'summary.json',
+  'report.json',
+  'SHA256SUMS',
+].some((name) => existsSync(path.join(serverRecoveryEvidenceRoot, name)));
+if (serverRecoveryEvidencePresent) {
+  try {
+    verifyServerRecoveryEvidence({ repositoryRoot, evidenceRoot: serverRecoveryEvidenceRoot });
+  } catch (error) {
+    fail(`server recovery evidence is invalid: ${error.message}`);
+  }
+}
+
 const gitStatus = run('git', ['status', '--porcelain=v1']) ?? '';
 const gitCommit = run('git', ['rev-parse', 'HEAD']);
 const evidence = collectEvidence(outputPath);
@@ -248,6 +484,7 @@ const requiredPostgresRecoveryArtifacts = [
   `${postgresArtifactRoot}/recovery-raw.json`,
   `${postgresArtifactRoot}/recovery-report.json`,
   `${postgresArtifactRoot}/backup.dump`,
+  `${postgresArtifactRoot}/report.json`,
   `${postgresArtifactRoot}/SHA256SUMS`,
 ];
 function readPostgresArtifact(relativeName) {
@@ -287,30 +524,10 @@ const requiredNatsRestartArtifacts = [
 ];
 let natsRestartReportPassed = false;
 try {
-  const report = JSON.parse(
-    readFileSync(path.join(repositoryRoot, natsRestartArtifactRoot, 'restart-report.json'), 'utf8'),
-  );
-  natsRestartReportPassed =
-    report?.schemaVersion === 1 &&
-    report?.status === 'passed' &&
-    report?.storage === 'file' &&
-    report?.replicas === 1 &&
-    report?.abruptRestarts === 1 &&
-    report?.persistedMessages === 3 &&
-    report?.recoveredStreamSequence > 0 &&
-    report?.deliveryCountBeforeRestart === 1 &&
-    report?.deliveryCountAfterRestart === 1 &&
-    report?.redeliveryObserved === true &&
-    report?.acknowledged === 1 &&
-    report?.deadLettered === 1 &&
-    report?.sourceAckPending === 0 &&
-    report?.sourceMessagesPending === 0 &&
-    report?.shortLeaseRejected === true &&
-    report?.leasePreflightPassed === true &&
-    Number.isSafeInteger(report?.requiredLeaseNanos) &&
-    report.requiredLeaseNanos > 0 &&
-    Number.isSafeInteger(report?.workerAckWaitNanos) &&
-    report.workerAckWaitNanos >= report.requiredLeaseNanos;
+  verifyNatsRestartContractArtifacts({
+    evidenceRoot: path.join(repositoryRoot, natsRestartArtifactRoot),
+  });
+  natsRestartReportPassed = true;
 } catch {
   natsRestartReportPassed = false;
 }
@@ -401,326 +618,10 @@ const requiredNatsClusterArtifacts = [
 ];
 let natsClusterReportPassed = false;
 try {
-  const report = JSON.parse(
-    readFileSync(path.join(repositoryRoot, natsClusterArtifactRoot, 'cluster-failover-report.json'), 'utf8'),
-  );
-  const clusterNodeNamePattern = /^goexample-js-node-[123]$/;
-  if (
-    !clusterNodeNamePattern.test(report?.oldLeader ?? '') ||
-    !clusterNodeNamePattern.test(report?.newLeader ?? '') ||
-    !clusterNodeNamePattern.test(report?.secondOldLeader ?? '') ||
-    !clusterNodeNamePattern.test(report?.secondNewLeader ?? '') ||
-    !clusterNodeNamePattern.test(report?.quorumOldLeader ?? '') ||
-    !clusterNodeNamePattern.test(report?.quorumRecoveredLeader ?? '') ||
-    !clusterNodeNamePattern.test(report?.concurrentOldLeader ?? '') ||
-    !clusterNodeNamePattern.test(report?.concurrentStoppedPeer ?? '') ||
-    !clusterNodeNamePattern.test(report?.concurrentSurvivor ?? '') ||
-    !clusterNodeNamePattern.test(report?.concurrentRecoveredLeader ?? '') ||
-    report.oldLeader === report.newLeader ||
-    report.secondOldLeader !== report.newLeader ||
-    report.secondOldLeader === report.oldLeader ||
-    report.secondNewLeader === report.secondOldLeader ||
-    report.quorumOldLeader !== report.secondNewLeader ||
-    report.quorumOldLeader === report.secondOldLeader ||
-    report.quorumRecoveredLeader === report.secondOldLeader ||
-    report.concurrentOldLeader === report.concurrentStoppedPeer ||
-    report.concurrentOldLeader === report.concurrentSurvivor ||
-    report.concurrentStoppedPeer === report.concurrentSurvivor ||
-    report.concurrentRecoveredLeader === report.concurrentStoppedPeer
-  ) {
-    throw new Error('invalid cluster report leader identity');
-  }
-  const oldLeaderLog = readFileSync(
-    path.join(repositoryRoot, natsClusterArtifactRoot, `${report?.oldLeader ?? 'invalid'}.log`),
-    'utf8',
-  );
-  const newLeaderLog = readFileSync(
-    path.join(repositoryRoot, natsClusterArtifactRoot, `${report?.newLeader ?? 'invalid'}.log`),
-    'utf8',
-  );
-  const secondNewLeaderLog = readFileSync(
-    path.join(repositoryRoot, natsClusterArtifactRoot, `${report?.secondNewLeader ?? 'invalid'}.log`),
-    'utf8',
-  );
-  const secondOldLeaderLog = readFileSync(
-    path.join(repositoryRoot, natsClusterArtifactRoot, `${report?.secondOldLeader ?? 'invalid'}.log`),
-    'utf8',
-  );
-  const quorumOldLeaderLog = readFileSync(
-    path.join(repositoryRoot, natsClusterArtifactRoot, `${report?.quorumOldLeader ?? 'invalid'}.log`),
-    'utf8',
-  );
-  const quorumRecoveredLeaderLog = readFileSync(
-    path.join(repositoryRoot, natsClusterArtifactRoot, `${report?.quorumRecoveredLeader ?? 'invalid'}.log`),
-    'utf8',
-  );
-  const connectionServerAfterLog = readFileSync(
-    path.join(
-      repositoryRoot,
-      natsClusterArtifactRoot,
-      `${report?.connectionServerAfter ?? 'invalid'}.log`,
-    ),
-    'utf8',
-  );
-  const connectionServerAfterSecondLog = readFileSync(
-    path.join(
-      repositoryRoot,
-      natsClusterArtifactRoot,
-      `${report?.connectionServerAfterSecondFailover ?? 'invalid'}.log`,
-    ),
-    'utf8',
-  );
-  const connectionServerDuringQuorumLog = readFileSync(
-    path.join(
-      repositoryRoot,
-      natsClusterArtifactRoot,
-      `${report?.connectionServerDuringQuorumLoss ?? 'invalid'}.log`,
-    ),
-    'utf8',
-  );
-  const connectionServerAfterQuorumLog = readFileSync(
-    path.join(
-      repositoryRoot,
-      natsClusterArtifactRoot,
-      `${report?.connectionServerAfterQuorumRecovery ?? 'invalid'}.log`,
-    ),
-    'utf8',
-  );
-  const concurrentOldLeaderLog = readFileSync(
-    path.join(repositoryRoot, natsClusterArtifactRoot, `${report?.concurrentOldLeader ?? 'invalid'}.log`),
-    'utf8',
-  );
-  const concurrentStoppedPeerLog = readFileSync(
-    path.join(repositoryRoot, natsClusterArtifactRoot, `${report?.concurrentStoppedPeer ?? 'invalid'}.log`),
-    'utf8',
-  );
-  const concurrentRecoveredLeaderLog = readFileSync(
-    path.join(repositoryRoot, natsClusterArtifactRoot, `${report?.concurrentRecoveredLeader ?? 'invalid'}.log`),
-    'utf8',
-  );
-  const connectionServerDuringConcurrentLog = readFileSync(
-    path.join(
-      repositoryRoot,
-      natsClusterArtifactRoot,
-      `${report?.connectionServerDuringConcurrentFailure ?? 'invalid'}.log`,
-    ),
-    'utf8',
-  );
-  const connectionServerAfterConcurrentLog = readFileSync(
-    path.join(
-      repositoryRoot,
-      natsClusterArtifactRoot,
-      `${report?.connectionServerAfterConcurrentRecovery ?? 'invalid'}.log`,
-    ),
-    'utf8',
-  );
-  const networkPartitionLeaderLog = readFileSync(
-    path.join(repositoryRoot, natsClusterArtifactRoot, `${report?.networkPartitionLeader ?? 'invalid'}.log`),
-    'utf8',
-  );
-  const partitionRecoveredLeaderLog = readFileSync(
-    path.join(repositoryRoot, natsClusterArtifactRoot, `${report?.partitionRecoveredLeader ?? 'invalid'}.log`),
-    'utf8',
-  );
-  const connectionServerAfterPartitionLog = readFileSync(
-    path.join(
-      repositoryRoot,
-      natsClusterArtifactRoot,
-      `${report?.connectionServerAfterPartitionRecovery ?? 'invalid'}.log`,
-    ),
-    'utf8',
-  );
-  const clusterNodeLogs = [1, 2, 3].map((node) =>
-    readFileSync(path.join(repositoryRoot, natsClusterArtifactRoot, `goexample-js-node-${node}.log`), 'utf8'),
-  );
-  const totalServerStarts = clusterNodeLogs.reduce(
-    (count, log) => count + (log.match(/Starting nats-server/g) ?? []).length,
-    0,
-  );
-  const streamLeaderMarker = "JetStream cluster new stream leader for '$G > GOEXAMPLE_FAILOVER_SOURCE'";
-  natsClusterReportPassed =
-    report?.schemaVersion === 6 &&
-    report?.status === 'passed' &&
-    report?.storage === 'file' &&
-    report?.clusterSize === 3 &&
-    report?.streamReplicas === 3 &&
-    report?.consumerReplicas === 3 &&
-    report?.abruptLeaderStops === 3 &&
-    clusterNodeNamePattern.test(report.oldLeader) &&
-    clusterNodeNamePattern.test(report.newLeader) &&
-    report.oldLeader !== report.newLeader &&
-    report?.leaderChanged === true &&
-    report?.persistedBeforeFailover === 3 &&
-    report?.persistedAfterFailover === 4 &&
-    report?.recoveredStreamSequence === 1 &&
-    report?.deliveryCountBefore === 1 &&
-    report?.deliveryCountAfter >= 2 &&
-    report?.redeliveryObserved === true &&
-    report?.publishedAfterFailover === 1 &&
-    report?.workerAcknowledged === 2 &&
-    report?.deadLettered === 1 &&
-    report?.sourceAckPending === 0 &&
-    report?.sourceMessagesPending === 0 &&
-    report?.survivingServers === 2 &&
-    report?.shortLeaseRejected === true &&
-    report?.leasePreflightPassed === true &&
-    Number.isSafeInteger(report?.requiredLeaseNanos) &&
-    report.requiredLeaseNanos > 0 &&
-    Number.isSafeInteger(report?.workerAckWaitNanos) &&
-    report.workerAckWaitNanos >= report.requiredLeaseNanos &&
-    report?.sameConnectionSession === true &&
-    report?.disconnectedObserved === true &&
-    report?.reconnectedObserved === true &&
-    report?.connectionServerBefore === report.oldLeader &&
-    clusterNodeNamePattern.test(report?.connectionServerAfter ?? '') &&
-    report.connectionServerAfter !== report.connectionServerBefore &&
-    report?.adapterSessionRecovered === true &&
-    report?.restartedServers === 3 &&
-    report?.replicaRecoveryPassed === true &&
-    report?.secondOldLeader === report.newLeader &&
-    report.secondOldLeader !== report.oldLeader &&
-    clusterNodeNamePattern.test(report?.secondNewLeader ?? '') &&
-    report.secondNewLeader !== report.secondOldLeader &&
-    report?.secondLeaderChanged === true &&
-    report?.distinctLeadersStopped === true &&
-    report?.persistedAfterSecondFailover === 6 &&
-    report?.secondRecoveredStreamSequence === 5 &&
-    report?.secondDeliveryCountBefore === 1 &&
-    Number.isSafeInteger(report?.secondDeliveryCountAfter) &&
-    report.secondDeliveryCountAfter >= 2 &&
-    report?.secondRedeliveryObserved === true &&
-    report?.publishedAfterSecondFailover === 1 &&
-    report?.acknowledgedAfterSecondFailover === 2 &&
-    report?.secondLeasePreflightPassed === true &&
-    clusterNodeNamePattern.test(report?.connectionServerBeforeSecondFailover ?? '') &&
-    clusterNodeNamePattern.test(report?.connectionServerAfterSecondFailover ?? '') &&
-    report.connectionServerAfterSecondFailover !== report.secondOldLeader &&
-    report?.sameConnectionSessionAfterSecondFailover === true &&
-    report?.adapterSessionRecoveredAfterSecondFailover === true &&
-    report?.overlappingOfflineServers === 2 &&
-    report?.quorumUnavailableObserved === true &&
-    report?.quorumFailureBudgetNanos === 3_000_000_000 &&
-    Number.isSafeInteger(report?.quorumFailureElapsedNanos) &&
-    report.quorumFailureElapsedNanos > 0 &&
-    report.quorumFailureElapsedNanos <= report.quorumFailureBudgetNanos &&
-    report?.quorumOldLeader === report.secondNewLeader &&
-    report.quorumOldLeader !== report.secondOldLeader &&
-    clusterNodeNamePattern.test(report?.quorumRecoveredLeader ?? '') &&
-    report.quorumRecoveredLeader !== report.secondOldLeader &&
-    report?.persistedAfterQuorumRecovery === 8 &&
-    report?.quorumRecoveredStreamSequence === 7 &&
-    report?.quorumDeliveryCountBefore === 1 &&
-    Number.isSafeInteger(report?.quorumDeliveryCountAfter) &&
-    report.quorumDeliveryCountAfter >= 2 &&
-    report?.quorumRedeliveryObserved === true &&
-    report?.publishedAfterQuorumRecovery === 1 &&
-    report?.acknowledgedAfterQuorumRecovery === 2 &&
-    report?.quorumLeasePreflightPassed === true &&
-    clusterNodeNamePattern.test(report?.connectionServerBeforeQuorumLoss ?? '') &&
-    report.connectionServerBeforeQuorumLoss !== report.secondOldLeader &&
-    clusterNodeNamePattern.test(report?.connectionServerDuringQuorumLoss ?? '') &&
-    report.connectionServerDuringQuorumLoss !== report.secondOldLeader &&
-    report.connectionServerDuringQuorumLoss !== report.quorumOldLeader &&
-    clusterNodeNamePattern.test(report?.connectionServerAfterQuorumRecovery ?? '') &&
-    report.connectionServerAfterQuorumRecovery !== report.secondOldLeader &&
-    report?.sameConnectionSessionAfterQuorumRecovery === true &&
-    report?.adapterSessionRecoveredAfterQuorumRecovery === true &&
-    report?.finalReplicaRecoveryPassed === true &&
-    report?.concurrentFaultInjected === true &&
-    report?.concurrentStoppedServers === 2 &&
-    clusterNodeNamePattern.test(report?.concurrentOldLeader ?? '') &&
-    clusterNodeNamePattern.test(report?.concurrentStoppedPeer ?? '') &&
-    clusterNodeNamePattern.test(report?.concurrentSurvivor ?? '') &&
-    clusterNodeNamePattern.test(report?.concurrentRecoveredLeader ?? '') &&
-    report.concurrentOldLeader !== report.concurrentStoppedPeer &&
-    report.concurrentOldLeader !== report.concurrentSurvivor &&
-    report.concurrentStoppedPeer !== report.concurrentSurvivor &&
-    report.concurrentRecoveredLeader !== report.concurrentStoppedPeer &&
-    report?.concurrentStopSkewBudgetNanos === 250_000_000 &&
-    Number.isSafeInteger(report?.concurrentStopSkewNanos) &&
-    report.concurrentStopSkewNanos >= 0 &&
-    report.concurrentStopSkewNanos <= report.concurrentStopSkewBudgetNanos &&
-    report?.concurrentQuorumUnavailableObserved === true &&
-    report?.concurrentFailureBudgetNanos === 3_000_000_000 &&
-    Number.isSafeInteger(report?.concurrentFailureElapsedNanos) &&
-    report.concurrentFailureElapsedNanos > 0 &&
-    report.concurrentFailureElapsedNanos <= report.concurrentFailureBudgetNanos &&
-    report?.persistedAfterConcurrentRecovery === 10 &&
-    report?.concurrentRecoveredStreamSequence === 9 &&
-    report?.concurrentDeliveryCountBefore === 1 &&
-    Number.isSafeInteger(report?.concurrentDeliveryCountAfter) &&
-    report.concurrentDeliveryCountAfter >= 2 &&
-    report?.concurrentRedeliveryObserved === true &&
-    report?.publishedAfterConcurrentRecovery === 1 &&
-    report?.acknowledgedAfterConcurrentRecovery === 2 &&
-    report?.concurrentLeasePreflightPassed === true &&
-    clusterNodeNamePattern.test(report?.connectionServerBeforeConcurrentFailure ?? '') &&
-    report.connectionServerBeforeConcurrentFailure !== report.concurrentStoppedPeer &&
-    report?.connectionServerDuringConcurrentFailure === report.concurrentSurvivor &&
-    clusterNodeNamePattern.test(report?.connectionServerAfterConcurrentRecovery ?? '') &&
-    report.connectionServerAfterConcurrentRecovery !== report.concurrentStoppedPeer &&
-    report?.sameConnectionSessionAfterConcurrentRecovery === true &&
-    report?.adapterSessionRecoveredAfterConcurrentRecovery === true &&
-    report?.concurrentReplicaRecoveryPassed === true &&
-    report?.networkPartitionInjected === true &&
-    report?.networkPartitionedServers === 3 &&
-    clusterNodeNamePattern.test(report?.networkPartitionLeader ?? '') &&
-    clusterNodeNamePattern.test(report?.networkPartitionConnectionServer ?? '') &&
-    report.networkPartitionLeader !== report.networkPartitionConnectionServer &&
-    Number.isSafeInteger(report?.routeProxyConnectionsBefore) &&
-    report.routeProxyConnectionsBefore >= 3 &&
-    Number.isSafeInteger(report?.routeProxyConnectionsClosed) &&
-    report.routeProxyConnectionsClosed >= 3 &&
-    report?.partitionQuorumUnavailableObserved === true &&
-    report?.partitionFailureBudgetNanos === 3_000_000_000 &&
-    Number.isSafeInteger(report?.partitionFailureElapsedNanos) &&
-    report.partitionFailureElapsedNanos > 0 &&
-    report.partitionFailureElapsedNanos <= report.partitionFailureBudgetNanos &&
-    clusterNodeNamePattern.test(report?.partitionRecoveredLeader ?? '') &&
-    report?.persistedAfterPartitionRecovery === 12 &&
-    report?.partitionRecoveredStreamSequence === 11 &&
-    report?.partitionDeliveryCountBefore === 1 &&
-    Number.isSafeInteger(report?.partitionDeliveryCountAfter) &&
-    report.partitionDeliveryCountAfter >= 2 &&
-    report?.partitionRedeliveryObserved === true &&
-    report?.publishedAfterPartitionRecovery === 1 &&
-    report?.acknowledgedAfterPartitionRecovery === 2 &&
-    report?.partitionLeasePreflightPassed === true &&
-    report?.connectionServerAfterPartitionRecovery === report.networkPartitionConnectionServer &&
-    report?.sameConnectionSessionAfterPartitionRecovery === true &&
-    report?.adapterSessionRecoveredAfterPartitionRecovery === true &&
-    report?.partitionReplicaRecoveryPassed === true &&
-    totalServerStarts === 8 &&
-    oldLeaderLog.includes(`Name:     ${report.oldLeader}`) &&
-    (oldLeaderLog.match(/Starting nats-server/g) ?? []).length >= 2 &&
-    oldLeaderLog.includes(streamLeaderMarker) &&
-    newLeaderLog.includes(`Name:     ${report.newLeader}`) &&
-    newLeaderLog.includes(streamLeaderMarker) &&
-    secondNewLeaderLog.includes(`Name:     ${report.secondNewLeader}`) &&
-    secondNewLeaderLog.includes(streamLeaderMarker) &&
-    secondOldLeaderLog.includes(`Name:     ${report.secondOldLeader}`) &&
-    (secondOldLeaderLog.match(/Starting nats-server/g) ?? []).length >= 2 &&
-    quorumOldLeaderLog.includes(`Name:     ${report.quorumOldLeader}`) &&
-    (quorumOldLeaderLog.match(/Starting nats-server/g) ?? []).length >= 2 &&
-    quorumRecoveredLeaderLog.includes(`Name:     ${report.quorumRecoveredLeader}`) &&
-    quorumRecoveredLeaderLog.includes(streamLeaderMarker) &&
-    connectionServerAfterLog.includes(`Name:     ${report.connectionServerAfter}`) &&
-    connectionServerAfterSecondLog.includes(`Name:     ${report.connectionServerAfterSecondFailover}`) &&
-    connectionServerDuringQuorumLog.includes(`Name:     ${report.connectionServerDuringQuorumLoss}`) &&
-    connectionServerAfterQuorumLog.includes(`Name:     ${report.connectionServerAfterQuorumRecovery}`) &&
-    concurrentOldLeaderLog.includes(`Name:     ${report.concurrentOldLeader}`) &&
-    (concurrentOldLeaderLog.match(/Starting nats-server/g) ?? []).length >= 2 &&
-    concurrentStoppedPeerLog.includes(`Name:     ${report.concurrentStoppedPeer}`) &&
-    (concurrentStoppedPeerLog.match(/Starting nats-server/g) ?? []).length >= 2 &&
-    concurrentRecoveredLeaderLog.includes(`Name:     ${report.concurrentRecoveredLeader}`) &&
-    concurrentRecoveredLeaderLog.includes(streamLeaderMarker) &&
-    connectionServerDuringConcurrentLog.includes(`Name:     ${report.connectionServerDuringConcurrentFailure}`) &&
-    connectionServerAfterConcurrentLog.includes(`Name:     ${report.connectionServerAfterConcurrentRecovery}`) &&
-    networkPartitionLeaderLog.includes(`Name:     ${report.networkPartitionLeader}`) &&
-    networkPartitionLeaderLog.includes(streamLeaderMarker) &&
-    partitionRecoveredLeaderLog.includes(`Name:     ${report.partitionRecoveredLeader}`) &&
-    partitionRecoveredLeaderLog.includes(streamLeaderMarker) &&
-    connectionServerAfterPartitionLog.includes(`Name:     ${report.connectionServerAfterPartitionRecovery}`);
+  verifyNatsClusterContractArtifacts({
+    evidenceRoot: path.join(repositoryRoot, natsClusterArtifactRoot),
+  });
+  natsClusterReportPassed = true;
 } catch {
   natsClusterReportPassed = false;
 }
@@ -745,21 +646,100 @@ function readReleaseArtifact(relativeName) {
 const releaseAttestationStatus = readReleaseArtifact('attestation-status.txt')?.match(/exit_code=(\d+)/)?.[1] ?? null;
 let releaseSubjectName = null;
 let releaseManifestPassed = false;
+let releaseChecksumsPassed = false;
+let releaseProvenanceSubjects = null;
+let releaseProvenanceBuild = null;
 try {
-  const releaseManifest = JSON.parse(readReleaseArtifact('release-manifest.json') ?? 'null');
+  const releaseManifestSource = readReleaseArtifact('release-manifest.json');
+  const sourceManifestSource = readReleaseArtifact('source-manifest.json');
+  const reproducibilityReportSource = readReleaseArtifact('reproducibility-report.json');
+  const releaseManifest = JSON.parse(releaseManifestSource ?? 'null');
+  const sourceManifest = JSON.parse(sourceManifestSource ?? 'null');
+  const reproducibilityReport = JSON.parse(reproducibilityReportSource ?? 'null');
   releaseSubjectName = releaseManifest?.subject?.name ?? null;
   releaseManifestPassed =
-    releaseManifest?.schemaVersion === 1 &&
+    releaseManifest?.schemaVersion === 2 &&
     releaseManifest?.scope === 'goexample_server_release' &&
     typeof releaseSubjectName === 'string' &&
     /^[A-Za-z0-9][A-Za-z0-9._-]+$/.test(releaseSubjectName) &&
-    /^[a-f0-9]{64}$/.test(releaseManifest?.subject?.sha256 ?? '');
+    /^[a-f0-9]{64}$/.test(releaseManifest?.subject?.sha256 ?? '') &&
+    releaseManifest?.source?.repository === 'github.com/zbxing/goexample' &&
+    /^[a-f0-9]{40}$/.test(releaseManifest?.build?.commit ?? '') &&
+    releaseManifest?.source?.manifest?.name === 'source-manifest.json' &&
+    releaseManifest?.source?.manifest?.bytes === Buffer.byteLength(sourceManifestSource ?? '') &&
+    releaseManifest?.source?.manifest?.sha256 ===
+      createHash('sha256').update(sourceManifestSource ?? '').digest('hex') &&
+    sourceManifest?.schemaVersion === 1 &&
+    sourceManifest?.scope === 'goexample_server_release_sources' &&
+    sourceManifest?.entrypoint === './Solutions/Example/cmd/server' &&
+    Array.isArray(sourceManifest?.files) &&
+    sourceManifest.files.length > 0 &&
+    reproducibilityReport?.schemaVersion === 3 &&
+    reproducibilityReport?.scope === 'goexample_server_release_reproducibility' &&
+    reproducibilityReport?.subject?.name === releaseSubjectName &&
+    reproducibilityReport?.subject?.sha256 === releaseManifest?.subject?.sha256 &&
+    reproducibilityReport?.sourceManifest?.name === 'source-manifest.json' &&
+    reproducibilityReport?.sourceManifest?.sha256 === releaseManifest?.source?.manifest?.sha256;
+  const expectedChecksums = [
+    [releaseManifest?.subject?.sha256, releaseSubjectName],
+    [createHash('sha256').update(releaseManifestSource ?? '').digest('hex'), 'release-manifest.json'],
+    [createHash('sha256').update(sourceManifestSource ?? '').digest('hex'), 'source-manifest.json'],
+    [
+      createHash('sha256').update(reproducibilityReportSource ?? '').digest('hex'),
+      'reproducibility-report.json',
+    ],
+  ]
+    .map(([sha256, name]) => `${sha256}  ${name}\n`)
+    .join('');
+  releaseProvenanceSubjects = [
+    { name: releaseSubjectName, sha256: releaseManifest?.subject?.sha256 },
+    {
+      name: 'release-manifest.json',
+      sha256: createHash('sha256').update(releaseManifestSource ?? '').digest('hex'),
+    },
+    {
+      name: 'source-manifest.json',
+      sha256: createHash('sha256').update(sourceManifestSource ?? '').digest('hex'),
+    },
+    {
+      name: 'reproducibility-report.json',
+      sha256: createHash('sha256').update(reproducibilityReportSource ?? '').digest('hex'),
+    },
+  ];
+  releaseProvenanceBuild = {
+    repository: releaseManifest?.source?.repository,
+    sourceCommit: releaseManifest?.build?.commit,
+    workflowPath: '.github/workflows/go-quality.yml',
+  };
+  releaseChecksumsPassed =
+    releaseManifestPassed && readReleaseArtifact('SHA256SUMS') === expectedChecksums;
 } catch {
   releaseManifestPassed = false;
+  releaseChecksumsPassed = false;
+}
+let releaseProvenancePassed = false;
+if (releaseChecksumsPassed && releaseProvenanceSubjects !== null && releaseProvenanceBuild !== null) {
+  try {
+    const bundle = JSON.parse(readReleaseArtifact('provenance.bundle.json') ?? 'null');
+    verifyReleaseProvenanceBundleSubjects(bundle, releaseProvenanceSubjects, releaseProvenanceBuild);
+    verifyReleaseAttestationURL(
+      readReleaseArtifact('attestation-url.txt')?.trim() ?? '',
+      releaseProvenanceBuild.repository,
+    );
+    verifyReleaseAttestationVerification(
+      readReleaseArtifact('attestation-verification.txt') ?? '',
+      releaseProvenanceSubjects,
+    );
+    releaseProvenancePassed = true;
+  } catch {
+    releaseProvenancePassed = false;
+  }
 }
 const requiredReleaseArtifacts = [
   `${releaseArtifactRoot}/release-manifest.json`,
   `${releaseArtifactRoot}/SHA256SUMS`,
+  `${releaseArtifactRoot}/source-manifest.json`,
+  `${releaseArtifactRoot}/reproducibility-report.json`,
   `${releaseArtifactRoot}/provenance.bundle.json`,
   `${releaseArtifactRoot}/attestation-url.txt`,
   `${releaseArtifactRoot}/attestation-verification.txt`,
@@ -771,7 +751,11 @@ const releaseArtifactsComplete =
   requiredReleaseArtifacts.every((artifactPath) => releaseArtifactPaths.has(artifactPath));
 const signedReleaseStatus =
   runningInGitHubActions && process.platform === 'linux' && releaseAttestationStatus !== null
-    ? releaseAttestationStatus === '0' && releaseManifestPassed && releaseArtifactsComplete
+    ? releaseAttestationStatus === '0' &&
+      releaseManifestPassed &&
+      releaseChecksumsPassed &&
+      releaseProvenancePassed &&
+      releaseArtifactsComplete
       ? 'recorded'
       : 'failed'
     : 'not_recorded';
@@ -837,6 +821,7 @@ const manifest = {
     'Framework/config/config_test.go',
     'Framework/httpclient/client.go',
 	'Framework/httpapi/application_authorization.go',
+	'Framework/httpapi/app.go',
 	'Framework/httpapi/application_resource_authorization_test.go',
     'Framework/httpapi/application_query.go',
     'Framework/httpapi/application_command.go',
@@ -905,18 +890,28 @@ const manifest = {
     'Services/Billing/internal/billingapp/service_test.go',
     'SDK/GoExample/go.mod',
     'SDK/GoExample/VERSION',
+    'SDK/GoExample/README.md',
+    'SDK/GoExample/CHANGELOG.md',
     'SDK/GoExample/client.gen.go',
     'SDK/GoExample/client_test.go',
+    'SDK/GoExample/release-manifest.json',
     'SDK/Billing/go.mod',
     'SDK/Billing/VERSION',
+    'SDK/Billing/README.md',
+    'SDK/Billing/CHANGELOG.md',
     'SDK/Billing/client.gen.go',
     'SDK/Billing/client_test.go',
+    'SDK/Billing/release-manifest.json',
     'contracts/projects.json',
     'support/consumer/HealthProbe/go.mod',
     'support/consumer/HealthProbe/go.sum',
     'support/consumer/HealthProbe/cmd/healthprobe/main.go',
     'support/consumer/HealthProbe/cmd/healthprobe/main_test.go',
+    'support/deploy/prometheus/.gitignore',
+    'support/deploy/prometheus/README.md',
+    'support/deploy/prometheus/prometheus.yml',
     'support/deploy/prometheus/rules/goexample-slo.yml',
+    'support/deploy/prometheus/tests/goexample-slo.test.yml',
     'support/deploy/edge/goexample-nginx.contract.json',
     'support/deploy/edge/README.md',
     'support/deploy/kubernetes/goexample-api.template.json',
@@ -937,33 +932,88 @@ const manifest = {
     'scripts/evidence-verify.mjs',
     'scripts/go-project.mjs',
     'scripts/go-sdk.mjs',
+    'scripts/sdk-release.mjs',
     'scripts/project-contracts.mjs',
     'scripts/lib/project-contracts.mjs',
+    'scripts/lib/audit-chain-evidence.mjs',
+    'scripts/lib/authorization-evidence.mjs',
+    'scripts/lib/oidc-browser-evidence.mjs',
+    'scripts/lib/release-provenance.mjs',
+    'scripts/lib/sdk-release.mjs',
+    'scripts/lib/kubernetes-evidence.mjs',
+    'scripts/lib/nginx-edge-evidence.mjs',
+    'scripts/lib/nats-cluster-evidence.mjs',
+    'scripts/lib/nats-delivery-evidence.mjs',
+    'scripts/lib/nats-restart-evidence.mjs',
+    'scripts/lib/nats-snapshot-evidence.mjs',
+    'scripts/lib/postgres-recovery-evidence.mjs',
+    'scripts/lib/prometheus-rules.mjs',
+    'scripts/lib/redis-sentinel-evidence.mjs',
+    'scripts/lib/server-recovery-evidence.mjs',
+    'scripts/lib/workflow-lint.mjs',
     'scripts/kubernetes-manifest.mjs',
+    'scripts/audit-chain-evidence.mjs',
+    'scripts/authorization-evidence.mjs',
+    'scripts/oidc-browser-evidence.mjs',
+    'scripts/kubernetes-evidence.mjs',
     'scripts/nginx-edge.mjs',
     'scripts/nginx-edge-contract.mjs',
+    'scripts/nginx-edge-evidence.mjs',
+    'scripts/nats-cluster-evidence.mjs',
+    'scripts/nats-delivery-evidence.mjs',
+    'scripts/nats-restart-evidence.mjs',
+    'scripts/nats-snapshot-evidence.mjs',
     'scripts/postgres-recovery-contract.mjs',
+    'scripts/postgres-recovery-evidence.mjs',
     'scripts/postgres-recovery-report.mjs',
+    'scripts/prometheus-rules.mjs',
     'scripts/redis-sentinel-contract.mjs',
+    'scripts/redis-sentinel-evidence.mjs',
     'scripts/server-recovery-drill.mjs',
+    'scripts/server-recovery-evidence.mjs',
     'scripts/server-release.mjs',
     'scripts/transport-benchmark-baseline.mjs',
     'scripts/transport-benchmark-report.mjs',
     'scripts/lib/transport-benchmark-environment.mjs',
     'scripts/transport-soak-report.mjs',
     'scripts/v13-evidence.mjs',
+    'scripts/workflow-lint.mjs',
     '__test__/node/kubernetes-manifest.test.mjs',
+    '__test__/node/audit-chain-evidence.test.mjs',
+    '__test__/node/authorization-evidence.test.mjs',
+    '__test__/node/oidc-browser-evidence.test.mjs',
+    '__test__/node/kubernetes-evidence.test.mjs',
+    '__test__/node/sdk-release.test.mjs',
     '__test__/node/nginx-edge.test.mjs',
+    '__test__/node/nginx-edge-evidence.test.mjs',
+    '__test__/node/nats-cluster-evidence.test.mjs',
+    '__test__/node/nats-delivery-evidence.test.mjs',
+    '__test__/node/nats-restart-evidence.test.mjs',
+    '__test__/node/nats-snapshot-evidence.test.mjs',
     '__test__/node/project-contracts.test.mjs',
     '__test__/node/postgres-recovery-report.test.mjs',
+    '__test__/node/postgres-recovery-evidence.test.mjs',
+    '__test__/node/prometheus-rules.test.mjs',
+    '__test__/node/redis-sentinel-evidence.test.mjs',
+    '__test__/node/release-provenance.test.mjs',
+    '__test__/node/script-guards.test.mjs',
     '__test__/node/server-release.test.mjs',
+    '__test__/node/server-recovery-evidence.test.mjs',
     '__test__/node/transport-benchmark-baseline.test.mjs',
     '__test__/node/transport-benchmark-report.test.mjs',
     '__test__/node/transport-soak-report.test.mjs',
     '__test__/node/v13-evidence.test.mjs',
+    '__test__/node/workflow-lint.test.mjs',
+    'tools/actionlint/go.mod',
+    'tools/actionlint/go.sum',
+    'tools/promtool/go.mod',
+    'tools/promtool/go.sum',
+    '.github/workflows/dependency-review.yml',
     '.github/workflows/go-quality.yml',
     '.github/workflows/go-transport-benchmark.yml',
     '.github/workflows/node-tools-quality.yml',
+    '.github/workflows/security-analysis.yml',
+    '.github/workflows/supply-chain.yml',
     'docs/recovery/server-failure-matrix.md',
     'package.json',
     'yarn.lock',
@@ -1035,7 +1085,7 @@ const manifest = {
       status: signedReleaseStatus,
       reason:
         signedReleaseStatus === 'recorded'
-          ? 'the default-branch Linux release was checksum-bound to a GitHub Sigstore build provenance bundle and verified with gh attestation verify'
+          ? 'the default-branch Linux binary, release manifest, source manifest, and reproducibility report were bound to the exact archived in-toto/SLSA DSSE subject set, source commit, repository, workflow, builder invocation, and four successful gh attestation verify results'
           : signedReleaseStatus === 'failed'
             ? 'the GitHub release build, provenance generation, remote verification, or required bundle/status/checksum artifact failed or was incomplete'
             : 'a deterministic release and default-branch provenance workflow are defined, but a local manifest cannot prove a successful signed remote run',

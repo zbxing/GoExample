@@ -1,6 +1,933 @@
 {
-  "generated_at": "2026-08-26T02:24:25.683980+00:00",
+  "generated_at": "2026-08-27T19:59:26.471764+00:00",
   "nodes": {
+    "agents_graphify": {
+      "code_fingerprint": "92bbfa896e8eb9b372b8ada19bbdd47add5144295a1ea1bf5bf7a05cd9df75f8",
+      "label": "graphify",
+      "last": "2026-08-26T02:27:40.602685+00:00",
+      "neg": 1,
+      "provenance": [
+        {
+          "date": "2026-08-26T02:27:40.602685+00:00",
+          "outcome": "useful",
+          "q": "graphify-out中日期文件夹、cache、memory和reflections不上传仓库真的不影响在新设备的使用吗，新设备没有这些文件是否还可以正常使用记忆图谱(包含已更新记录的)"
+        }
+      ],
+      "score": 0.016875627,
+      "source_file": "AGENTS.md",
+      "status": "contested",
+      "uses": 1,
+      "verdict": "useful"
+    },
+    "docs_observability_slo_and_alerts_goexample_slo_and_alerts": {
+      "code_fingerprint": "78bd65e9e9ea9b379a5f6cfd47ff70b28468f2bce9bf74d4d39f1a7fafdd224b",
+      "label": "GoExample SLO and Alerts",
+      "last": "2026-08-27T13:25:34.213509+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T13:25:34.213509+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T12:50:36.622782+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T12:14:40.842800+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 2.979413853,
+      "source_file": "docs/observability/SLO-and-alerts.md",
+      "status": "preferred",
+      "uses": 3
+    },
+    "framework_httpapi_security_audit_chain_test": {
+      "code_fingerprint": "88139d6b015177fbc77ea3b5facd9a8942f61e38875a9d8c08fa4ac4cd865352",
+      "label": "security_audit_chain_test.go",
+      "last": "2026-08-27T18:52:52.906144+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:52:52.906144+00:00",
+          "outcome": "useful",
+          "q": "V13 尚未完成时，下一项不涉及 MSFront 且能提升综合评分的仓库内优化是什么"
+        }
+      ],
+      "score": 0.998932619,
+      "source_file": "Framework/httpapi/security_audit_chain_test.go",
+      "status": "tentative",
+      "uses": 1
+    },
+    "framework_queueclient_natsjetstream_cluster_integration_test": {
+      "code_fingerprint": "0eadb915ad09772b313cee8c3d8bbfd8d2398be7e2017a0f31ef341f1ea23372",
+      "label": "cluster_integration_test.go",
+      "last": "2026-08-27T16:54:38.004893+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T16:54:38.004893+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.997039138,
+      "source_file": "Framework/queueclient/natsjetstream/cluster_integration_test.go",
+      "status": "tentative",
+      "uses": 1
+    },
+    "framework_queueclient_natsjetstream_cluster_integration_test_testrealnatsjetstreamclusterleaderfailover": {
+      "code_fingerprint": "0eadb915ad09772b313cee8c3d8bbfd8d2398be7e2017a0f31ef341f1ea23372",
+      "label": "TestRealNATSJetStreamClusterLeaderFailover()",
+      "last": "2026-08-27T17:27:41.243679+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T17:27:41.243679+00:00",
+          "outcome": "useful",
+          "q": "How is NATS cluster outer evidence connected to the workflow and generic evidence chain?"
+        }
+      ],
+      "score": 0.997568061,
+      "source_file": "Framework/queueclient/natsjetstream/cluster_integration_test.go",
+      "status": "tentative",
+      "uses": 1
+    },
+    "framework_queueclient_worker_go_queueclient_delivery": {
+      "code_fingerprint": "188efccf72fe8c7f80ad322454ac584a3a9fa27e529a3175137ea71b7b9c8acb",
+      "label": "Delivery",
+      "last": "2026-08-27T18:46:19.085696+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:46:19.085696+00:00",
+          "outcome": "useful",
+          "q": "最新待优化文档是否完成；若未完成继续 V13，并核验 NATS JetStream delivery/lease 证据链，MSFront 除外"
+        }
+      ],
+      "score": 0.998827422,
+      "source_file": "Framework/queueclient/worker.go",
+      "status": "tentative",
+      "uses": 1
+    },
+    "httpapi_encryptedauditwriter": {
+      "code_fingerprint": "8d067d01a3d9f4cab3e60bfcd5ebb8e2c0a5f1030d2150f96081196565fe2586",
+      "label": "EncryptedAuditWriter",
+      "last": "2026-08-27T18:52:52.906144+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:52:52.906144+00:00",
+          "outcome": "useful",
+          "q": "V13 尚未完成时，下一项不涉及 MSFront 且能提升综合评分的仓库内优化是什么"
+        }
+      ],
+      "score": 0.998932619,
+      "source_file": "Framework/httpapi/security_audit_chain.go",
+      "status": "tentative",
+      "uses": 1
+    },
+    "httpapi_hashchainauditsink": {
+      "code_fingerprint": "8d067d01a3d9f4cab3e60bfcd5ebb8e2c0a5f1030d2150f96081196565fe2586",
+      "label": "HashChainAuditSink",
+      "last": "2026-08-27T18:52:52.906144+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:52:52.906144+00:00",
+          "outcome": "useful",
+          "q": "V13 尚未完成时，下一项不涉及 MSFront 且能提升综合评分的仓库内优化是什么"
+        }
+      ],
+      "score": 0.998932619,
+      "source_file": "Framework/httpapi/security_audit_chain.go",
+      "status": "tentative",
+      "uses": 1
+    },
+    "package_scripts_nats_delivery_contract_evidence": {
+      "code_fingerprint": "0ed4850b97f5c190c90869ee1535c3e98332aa29b04e3513edb60ebf0947c8be",
+      "label": "nats:delivery:contract:evidence",
+      "last": "2026-08-27T18:49:01.474448+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:49:01.474448+00:00",
+          "outcome": "useful",
+          "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
+        }
+      ],
+      "score": 0.998870798,
+      "source_file": "package.json",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_audit_chain_evidence": {
+      "code_fingerprint": "a0887b759f8153a6047f451f013134d8b2885e6c916116c2bc3dade90ade48c2",
+      "label": "scripts/audit-chain-evidence.mjs",
+      "last": "2026-08-27T19:25:24.304303+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T19:25:24.304303+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.999454037,
+      "source_file": "scripts/audit-chain-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_evidence_manifest": {
+      "code_fingerprint": "4ac295f500ba6ef09f2c0ffe210afae9f693a9a89eb263435d30d011148f53a9",
+      "label": "evidence-manifest.mjs",
+      "last": "2026-08-27T19:57:17.947135+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T19:57:17.947135+00:00",
+          "outcome": "useful",
+          "q": "OIDC evidence runner verifier manifest workflow checksum integration"
+        },
+        {
+          "date": "2026-08-27T19:25:24.304303+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T18:52:52.906144+00:00",
+          "outcome": "useful",
+          "q": "V13 尚未完成时，下一项不涉及 MSFront 且能提升综合评分的仓库内优化是什么"
+        },
+        {
+          "date": "2026-08-27T18:49:01.474448+00:00",
+          "outcome": "useful",
+          "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
+        },
+        {
+          "date": "2026-08-27T18:46:19.085696+00:00",
+          "outcome": "useful",
+          "q": "最新待优化文档是否完成；若未完成继续 V13，并核验 NATS JetStream delivery/lease 证据链，MSFront 除外"
+        }
+      ],
+      "score": 11.957703813,
+      "source_file": "scripts/evidence-manifest.mjs",
+      "status": "preferred",
+      "uses": 12
+    },
+    "scripts_evidence_manifest_evidence": {
+      "code_fingerprint": "4ac295f500ba6ef09f2c0ffe210afae9f693a9a89eb263435d30d011148f53a9",
+      "label": "evidence",
+      "last": "2026-08-27T18:46:19.085696+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:46:19.085696+00:00",
+          "outcome": "useful",
+          "q": "最新待优化文档是否完成；若未完成继续 V13，并核验 NATS JetStream delivery/lease 证据链，MSFront 除外"
+        },
+        {
+          "date": "2026-08-27T12:14:40.842800+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T10:50:14.475667+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗；没有请继续，否则生成新待优化文档并优化，MSFront除外"
+        },
+        {
+          "date": "2026-08-27T09:36:56.533636+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T09:02:50.637122+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 5.950922169,
+      "source_file": "scripts/evidence-manifest.mjs",
+      "status": "preferred",
+      "uses": 6
+    },
+    "scripts_evidence_manifest_manifest": {
+      "code_fingerprint": "4ac295f500ba6ef09f2c0ffe210afae9f693a9a89eb263435d30d011148f53a9",
+      "label": "manifest",
+      "last": "2026-08-27T18:46:19.085696+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:46:19.085696+00:00",
+          "outcome": "useful",
+          "q": "最新待优化文档是否完成；若未完成继续 V13，并核验 NATS JetStream delivery/lease 证据链，MSFront 除外"
+        },
+        {
+          "date": "2026-08-27T12:14:40.842800+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T10:50:14.475667+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗；没有请继续，否则生成新待优化文档并优化，MSFront除外"
+        },
+        {
+          "date": "2026-08-27T09:36:56.533636+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T09:02:50.637122+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 5.923014754,
+      "source_file": "scripts/evidence-manifest.mjs",
+      "status": "preferred",
+      "uses": 6
+    },
+    "scripts_evidence_manifest_natsclusterouterevidenceroot": {
+      "code_fingerprint": "4ac295f500ba6ef09f2c0ffe210afae9f693a9a89eb263435d30d011148f53a9",
+      "label": "natsClusterOuterEvidenceRoot",
+      "last": "2026-08-27T17:27:41.243679+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T17:27:41.243679+00:00",
+          "outcome": "useful",
+          "q": "How is NATS cluster outer evidence connected to the workflow and generic evidence chain?"
+        }
+      ],
+      "score": 0.997568061,
+      "source_file": "scripts/evidence-manifest.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_evidence_manifest_natsrestartouterevidenceroot": {
+      "code_fingerprint": "4ac295f500ba6ef09f2c0ffe210afae9f693a9a89eb263435d30d011148f53a9",
+      "label": "natsRestartOuterEvidenceRoot",
+      "last": "2026-08-27T16:51:42.300628+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T16:51:42.300628+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T16:47:47.419193+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 1.993921962,
+      "source_file": "scripts/evidence-manifest.mjs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "scripts_evidence_verify": {
+      "code_fingerprint": "03d4443f6eeca1870db7c56be0ca796ed0275260b86aec6361af513bca72d7be",
+      "label": "evidence-verify.mjs",
+      "last": "2026-08-27T19:57:17.947135+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T19:57:17.947135+00:00",
+          "outcome": "useful",
+          "q": "OIDC evidence runner verifier manifest workflow checksum integration"
+        },
+        {
+          "date": "2026-08-27T19:25:24.304303+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T18:52:52.906144+00:00",
+          "outcome": "useful",
+          "q": "V13 尚未完成时，下一项不涉及 MSFront 且能提升综合评分的仓库内优化是什么"
+        },
+        {
+          "date": "2026-08-27T18:49:01.474448+00:00",
+          "outcome": "useful",
+          "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
+        },
+        {
+          "date": "2026-08-27T18:46:19.085696+00:00",
+          "outcome": "useful",
+          "q": "最新待优化文档是否完成；若未完成继续 V13，并核验 NATS JetStream delivery/lease 证据链，MSFront 除外"
+        }
+      ],
+      "score": 10.964003575,
+      "source_file": "scripts/evidence-verify.mjs",
+      "status": "preferred",
+      "uses": 11
+    },
+    "scripts_kubernetes_evidence": {
+      "code_fingerprint": "3b50b18e0502fe012f4a952700a18e0295b3c27d135806ce1fd23774e334e493",
+      "label": "scripts/kubernetes-evidence.mjs",
+      "last": "2026-08-27T14:01:44.870327+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T14:01:44.870327+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.994277222,
+      "source_file": "scripts/kubernetes-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_kubernetes_manifest": {
+      "code_fingerprint": "461f45a9a62941e110d0ba02be1ac184d5f176b5989858ae3f1c99163c41b1e7",
+      "label": "kubernetes-manifest.mjs",
+      "last": "2026-08-27T10:50:14.475667+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T10:50:14.475667+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗；没有请继续，否则生成新待优化文档并优化，MSFront除外"
+        }
+      ],
+      "score": 0.991226758,
+      "source_file": "scripts/kubernetes-manifest.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_kubernetes_manifest_rendermanifest": {
+      "code_fingerprint": "461f45a9a62941e110d0ba02be1ac184d5f176b5989858ae3f1c99163c41b1e7",
+      "label": "renderManifest()",
+      "last": "2026-08-27T14:01:44.870327+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T14:01:44.870327+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.994277222,
+      "source_file": "scripts/kubernetes-manifest.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_audit_chain_evidence_verifyauditchainevidence": {
+      "code_fingerprint": "38947b968a4d7053054c95b7b6120c56649f2c2da5ff63ddc5c7d467787a8149",
+      "label": "verifyAuditChainEvidence()",
+      "last": "2026-08-27T19:25:24.304303+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T19:25:24.304303+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.999454037,
+      "source_file": "scripts/lib/audit-chain-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_kubernetes_evidence_buildkubernetesevidencereport": {
+      "code_fingerprint": "04abd78ac7c40188375ab1a943e517fa6e3174d3cf88d53e65d14d6f38e57370",
+      "label": "buildKubernetesEvidenceReport()",
+      "last": "2026-08-27T14:01:44.870327+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T14:01:44.870327+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.994277222,
+      "source_file": "scripts/lib/kubernetes-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_kubernetes_evidence_kubernetesevidenceschemaversion": {
+      "code_fingerprint": "04abd78ac7c40188375ab1a943e517fa6e3174d3cf88d53e65d14d6f38e57370",
+      "label": "kubernetesEvidenceSchemaVersion",
+      "last": "2026-08-27T14:01:44.870327+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T14:01:44.870327+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.994277222,
+      "source_file": "scripts/lib/kubernetes-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_kubernetes_evidence_verifykubernetesevidence": {
+      "code_fingerprint": "04abd78ac7c40188375ab1a943e517fa6e3174d3cf88d53e65d14d6f38e57370",
+      "label": "verifyKubernetesEvidence()",
+      "last": "2026-08-27T14:01:44.870327+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T14:01:44.870327+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.994277222,
+      "source_file": "scripts/lib/kubernetes-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_nats_cluster_evidence_verifynatsclustercontractartifacts": {
+      "code_fingerprint": "08cc6cb267e62edce22a4a9580e28949d03ca470d16159308b217cb0e1b180d7",
+      "label": "verifyNatsClusterContractArtifacts()",
+      "last": "2026-08-27T17:27:41.243679+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T17:27:41.243679+00:00",
+          "outcome": "useful",
+          "q": "How is NATS cluster outer evidence connected to the workflow and generic evidence chain?"
+        }
+      ],
+      "score": 0.997568061,
+      "source_file": "scripts/lib/nats-cluster-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_nats_cluster_evidence_verifynatsclusterevidence": {
+      "code_fingerprint": "08cc6cb267e62edce22a4a9580e28949d03ca470d16159308b217cb0e1b180d7",
+      "label": "verifyNatsClusterEvidence()",
+      "last": "2026-08-27T17:27:41.243679+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T17:27:41.243679+00:00",
+          "outcome": "useful",
+          "q": "How is NATS cluster outer evidence connected to the workflow and generic evidence chain?"
+        }
+      ],
+      "score": 0.997568061,
+      "source_file": "scripts/lib/nats-cluster-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_nats_delivery_evidence": {
+      "code_fingerprint": "72410a88ac1776fea510af3f63812515bf9027ce5c15e4cc8a8fac7944203942",
+      "label": "lib/nats-delivery-evidence.mjs",
+      "last": "2026-08-27T18:49:01.474448+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:49:01.474448+00:00",
+          "outcome": "useful",
+          "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
+        }
+      ],
+      "score": 0.998870798,
+      "source_file": "scripts/lib/nats-delivery-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_nats_delivery_evidence_buildnatsdeliverychecksums": {
+      "code_fingerprint": "72410a88ac1776fea510af3f63812515bf9027ce5c15e4cc8a8fac7944203942",
+      "label": "buildNatsDeliveryChecksums()",
+      "last": "2026-08-27T18:49:01.474448+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:49:01.474448+00:00",
+          "outcome": "useful",
+          "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
+        }
+      ],
+      "score": 0.998870798,
+      "source_file": "scripts/lib/nats-delivery-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_nats_delivery_evidence_verifynatsdeliverycontractartifacts": {
+      "code_fingerprint": "72410a88ac1776fea510af3f63812515bf9027ce5c15e4cc8a8fac7944203942",
+      "label": "verifyNatsDeliveryContractArtifacts()",
+      "last": "2026-08-27T18:49:01.474448+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:49:01.474448+00:00",
+          "outcome": "useful",
+          "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
+        }
+      ],
+      "score": 0.998870798,
+      "source_file": "scripts/lib/nats-delivery-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_nats_delivery_evidence_verifynatsdeliveryevidence": {
+      "code_fingerprint": "72410a88ac1776fea510af3f63812515bf9027ce5c15e4cc8a8fac7944203942",
+      "label": "verifyNatsDeliveryEvidence()",
+      "last": "2026-08-27T18:49:01.474448+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:49:01.474448+00:00",
+          "outcome": "useful",
+          "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
+        }
+      ],
+      "score": 0.998870798,
+      "source_file": "scripts/lib/nats-delivery-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_nats_restart_evidence_verifynatsrestartcontractartifacts": {
+      "code_fingerprint": "d91a8366cb2320af911486ed681cf78e931f8a107ee9621c5c1eeb902daa4433",
+      "label": "verifyNatsRestartContractArtifacts()",
+      "last": "2026-08-27T16:51:42.300628+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T16:51:42.300628+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T16:47:47.419193+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 1.993921962,
+      "source_file": "scripts/lib/nats-restart-evidence.mjs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "scripts_lib_nats_restart_evidence_verifynatsrestartevidence": {
+      "code_fingerprint": "d91a8366cb2320af911486ed681cf78e931f8a107ee9621c5c1eeb902daa4433",
+      "label": "verifyNatsRestartEvidence()",
+      "last": "2026-08-27T16:54:38.004893+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T16:54:38.004893+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T16:51:42.300628+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T16:47:47.419193+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 2.9909611,
+      "source_file": "scripts/lib/nats-restart-evidence.mjs",
+      "status": "preferred",
+      "uses": 3
+    },
+    "scripts_lib_nats_snapshot_evidence_verifynatssnapshotevidence": {
+      "code_fingerprint": "b72ac85bd22546cfd7ab0d2a52c7565273b7305ef4cc4667401b119020f0cf84",
+      "label": "verifyNatsSnapshotEvidence()",
+      "last": "2026-08-27T16:54:38.004893+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T16:54:38.004893+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.997039138,
+      "source_file": "scripts/lib/nats-snapshot-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_nginx_edge_evidence_buildnginxedgechecksums": {
+      "code_fingerprint": "ab4501dc53f958005f918a75368b4bdd312ce0da48f018d9b30df88fb5add6ca",
+      "label": "buildNginxEdgeChecksums()",
+      "last": "2026-08-27T14:34:54.593435+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T14:34:54.593435+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.994806405,
+      "source_file": "scripts/lib/nginx-edge-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_nginx_edge_evidence_buildnginxedgeevidencereport": {
+      "code_fingerprint": "ab4501dc53f958005f918a75368b4bdd312ce0da48f018d9b30df88fb5add6ca",
+      "label": "buildNginxEdgeEvidenceReport()",
+      "last": "2026-08-27T14:34:54.593435+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T14:34:54.593435+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.994806405,
+      "source_file": "scripts/lib/nginx-edge-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_nginx_edge_evidence_verifynginxedgeevidence": {
+      "code_fingerprint": "ab4501dc53f958005f918a75368b4bdd312ce0da48f018d9b30df88fb5add6ca",
+      "label": "verifyNginxEdgeEvidence()",
+      "last": "2026-08-27T14:34:54.593435+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T14:34:54.593435+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.994806405,
+      "source_file": "scripts/lib/nginx-edge-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_oidc_browser_evidence_buildoidcbrowserevidencereport": {
+      "code_fingerprint": "04e01a2841f0e80489c91b8afab42b011a0686ec0e076210a01fa726cb160cc7",
+      "label": "buildOIDCBrowserEvidenceReport()",
+      "last": "2026-08-27T19:57:17.947135+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T19:57:17.947135+00:00",
+          "outcome": "useful",
+          "q": "OIDC evidence runner verifier manifest workflow checksum integration"
+        }
+      ],
+      "score": 0.999965631,
+      "source_file": "scripts/lib/oidc-browser-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_oidc_browser_evidence_verifyoidcbrowserevidence": {
+      "code_fingerprint": "04e01a2841f0e80489c91b8afab42b011a0686ec0e076210a01fa726cb160cc7",
+      "label": "verifyOIDCBrowserEvidence()",
+      "last": "2026-08-27T19:57:17.947135+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T19:57:17.947135+00:00",
+          "outcome": "useful",
+          "q": "OIDC evidence runner verifier manifest workflow checksum integration"
+        }
+      ],
+      "score": 0.999965631,
+      "source_file": "scripts/lib/oidc-browser-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_prometheus_rules": {
+      "code_fingerprint": "6cce24c1dc2a5c57ce34454bb004517eb12d86eed8011542dbb4013b85e9c0a5",
+      "label": "lib/prometheus-rules.mjs",
+      "last": "2026-08-27T13:25:34.213509+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T13:25:34.213509+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T12:50:36.622782+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 1.986843234,
+      "source_file": "scripts/lib/prometheus-rules.mjs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "scripts_lib_release_provenance": {
+      "code_fingerprint": "87818f4263dd6ef9cd8fdc8743b20a4e4c271e644cd3ce806359f1609bbbb209",
+      "label": "release-provenance.mjs",
+      "last": "2026-08-27T10:50:14.475667+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T10:50:14.475667+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗；没有请继续，否则生成新待优化文档并优化，MSFront除外"
+        },
+        {
+          "date": "2026-08-27T10:08:18.082747+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 1.981786716,
+      "source_file": "scripts/lib/release-provenance.mjs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "scripts_lib_release_provenance_verifyreleaseprovenancebundlesubjects": {
+      "code_fingerprint": "87818f4263dd6ef9cd8fdc8743b20a4e4c271e644cd3ce806359f1609bbbb209",
+      "label": "verifyReleaseProvenanceBundleSubjects()",
+      "last": "2026-08-27T10:08:18.082747+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T10:08:18.082747+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T09:36:56.533636+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 1.980621631,
+      "source_file": "scripts/lib/release-provenance.mjs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "scripts_lib_server_recovery_evidence_serverrecoveryscenarios": {
+      "code_fingerprint": "71aea2946987a21bc3b25e965713347c5cac03e25a301f2e2baafb40c23d505a",
+      "label": "serverRecoveryScenarios",
+      "last": "2026-08-27T18:02:37.196849+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:02:37.196849+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.99812735,
+      "source_file": "scripts/lib/server-recovery-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_server_recovery_evidence_verifyserverrecoveryevidence": {
+      "code_fingerprint": "71aea2946987a21bc3b25e965713347c5cac03e25a301f2e2baafb40c23d505a",
+      "label": "verifyServerRecoveryEvidence()",
+      "last": "2026-08-27T18:02:37.196849+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:02:37.196849+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.99812735,
+      "source_file": "scripts/lib/server-recovery-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_lib_workflow_lint_verifyworkflowlintevidence": {
+      "code_fingerprint": "b107d91d110b3c97b82c5ae3401f9cf902e0b723fd66b417749a6afd70f97677",
+      "label": "verifyWorkflowLintEvidence()",
+      "last": "2026-08-27T12:14:40.842800+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T12:14:40.842800+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.992570619,
+      "source_file": "scripts/lib/workflow-lint.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_nginx_edge_contract_writeartifacts": {
+      "code_fingerprint": "73aefd820b218d8adef87e446b9318b25969bf8ed2fe6a8ba29d204f4966d875",
+      "label": "writeArtifacts()",
+      "last": "2026-08-27T14:34:54.593435+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T14:34:54.593435+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.994806405,
+      "source_file": "scripts/nginx-edge-contract.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_oidc_browser_evidence": {
+      "code_fingerprint": "e697e4645f53a2626b361b1b42314448dd98b5890e49786fd349b666246a7309",
+      "label": "scripts/oidc-browser-evidence.mjs",
+      "last": "2026-08-27T19:57:17.947135+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T19:57:17.947135+00:00",
+          "outcome": "useful",
+          "q": "OIDC evidence runner verifier manifest workflow checksum integration"
+        }
+      ],
+      "score": 0.999965631,
+      "source_file": "scripts/oidc-browser-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_prometheus_rules": {
+      "code_fingerprint": "c03e6b763452e4d68ce512c72beea721f8b058df2f6d137ebf9e4d043c596819",
+      "label": "scripts/prometheus-rules.mjs",
+      "last": "2026-08-27T12:50:36.622782+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T12:50:36.622782+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.993142995,
+      "source_file": "scripts/prometheus-rules.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_server_recovery_evidence": {
+      "code_fingerprint": "8a2f1b5c60ad5ef606356c66358fd883867d7d827e2493b36a3690e5181e3725",
+      "label": "scripts/server-recovery-evidence.mjs",
+      "last": "2026-08-27T18:02:37.196849+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:02:37.196849+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.99812735,
+      "source_file": "scripts/server-recovery-evidence.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_server_release": {
+      "code_fingerprint": "06b0a20391b4791ecaf060da981c4e928291ee5086401754ef4e42bf9e12fd1c",
+      "label": "server-release.mjs",
+      "last": "2026-08-27T08:12:08.753023+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T08:12:08.753023+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.988715547,
+      "source_file": "scripts/server-release.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_server_release_reproducible": {
+      "code_fingerprint": "06b0a20391b4791ecaf060da981c4e928291ee5086401754ef4e42bf9e12fd1c",
+      "label": "reproducible()",
+      "last": "2026-08-27T08:12:08.753023+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T08:12:08.753023+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.988715547,
+      "source_file": "scripts/server-release.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_server_release_verifysourcemanifest": {
+      "code_fingerprint": "06b0a20391b4791ecaf060da981c4e928291ee5086401754ef4e42bf9e12fd1c",
+      "label": "verifySourceManifest()",
+      "last": "2026-08-27T09:02:50.637122+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T09:02:50.637122+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.989520149,
+      "source_file": "scripts/server-release.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
     "scripts_transport_benchmark_baseline": {
       "code_fingerprint": "6362564cfc95cde8a3c2262d009f236a470b3df3589d81ceafc93a3ce5c6017b",
       "label": "transport-benchmark-baseline.mjs",
@@ -17,7 +944,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.97995012,
+      "score": 1.902253019,
       "source_file": "scripts/transport-benchmark-baseline.mjs",
       "status": "preferred",
       "uses": 2
@@ -33,7 +960,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.990199752,
+      "score": 0.951342384,
       "source_file": "scripts/transport-benchmark-baseline.mjs",
       "status": "tentative",
       "uses": 1
@@ -54,7 +981,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.97995012,
+      "score": 1.902253019,
       "source_file": "scripts/transport-benchmark-report.mjs",
       "status": "preferred",
       "uses": 2
@@ -70,7 +997,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.990199752,
+      "score": 0.951342384,
       "source_file": "scripts/transport-benchmark-report.mjs",
       "status": "tentative",
       "uses": 1
@@ -86,8 +1013,178 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.990199752,
+      "score": 0.951342384,
       "source_file": "scripts/transport-benchmark-report.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "support_api_contracts_readme_update_workflow": {
+      "code_fingerprint": "2c3ec39e820fd36c0971218c3319beffad2b40c306190ba7859616ab48ec9ba5",
+      "label": "Update workflow",
+      "last": "2026-08-27T10:08:18.082747+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T10:08:18.082747+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.990559958,
+      "source_file": "support/api-contracts/README.md",
+      "status": "tentative",
+      "uses": 1
+    },
+    "test_node_audit_chain_evidence_test": {
+      "code_fingerprint": "f66807a767afca310ada79e0f3ca8f8d7b3c0a63b62f0d88454cbb55850dcbe4",
+      "label": "audit-chain-evidence.test.mjs",
+      "last": "2026-08-27T19:25:24.304303+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T19:25:24.304303+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.999454037,
+      "source_file": "__test__/node/audit-chain-evidence.test.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "test_node_kubernetes_evidence_test": {
+      "code_fingerprint": "b19b2ffe041626794d7f688714374fca1669a8df05c016aea25474645fb8593b",
+      "label": "kubernetes-evidence.test.mjs",
+      "last": "2026-08-27T14:01:44.870327+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T14:01:44.870327+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.994277222,
+      "source_file": "__test__/node/kubernetes-evidence.test.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "test_node_nats_cluster_evidence_test": {
+      "code_fingerprint": "3e25ebbaf9e99158b8094127f47a10caa657071ce15b35e82cd11f768451a6bf",
+      "label": "nats-cluster-evidence.test.mjs",
+      "last": "2026-08-27T17:27:41.243679+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T17:27:41.243679+00:00",
+          "outcome": "useful",
+          "q": "How is NATS cluster outer evidence connected to the workflow and generic evidence chain?"
+        }
+      ],
+      "score": 0.997568061,
+      "source_file": "__test__/node/nats-cluster-evidence.test.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "test_node_nats_delivery_evidence_test": {
+      "code_fingerprint": "1fbcab2e14361d6920dfec9bfbc8489499007ae8c8972c97ddb9bea5d155b551",
+      "label": "nats-delivery-evidence.test.mjs",
+      "last": "2026-08-27T18:49:01.474448+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:49:01.474448+00:00",
+          "outcome": "useful",
+          "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
+        }
+      ],
+      "score": 0.998870798,
+      "source_file": "__test__/node/nats-delivery-evidence.test.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "test_node_nats_restart_evidence_test": {
+      "code_fingerprint": "bc47f65921463cb965e9ea352b04ef2a7cc7266f1a4f7415bc46b6e63faa3489",
+      "label": "nats-restart-evidence.test.mjs",
+      "last": "2026-08-27T16:51:42.300628+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T16:51:42.300628+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T16:47:47.419193+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 1.993921962,
+      "source_file": "__test__/node/nats-restart-evidence.test.mjs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "test_node_oidc_browser_evidence_test": {
+      "code_fingerprint": "cba6d34758a104da0ce8885b73ecc7104521b9d211192a0463d6120124f208dc",
+      "label": "oidc-browser-evidence.test.mjs",
+      "last": "2026-08-27T19:57:17.947135+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T19:57:17.947135+00:00",
+          "outcome": "useful",
+          "q": "OIDC evidence runner verifier manifest workflow checksum integration"
+        }
+      ],
+      "score": 0.999965631,
+      "source_file": "__test__/node/oidc-browser-evidence.test.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "test_node_prometheus_rules_test": {
+      "code_fingerprint": "1875c09bfe7c343b2a2f5716d8990fc0473d286b2fa581891dac2ff4a0ac8db7",
+      "label": "prometheus-rules.test.mjs",
+      "last": "2026-08-27T13:25:34.213509+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T13:25:34.213509+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        },
+        {
+          "date": "2026-08-27T12:50:36.622782+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 1.986843234,
+      "source_file": "__test__/node/prometheus-rules.test.mjs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "test_node_server_recovery_evidence_test": {
+      "code_fingerprint": "5360f1545a5f5c0db1a7c5fcc56514b3d3e3b73949eac47cf9c95351c785409f",
+      "label": "server-recovery-evidence.test.mjs",
+      "last": "2026-08-27T18:02:37.196849+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:02:37.196849+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
+        }
+      ],
+      "score": 0.99812735,
+      "source_file": "__test__/node/server-recovery-evidence.test.mjs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "test_node_workflow_lint_test": {
+      "code_fingerprint": "d6b92641c970a308aaee2d3866fb2e14f1e6f69c3eed21cfe821c01743347ab4",
+      "label": "workflow-lint.test.mjs",
+      "last": "2026-08-27T18:46:19.085696+00:00",
+      "provenance": [
+        {
+          "date": "2026-08-27T18:46:19.085696+00:00",
+          "outcome": "useful",
+          "q": "最新待优化文档是否完成；若未完成继续 V13，并核验 NATS JetStream delivery/lease 证据链，MSFront 除外"
+        }
+      ],
+      "score": 0.998827422,
+      "source_file": "__test__/node/workflow-lint.test.mjs",
       "status": "tentative",
       "uses": 1
     }

@@ -3,6 +3,31 @@ import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  verifyReleaseAttestationURL,
+  verifyReleaseAttestationVerification,
+  verifyReleaseProvenanceBundleSubjects,
+} from './lib/release-provenance.mjs';
+import { verifyKubernetesEvidence } from './lib/kubernetes-evidence.mjs';
+import { verifyAuditChainEvidence } from './lib/audit-chain-evidence.mjs';
+import { verifyAuthorizationEvidence } from './lib/authorization-evidence.mjs';
+import { verifyOIDCBrowserEvidence } from './lib/oidc-browser-evidence.mjs';
+import {
+  verifyNatsClusterContractArtifacts,
+  verifyNatsClusterEvidence,
+} from './lib/nats-cluster-evidence.mjs';
+import { verifyNatsDeliveryEvidence } from './lib/nats-delivery-evidence.mjs';
+import {
+  verifyNatsRestartContractArtifacts,
+  verifyNatsRestartEvidence,
+} from './lib/nats-restart-evidence.mjs';
+import { verifyNatsSnapshotEvidence } from './lib/nats-snapshot-evidence.mjs';
+import { verifyNginxEdgeEvidence } from './lib/nginx-edge-evidence.mjs';
+import { verifyPostgresRecoveryEvidence } from './lib/postgres-recovery-evidence.mjs';
+import { verifyPrometheusRuleEvidence } from './lib/prometheus-rules.mjs';
+import { verifyRedisSentinelEvidence } from './lib/redis-sentinel-evidence.mjs';
+import { verifyServerRecoveryEvidence } from './lib/server-recovery-evidence.mjs';
+import { verifyWorkflowLintEvidence } from './lib/workflow-lint.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -249,36 +274,10 @@ function verifyBoundaries(boundaries, evidencePaths) {
         fail(`recorded localNatsRestart artifact is empty: ${artifactPath}`);
       }
     }
-    let report;
     try {
-      report = JSON.parse(readFileSync(path.join(repositoryRoot, root, 'restart-report.json'), 'utf8'));
-    } catch {
-      fail('recorded localNatsRestart requires a valid restart-report.json');
-    }
-    if (
-      report?.schemaVersion !== 1 ||
-      report?.status !== 'passed' ||
-      report?.storage !== 'file' ||
-      report?.replicas !== 1 ||
-      report?.abruptRestarts !== 1 ||
-      report?.persistedMessages !== 3 ||
-      !Number.isSafeInteger(report?.recoveredStreamSequence) ||
-      report.recoveredStreamSequence <= 0 ||
-      report?.deliveryCountBeforeRestart !== 1 ||
-      report?.deliveryCountAfterRestart !== 1 ||
-      report?.redeliveryObserved !== true ||
-      report?.acknowledged !== 1 ||
-      report?.deadLettered !== 1 ||
-      report?.sourceAckPending !== 0 ||
-      report?.sourceMessagesPending !== 0 ||
-      report?.shortLeaseRejected !== true ||
-      report?.leasePreflightPassed !== true ||
-      !Number.isSafeInteger(report?.requiredLeaseNanos) ||
-      report.requiredLeaseNanos <= 0 ||
-      !Number.isSafeInteger(report?.workerAckWaitNanos) ||
-      report.workerAckWaitNanos < report.requiredLeaseNanos
-    ) {
-      fail('recorded localNatsRestart report does not satisfy the single-node restart contract');
+      verifyNatsRestartContractArtifacts({ evidenceRoot: path.join(repositoryRoot, root) });
+    } catch (error) {
+      fail(`recorded localNatsRestart report does not satisfy the single-node restart contract: ${error.message}`);
     }
   }
   if (document.localNatsSnapshotRestore.status === 'recorded') {
@@ -368,330 +367,13 @@ function verifyBoundaries(boundaries, evidencePaths) {
       if (!evidencePaths.has(artifactPath)) {
         fail(`recorded localNatsClusterFailover is missing required artifact: ${artifactPath}`);
       }
-      if (lstatSync(path.join(repositoryRoot, artifactPath)).size === 0) {
-        fail(`recorded localNatsClusterFailover artifact is empty: ${artifactPath}`);
-      }
     }
-    let report;
     try {
-      report = JSON.parse(readFileSync(path.join(repositoryRoot, root, 'cluster-failover-report.json'), 'utf8'));
-    } catch {
-      fail('recorded localNatsClusterFailover requires a valid cluster-failover-report.json');
-    }
-    const clusterNodeNamePattern = /^goexample-js-node-[123]$/;
-    if (
-      !clusterNodeNamePattern.test(report?.oldLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.newLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.secondOldLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.secondNewLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.quorumOldLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.quorumRecoveredLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.concurrentOldLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.concurrentStoppedPeer ?? '') ||
-      !clusterNodeNamePattern.test(report?.concurrentSurvivor ?? '') ||
-      !clusterNodeNamePattern.test(report?.concurrentRecoveredLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.networkPartitionLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.networkPartitionConnectionServer ?? '') ||
-      !clusterNodeNamePattern.test(report?.partitionRecoveredLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.connectionServerAfterPartitionRecovery ?? '') ||
-      report.oldLeader === report.newLeader ||
-      report.secondOldLeader !== report.newLeader ||
-      report.secondOldLeader === report.oldLeader ||
-      report.secondNewLeader === report.secondOldLeader ||
-      report.quorumOldLeader !== report.secondNewLeader ||
-      report.quorumOldLeader === report.secondOldLeader ||
-      report.quorumRecoveredLeader === report.secondOldLeader ||
-      report.concurrentOldLeader === report.concurrentStoppedPeer ||
-      report.concurrentOldLeader === report.concurrentSurvivor ||
-      report.concurrentStoppedPeer === report.concurrentSurvivor ||
-      report.concurrentRecoveredLeader === report.concurrentStoppedPeer ||
-      report.networkPartitionLeader === report.networkPartitionConnectionServer ||
-      report.connectionServerAfterPartitionRecovery !== report.networkPartitionConnectionServer
-    ) {
-      fail('recorded localNatsClusterFailover report contains an invalid leader identity');
-    }
-    let oldLeaderLog = '';
-    let newLeaderLog = '';
-    let secondNewLeaderLog = '';
-    let secondOldLeaderLog = '';
-    let quorumOldLeaderLog = '';
-    let quorumRecoveredLeaderLog = '';
-    let connectionServerAfterLog = '';
-    let connectionServerAfterSecondLog = '';
-    let connectionServerDuringQuorumLog = '';
-    let connectionServerAfterQuorumLog = '';
-    let concurrentOldLeaderLog = '';
-    let concurrentStoppedPeerLog = '';
-    let concurrentRecoveredLeaderLog = '';
-    let connectionServerDuringConcurrentLog = '';
-    let connectionServerAfterConcurrentLog = '';
-    let networkPartitionLeaderLog = '';
-    let partitionRecoveredLeaderLog = '';
-    let connectionServerAfterPartitionLog = '';
-    let totalServerStarts = 0;
-    try {
-      oldLeaderLog = readFileSync(path.join(repositoryRoot, root, `${report?.oldLeader ?? 'invalid'}.log`), 'utf8');
-      newLeaderLog = readFileSync(path.join(repositoryRoot, root, `${report?.newLeader ?? 'invalid'}.log`), 'utf8');
-      secondNewLeaderLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.secondNewLeader ?? 'invalid'}.log`),
-        'utf8',
-      );
-      secondOldLeaderLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.secondOldLeader ?? 'invalid'}.log`),
-        'utf8',
-      );
-      quorumOldLeaderLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.quorumOldLeader ?? 'invalid'}.log`),
-        'utf8',
-      );
-      quorumRecoveredLeaderLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.quorumRecoveredLeader ?? 'invalid'}.log`),
-        'utf8',
-      );
-      connectionServerAfterLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.connectionServerAfter ?? 'invalid'}.log`),
-        'utf8',
-      );
-      connectionServerAfterSecondLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.connectionServerAfterSecondFailover ?? 'invalid'}.log`),
-        'utf8',
-      );
-      connectionServerDuringQuorumLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.connectionServerDuringQuorumLoss ?? 'invalid'}.log`),
-        'utf8',
-      );
-      connectionServerAfterQuorumLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.connectionServerAfterQuorumRecovery ?? 'invalid'}.log`),
-        'utf8',
-      );
-      concurrentOldLeaderLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.concurrentOldLeader ?? 'invalid'}.log`),
-        'utf8',
-      );
-      concurrentStoppedPeerLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.concurrentStoppedPeer ?? 'invalid'}.log`),
-        'utf8',
-      );
-      concurrentRecoveredLeaderLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.concurrentRecoveredLeader ?? 'invalid'}.log`),
-        'utf8',
-      );
-      connectionServerDuringConcurrentLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.connectionServerDuringConcurrentFailure ?? 'invalid'}.log`),
-        'utf8',
-      );
-      connectionServerAfterConcurrentLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.connectionServerAfterConcurrentRecovery ?? 'invalid'}.log`),
-        'utf8',
-      );
-      networkPartitionLeaderLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.networkPartitionLeader ?? 'invalid'}.log`),
-        'utf8',
-      );
-      partitionRecoveredLeaderLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.partitionRecoveredLeader ?? 'invalid'}.log`),
-        'utf8',
-      );
-      connectionServerAfterPartitionLog = readFileSync(
-        path.join(repositoryRoot, root, `${report?.connectionServerAfterPartitionRecovery ?? 'invalid'}.log`),
-        'utf8',
-      );
-      totalServerStarts = [1, 2, 3].reduce((count, node) => {
-        const log = readFileSync(path.join(repositoryRoot, root, `goexample-js-node-${node}.log`), 'utf8');
-        return count + (log.match(/Starting nats-server/g) ?? []).length;
-      }, 0);
-    } catch {
-      fail('recorded localNatsClusterFailover report leaders must resolve to archived node logs');
-    }
-    const streamLeaderMarker = "JetStream cluster new stream leader for '$G > GOEXAMPLE_FAILOVER_SOURCE'";
-    if (
-      report?.schemaVersion !== 6 ||
-      report?.status !== 'passed' ||
-      report?.storage !== 'file' ||
-      report?.clusterSize !== 3 ||
-      report?.streamReplicas !== 3 ||
-      report?.consumerReplicas !== 3 ||
-      report?.abruptLeaderStops !== 3 ||
-      !clusterNodeNamePattern.test(report?.oldLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.newLeader ?? '') ||
-      report.oldLeader === report.newLeader ||
-      report?.leaderChanged !== true ||
-      report?.persistedBeforeFailover !== 3 ||
-      report?.persistedAfterFailover !== 4 ||
-      report?.recoveredStreamSequence !== 1 ||
-      report?.deliveryCountBefore !== 1 ||
-      !Number.isSafeInteger(report?.deliveryCountAfter) ||
-      report.deliveryCountAfter < 2 ||
-      report?.redeliveryObserved !== true ||
-      report?.publishedAfterFailover !== 1 ||
-      report?.workerAcknowledged !== 2 ||
-      report?.deadLettered !== 1 ||
-      report?.sourceAckPending !== 0 ||
-      report?.sourceMessagesPending !== 0 ||
-      report?.survivingServers !== 2 ||
-      report?.shortLeaseRejected !== true ||
-      report?.leasePreflightPassed !== true ||
-      !Number.isSafeInteger(report?.requiredLeaseNanos) ||
-      report.requiredLeaseNanos <= 0 ||
-      !Number.isSafeInteger(report?.workerAckWaitNanos) ||
-      report.workerAckWaitNanos < report.requiredLeaseNanos ||
-      report?.sameConnectionSession !== true ||
-      report?.disconnectedObserved !== true ||
-      report?.reconnectedObserved !== true ||
-      report?.connectionServerBefore !== report.oldLeader ||
-      !clusterNodeNamePattern.test(report?.connectionServerAfter ?? '') ||
-      report.connectionServerAfter === report.connectionServerBefore ||
-      report?.adapterSessionRecovered !== true ||
-      report?.restartedServers !== 3 ||
-      report?.replicaRecoveryPassed !== true ||
-      report?.secondOldLeader !== report.newLeader ||
-      report.secondOldLeader === report.oldLeader ||
-      !clusterNodeNamePattern.test(report?.secondNewLeader ?? '') ||
-      report.secondNewLeader === report.secondOldLeader ||
-      report?.secondLeaderChanged !== true ||
-      report?.distinctLeadersStopped !== true ||
-      report?.persistedAfterSecondFailover !== 6 ||
-      report?.secondRecoveredStreamSequence !== 5 ||
-      report?.secondDeliveryCountBefore !== 1 ||
-      !Number.isSafeInteger(report?.secondDeliveryCountAfter) ||
-      report.secondDeliveryCountAfter < 2 ||
-      report?.secondRedeliveryObserved !== true ||
-      report?.publishedAfterSecondFailover !== 1 ||
-      report?.acknowledgedAfterSecondFailover !== 2 ||
-      report?.secondLeasePreflightPassed !== true ||
-      !clusterNodeNamePattern.test(report?.connectionServerBeforeSecondFailover ?? '') ||
-      !clusterNodeNamePattern.test(report?.connectionServerAfterSecondFailover ?? '') ||
-      report.connectionServerAfterSecondFailover === report.secondOldLeader ||
-      report?.sameConnectionSessionAfterSecondFailover !== true ||
-      report?.adapterSessionRecoveredAfterSecondFailover !== true ||
-      report?.overlappingOfflineServers !== 2 ||
-      report?.quorumUnavailableObserved !== true ||
-      report?.quorumFailureBudgetNanos !== 3_000_000_000 ||
-      !Number.isSafeInteger(report?.quorumFailureElapsedNanos) ||
-      report.quorumFailureElapsedNanos <= 0 ||
-      report.quorumFailureElapsedNanos > report.quorumFailureBudgetNanos ||
-      report?.quorumOldLeader !== report.secondNewLeader ||
-      report.quorumOldLeader === report.secondOldLeader ||
-      !clusterNodeNamePattern.test(report?.quorumRecoveredLeader ?? '') ||
-      report.quorumRecoveredLeader === report.secondOldLeader ||
-      report?.persistedAfterQuorumRecovery !== 8 ||
-      report?.quorumRecoveredStreamSequence !== 7 ||
-      report?.quorumDeliveryCountBefore !== 1 ||
-      !Number.isSafeInteger(report?.quorumDeliveryCountAfter) ||
-      report.quorumDeliveryCountAfter < 2 ||
-      report?.quorumRedeliveryObserved !== true ||
-      report?.publishedAfterQuorumRecovery !== 1 ||
-      report?.acknowledgedAfterQuorumRecovery !== 2 ||
-      report?.quorumLeasePreflightPassed !== true ||
-      !clusterNodeNamePattern.test(report?.connectionServerBeforeQuorumLoss ?? '') ||
-      report.connectionServerBeforeQuorumLoss === report.secondOldLeader ||
-      !clusterNodeNamePattern.test(report?.connectionServerDuringQuorumLoss ?? '') ||
-      report.connectionServerDuringQuorumLoss === report.secondOldLeader ||
-      report.connectionServerDuringQuorumLoss === report.quorumOldLeader ||
-      !clusterNodeNamePattern.test(report?.connectionServerAfterQuorumRecovery ?? '') ||
-      report.connectionServerAfterQuorumRecovery === report.secondOldLeader ||
-      report?.sameConnectionSessionAfterQuorumRecovery !== true ||
-      report?.adapterSessionRecoveredAfterQuorumRecovery !== true ||
-      report?.finalReplicaRecoveryPassed !== true ||
-      report?.concurrentFaultInjected !== true ||
-      report?.concurrentStoppedServers !== 2 ||
-      !clusterNodeNamePattern.test(report?.concurrentOldLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.concurrentStoppedPeer ?? '') ||
-      !clusterNodeNamePattern.test(report?.concurrentSurvivor ?? '') ||
-      !clusterNodeNamePattern.test(report?.concurrentRecoveredLeader ?? '') ||
-      report.concurrentOldLeader === report.concurrentStoppedPeer ||
-      report.concurrentOldLeader === report.concurrentSurvivor ||
-      report.concurrentStoppedPeer === report.concurrentSurvivor ||
-      report.concurrentRecoveredLeader === report.concurrentStoppedPeer ||
-      report?.concurrentStopSkewBudgetNanos !== 250_000_000 ||
-      !Number.isSafeInteger(report?.concurrentStopSkewNanos) ||
-      report.concurrentStopSkewNanos < 0 ||
-      report.concurrentStopSkewNanos > report.concurrentStopSkewBudgetNanos ||
-      report?.concurrentQuorumUnavailableObserved !== true ||
-      report?.concurrentFailureBudgetNanos !== 3_000_000_000 ||
-      !Number.isSafeInteger(report?.concurrentFailureElapsedNanos) ||
-      report.concurrentFailureElapsedNanos <= 0 ||
-      report.concurrentFailureElapsedNanos > report.concurrentFailureBudgetNanos ||
-      report?.persistedAfterConcurrentRecovery !== 10 ||
-      report?.concurrentRecoveredStreamSequence !== 9 ||
-      report?.concurrentDeliveryCountBefore !== 1 ||
-      !Number.isSafeInteger(report?.concurrentDeliveryCountAfter) ||
-      report.concurrentDeliveryCountAfter < 2 ||
-      report?.concurrentRedeliveryObserved !== true ||
-      report?.publishedAfterConcurrentRecovery !== 1 ||
-      report?.acknowledgedAfterConcurrentRecovery !== 2 ||
-      report?.concurrentLeasePreflightPassed !== true ||
-      !clusterNodeNamePattern.test(report?.connectionServerBeforeConcurrentFailure ?? '') ||
-      report.connectionServerBeforeConcurrentFailure === report.concurrentStoppedPeer ||
-      report?.connectionServerDuringConcurrentFailure !== report.concurrentSurvivor ||
-      !clusterNodeNamePattern.test(report?.connectionServerAfterConcurrentRecovery ?? '') ||
-      report.connectionServerAfterConcurrentRecovery === report.concurrentStoppedPeer ||
-      report?.sameConnectionSessionAfterConcurrentRecovery !== true ||
-      report?.adapterSessionRecoveredAfterConcurrentRecovery !== true ||
-      report?.concurrentReplicaRecoveryPassed !== true ||
-      report?.networkPartitionInjected !== true ||
-      report?.networkPartitionedServers !== 3 ||
-      !clusterNodeNamePattern.test(report?.networkPartitionLeader ?? '') ||
-      !clusterNodeNamePattern.test(report?.networkPartitionConnectionServer ?? '') ||
-      report.networkPartitionLeader === report.networkPartitionConnectionServer ||
-      !Number.isSafeInteger(report?.routeProxyConnectionsBefore) ||
-      report.routeProxyConnectionsBefore < 3 ||
-      !Number.isSafeInteger(report?.routeProxyConnectionsClosed) ||
-      report.routeProxyConnectionsClosed < 3 ||
-      report?.partitionQuorumUnavailableObserved !== true ||
-      report?.partitionFailureBudgetNanos !== 3_000_000_000 ||
-      !Number.isSafeInteger(report?.partitionFailureElapsedNanos) ||
-      report.partitionFailureElapsedNanos <= 0 ||
-      report.partitionFailureElapsedNanos > report.partitionFailureBudgetNanos ||
-      !clusterNodeNamePattern.test(report?.partitionRecoveredLeader ?? '') ||
-      report?.persistedAfterPartitionRecovery !== 12 ||
-      report?.partitionRecoveredStreamSequence !== 11 ||
-      report?.partitionDeliveryCountBefore !== 1 ||
-      !Number.isSafeInteger(report?.partitionDeliveryCountAfter) ||
-      report.partitionDeliveryCountAfter < 2 ||
-      report?.partitionRedeliveryObserved !== true ||
-      report?.publishedAfterPartitionRecovery !== 1 ||
-      report?.acknowledgedAfterPartitionRecovery !== 2 ||
-      report?.partitionLeasePreflightPassed !== true ||
-      report?.connectionServerAfterPartitionRecovery !== report.networkPartitionConnectionServer ||
-      report?.sameConnectionSessionAfterPartitionRecovery !== true ||
-      report?.adapterSessionRecoveredAfterPartitionRecovery !== true ||
-      report?.partitionReplicaRecoveryPassed !== true ||
-      totalServerStarts !== 8 ||
-      !oldLeaderLog.includes(`Name:     ${report.oldLeader}`) ||
-      (oldLeaderLog.match(/Starting nats-server/g) ?? []).length < 2 ||
-      !oldLeaderLog.includes(streamLeaderMarker) ||
-      !newLeaderLog.includes(`Name:     ${report.newLeader}`) ||
-      !newLeaderLog.includes(streamLeaderMarker) ||
-      !secondNewLeaderLog.includes(`Name:     ${report.secondNewLeader}`) ||
-      !secondNewLeaderLog.includes(streamLeaderMarker) ||
-      !secondOldLeaderLog.includes(`Name:     ${report.secondOldLeader}`) ||
-      (secondOldLeaderLog.match(/Starting nats-server/g) ?? []).length < 2 ||
-      !quorumOldLeaderLog.includes(`Name:     ${report.quorumOldLeader}`) ||
-      (quorumOldLeaderLog.match(/Starting nats-server/g) ?? []).length < 2 ||
-      !quorumRecoveredLeaderLog.includes(`Name:     ${report.quorumRecoveredLeader}`) ||
-      !quorumRecoveredLeaderLog.includes(streamLeaderMarker) ||
-      !connectionServerAfterLog.includes(`Name:     ${report.connectionServerAfter}`) ||
-      !connectionServerAfterSecondLog.includes(`Name:     ${report.connectionServerAfterSecondFailover}`) ||
-      !connectionServerDuringQuorumLog.includes(`Name:     ${report.connectionServerDuringQuorumLoss}`) ||
-      !connectionServerAfterQuorumLog.includes(`Name:     ${report.connectionServerAfterQuorumRecovery}`) ||
-      !concurrentOldLeaderLog.includes(`Name:     ${report.concurrentOldLeader}`) ||
-      (concurrentOldLeaderLog.match(/Starting nats-server/g) ?? []).length < 2 ||
-      !concurrentStoppedPeerLog.includes(`Name:     ${report.concurrentStoppedPeer}`) ||
-      (concurrentStoppedPeerLog.match(/Starting nats-server/g) ?? []).length < 2 ||
-      !concurrentRecoveredLeaderLog.includes(`Name:     ${report.concurrentRecoveredLeader}`) ||
-      !concurrentRecoveredLeaderLog.includes(streamLeaderMarker) ||
-      !connectionServerDuringConcurrentLog.includes(`Name:     ${report.connectionServerDuringConcurrentFailure}`) ||
-      !connectionServerAfterConcurrentLog.includes(`Name:     ${report.connectionServerAfterConcurrentRecovery}`) ||
-      !networkPartitionLeaderLog.includes(`Name:     ${report.networkPartitionLeader}`) ||
-      !networkPartitionLeaderLog.includes(streamLeaderMarker) ||
-      !partitionRecoveredLeaderLog.includes(`Name:     ${report.partitionRecoveredLeader}`) ||
-      !partitionRecoveredLeaderLog.includes(streamLeaderMarker) ||
-      !connectionServerAfterPartitionLog.includes(`Name:     ${report.connectionServerAfterPartitionRecovery}`)
-    ) {
-      fail(
-        'recorded localNatsClusterFailover report does not satisfy the concurrent two-node quorum recovery contract and live-process route network partition contract',
-      );
+      verifyNatsClusterContractArtifacts({
+        evidenceRoot: path.join(repositoryRoot, root),
+      });
+    } catch (error) {
+      fail(`recorded localNatsClusterFailover evidence is invalid: ${error.message}`);
     }
   }
   if (document.postgresRecovery.status === 'recorded') {
@@ -707,6 +389,7 @@ function verifyBoundaries(boundaries, evidencePaths) {
       'recovery-raw.json',
       'recovery-report.json',
       'backup.dump',
+      'report.json',
       'SHA256SUMS',
     ];
     for (const relativeName of requiredNames) {
@@ -765,6 +448,8 @@ function verifyBoundaries(boundaries, evidencePaths) {
     const fixedNames = [
       'release-manifest.json',
       'SHA256SUMS',
+      'source-manifest.json',
+      'reproducibility-report.json',
       'provenance.bundle.json',
       'attestation-url.txt',
       'attestation-verification.txt',
@@ -781,24 +466,52 @@ function verifyBoundaries(boundaries, evidencePaths) {
       fail('recorded signedRelease requires attestation-status.txt to contain exit_code=0');
     }
     let releaseManifest;
+    let sourceManifest;
+    let reproducibilityReport;
     let bundle;
     try {
       releaseManifest = JSON.parse(readFileSync(path.join(repositoryRoot, root, 'release-manifest.json'), 'utf8'));
+      sourceManifest = JSON.parse(readFileSync(path.join(repositoryRoot, root, 'source-manifest.json'), 'utf8'));
+      reproducibilityReport = JSON.parse(
+        readFileSync(path.join(repositoryRoot, root, 'reproducibility-report.json'), 'utf8'),
+      );
       bundle = JSON.parse(readFileSync(path.join(repositoryRoot, root, 'provenance.bundle.json'), 'utf8'));
     } catch {
-      fail('recorded signedRelease requires valid release manifest and provenance bundle JSON');
+      fail('recorded signedRelease requires valid release, source, reproducibility, and provenance bundle JSON');
     }
     const subjectName = releaseManifest?.subject?.name;
     const subjectDigest = releaseManifest?.subject?.sha256;
     if (
-      releaseManifest?.schemaVersion !== 1 ||
+      releaseManifest?.schemaVersion !== 2 ||
       releaseManifest?.scope !== 'goexample_server_release' ||
       typeof subjectName !== 'string' ||
       !/^[A-Za-z0-9][A-Za-z0-9._-]+$/.test(subjectName) ||
       typeof subjectDigest !== 'string' ||
-      !sha256Pattern.test(subjectDigest)
+      !sha256Pattern.test(subjectDigest) ||
+      releaseManifest?.source?.repository !== 'github.com/zbxing/goexample' ||
+      !/^[a-f0-9]{40}$/.test(releaseManifest?.build?.commit ?? '')
     ) {
       fail('recorded signedRelease release manifest subject is invalid');
+    }
+    const sourceReference = releaseManifest?.source?.manifest;
+    const sourceManifestPath = path.join(repositoryRoot, root, 'source-manifest.json');
+    if (
+      sourceReference?.name !== 'source-manifest.json' ||
+      !Number.isSafeInteger(sourceReference?.bytes) ||
+      sourceReference.bytes <= 0 ||
+      sourceReference.bytes > 1024 * 1024 ||
+      typeof sourceReference?.sha256 !== 'string' ||
+      !sha256Pattern.test(sourceReference.sha256) ||
+      lstatSync(sourceManifestPath).size !== sourceReference.bytes ||
+      hashFile(sourceManifestPath) !== sourceReference.sha256 ||
+      sourceManifest?.schemaVersion !== 1 ||
+      sourceManifest?.scope !== 'goexample_server_release_sources' ||
+      sourceManifest?.entrypoint !== './Solutions/Example/cmd/server' ||
+      !Array.isArray(sourceManifest?.files) ||
+      sourceManifest.files.length === 0 ||
+      sourceManifest.files.length > 4096
+    ) {
+      fail('recorded signedRelease source manifest is invalid');
     }
     const subjectPath = `${root}/${subjectName}`;
     if (!evidencePaths.has(subjectPath)) {
@@ -811,28 +524,63 @@ function verifyBoundaries(boundaries, evidencePaths) {
     ) {
       fail('recorded signedRelease subject does not match its release manifest');
     }
-    const checksums = readFileSync(path.join(repositoryRoot, root, 'SHA256SUMS'), 'utf8');
-    if (checksums !== `${subjectDigest}  ${subjectName}\n`) {
-      fail('recorded signedRelease SHA256SUMS does not contain exactly its subject');
-    }
     if (
-      typeof bundle?.mediaType !== 'string' ||
-      bundle.mediaType.length === 0 ||
-      !requireObject(bundle?.verificationMaterial, 'signedRelease.bundle.verificationMaterial') ||
-      !requireObject(bundle?.dsseEnvelope, 'signedRelease.bundle.dsseEnvelope')
+      reproducibilityReport?.schemaVersion !== 3 ||
+      reproducibilityReport?.scope !== 'goexample_server_release_reproducibility' ||
+      reproducibilityReport?.subject?.name !== subjectName ||
+      reproducibilityReport?.subject?.bytes !== releaseManifest.subject.bytes ||
+      reproducibilityReport?.subject?.sha256 !== subjectDigest ||
+      reproducibilityReport?.sourceManifest?.name !== sourceReference.name ||
+      reproducibilityReport?.sourceManifest?.bytes !== sourceReference.bytes ||
+      reproducibilityReport?.sourceManifest?.sha256 !== sourceReference.sha256 ||
+      reproducibilityReport?.sourceCommit !== releaseManifest?.build?.commit ||
+      !Array.isArray(reproducibilityReport?.runs) ||
+      reproducibilityReport.runs.length !== 2
     ) {
-      fail('recorded signedRelease provenance bundle is incomplete');
+      fail('recorded signedRelease reproducibility report is invalid');
+    }
+    const checksums = readFileSync(path.join(repositoryRoot, root, 'SHA256SUMS'), 'utf8');
+    const expectedProvenanceSubjects = [
+      { name: subjectName, sha256: subjectDigest },
+      {
+        name: 'release-manifest.json',
+        sha256: hashFile(path.join(repositoryRoot, root, 'release-manifest.json')),
+      },
+      { name: 'source-manifest.json', sha256: hashFile(sourceManifestPath) },
+      {
+        name: 'reproducibility-report.json',
+        sha256: hashFile(path.join(repositoryRoot, root, 'reproducibility-report.json')),
+      },
+    ];
+    const expectedChecksums = expectedProvenanceSubjects
+      .map(({ sha256, name }) => `${sha256}  ${name}\n`)
+      .join('');
+    if (checksums !== expectedChecksums) {
+      fail('recorded signedRelease SHA256SUMS does not contain exactly its four attested subjects');
+    }
+    try {
+      verifyReleaseProvenanceBundleSubjects(bundle, expectedProvenanceSubjects, {
+        repository: releaseManifest.source.repository,
+        sourceCommit: releaseManifest.build.commit,
+        workflowPath: '.github/workflows/go-quality.yml',
+      });
+    } catch (error) {
+      fail(`recorded signedRelease provenance payload is invalid: ${error.message}`);
     }
     const attestationURL = readFileSync(path.join(repositoryRoot, root, 'attestation-url.txt'), 'utf8').trim();
-    if (!/^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/attestations\/[A-Za-z0-9_-]+$/.test(attestationURL)) {
-      fail('recorded signedRelease attestation URL is invalid');
+    try {
+      verifyReleaseAttestationURL(attestationURL, releaseManifest.source.repository);
+    } catch (error) {
+      fail(`recorded signedRelease attestation URL is invalid: ${error.message}`);
     }
     const verification = readFileSync(
       path.join(repositoryRoot, root, 'attestation-verification.txt'),
       'utf8',
-    ).trim();
-    if (verification.length === 0) {
-      fail('recorded signedRelease requires non-empty gh verification output');
+    );
+    try {
+      verifyReleaseAttestationVerification(verification, expectedProvenanceSubjects);
+    } catch (error) {
+      fail(`recorded signedRelease attestation verification output is invalid: ${error.message}`);
     }
   }
 }
@@ -908,6 +656,311 @@ verifyRepository(document.repository);
 verifyToolchain(document.toolchain);
 const inputCount = verifyInputs(document.inputs);
 const { count: artifactCount, paths: evidencePaths } = verifyEvidence(document.evidence);
+const auditChainArtifactPrefix = '.temp/workflow-artifacts/audit-chain/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(auditChainArtifactPrefix))) {
+  let auditChainEvidence;
+  try {
+    auditChainEvidence = verifyAuditChainEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'audit-chain'),
+    });
+  } catch (error) {
+    fail(`audit chain evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of auditChainEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`audit chain evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const authorizationArtifactPrefix = '.temp/workflow-artifacts/authorization-policy/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(authorizationArtifactPrefix))) {
+  let authorizationEvidence;
+  try {
+    authorizationEvidence = verifyAuthorizationEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'authorization-policy'),
+    });
+  } catch (error) {
+    fail(`authorization evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of authorizationEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`authorization evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const oidcBrowserArtifactPrefix = '.temp/workflow-artifacts/oidc-browser/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(oidcBrowserArtifactPrefix))) {
+  let oidcBrowserEvidence;
+  try {
+    oidcBrowserEvidence = verifyOIDCBrowserEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'oidc-browser'),
+    });
+  } catch (error) {
+    fail(`OIDC browser evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of oidcBrowserEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`OIDC browser evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const serverRecoveryArtifactPrefix = '.temp/recovery/server-local/';
+const serverRecoveryOuterArtifactNames = new Set(['summary.json', 'report.json', 'SHA256SUMS']);
+const serverRecoveryEvidencePresent = [...evidencePaths].some((artifactPath) => {
+  if (!artifactPath.startsWith(serverRecoveryArtifactPrefix)) {
+    return false;
+  }
+  return serverRecoveryOuterArtifactNames.has(artifactPath.slice(serverRecoveryArtifactPrefix.length));
+});
+if (serverRecoveryEvidencePresent) {
+  let serverRecoveryEvidence;
+  try {
+    serverRecoveryEvidence = verifyServerRecoveryEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'recovery', 'server-local'),
+    });
+  } catch (error) {
+    fail(`server recovery evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of serverRecoveryEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`server recovery evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const workflowLintArtifactPrefix = '.temp/workflow-artifacts/workflow-lint/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(workflowLintArtifactPrefix))) {
+  let workflowLintEvidence;
+  try {
+    workflowLintEvidence = verifyWorkflowLintEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'workflow-lint'),
+    });
+  } catch (error) {
+    fail(`workflow lint evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of workflowLintEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`workflow lint evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const prometheusRuleArtifactPrefix = '.temp/workflow-artifacts/prometheus-rules/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(prometheusRuleArtifactPrefix))) {
+  let prometheusRuleEvidence;
+  try {
+    prometheusRuleEvidence = verifyPrometheusRuleEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'prometheus-rules'),
+    });
+  } catch (error) {
+    fail(`Prometheus rule evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of prometheusRuleEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`Prometheus rule evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const kubernetesArtifactPrefix = '.temp/workflow-artifacts/kubernetes-manifest/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(kubernetesArtifactPrefix))) {
+  let kubernetesEvidence;
+  try {
+    kubernetesEvidence = verifyKubernetesEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'kubernetes-manifest'),
+    });
+  } catch (error) {
+    fail(`Kubernetes evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of kubernetesEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`Kubernetes evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const nginxEdgeArtifactPrefix = '.temp/workflow-artifacts/nginx-edge-contract/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(nginxEdgeArtifactPrefix))) {
+  let nginxEdgeEvidence;
+  try {
+    nginxEdgeEvidence = verifyNginxEdgeEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'nginx-edge-contract'),
+    });
+  } catch (error) {
+    fail(`Nginx edge evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of nginxEdgeEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`Nginx edge evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const redisSentinelArtifactPrefix = '.temp/workflow-artifacts/redis-sentinel-contract/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(redisSentinelArtifactPrefix))) {
+  let redisSentinelEvidence;
+  try {
+    redisSentinelEvidence = verifyRedisSentinelEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'redis-sentinel-contract'),
+    });
+  } catch (error) {
+    fail(`Redis Sentinel evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of redisSentinelEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`Redis Sentinel evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const postgresRecoveryArtifactPrefix = '.temp/workflow-artifacts/postgres-recovery-contract/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(postgresRecoveryArtifactPrefix))) {
+  let postgresRecoveryEvidence;
+  try {
+    postgresRecoveryEvidence = verifyPostgresRecoveryEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'postgres-recovery-contract'),
+    });
+  } catch (error) {
+    fail(`PostgreSQL recovery evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of postgresRecoveryEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`PostgreSQL recovery evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const natsDeliveryArtifactPrefix = '.temp/workflow-artifacts/nats-contract/delivery/';
+const natsDeliveryOuterArtifactNames = new Set([
+  'environment.txt',
+  'test-output.txt',
+  'test-status.txt',
+  'nats-server',
+  'nats-server-binary.sha256',
+  'report.json',
+  'SHA256SUMS',
+]);
+const natsDeliveryOuterEvidencePresent = [...evidencePaths].some((artifactPath) => {
+  if (!artifactPath.startsWith(natsDeliveryArtifactPrefix)) {
+    return false;
+  }
+  return natsDeliveryOuterArtifactNames.has(artifactPath.slice(natsDeliveryArtifactPrefix.length));
+});
+if (natsDeliveryOuterEvidencePresent) {
+  let natsDeliveryEvidence;
+  try {
+    natsDeliveryEvidence = verifyNatsDeliveryEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'nats-contract', 'delivery'),
+    });
+  } catch (error) {
+    fail(`NATS delivery evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of natsDeliveryEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`NATS delivery evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const natsRestartArtifactPrefix = '.temp/workflow-artifacts/nats-contract/restart/';
+const natsRestartOuterArtifactNames = new Set([
+  'environment.txt',
+  'test-output.txt',
+  'test-status.txt',
+  'nats-server',
+  'nats-server-binary.sha256',
+  'report.json',
+  'SHA256SUMS',
+]);
+const natsRestartOuterEvidencePresent = [...evidencePaths].some((artifactPath) => {
+  if (!artifactPath.startsWith(natsRestartArtifactPrefix)) {
+    return false;
+  }
+  return natsRestartOuterArtifactNames.has(artifactPath.slice(natsRestartArtifactPrefix.length));
+});
+if (natsRestartOuterEvidencePresent) {
+  let natsRestartEvidence;
+  try {
+    natsRestartEvidence = verifyNatsRestartEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'nats-contract', 'restart'),
+    });
+  } catch (error) {
+    fail(`NATS restart evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of natsRestartEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`NATS restart evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const natsSnapshotArtifactPrefix = '.temp/workflow-artifacts/nats-contract/snapshot/';
+const natsSnapshotOuterArtifactNames = new Set([
+  'environment.txt',
+  'test-output.txt',
+  'test-status.txt',
+  'nats-server',
+  'nats-server-binary.sha256',
+  'report.json',
+  'SHA256SUMS',
+]);
+const natsSnapshotOuterEvidencePresent = [...evidencePaths].some((artifactPath) => {
+  if (!artifactPath.startsWith(natsSnapshotArtifactPrefix)) {
+    return false;
+  }
+  return natsSnapshotOuterArtifactNames.has(artifactPath.slice(natsSnapshotArtifactPrefix.length));
+});
+if (natsSnapshotOuterEvidencePresent) {
+  let natsSnapshotEvidence;
+  try {
+    natsSnapshotEvidence = verifyNatsSnapshotEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'nats-contract', 'snapshot'),
+    });
+  } catch (error) {
+    fail(`NATS snapshot evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of natsSnapshotEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`NATS snapshot evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const natsClusterArtifactPrefix = '.temp/workflow-artifacts/nats-contract/cluster/';
+const natsClusterOuterArtifactNames = new Set([
+  'environment.txt',
+  'test-output.txt',
+  'test-status.txt',
+  'nats-server',
+  'nats-server-binary.sha256',
+  'report.json',
+  'SHA256SUMS',
+]);
+const natsClusterOuterEvidencePresent = [...evidencePaths].some((artifactPath) => {
+  if (!artifactPath.startsWith(natsClusterArtifactPrefix)) {
+    return false;
+  }
+  return natsClusterOuterArtifactNames.has(artifactPath.slice(natsClusterArtifactPrefix.length));
+});
+if (natsClusterOuterEvidencePresent) {
+  let natsClusterEvidence;
+  try {
+    natsClusterEvidence = verifyNatsClusterEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'nats-contract', 'cluster'),
+    });
+  } catch (error) {
+    fail(`NATS cluster evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of natsClusterEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`NATS cluster evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
 verifyBoundaries(document.boundaries, evidencePaths);
 
 console.log(

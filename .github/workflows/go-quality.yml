@@ -17,7 +17,20 @@ on:
       - "scripts/go-sdk.mjs"
       - "scripts/project-contracts.mjs"
       - "scripts/lib/project-contracts.mjs"
+      - "scripts/lib/release-provenance.mjs"
+      - "scripts/lib/authorization-evidence.mjs"
+      - "scripts/lib/oidc-browser-evidence.mjs"
+      - "scripts/lib/nats-cluster-evidence.mjs"
+      - "scripts/lib/nats-restart-evidence.mjs"
+      - "scripts/lib/nats-snapshot-evidence.mjs"
+      - "scripts/lib/postgres-recovery-evidence.mjs"
+      - "scripts/nats-cluster-evidence.mjs"
+      - "scripts/nats-restart-evidence.mjs"
+      - "scripts/nats-snapshot-evidence.mjs"
+      - "scripts/authorization-evidence.mjs"
+      - "scripts/oidc-browser-evidence.mjs"
       - "scripts/postgres-recovery-contract.mjs"
+      - "scripts/postgres-recovery-evidence.mjs"
       - "scripts/postgres-recovery-report.mjs"
       - "scripts/redis-sentinel-contract.mjs"
       - "scripts/server-recovery-drill.mjs"
@@ -25,7 +38,15 @@ on:
       - "scripts/evidence-manifest.mjs"
       - "scripts/evidence-verify.mjs"
       - "__test__/node/postgres-recovery-report.test.mjs"
+      - "__test__/node/postgres-recovery-evidence.test.mjs"
+      - "__test__/node/nats-cluster-evidence.test.mjs"
+      - "__test__/node/nats-restart-evidence.test.mjs"
+      - "__test__/node/nats-snapshot-evidence.test.mjs"
+      - "__test__/node/authorization-evidence.test.mjs"
+      - "__test__/node/oidc-browser-evidence.test.mjs"
+      - "__test__/node/release-provenance.test.mjs"
       - "__test__/node/server-release.test.mjs"
+      - "docs/recovery/server-failure-matrix.md"
       - "package.json"
       - ".github/workflows/go-quality.yml"
   pull_request:
@@ -44,7 +65,20 @@ on:
       - "scripts/go-sdk.mjs"
       - "scripts/project-contracts.mjs"
       - "scripts/lib/project-contracts.mjs"
+      - "scripts/lib/release-provenance.mjs"
+      - "scripts/lib/authorization-evidence.mjs"
+      - "scripts/lib/oidc-browser-evidence.mjs"
+      - "scripts/lib/nats-cluster-evidence.mjs"
+      - "scripts/lib/nats-restart-evidence.mjs"
+      - "scripts/lib/nats-snapshot-evidence.mjs"
+      - "scripts/lib/postgres-recovery-evidence.mjs"
+      - "scripts/nats-cluster-evidence.mjs"
+      - "scripts/nats-restart-evidence.mjs"
+      - "scripts/nats-snapshot-evidence.mjs"
+      - "scripts/authorization-evidence.mjs"
+      - "scripts/oidc-browser-evidence.mjs"
       - "scripts/postgres-recovery-contract.mjs"
+      - "scripts/postgres-recovery-evidence.mjs"
       - "scripts/postgres-recovery-report.mjs"
       - "scripts/redis-sentinel-contract.mjs"
       - "scripts/server-recovery-drill.mjs"
@@ -52,7 +86,15 @@ on:
       - "scripts/evidence-manifest.mjs"
       - "scripts/evidence-verify.mjs"
       - "__test__/node/postgres-recovery-report.test.mjs"
+      - "__test__/node/postgres-recovery-evidence.test.mjs"
+      - "__test__/node/nats-cluster-evidence.test.mjs"
+      - "__test__/node/nats-restart-evidence.test.mjs"
+      - "__test__/node/nats-snapshot-evidence.test.mjs"
+      - "__test__/node/authorization-evidence.test.mjs"
+      - "__test__/node/oidc-browser-evidence.test.mjs"
+      - "__test__/node/release-provenance.test.mjs"
       - "__test__/node/server-release.test.mjs"
+      - "docs/recovery/server-failure-matrix.md"
       - "package.json"
       - ".github/workflows/go-quality.yml"
   workflow_dispatch:
@@ -227,7 +269,11 @@ jobs:
 
       - name: Run real PostgreSQL serialization, lock, and recovery contracts
         id: postgres-contract
-        run: node scripts/postgres-recovery-contract.mjs
+        run: yarn postgres:recovery:contract
+
+      - name: Verify PostgreSQL recovery contract evidence
+        if: always()
+        run: yarn postgres:recovery:contract:verify
 
       - name: Generate PostgreSQL evidence manifest
         if: always()
@@ -258,6 +304,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
       - name: Start pinned NATS JetStream
         shell: bash
         run: |
@@ -281,19 +332,32 @@ jobs:
         env:
           NATS_TEST_URL: nats://127.0.0.1:4222
           NATS_SERVER_BINARY: ${{ github.workspace }}/.temp/nats-server-bin/nats-server
+          NATS_DELIVERY_EVIDENCE_DIR: ${{ github.workspace }}/.temp/workflow-artifacts/nats-contract/delivery
           NATS_RESTART_EVIDENCE_DIR: ${{ github.workspace }}/.temp/workflow-artifacts/nats-contract/restart
           NATS_CLUSTER_EVIDENCE_DIR: ${{ github.workspace }}/.temp/workflow-artifacts/nats-contract/cluster
           NATS_SNAPSHOT_EVIDENCE_DIR: ${{ github.workspace }}/.temp/workflow-artifacts/nats-contract/snapshot
         run: |
           artifact_dir=".temp/workflow-artifacts/nats-contract"
           mkdir -p "${artifact_dir}"
+          started_at="$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')"
+          nats_server_sha256="$(cut -d ' ' -f 1 "${artifact_dir}/nats-server-binary.sha256")"
           {
+            echo "contract=nats-jetstream-snapshot-restore"
             echo "runner_os=${RUNNER_OS}"
             echo "runner_arch=${RUNNER_ARCH}"
+            echo "platform=$(node -p 'process.platform')"
+            echo "architecture=$(node -p 'process.arch')"
+            echo "node=$(node --version)"
+            echo "go=$(go version)"
+            echo "docker=$(docker version --format '{{.Server.Version}}')"
             echo "git_commit=${GITHUB_SHA}"
             echo "nats_image=nats:2.14.5-alpine@sha256:d4ac35882ac65aff236cd65b9d3fa4d24332c681e1a85f94eedccd3cdd65b1da"
+            echo "nats_server_sha256=${nats_server_sha256}"
             echo "jetstream_enabled=true"
-            go version
+            echo "storage=file-stream"
+            echo "target_nats_broker=not_recorded"
+            echo "rpo_rto=not_approved"
+            echo "started_at=${started_at}"
           } > "${artifact_dir}/environment.txt"
           set +e
           set -o pipefail
@@ -301,6 +365,7 @@ jobs:
           status="${PIPESTATUS[0]}"
           set -e
           echo "exit_code=${status}" > "${artifact_dir}/test-status.txt"
+          echo "ended_at=$(date -u +'%Y-%m-%dT%H:%M:%S.000Z')" >> "${artifact_dir}/environment.txt"
           exit "${status}"
 
       - name: Collect NATS contract evidence
@@ -312,7 +377,134 @@ jobs:
           docker logs goexample-nats-contract > "${artifact_dir}/nats-server.log" 2>&1 || true
           docker inspect goexample-nats-contract > "${artifact_dir}/nats-server-inspect.json" 2>&1 || true
           docker rm --force goexample-nats-contract > "${artifact_dir}/cleanup.txt" 2>&1 || true
+
+      - name: Prepare NATS delivery evidence context
+        if: always()
+        shell: bash
+        run: |
+          artifact_dir=".temp/workflow-artifacts/nats-contract"
+          delivery_dir="${artifact_dir}/delivery"
+          mkdir -p "${delivery_dir}"
+          for name in environment.txt test-output.txt test-status.txt nats-server.log; do
+            if [[ -f "${artifact_dir}/${name}" ]]; then
+              cp "${artifact_dir}/${name}" "${delivery_dir}/${name}"
+            fi
+          done
+          if [[ -f "${delivery_dir}/environment.txt" ]]; then
+            sed -i '1s/^contract=.*/contract=nats-jetstream-delivery-lease/' "${delivery_dir}/environment.txt"
+          fi
+          if [[ -f .temp/nats-server-bin/nats-server ]]; then
+            cp .temp/nats-server-bin/nats-server "${delivery_dir}/nats-server"
+            (cd "${delivery_dir}" && sha256sum nats-server > nats-server-binary.sha256)
+          fi
+
+      - name: Prepare NATS snapshot evidence context
+        if: always()
+        shell: bash
+        run: |
+          artifact_dir=".temp/workflow-artifacts/nats-contract"
+          snapshot_dir="${artifact_dir}/snapshot"
+          mkdir -p "${snapshot_dir}"
+          for name in environment.txt test-output.txt test-status.txt; do
+            if [[ -f "${artifact_dir}/${name}" ]]; then
+              cp "${artifact_dir}/${name}" "${snapshot_dir}/${name}"
+            fi
+          done
+          if [[ -f .temp/nats-server-bin/nats-server ]]; then
+            cp .temp/nats-server-bin/nats-server "${snapshot_dir}/nats-server"
+            (cd "${snapshot_dir}" && sha256sum nats-server > nats-server-binary.sha256)
+          fi
+
+      - name: Prepare NATS restart evidence context
+        if: always()
+        shell: bash
+        run: |
+          artifact_dir=".temp/workflow-artifacts/nats-contract"
+          restart_dir="${artifact_dir}/restart"
+          mkdir -p "${restart_dir}"
+          for name in environment.txt test-output.txt test-status.txt; do
+            if [[ -f "${artifact_dir}/${name}" ]]; then
+              cp "${artifact_dir}/${name}" "${restart_dir}/${name}"
+            fi
+          done
+          if [[ -f "${restart_dir}/environment.txt" ]]; then
+            sed -i '1s/^contract=.*/contract=nats-jetstream-restart-recovery/' "${restart_dir}/environment.txt"
+          fi
+          if [[ -f .temp/nats-server-bin/nats-server ]]; then
+            cp .temp/nats-server-bin/nats-server "${restart_dir}/nats-server"
+            (cd "${restart_dir}" && sha256sum nats-server > nats-server-binary.sha256)
+          fi
+
+      - name: Prepare NATS cluster evidence context
+        if: always()
+        shell: bash
+        run: |
+          artifact_dir=".temp/workflow-artifacts/nats-contract"
+          cluster_dir="${artifact_dir}/cluster"
+          mkdir -p "${cluster_dir}"
+          for name in environment.txt test-output.txt test-status.txt; do
+            if [[ -f "${artifact_dir}/${name}" ]]; then
+              cp "${artifact_dir}/${name}" "${cluster_dir}/${name}"
+            fi
+          done
+          if [[ -f "${cluster_dir}/environment.txt" ]]; then
+            sed -i '1s/^contract=.*/contract=nats-jetstream-cluster-failover/' "${cluster_dir}/environment.txt"
+          fi
+          if [[ -f .temp/nats-server-bin/nats-server ]]; then
+            cp .temp/nats-server-bin/nats-server "${cluster_dir}/nats-server"
+            (cd "${cluster_dir}" && sha256sum nats-server > nats-server-binary.sha256)
+          fi
+
+      - name: Generate NATS delivery contract evidence
+        if: always()
+        run: yarn nats:delivery:contract:evidence
+
+      - name: Verify NATS delivery contract evidence
+        if: always()
+        run: yarn nats:delivery:contract:verify
+
+      - name: Generate NATS restart contract evidence
+        if: always()
+        run: yarn nats:restart:contract:evidence
+
+      - name: Verify NATS restart contract evidence
+        if: always()
+        run: yarn nats:restart:contract:verify
+
+      - name: Generate NATS cluster contract evidence
+        if: always()
+        run: yarn nats:cluster:contract:evidence
+
+      - name: Verify NATS cluster contract evidence
+        if: always()
+        run: yarn nats:cluster:contract:verify
+
+      - name: Generate NATS snapshot contract evidence
+        if: always()
+        run: yarn nats:snapshot:contract:evidence
+
+      - name: Verify NATS snapshot contract evidence
+        if: always()
+        run: yarn nats:snapshot:contract:verify
+
+      - name: Finalize NATS contract checksums
+        if: always()
+        shell: bash
+        run: |
+          artifact_dir=".temp/workflow-artifacts/nats-contract"
           find "${artifact_dir}" -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "${artifact_dir}/SHA256SUMS"
+
+      - name: Generate NATS evidence manifest
+        if: always()
+        run: >-
+          node scripts/evidence-manifest.mjs
+          --output .temp/workflow-artifacts/nats-contract/manifest.json
+
+      - name: Verify NATS evidence manifest
+        if: always()
+        run: >-
+          node scripts/evidence-verify.mjs
+          --manifest .temp/workflow-artifacts/nats-contract/manifest.json
 
       - name: Upload NATS contract evidence
         if: always()
@@ -345,6 +537,10 @@ jobs:
       - name: Run Redis Sentinel ACL failover contract
         run: yarn redis:sentinel:contract
 
+      - name: Verify Redis Sentinel contract evidence
+        if: always()
+        run: yarn redis:sentinel:contract:verify
+
       - name: Upload Redis Sentinel contract evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -376,7 +572,11 @@ jobs:
             Solutions/Example/go.sum
 
       - name: Run bounded local server recovery drill
-        run: yarn drill:server
+        run: yarn drill:server:evidence
+
+      - name: Verify local server recovery evidence
+        if: always()
+        run: yarn drill:server:verify
 
       - name: Generate recovery evidence manifest
         if: always()
@@ -392,6 +592,153 @@ jobs:
         with:
           name: server-recovery-drill-${{ github.run_id }}-${{ github.run_attempt }}
           path: .temp/recovery/server-local
+          if-no-files-found: error
+          retention-days: 30
+
+  audit-chain-contract:
+    needs: module-quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: Framework/go.mod
+          cache-dependency-path: Framework/go.sum
+
+      - name: Run local encrypted audit chain contract
+        run: yarn audit:chain:evidence
+
+      - name: Verify local encrypted audit chain evidence
+        if: always()
+        run: yarn audit:chain:verify
+
+      - name: Generate audit chain evidence manifest
+        if: always()
+        run: >-
+          yarn evidence:manifest
+          --output .temp/evidence/audit-chain-manifest.json
+
+      - name: Verify audit chain evidence manifest
+        if: always()
+        run: >-
+          yarn evidence:verify
+          --manifest .temp/evidence/audit-chain-manifest.json
+
+      - name: Upload audit chain evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: audit-chain-contract-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .temp/workflow-artifacts/audit-chain
+            .temp/evidence/audit-chain-manifest.json
+          if-no-files-found: error
+          retention-days: 30
+
+  authorization-policy-contract:
+    needs: module-quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: Framework/go.mod
+          cache-dependency-path: Framework/go.sum
+
+      - name: Run local resource authorization contract
+        run: yarn authorization:evidence
+
+      - name: Verify local resource authorization evidence
+        if: always()
+        run: yarn authorization:verify
+
+      - name: Generate resource authorization evidence manifest
+        if: always()
+        run: >-
+          yarn evidence:manifest
+          --output .temp/evidence/authorization-policy-manifest.json
+
+      - name: Verify resource authorization evidence manifest
+        if: always()
+        run: >-
+          yarn evidence:verify
+          --manifest .temp/evidence/authorization-policy-manifest.json
+
+      - name: Upload resource authorization evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: authorization-policy-contract-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .temp/workflow-artifacts/authorization-policy
+            .temp/evidence/authorization-policy-manifest.json
+          if-no-files-found: error
+          retention-days: 30
+
+  oidc-browser-contract:
+    needs: module-quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: Framework/go.mod
+          cache-dependency-path: Framework/go.sum
+
+      - name: Run local OIDC browser contract
+        run: yarn oidc:browser:evidence
+
+      - name: Verify local OIDC browser evidence
+        if: always()
+        run: yarn oidc:browser:verify
+
+      - name: Generate OIDC browser evidence manifest
+        if: always()
+        run: >-
+          yarn evidence:manifest
+          --output .temp/evidence/oidc-browser-manifest.json
+
+      - name: Verify OIDC browser evidence manifest
+        if: always()
+        run: >-
+          yarn evidence:verify
+          --manifest .temp/evidence/oidc-browser-manifest.json
+
+      - name: Upload OIDC browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: oidc-browser-contract-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .temp/workflow-artifacts/oidc-browser
+            .temp/evidence/oidc-browser-manifest.json
           if-no-files-found: error
           retention-days: 30
 
@@ -431,6 +778,9 @@ jobs:
       - name: Verify release manifest and checksum
         run: yarn release:server:verify
 
+      - name: Verify release output is reproducible across separate build directories
+        run: yarn release:server:reproducible
+
       - name: Generate signed build provenance
         id: attest
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
@@ -453,10 +803,25 @@ jobs:
             cp "${ATTESTATION_BUNDLE}" "${release_root}/provenance.bundle.json"
             printf '%s\n' "${ATTESTATION_URL}" > "${release_root}/attestation-url.txt"
             artifact="$(jq -r '.subject.name' "${release_root}/release-manifest.json")"
+            subjects=(
+              "${artifact}"
+              "release-manifest.json"
+              "source-manifest.json"
+              "reproducibility-report.json"
+            )
+            status=0
+            : > "${release_root}/attestation-verification.txt"
             set +e
             set -o pipefail
-            gh attestation verify "${release_root}/${artifact}" --repo "${GITHUB_REPOSITORY}" 2>&1 | tee "${release_root}/attestation-verification.txt"
-            status="${PIPESTATUS[0]}"
+            for subject in "${subjects[@]}"; do
+              printf 'subject=%s\n' "${subject}" | tee -a "${release_root}/attestation-verification.txt"
+              gh attestation verify "${release_root}/${subject}" --repo "${GITHUB_REPOSITORY}" 2>&1 | tee -a "${release_root}/attestation-verification.txt"
+              subject_status="${PIPESTATUS[0]}"
+              printf 'subject_exit_code=%s\n' "${subject_status}" | tee -a "${release_root}/attestation-verification.txt"
+              if [[ "${subject_status}" -ne 0 ]]; then
+                status="${subject_status}"
+              fi
+            done
             set -e
           else
             printf 'attestation action outcome: %s\n' "${ATTEST_OUTCOME}" > "${release_root}/attestation-verification.txt"

@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "project": "Example",
+  "projectPath": "Solutions/Example",
+  "sdkPath": "SDK/GoExample",
+  "modulePath": "github.com/zbxing/goexample/SDK/GoExample",
+  "sdkVersion": "1.4.0",
+  "sourceCommit": "db891252eed9a764ed8b1d9405f08abf4729a4c8",
+  "expectedTag": "SDK/GoExample/v1.4.0",
+  "publication": "not_checked",
+  "openapi": {
+    "source": "docs/openapi/openapi.json",
+    "sha256": "bc6c75b84463fb7440ddb14538133717bb734f8fe670f5acbdecd12aa1bf03a5",
+    "version": "1.4.0",
+    "operationCount": 26,
+    "operations": [
+      {
+        "operationId": "getServiceIndex",
+        "method": "GET",
+        "path": "/",
+        "deprecated": false
+      },
+      {
+        "operationId": "getPrometheusMetrics",
+        "method": "GET",
+        "path": "/metrics",
+        "deprecated": false
+      },
+      {
+        "operationId": "getLiveness",
+        "method": "GET",
+        "path": "/livez",
+        "deprecated": false
+      },
+      {
+        "operationId": "getReadiness",
+        "method": "GET",
+        "path": "/readyz",
+        "deprecated": false
+      },
+      {
+        "operationId": "getStartup",
+        "method": "GET",
+        "path": "/startupz",
+        "deprecated": false
+      },
+      {
+        "operationId": "getApiLiveness",
+        "method": "GET",
+        "path": "/api/health",
+        "deprecated": true
+      },
+      {
+        "operationId": "getApiReadiness",
+        "method": "GET",
+        "path": "/api/health/ready",
+        "deprecated": true
+      },
+      {
+        "operationId": "getApiStartup",
+        "method": "GET",
+        "path": "/api/health/startup",
+        "deprecated": true
+      },
+      {
+        "operationId": "getSystemInfo",
+        "method": "GET",
+        "path": "/api/system/info",
+        "deprecated": false
+      },
+      {
+        "operationId": "login",
+        "method": "POST",
+        "path": "/api/v1/auth/login",
+        "deprecated": false
+      },
+      {
+        "operationId": "startOIDCBrowserAuthorization",
+        "method": "GET",
+        "path": "/api/v1/auth/oidc/start",
+        "deprecated": false
+      },
+      {
+        "operationId": "completeOIDCBrowserAuthorization",
+        "method": "GET",
+        "path": "/api/v1/auth/oidc/callback",
+        "deprecated": false
+      },
+      {
+        "operationId": "logoutOIDCBrowserSession",
+        "method": "POST",
+        "path": "/api/v1/auth/oidc/logout",
+        "deprecated": false
+      },
+      {
+        "operationId": "listOIDCBrowserSessions",
+        "method": "GET",
+        "path": "/api/v1/auth/oidc/sessions",
+        "deprecated": false
+      },
+      {
+        "operationId": "revokeAllOIDCBrowserSessions",
+        "method": "DELETE",
+        "path": "/api/v1/auth/oidc/sessions",
+        "deprecated": false
+      },
+      {
+        "operationId": "updateOIDCBrowserSessionDeviceName",
+        "method": "PATCH",
+        "path": "/api/v1/auth/oidc/sessions/{sessionId}",
+        "deprecated": false
+      },
+      {
+        "operationId": "revokeOIDCBrowserSession",
+        "method": "DELETE",
+        "path": "/api/v1/auth/oidc/sessions/{sessionId}",
+        "deprecated": false
+      },
+      {
+        "operationId": "getCurrentUser",
+        "method": "GET",
+        "path": "/api/v1/auth/me",
+        "deprecated": false
+      },
+      {
+        "operationId": "getHello",
+        "method": "GET",
+        "path": "/api/v1/example/hello",
+        "deprecated": false
+      },
+      {
+        "operationId": "postEcho",
+        "method": "POST",
+        "path": "/api/v1/example/echo",
+        "deprecated": false
+      },
+      {
+        "operationId": "validateProfile",
+        "method": "POST",
+        "path": "/api/v1/example/validate",
+        "deprecated": false
+      },
+      {
+        "operationId": "getDelayedResponse",
+        "method": "GET",
+        "path": "/api/v1/example/delay",
+        "deprecated": false
+      },
+      {
+        "operationId": "getPrivateExample",
+        "method": "GET",
+        "path": "/api/v1/example/private",
+        "deprecated": false
+      },
+      {
+        "operationId": "getProjectInfo",
+        "method": "GET",
+        "path": "/api/v1/project",
+        "deprecated": false
+      },
+      {
+        "operationId": "previewProject",
+        "method": "GET",
+        "path": "/api/v1/project/preview/{audience}",
+        "deprecated": false
+      },
+      {
+        "operationId": "describeProject",
+        "method": "POST",
+        "path": "/api/v1/project/describe",
+        "deprecated": false
+      }
+    ]
+  },
+  "artifacts": {
+    "generatedClient": {
+      "path": "client.gen.go",
+      "sha256": "d8420a335648ac2bd885eaaff491112c943ddeeb885c068027d4f2998aa767e8"
+    },
+    "goMod": {
+      "path": "go.mod",
+      "sha256": "bc4de7560b4e3a0627ab5c8a7f4bae05546a07cfb68a28f3c90cced4135c3976"
+    }
+  }
+}

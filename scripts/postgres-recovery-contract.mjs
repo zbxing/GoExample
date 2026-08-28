@@ -1,10 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  buildPostgresRecoveryChecksums,
+  buildPostgresRecoveryEvidenceReport,
+} from './lib/postgres-recovery-evidence.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -32,6 +35,7 @@ const contract = {
   backupFormat: 'pg_dump custom',
   restoreMode: 'pg_restore single transaction',
 };
+const startedAt = new Date().toISOString();
 
 function fail(message) {
   console.error(`PostgreSQL recovery contract: ${message}`);
@@ -134,7 +138,7 @@ async function sha256File(filePath) {
   return createHash('sha256').update(await readFile(filePath)).digest('hex');
 }
 
-async function archive(environment, contractOutput, testOutput, testStatus, recoveryOutput, recoveryStatus) {
+async function archive(environment, contractOutput, testOutput, testStatus, recoveryOutput, recoveryStatus, failures) {
   await mkdir(artifactDirectory, { recursive: true });
   let containerLog = '';
   if (containerStarted) {
@@ -149,26 +153,29 @@ async function archive(environment, contractOutput, testOutput, testStatus, reco
   await writeFile(path.join(artifactDirectory, 'recovery-status.txt'), `exit_code=${recoveryStatus}\n`, 'utf8');
   await writeFile(path.join(artifactDirectory, 'container.log'), containerLog, 'utf8');
 
-  const candidates = [
-    'environment.txt',
-    'contract-output.txt',
-    'test-output.txt',
-    'test-status.txt',
-    'recovery-output.txt',
-    'recovery-status.txt',
-    'container.log',
-    'recovery-raw.json',
-    'recovery-report.json',
-    'backup.dump',
-  ];
-  const sums = [];
-  for (const relativeFile of candidates) {
-    const filePath = path.join(artifactDirectory, relativeFile);
-    if (existsSync(filePath)) {
-      sums.push(`${await sha256File(filePath)}  ${relativeFile}`);
-    }
-  }
-  await writeFile(path.join(artifactDirectory, 'SHA256SUMS'), `${sums.join('\n')}\n`, 'utf8');
+  const report = buildPostgresRecoveryEvidenceReport({
+    repositoryRoot,
+    evidenceRoot: artifactDirectory,
+    nodeVersion: process.version,
+    platform: process.platform,
+    architecture: process.arch,
+    goVersion,
+    dockerVersion,
+    postgresVersion: databaseVersion,
+    gitCommit,
+    hostPort,
+    startedAt,
+    endedAt: new Date().toISOString(),
+    testExitCode: testStatus,
+    recoveryExitCode: recoveryStatus,
+    error: failures.length === 0 ? null : failures.join('\n'),
+  });
+  await writeFile(path.join(artifactDirectory, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  await writeFile(
+    path.join(artifactDirectory, 'SHA256SUMS'),
+    buildPostgresRecoveryChecksums(artifactDirectory),
+    'utf8',
+  );
 }
 
 await rm(artifactDirectory, { recursive: true, force: true });
@@ -352,6 +359,7 @@ try {
       testStatus,
       recoveryOutput,
       recoveryStatus,
+      failures,
     );
   } finally {
     if (containerStarted) {

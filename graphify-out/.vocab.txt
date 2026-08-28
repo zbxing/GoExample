@@ -12,6 +12,7 @@ acknowledges
 acquire
 across
 action
+actionlint
 actions
 active
 activity
@@ -56,6 +57,7 @@ application
 applications
 applies
 apply
+approval
 architecture
 archive
 are
@@ -78,6 +80,7 @@ async
 atomic
 attempt
 attention
+attestation
 attribute
 attributes
 audience
@@ -94,6 +97,7 @@ authorizer
 auto
 available
 awaiting
+aware
 axe
 back
 backend
@@ -112,6 +116,10 @@ bench
 benchmark
 benchmarks
 between
+billing
+billingapi
+billingapp
+binary
 bind
 binding
 bindings
@@ -143,6 +151,7 @@ builder
 builds
 builtin
 bulk
+bundle
 burst
 but
 button
@@ -172,6 +181,7 @@ capabilities
 capacity
 caps
 capture
+captured
 card
 carrier
 casbin
@@ -196,8 +206,10 @@ chart
 check
 checker
 checkpoint
+checkpoints
 checks
 checksum
+checksums
 child
 chrome
 claims
@@ -225,6 +237,7 @@ clsx
 cluster
 cmd
 code
+col
 collapse
 collapses
 collect
@@ -266,6 +279,7 @@ confirm
 conflict
 conn
 connect
+connected
 connecting
 connection
 connections
@@ -392,6 +406,7 @@ dismiss
 dist
 docker
 document
+documentation
 documented
 documents
 does
@@ -463,11 +478,13 @@ equal
 err
 error
 errors
+escape
 eslint
 eslintrc
 evaluate
 event
 events
+every
 evidence
 exact
 exactly
@@ -488,6 +505,7 @@ execution
 executor
 exhausted
 existing
+exit
 expand
 expanded
 expansion
@@ -507,6 +525,7 @@ expose
 exposes
 exposure
 expr
+expression
 extend
 extended
 extends
@@ -577,11 +596,13 @@ front
 full
 func
 gate
+gateway
 gcc
 gen
 general
 generate
 generated
+generic
 get
 git
 github
@@ -611,6 +632,7 @@ handles
 hardened
 has
 hash
+hashes
 head
 header
 headers
@@ -633,12 +655,14 @@ host
 hostname
 hottest
 hover
+how
 href
 html
 http
 httpapi
 httpclient
 https
+httpsurl
 httptest
 hub
 humanize
@@ -654,6 +678,7 @@ ids
 ignore
 ignores
 image
+implementation
 implemented
 import
 importable
@@ -669,9 +694,12 @@ indent
 independent
 index
 info
+infrastructure
 init
+initial
 injected
 injects
+inner
 input
 inputs
 insert
@@ -697,6 +725,7 @@ invariants
 inventory
 invocation
 invoked
+invokes
 iso
 isolated
 isolates
@@ -735,6 +764,7 @@ latency
 latest
 layer
 layout
+ldflags
 leader
 leaf
 leak
@@ -756,6 +786,7 @@ lifecycle
 lifetime
 light
 limit
+limitations
 limited
 limiter
 limits
@@ -792,6 +823,7 @@ low
 lower
 lucide
 main
+make
 malformed
 managed
 management
@@ -848,6 +880,7 @@ mix
 mjs
 mobile
 mocks
+mod
 mode
 model
 models
@@ -931,6 +964,7 @@ option
 optional
 options
 order
+ordered
 origin
 origins
 otel
@@ -943,6 +977,7 @@ out
 outage
 outcome
 outcomes
+outer
 output
 outputs
 over
@@ -991,6 +1026,7 @@ permissions
 persist
 picker
 pill
+pin
 ping
 pipeline
 pkce
@@ -998,6 +1034,7 @@ place
 placeholders
 placement
 plan
+platform
 playwright
 plugins
 plus
@@ -1010,6 +1047,7 @@ popover
 port
 portfolio
 ports
+posix
 post
 postcss
 postgre
@@ -1018,11 +1056,13 @@ posture
 pprof
 precondition
 preconditions
+predicate
 preference
 preferences
 prefix
 preflight
 prepare
+present
 presentation
 preserves
 preset
@@ -1042,13 +1082,14 @@ processor
 production
 profile
 progress
-proj
 project
 projectapi
 projectapp
 projects
 prometheus
+promises
 prompt
+promtool
 propagated
 propagates
 propagation
@@ -1057,6 +1098,7 @@ props
 protected
 protects
 protocol
+provenance
 provider
 providers
 proxies
@@ -1092,6 +1134,7 @@ read
 reader
 readiness
 readme
+reads
 ready
 real
 reason
@@ -1120,6 +1163,7 @@ ref
 reference
 references
 reflect
+reflections
 reflects
 refresh
 refreshes
@@ -1158,6 +1202,8 @@ report
 reports
 repos
 repository
+reproducibility
+reproducible
 request
 requested
 requests
@@ -1194,6 +1240,7 @@ revision
 revocation
 revoke
 revokes
+rewrite
 rgb
 right
 risk
@@ -1215,7 +1262,9 @@ router
 routes
 row
 rows
+rpo
 rsa
+rule
 rules
 run
 runner
@@ -1225,6 +1274,7 @@ same
 save
 sbom
 scan
+scenario
 scenarios
 schedule
 schema
@@ -1254,6 +1304,7 @@ selected
 selection
 selector
 semantic
+semantics
 sensitivity
 sentinel
 separate
@@ -1304,10 +1355,12 @@ single
 sink
 site
 size
+skeleton
 skill
 skip
 skips
 slice
+slices
 slo
 slog
 slow
@@ -1316,6 +1369,7 @@ snap
 snapshot
 soak
 soft
+solutions
 sort
 source
 sources
@@ -1339,6 +1393,7 @@ started
 startup
 stat
 state
+statement
 stats
 status
 statuses
@@ -1374,9 +1429,12 @@ subject
 subjects
 submit
 subscribe
+subset
 subtree
 success
+successful
 suggested
+sum
 summaries
 summarize
 summary
@@ -1416,6 +1474,7 @@ tenant
 term
 test
 testing
+tests
 text
 textarea
 the
@@ -1425,6 +1484,7 @@ then
 this
 threat
 thresholds
+through
 throughput
 tightened
 time
@@ -1442,6 +1502,7 @@ token
 tokens
 tone
 too
+tool
 toolbar
 toolchain
 tools
@@ -1551,6 +1612,7 @@ weakening
 weight
 what
 when
+width
 wiki
 wildcard
 window
@@ -1576,6 +1638,7 @@ you
 zbxing
 zero
 zod
+下一项不涉及
 不做项
 不可变
 不得据此宣称完成
@@ -1592,11 +1655,14 @@ zod
 与有界导出
 与模块治理
 与跨框架
+且能提升综合评分的仓库内优化是什么
+两个步骤是互斥的
 中间件与应用安全
 事务型
 交付与部署
 仅有代码或静态配置
 仍需完成
+仓库内确定性证据
 优先级总表
 优化原则
 优化指标并发热路径和延迟模型
@@ -1623,6 +1689,7 @@ zod
 前端授权与多项目交付补强
 前端架构
 加载与
+包含已更新记录的
 半关闭与连接收敛
 协议与网络
 单一事实源
@@ -1633,9 +1700,12 @@ zod
 可观测性与
 同源保护
 后续实施细节
+否则生成新待优化文档并优化
+否则请继续评估并生成新的待优化文档
 启动与检查
 响应安全头
 固定工作负载
+基础复核命令
 基础设施端点响应策略
 复核命令
 复测与最终评分
@@ -1650,6 +1720,7 @@ zod
 安全与供应链
 安全模型
 完成定义
+完成状态与
 完整性
 官方与社区基线
 实施项
@@ -1657,6 +1728,7 @@ zod
 容量与交付证明
 密码哈希升级与兼容迁移
 尚未完成
+尚未完成时
 工具链下载完整性
 已完成与证据
 已完成优化
@@ -1665,6 +1737,7 @@ zod
 幂等与约束集成测试
 幂等请求指纹与冲突治理
 并发与性能回归
+并核验
 延后项
 建立性能与覆盖率入口
 建议顺序
@@ -1675,7 +1748,6 @@ zod
 当前状态
 待优化
 待优化清单
-待实施项
 性能与前端预算
 性能与可访问性
 性能与多浏览器
@@ -1685,6 +1757,7 @@ zod
 执行顺序与依赖
 扩展点与生命周期
 扫描发现
+拆分顺序
 持续质量与构建复现
 推荐执行顺序
 撤销与审计原子性
@@ -1697,7 +1770,10 @@ zod
 断网漏洞扫描恢复
 断连与流式协议
 断连取消与协议部署契约
+新设备没有这些文件是否还可以正常使用记忆图谱
 最小权限
+最新待优化文档是否完成
+最新的待优化文档全部完成了吗
 有意破坏兼容性
 服务器威胁模型与复审治理
 服务器安全审计事件
@@ -1706,6 +1782,7 @@ zod
 未纳入本轮的剩余优化
 本地验收结果
 本轮完成项
+本轮实施记录
 本轮实施设计
 本轮实施项
 本轮已完成
@@ -1731,6 +1808,7 @@ zod
 正式身份与共享状态
 正式身份与分布式状态
 正式身份与密钥治理
+没有请继续
 流式响应与慢客户端能力
 测试与质量工程
 测试契约防回退
@@ -1743,6 +1821,8 @@ zod
 满分验收规则
 漂移契约
 漏洞扫描的多
+然后按照该文档对项目进行优化修改
+版本边界
 状态定义
 独立浏览器
 环境变量
@@ -1755,6 +1835,7 @@ zod
 生成部署清单
 的准入条件
 目录结构
+目标是提高综合评分
 真实数据与恢复证据
 第二项目与
 等价部署与可信发布
@@ -1763,13 +1844,18 @@ zod
 统一时间预算并优化请求
 缓存与并发合并
 自动阻断
+若未完成继续
 获取远端
 认证与恢复
 证据完整性与生产就绪
 证据归档与独立校验
 证据归档与评分自动化
 证据自动归档
+证据要求
 证据边界
+证据链
+证据链是否已进入更新后的图
+证据链是否已进入更新后的图谱并由
 评分与迁移说明
 评分关闭规则
 评分影响
@@ -1785,6 +1871,7 @@ zod
 身份与共享状态
 身份与分布式状态
 迁移到标准
+迁移的工作包
 运行时性能与容量
 运行时输入契约
 运行闭环

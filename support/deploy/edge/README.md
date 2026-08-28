@@ -37,7 +37,9 @@ The target platform must send `SIGQUIT` and allow 30 seconds for container stop.
 
 `yarn edge:contract` requires a Linux Docker host and OpenSSL. It generates a one-day local certificate, renders the config, validates it with `nginx -t`, then runs the exact pinned image. The scenarios cover TLS/HTTP/2 ALPN, trace and request-ID boundaries, 431, 502, 503, 504, upload interruption and an in-flight response completing during SIGQUIT drain.
 
-The runner always writes raw Nginx logs, environment metadata, result JSON, exit status and SHA-256 checksums to `.temp/workflow-artifacts/nginx-edge-contract`. CI uploads the directory even on failure. These artifacts are marked `localContractOnly`; a GitHub-hosted loopback container is not the target edge.
+The runner always writes the exact six-artifact set `environment.txt`, `test-output.json`, `nginx.log`, `test-status.txt`, `report.json` and `SHA256SUMS` to `.temp/workflow-artifacts/nginx-edge-contract`. Run `yarn edge:contract:verify` to independently bind the fixed command, Node/runner identity, source commit, pinned image, contract/renderer/runner/runbook/verifier/workflow hashes, timestamps, exit status, raw output hashes and ordered scenarios. Successful evidence must contain all seven scenarios; failed evidence retains a bounded error and only the completed ordered scenario prefix. CI runs this verifier and uploads the directory even when the contract fails.
+
+These artifacts remain marked `localContractOnly`. They prove the fixed Linux loopback Nginx contract and its evidence integrity, not the selected target edge, real certificate or DNS ownership, HTTP/3, production capacity, disconnect propagation or rollback. `targetEdge=not_recorded` remains unchanged until independently verified target-environment evidence is archived.
 
 ## Production Boundary
 

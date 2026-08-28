@@ -1,0 +1,128 @@
+rule_files:
+  - ../rules/goexample-slo.yml
+
+evaluation_interval: 30s
+group_eval_order:
+  - goexample.sli
+  - goexample.slo.alerts
+
+tests:
+  - name: connection saturation fires only above the threshold with capacity configured
+    interval: 30s
+    input_series:
+      - series: goexample_http_server_connections
+        values: 91x24
+      - series: goexample_http_server_connection_capacity
+        values: 100x24
+    alert_rule_test:
+      - eval_time: 9m30s
+        alertname: GoExampleHTTPConnectionSaturation
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: GoExampleHTTPConnectionSaturation
+        exp_alerts:
+          - exp_labels:
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample standard HTTP server is close to its connection limit
+              description: More than 90 percent of accepted connection capacity has remained occupied for 10m; new connections may wait before application middleware.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+
+  - name: connection saturation remains inactive at the threshold and with zero capacity
+    interval: 30s
+    input_series:
+      - series: 'goexample_http_server_connections{case="threshold"}'
+        values: 90x24
+      - series: 'goexample_http_server_connection_capacity{case="threshold"}'
+        values: 100x24
+      - series: 'goexample_http_server_connections{case="disabled"}'
+        values: 100x24
+      - series: 'goexample_http_server_connection_capacity{case="disabled"}'
+        values: 0x24
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: GoExampleHTTPConnectionSaturation
+        exp_alerts: []
+
+  - name: availability burn rate critical alert preserves its for duration
+    interval: 30s
+    input_series:
+      - series: 'goexample_http_requests_total{status="200"}'
+        values: 0+30x24
+      - series: 'goexample_http_requests_total{status="500"}'
+        values: 0+30x24
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoExampleAvailabilityBurnRateCritical
+        exp_alerts: []
+      - eval_time: 5m30s
+        alertname: GoExampleAvailabilityBurnRateCritical
+        exp_alerts:
+          - exp_labels:
+              service: goexample
+              severity: critical
+            exp_annotations:
+              summary: GoExample availability error budget is burning rapidly
+              description: The 1h and 5m error-budget burn rates exceed 14.4x for 5m.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+
+  - name: availability critical alert remains inactive without server errors
+    interval: 30s
+    input_series:
+      - series: 'goexample_http_requests_total{status="200"}'
+        values: 0+60x24
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: GoExampleAvailabilityBurnRateCritical
+        exp_alerts: []
+
+  - name: audit sink failures and trace queue drops fire after five minutes
+    interval: 30s
+    input_series:
+      - series: 'goexample_security_audit_sink_writes_total{outcome="failure"}'
+        values: 0+30x24
+      - series: goexample_otel_trace_queue_dropped_spans_total
+        values: 0+30x24
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoExampleSecurityAuditSinkFailures
+        exp_alerts: []
+      - eval_time: 5m30s
+        alertname: GoExampleSecurityAuditSinkFailures
+        exp_alerts:
+          - exp_labels:
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample security audit sink writes are failing
+              description: The configured security audit sink has continuously returned errors, timed out, or panicked for 5m; HTTP results remain isolated but external audit records may be missing.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/security/server-audit-events.md
+      - eval_time: 5m
+        alertname: GoExampleTraceQueueDrops
+        exp_alerts: []
+      - eval_time: 5m30s
+        alertname: GoExampleTraceQueueDrops
+        exp_alerts:
+          - exp_labels:
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample trace spans are being dropped before export
+              description: The bounded trace processor has dropped spans continuously because its capacity was exhausted.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+
+  - name: audit sink failures and trace queue drops remain inactive without increments
+    interval: 30s
+    input_series:
+      - series: 'goexample_security_audit_sink_writes_total{outcome="failure"}'
+        values: 0x24
+      - series: goexample_otel_trace_queue_dropped_spans_total
+        values: 0x24
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: GoExampleSecurityAuditSinkFailures
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: GoExampleTraceQueueDrops
+        exp_alerts: []

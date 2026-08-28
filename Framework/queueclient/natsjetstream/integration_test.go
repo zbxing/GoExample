@@ -2,8 +2,10 @@ package natsjetstream
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -44,6 +46,23 @@ func TestRealNATSJetStreamDurableDelivery(t *testing.T) {
 	serverURL := strings.TrimSpace(os.Getenv("NATS_TEST_URL"))
 	if serverURL == "" {
 		t.Skip("NATS_TEST_URL is not set; skipping real JetStream contract")
+	}
+	evidenceDirectory := strings.TrimSpace(os.Getenv("NATS_DELIVERY_EVIDENCE_DIR"))
+	if evidenceDirectory == "" {
+		evidenceDirectory = t.TempDir()
+	} else {
+		var err error
+		evidenceDirectory, err = filepath.Abs(evidenceDirectory)
+		if err != nil {
+			t.Fatalf("resolve NATS_DELIVERY_EVIDENCE_DIR: %v", err)
+		}
+	}
+	if err := os.MkdirAll(evidenceDirectory, 0o750); err != nil {
+		t.Fatalf("create delivery evidence directory: %v", err)
+	}
+	reportPath := filepath.Join(evidenceDirectory, "delivery-report.json")
+	if err := os.Remove(reportPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("remove stale delivery report: %v", err)
 	}
 
 	testContext, cancel := context.WithTimeout(context.Background(), 25*time.Second)
@@ -113,8 +132,16 @@ func TestRealNATSJetStreamDurableDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("queueclient.New() error = %v", err)
 	}
-	if budget, err := PreflightConsumer(testContext, sourceConsumer, client, contractWorkerRetry, contractLeaseSafetyMargin); !errors.Is(err, ErrAckWaitTooShort) || budget == 0 {
-		t.Fatalf("PreflightConsumer(short AckWait) = %s, %v", budget, err)
+	shortLeaseBudget, shortLeaseError := PreflightConsumer(
+		testContext,
+		sourceConsumer,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	shortLeaseRejected := errors.Is(shortLeaseError, ErrAckWaitTooShort) && shortLeaseBudget > 0
+	if !shortLeaseRejected {
+		t.Fatalf("PreflightConsumer(short AckWait) = %s, %v", shortLeaseBudget, shortLeaseError)
 	}
 
 	publishContractMessage(t, testContext, client, adapter, "redeliver", "tenant-redelivery")
@@ -295,6 +322,32 @@ func TestRealNATSJetStreamDurableDelivery(t *testing.T) {
 	if info.NumAckPending != 0 || info.NumPending != 0 {
 		t.Fatalf("dynamic lease consumer pending = ack:%d messages:%d", info.NumAckPending, info.NumPending)
 	}
+	writeDeliveryReport(t, reportPath, deliveryContractReport{
+		SchemaVersion:               1,
+		Status:                      "passed",
+		Storage:                     "file",
+		Replicas:                    1,
+		SourceMessagesPublished:     4,
+		RedeliveryObserved:          true,
+		RedeliveryCount:             metadata.NumDelivered,
+		Acknowledged:                1,
+		DeadLettered:                1,
+		DLQAcknowledged:             1,
+		ShortLeaseRejected:          shortLeaseRejected,
+		StaticLeasePreflightPassed:  true,
+		RequiredLeaseNanos:          requiredLease.Nanoseconds(),
+		WorkerAckWaitNanos:          contractWorkerAckWait.Nanoseconds(),
+		DynamicLeasePreflightPassed: true,
+		DynamicRequiredLeaseNanos:   extendedLease.Nanoseconds(),
+		DynamicAckWaitNanos:         contractExtendedAckWait.Nanoseconds(),
+		DynamicHandlingNanos:        contractExtendedHandling.Nanoseconds(),
+		LeaseExtensionIntervalNanos: contractLeaseExtensionRetry.LeaseExtensionInterval.Nanoseconds(),
+		LeaseExtensions:             extensionObserver.extended.Load(),
+		LeaseExtensionFailures:      extensionObserver.failed.Load(),
+		DynamicRedeliveryAfterAck:   false,
+		SourceAckPending:            info.NumAckPending,
+		SourceMessagesPending:       info.NumPending,
+	})
 }
 
 func calibrateContractConsumer(
@@ -428,5 +481,44 @@ func waitContractEvent(t *testing.T, ctx context.Context, event <-chan struct{},
 	case <-event:
 	case <-ctx.Done():
 		t.Fatalf("timed out waiting for JetStream %s", name)
+	}
+}
+
+type deliveryContractReport struct {
+	SchemaVersion               int    `json:"schemaVersion"`
+	Status                      string `json:"status"`
+	Storage                     string `json:"storage"`
+	Replicas                    int    `json:"replicas"`
+	SourceMessagesPublished     int    `json:"sourceMessagesPublished"`
+	RedeliveryObserved          bool   `json:"redeliveryObserved"`
+	RedeliveryCount             uint64 `json:"redeliveryCount"`
+	Acknowledged                int    `json:"acknowledged"`
+	DeadLettered                int    `json:"deadLettered"`
+	DLQAcknowledged             int    `json:"dlqAcknowledged"`
+	ShortLeaseRejected          bool   `json:"shortLeaseRejected"`
+	StaticLeasePreflightPassed  bool   `json:"staticLeasePreflightPassed"`
+	RequiredLeaseNanos          int64  `json:"requiredLeaseNanos"`
+	WorkerAckWaitNanos          int64  `json:"workerAckWaitNanos"`
+	DynamicLeasePreflightPassed bool   `json:"dynamicLeasePreflightPassed"`
+	DynamicRequiredLeaseNanos   int64  `json:"dynamicRequiredLeaseNanos"`
+	DynamicAckWaitNanos         int64  `json:"dynamicAckWaitNanos"`
+	DynamicHandlingNanos        int64  `json:"dynamicHandlingNanos"`
+	LeaseExtensionIntervalNanos int64  `json:"leaseExtensionIntervalNanos"`
+	LeaseExtensions             int32  `json:"leaseExtensions"`
+	LeaseExtensionFailures      int32  `json:"leaseExtensionFailures"`
+	DynamicRedeliveryAfterAck   bool   `json:"dynamicRedeliveryAfterAck"`
+	SourceAckPending            int    `json:"sourceAckPending"`
+	SourceMessagesPending       uint64 `json:"sourceMessagesPending"`
+}
+
+func writeDeliveryReport(t *testing.T, reportPath string, report deliveryContractReport) {
+	t.Helper()
+	encoded, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal delivery report: %v", err)
+	}
+	encoded = append(encoded, '\n')
+	if err := os.WriteFile(reportPath, encoded, 0o640); err != nil {
+		t.Fatalf("write delivery report: %v", err)
 	}
 }

@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+
+rule_files:
+  - rules/goexample-slo.yml
+
+scrape_configs:
+  - job_name: goexample-api
+    scheme: http
+    metrics_path: /metrics
+    authorization:
+      type: Bearer
+      credentials_file: secrets/goexample_metrics_token
+    static_configs:
+      - targets:
+          - goexample-api:80
+        labels:
+          service: goexample

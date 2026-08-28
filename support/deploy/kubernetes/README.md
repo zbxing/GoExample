@@ -17,7 +17,20 @@ yarn kubernetes:render `
   --oidc-jwks-url https://identity.example.com/tenant/.well-known/jwks.json
 ```
 
-产物写入 `.temp/deployment/kubernetes/goexample-api.json`。渲染器拒绝 tag-only 镜像、非 HTTPS Origin、不安全的 OIDC issuer/JWKS URL、空 audience、仓库外模板和 `.temp/deployment` 之外的输出路径。`yarn kubernetes:check` 只校验受版本控制的模板，不生成部署证据。
+常规部署产物写入 `.temp/deployment/kubernetes/goexample-api.json`。渲染器拒绝 tag-only 镜像、非 HTTPS Origin、不安全的 OIDC issuer/JWKS URL、空 audience、仓库外模板，以及 `.temp/deployment` 和固定 Kubernetes 证据目录之外的输出路径。`yarn kubernetes:check` 只校验受版本控制的模板，不生成部署证据。
+
+## 仓库内确定性证据
+
+运行固定的渲染与复核链：
+
+```powershell
+yarn kubernetes:evidence
+yarn kubernetes:evidence:verify
+```
+
+该命令使用全零伪镜像摘要和 `.invalid` 域名组成的固定非生产 fixture，将 `report.json`、两份原始命令输出和确定性渲染清单写入 `.temp/workflow-artifacts/kubernetes-manifest/`。报告绑定渲染器、模板和本 runbook 的大小与 SHA-256、固定命令、Node 运行时、UTC 时间、退出码及各项输出；独立 verifier 会重新渲染并拒绝 scope、命令、状态、文件哈希或清单语义篡改。
+
+这只证明当前仓库模板可按固定输入确定性渲染并通过本地语义门禁，不代表目标 Kubernetes API admission、server-side dry-run、rollout、HPA/PDB/NetworkPolicy 实效、节点或跨区驱逐和 rollback 已完成。固定 fixture 不能用于部署，且在签名的目标集群制品被归档并独立复核前，`kubernetesDrill` 与 V13-07 必须保持 `not_recorded`。
 
 ## 外部依赖
 

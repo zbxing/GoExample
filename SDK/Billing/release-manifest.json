@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "project": "Billing",
+  "projectPath": "Services/Billing",
+  "sdkPath": "SDK/Billing",
+  "modulePath": "github.com/zbxing/goexample/SDK/Billing",
+  "sdkVersion": "1.0.0",
+  "sourceCommit": "db891252eed9a764ed8b1d9405f08abf4729a4c8",
+  "expectedTag": "SDK/Billing/v1.0.0",
+  "publication": "not_checked",
+  "openapi": {
+    "source": "docs/openapi/billing.json",
+    "sha256": "b20646e824a97cc194ad017022276886ecebc5a114c930805ccb2ba29b96f2e0",
+    "version": "1.0.0",
+    "operationCount": 14,
+    "operations": [
+      {
+        "operationId": "getServiceInfo",
+        "method": "GET",
+        "path": "/",
+        "deprecated": false
+      },
+      {
+        "operationId": "getMetrics",
+        "method": "GET",
+        "path": "/metrics",
+        "deprecated": false
+      },
+      {
+        "operationId": "getLegacyHealth",
+        "method": "GET",
+        "path": "/api/health",
+        "deprecated": true
+      },
+      {
+        "operationId": "getLegacyReadiness",
+        "method": "GET",
+        "path": "/api/health/ready",
+        "deprecated": true
+      },
+      {
+        "operationId": "getLegacyStartup",
+        "method": "GET",
+        "path": "/api/health/startup",
+        "deprecated": true
+      },
+      {
+        "operationId": "getSystemInfo",
+        "method": "GET",
+        "path": "/api/system/info",
+        "deprecated": false
+      },
+      {
+        "operationId": "getLiveness",
+        "method": "GET",
+        "path": "/livez",
+        "deprecated": false
+      },
+      {
+        "operationId": "getReadiness",
+        "method": "GET",
+        "path": "/readyz",
+        "deprecated": false
+      },
+      {
+        "operationId": "getStartup",
+        "method": "GET",
+        "path": "/startupz",
+        "deprecated": false
+      },
+      {
+        "operationId": "getExampleHello",
+        "method": "GET",
+        "path": "/api/v1/example/hello",
+        "deprecated": false
+      },
+      {
+        "operationId": "postExampleEcho",
+        "method": "POST",
+        "path": "/api/v1/example/echo",
+        "deprecated": false
+      },
+      {
+        "operationId": "postExampleValidate",
+        "method": "POST",
+        "path": "/api/v1/example/validate",
+        "deprecated": false
+      },
+      {
+        "operationId": "getExampleDelay",
+        "method": "GET",
+        "path": "/api/v1/example/delay",
+        "deprecated": false
+      },
+      {
+        "operationId": "getBillingSummary",
+        "method": "GET",
+        "path": "/api/v1/billing/summary",
+        "deprecated": false
+      }
+    ]
+  },
+  "artifacts": {
+    "generatedClient": {
+      "path": "client.gen.go",
+      "sha256": "df74fc95687ce596b037d8fb9d4a514963f8aca2dd5fffb7df543a9a99099518"
+    },
+    "goMod": {
+      "path": "go.mod",
+      "sha256": "810203e1b7ab033c4a3b4695601b0a2a7ea93f26a4fc7686326dcb4e75b0c223"
+    }
+  }
+}
