@@ -1,11 +1,19 @@
 package server
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"errors"
 	"io"
 	"log/slog"
+	"math/big"
 	"net"
 	"net/http"
 	"strings"
@@ -208,6 +216,7 @@ func TestRunHTTPForcesBoundedShutdown(t *testing.T) {
 	started := make(chan struct{})
 	canceled := make(chan struct{})
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	errorsCh := make(chan error, 1)
 	go func() {
 		errorsCh <- RunHTTP(ctx, HTTPOptions{
@@ -223,11 +232,25 @@ func TestRunHTTPForcesBoundedShutdown(t *testing.T) {
 
 	clientErr := make(chan error, 1)
 	go func() {
-		response, err := (&http.Client{Timeout: time.Second}).Get("http://" + address)
-		if response != nil {
-			response.Body.Close()
+		client := &http.Client{Timeout: 3 * time.Second}
+		deadline := time.Now().Add(2 * time.Second)
+		for {
+			response, err := client.Get("http://" + address)
+			if response != nil {
+				response.Body.Close()
+			}
+			select {
+			case <-started:
+				clientErr <- err
+				return
+			default:
+			}
+			if err == nil || time.Now().After(deadline) {
+				clientErr <- err
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
 		}
-		clientErr <- err
 	}()
 	select {
 	case <-started:
@@ -249,6 +272,272 @@ func TestRunHTTPForcesBoundedShutdown(t *testing.T) {
 		t.Fatal("forced close did not cancel request context")
 	}
 	<-clientErr
+}
+
+func TestRunHTTPClosesHijackedConnectionsDuringShutdown(t *testing.T) {
+	testRunHTTPClosesHijackedConnectionsDuringShutdown(t, nil, func(address string) (net.Conn, error) {
+		return net.DialTimeout("tcp", address, 100*time.Millisecond)
+	})
+}
+
+func TestRunHTTPClosesTLSHijackedConnectionsDuringShutdown(t *testing.T) {
+	serverTLS, clientTLS := testHTTPServerTLS(t)
+	serverTLS.NextProtos = []string{"http/1.1"}
+	clientTLS.NextProtos = []string{"http/1.1"}
+	testRunHTTPClosesHijackedConnectionsDuringShutdown(t, serverTLS, func(address string) (net.Conn, error) {
+		dialer := &net.Dialer{Timeout: 100 * time.Millisecond}
+		return tls.DialWithDialer(dialer, "tcp", address, clientTLS)
+	})
+}
+
+func testRunHTTPClosesHijackedConnectionsDuringShutdown(
+	t *testing.T,
+	serverTLS *tls.Config,
+	dial func(string) (net.Conn, error),
+) {
+	t.Helper()
+	address := reserveHTTPAddress(t)
+	hijackedConnection := make(chan net.Conn, 1)
+	handlerError := make(chan error, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	errorsCh := make(chan error, 1)
+	go func() {
+		errorsCh <- RunHTTP(ctx, HTTPOptions{
+			Handler: http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				hijacker, ok := response.(http.Hijacker)
+				if !ok {
+					handlerError <- errors.New("response writer does not support hijacking")
+					return
+				}
+				connection, buffer, err := hijacker.Hijack()
+				if err != nil {
+					handlerError <- err
+					return
+				}
+				if _, err := buffer.WriteString("HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: test\r\n\r\n"); err != nil {
+					_ = connection.Close()
+					handlerError <- err
+					return
+				}
+				if err := buffer.Flush(); err != nil {
+					_ = connection.Close()
+					handlerError <- err
+					return
+				}
+				hijackedConnection <- connection
+			}),
+			Address:         address,
+			ShutdownTimeout: time.Second,
+			TLSConfig:       serverTLS,
+		})
+	}()
+
+	var clientConnection net.Conn
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		connection, err := dial(address)
+		if err == nil {
+			clientConnection = connection
+			break
+		}
+		if time.Now().After(deadline) {
+			cancel()
+			t.Fatalf("dial standard HTTP server: %v", err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	defer clientConnection.Close()
+	if _, err := io.WriteString(clientConnection, "GET /upgrade HTTP/1.1\r\nHost: example.test\r\nConnection: Upgrade\r\nUpgrade: test\r\n\r\n"); err != nil {
+		cancel()
+		t.Fatalf("write upgrade request: %v", err)
+	}
+	response, err := http.ReadResponse(bufio.NewReader(clientConnection), &http.Request{Method: http.MethodGet})
+	if err != nil {
+		cancel()
+		t.Fatalf("read upgrade response: %v", err)
+	}
+	_ = response.Body.Close()
+	if response.StatusCode != http.StatusSwitchingProtocols {
+		cancel()
+		t.Fatalf("upgrade status = %d, want %d", response.StatusCode, http.StatusSwitchingProtocols)
+	}
+
+	var serverConnection net.Conn
+	select {
+	case serverConnection = <-hijackedConnection:
+		defer serverConnection.Close()
+	case err := <-handlerError:
+		cancel()
+		t.Fatalf("hijack request: %v", err)
+	case <-time.After(time.Second):
+		cancel()
+		t.Fatal("connection was not hijacked")
+	}
+
+	cancel()
+	select {
+	case err := <-errorsCh:
+		if err != nil {
+			t.Fatalf("RunHTTP() error = %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("standard HTTP shutdown exceeded its budget")
+	}
+	if err := clientConnection.SetReadDeadline(time.Now().Add(250 * time.Millisecond)); err != nil {
+		t.Fatalf("set client read deadline: %v", err)
+	}
+	buffer := make([]byte, 1)
+	if _, err := clientConnection.Read(buffer); err == nil {
+		t.Fatal("hijacked connection remained readable after shutdown")
+	} else if netError, ok := err.(net.Error); ok && netError.Timeout() {
+		t.Fatal("hijacked connection remained open after shutdown")
+	}
+}
+
+func TestRunHTTPServesTLS12AndHTTP2(t *testing.T) {
+	address := reserveHTTPAddress(t)
+	serverTLS, clientTLS := testHTTPServerTLS(t)
+	serverTLS.MinVersion = 0
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	errorsCh := make(chan error, 1)
+	go func() {
+		errorsCh <- RunHTTP(ctx, HTTPOptions{
+			Handler: http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+				response.WriteHeader(http.StatusNoContent)
+			}),
+			Address:         address,
+			ShutdownTimeout: 2 * time.Second,
+			TLSConfig:       serverTLS,
+		})
+	}()
+
+	transport := &http.Transport{
+		ForceAttemptHTTP2: true,
+		TLSClientConfig:   clientTLS,
+	}
+	defer transport.CloseIdleConnections()
+	client := &http.Client{Timeout: 500 * time.Millisecond, Transport: transport}
+	deadline := time.Now().Add(3 * time.Second)
+	var response *http.Response
+	for {
+		var err error
+		response, err = client.Get("https://" + address)
+		if err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("TLS server did not become ready: %v", err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if response.StatusCode != http.StatusNoContent || response.ProtoMajor != 2 {
+		response.Body.Close()
+		t.Fatalf("TLS response status/protocol = %d/%q, want %d/HTTP/2", response.StatusCode, response.Proto, http.StatusNoContent)
+	}
+	if response.TLS == nil || response.TLS.Version < tls.VersionTLS12 {
+		response.Body.Close()
+		t.Fatalf("TLS connection state = %#v, want TLS 1.2 or newer", response.TLS)
+	}
+	if serverTLS.MinVersion != 0 || len(serverTLS.NextProtos) != 0 {
+		response.Body.Close()
+		t.Fatalf("caller TLS config was mutated: MinVersion/NextProtos = %d/%v", serverTLS.MinVersion, serverTLS.NextProtos)
+	}
+	if err := response.Body.Close(); err != nil {
+		t.Fatalf("close TLS response body: %v", err)
+	}
+
+	cancel()
+	select {
+	case err := <-errorsCh:
+		if err != nil {
+			t.Fatalf("RunHTTP() error = %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("TLS HTTP shutdown exceeded its budget")
+	}
+}
+
+func TestRunHTTPRejectsUnsafeTLSConfiguration(t *testing.T) {
+	certificate, _ := testHTTPServerTLS(t)
+	tests := []struct {
+		name      string
+		tlsConfig *tls.Config
+	}{
+		{
+			name: "obsolete minimum",
+			tlsConfig: &tls.Config{
+				MinVersion:   tls.VersionTLS11,
+				Certificates: certificate.Certificates,
+			},
+		},
+		{
+			name: "maximum below minimum",
+			tlsConfig: &tls.Config{
+				MinVersion:   tls.VersionTLS13,
+				MaxVersion:   tls.VersionTLS12,
+				Certificates: certificate.Certificates,
+			},
+		},
+		{
+			name:      "missing certificate",
+			tlsConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := RunHTTP(context.Background(), HTTPOptions{
+				Handler:   http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}),
+				Address:   "127.0.0.1:0",
+				TLSConfig: test.tlsConfig,
+			})
+			if err == nil || !strings.Contains(err.Error(), "TLS") {
+				t.Fatalf("RunHTTP() error = %v, want fixed TLS validation error", err)
+			}
+		})
+	}
+}
+
+func TestPrepareHTTPServerTLSConfigValidatesDynamicSelection(t *testing.T) {
+	certificate, _ := testHTTPServerTLS(t)
+	t.Run("rejects obsolete minimum", func(t *testing.T) {
+		prepared, err := prepareHTTPServerTLSConfig(&tls.Config{
+			GetConfigForClient: func(*tls.ClientHelloInfo) (*tls.Config, error) {
+				selected := certificate.Clone()
+				selected.MinVersion = tls.VersionTLS11
+				return selected, nil
+			},
+		})
+		if err != nil {
+			t.Fatalf("prepare top-level TLS config: %v", err)
+		}
+		if _, err := prepared.GetConfigForClient(&tls.ClientHelloInfo{}); err == nil {
+			t.Fatal("dynamic TLS config with obsolete minimum was accepted")
+		}
+	})
+
+	t.Run("defaults clone without mutating selection", func(t *testing.T) {
+		selected := certificate.Clone()
+		selected.MinVersion = 0
+		prepared, err := prepareHTTPServerTLSConfig(&tls.Config{
+			GetConfigForClient: func(*tls.ClientHelloInfo) (*tls.Config, error) {
+				return selected, nil
+			},
+		})
+		if err != nil {
+			t.Fatalf("prepare top-level TLS config: %v", err)
+		}
+		dynamic, err := prepared.GetConfigForClient(&tls.ClientHelloInfo{})
+		if err != nil {
+			t.Fatalf("prepare dynamic TLS config: %v", err)
+		}
+		if dynamic.MinVersion != tls.VersionTLS12 {
+			t.Fatalf("dynamic TLS minimum version = %d, want TLS 1.2", dynamic.MinVersion)
+		}
+		if selected.MinVersion != 0 {
+			t.Fatalf("caller dynamic TLS config was mutated: MinVersion = %d", selected.MinVersion)
+		}
+	})
 }
 
 func TestRunHTTPBoundsApplicationShutdownHook(t *testing.T) {
@@ -428,4 +717,44 @@ func containsHTTPConnectionState(states []http.ConnState, expected http.ConnStat
 		}
 	}
 	return false
+}
+
+func testHTTPServerTLS(t *testing.T) (*tls.Config, *tls.Config) {
+	t.Helper()
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("generate TLS private key: %v", err)
+	}
+	now := time.Now()
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "localhost"},
+		NotBefore:    now.Add(-time.Hour),
+		NotAfter:     now.Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		DNSNames:     []string{"localhost"},
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		t.Fatalf("create TLS certificate: %v", err)
+	}
+	certificate, err := x509.ParseCertificate(der)
+	if err != nil {
+		t.Fatalf("parse TLS certificate: %v", err)
+	}
+	roots := x509.NewCertPool()
+	roots.AddCert(certificate)
+	return &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			Certificates: []tls.Certificate{{
+				Certificate: [][]byte{der},
+				PrivateKey:  privateKey,
+			}},
+		}, &tls.Config{
+			MinVersion: tls.VersionTLS12,
+			RootCAs:    roots,
+			ServerName: "localhost",
+		}
 }

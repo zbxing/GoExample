@@ -109,6 +109,29 @@ function collectParameters(document, pathItem, operation, location) {
   return parameters;
 }
 
+function parameterSerialization(parameter) {
+  const defaultStyle = parameter.in === 'query' || parameter.in === 'cookie' ? 'form' : 'simple';
+  const style = parameter.style ?? defaultStyle;
+  return {
+    style,
+    explode: parameter.explode ?? style === 'form',
+  };
+}
+
+function compareParameterSerialization(issues, baseline, current, location) {
+  const baselineSerialization = parameterSerialization(baseline);
+  const currentSerialization = parameterSerialization(current);
+  if (canonical(baselineSerialization) !== canonical(currentSerialization)) {
+    issues.push(`${location} parameter serialization changed`);
+  }
+  if (baseline.allowReserved === true && current.allowReserved !== true) {
+    issues.push(`${location} no longer allows reserved characters`);
+  }
+  if (baseline.allowEmptyValue === true && current.allowEmptyValue !== true) {
+    issues.push(`${location} no longer allows an empty value`);
+  }
+}
+
 function schemaTypes(schema) {
   if (typeof schema.type === 'string') {
     return new Set([schema.type]);
@@ -169,10 +192,22 @@ function compareSchema(issues, baselineDocument, currentDocument, baselineValue,
   const baselineTypes = schemaTypes(baseline);
   const currentTypes = schemaTypes(current);
   const typesCompatible = direction === 'request'
-    ? setContains(currentTypes, baselineTypes)
-    : setContains(baselineTypes, currentTypes);
-  if (baselineTypes.size > 0 && currentTypes.size > 0 && !typesCompatible) {
+    ? (baselineTypes.size === 0
+      ? currentTypes.size === 0
+      : currentTypes.size === 0 || setContains(currentTypes, baselineTypes))
+    : (baselineTypes.size === 0
+      || (currentTypes.size > 0 && setContains(baselineTypes, currentTypes)));
+  if (!typesCompatible) {
     issues.push(`${location} ${direction} types changed from ${[...baselineTypes]} to ${[...currentTypes]}`);
+  }
+
+  const baselineNullable = baseline.nullable === true;
+  const currentNullable = current.nullable === true;
+  const nullableIncompatible = direction === 'request'
+    ? baselineNullable && !currentNullable
+    : !baselineNullable && currentNullable;
+  if (nullableIncompatible) {
+    issues.push(`${location} ${direction} nullable changed from ${baselineNullable} to ${currentNullable}`);
   }
 
   const baselineEnum = Array.isArray(baseline.enum) ? baseline.enum : null;
@@ -207,6 +242,10 @@ function compareSchema(issues, baselineDocument, currentDocument, baselineValue,
         issues.push(`${location} ${keyword} changed and requires explicit versioning review`);
       }
     }
+  }
+  if ((baseline.discriminator !== undefined || current.discriminator !== undefined)
+      && canonical(baseline.discriminator) !== canonical(current.discriminator)) {
+    issues.push(`${location} discriminator changed and requires explicit versioning review`);
   }
 
   const baselineRequired = new Set(Array.isArray(baseline.required) ? baseline.required : []);
@@ -279,7 +318,60 @@ function compareContent(issues, baselineDocument, currentDocument, baselineConte
           new WeakMap(),
         );
       }
+    } else if (direction === 'request' && currentDefinition.schema !== undefined) {
+      issues.push(`${location} added a restrictive ${mediaType} request schema`);
     }
+    if (direction === 'request'
+        && canonical(baselineDefinition.encoding) !== canonical(currentDefinition.encoding)) {
+      issues.push(`${location} ${mediaType} encoding changed and requires explicit versioning review`);
+    }
+  }
+  if (direction === 'response') {
+    for (const mediaType of Object.keys(currentMedia)) {
+      if (!(mediaType in baselineMedia)) {
+        issues.push(`${location} added response media type ${mediaType}`);
+      }
+    }
+  }
+}
+
+function compareParameterContract(
+  issues,
+  baselineDocument,
+  currentDocument,
+  baselineParameter,
+  currentParameter,
+  location,
+) {
+  compareParameterSerialization(issues, baselineParameter, currentParameter, location);
+  if (baselineParameter.schema !== undefined) {
+    if (currentParameter.schema === undefined) {
+      issues.push(`${location} removed its parameter schema`);
+    } else {
+      compareSchema(
+        issues,
+        baselineDocument,
+        currentDocument,
+        baselineParameter.schema,
+        currentParameter.schema,
+        'request',
+        location,
+        new WeakMap(),
+      );
+    }
+  } else if (currentParameter.schema !== undefined && baselineParameter.content === undefined) {
+    issues.push(`${location} added a restrictive parameter schema`);
+  }
+  if (baselineParameter.content !== undefined || currentParameter.content !== undefined) {
+    compareContent(
+      issues,
+      baselineDocument,
+      currentDocument,
+      baselineParameter.content,
+      currentParameter.content,
+      'request',
+      `${location} content`,
+    );
   }
 }
 
@@ -317,25 +409,55 @@ function compareResponses(issues, baselineDocument, currentDocument, baselineOpe
     }
     const baseline = resolveLocalReference(baselineDocument, baselineValue, `${location} response ${status}`);
     const current = resolveLocalReference(currentDocument, currentResponses[status], `${location} response ${status}`);
-    const baselineHeaders = isObject(baseline.headers) ? baseline.headers : {};
-    const currentHeaders = isObject(current.headers) ? current.headers : {};
-    for (const [name, baselineHeaderValue] of Object.entries(baselineHeaders)) {
-      if (!(name in currentHeaders)) {
-        issues.push(`${location} response ${status} removed header ${name}`);
+    const baselineHeaders = new Map(Object.entries(isObject(baseline.headers) ? baseline.headers : {})
+      .map(([name, value]) => [name.toLowerCase(), { name, value }]));
+    const currentHeaders = new Map(Object.entries(isObject(current.headers) ? current.headers : {})
+      .map(([name, value]) => [name.toLowerCase(), { name, value }]));
+    for (const [normalizedName, baselineEntry] of baselineHeaders) {
+      const currentEntry = currentHeaders.get(normalizedName);
+      if (!currentEntry) {
+        issues.push(`${location} response ${status} removed header ${baselineEntry.name}`);
         continue;
       }
-      const baselineHeader = resolveLocalReference(baselineDocument, baselineHeaderValue, `${location} response ${status} header ${name}`);
-      const currentHeader = resolveLocalReference(currentDocument, currentHeaders[name], `${location} response ${status} header ${name}`);
-      if (baselineHeader.schema !== undefined && currentHeader.schema !== undefined) {
-        compareSchema(
+      const headerLocation = `${location} response ${status} header ${baselineEntry.name}`;
+      const baselineHeader = resolveLocalReference(baselineDocument, baselineEntry.value, headerLocation);
+      const currentHeader = resolveLocalReference(currentDocument, currentEntry.value, headerLocation);
+      const baselineSerialization = {
+        style: baselineHeader.style ?? 'simple',
+        explode: baselineHeader.explode ?? false,
+      };
+      const currentSerialization = {
+        style: currentHeader.style ?? 'simple',
+        explode: currentHeader.explode ?? false,
+      };
+      if (canonical(baselineSerialization) !== canonical(currentSerialization)) {
+        issues.push(`${headerLocation} serialization changed`);
+      }
+      if (baselineHeader.schema !== undefined) {
+        if (currentHeader.schema === undefined) {
+          issues.push(`${headerLocation} removed its schema`);
+        } else {
+          compareSchema(
+            issues,
+            baselineDocument,
+            currentDocument,
+            baselineHeader.schema,
+            currentHeader.schema,
+            'response',
+            headerLocation,
+            new WeakMap(),
+          );
+        }
+      }
+      if (baselineHeader.content !== undefined || currentHeader.content !== undefined) {
+        compareContent(
           issues,
           baselineDocument,
           currentDocument,
-          baselineHeader.schema,
-          currentHeader.schema,
+          baselineHeader.content,
+          currentHeader.content,
           'response',
-          `${location} response ${status} header ${name}`,
-          new WeakMap(),
+          `${headerLocation} content`,
         );
       }
     }
@@ -379,18 +501,14 @@ export function findOpenAPIBreakingChanges(baselineDocument, currentDocument) {
       if (baselineParameter.required !== true && currentParameter.required === true) {
         issues.push(`${key} parameter ${parameterKey} became required`);
       }
-      if (baselineParameter.schema !== undefined && currentParameter.schema !== undefined) {
-        compareSchema(
-          issues,
-          baselineDocument,
-          currentDocument,
-          baselineParameter.schema,
-          currentParameter.schema,
-          'request',
-          `${key} parameter ${parameterKey}`,
-          new WeakMap(),
-        );
-      }
+      compareParameterContract(
+        issues,
+        baselineDocument,
+        currentDocument,
+        baselineParameter,
+        currentParameter,
+        `${key} parameter ${parameterKey}`,
+      );
     }
     for (const [parameterKey, currentParameter] of currentParameters) {
       if (!baselineParameters.has(parameterKey) && currentParameter.required === true) {

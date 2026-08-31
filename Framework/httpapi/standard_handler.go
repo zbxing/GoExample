@@ -15,6 +15,8 @@ import (
 
 const standardRequestContextHeader = "X-GoExample-Standard-Request-Context"
 
+const maximumStandardResponseWriterUnwrapDepth = 32
+
 var standardRequestContexts sync.Map
 
 // NewHTTPHandler exposes an existing Framework app through the standard
@@ -41,8 +43,53 @@ func NewHTTPHandler(app *fiber.App) (http.Handler, error) {
 
 		bridgedRequest := request.Clone(request.Context())
 		bridgedRequest.Header.Set(standardRequestContextHeader, token)
-		adapted.ServeHTTP(response, bridgedRequest)
+		adapted.ServeHTTP(standardStreamingResponseWriter(response), bridgedRequest)
 	}), nil
+}
+
+// standardStreamingResponseWriter preserves streaming when standard middleware
+// exposes its underlying writer through the net/http ResponseController contract
+// without forwarding http.Flusher directly.
+func standardStreamingResponseWriter(response http.ResponseWriter) http.ResponseWriter {
+	if _, ok := response.(http.Flusher); ok {
+		return response
+	}
+	if !supportsStandardResponseFlush(response) {
+		return response
+	}
+	return standardResponseFlusher{ResponseWriter: response}
+}
+
+func supportsStandardResponseFlush(response http.ResponseWriter) bool {
+	for range maximumStandardResponseWriterUnwrapDepth {
+		if response == nil {
+			return false
+		}
+		if _, ok := response.(http.Flusher); ok {
+			return true
+		}
+		if _, ok := response.(interface{ FlushError() error }); ok {
+			return true
+		}
+		unwrapper, ok := response.(interface{ Unwrap() http.ResponseWriter })
+		if !ok {
+			return false
+		}
+		response = unwrapper.Unwrap()
+	}
+	return false
+}
+
+type standardResponseFlusher struct {
+	http.ResponseWriter
+}
+
+func (response standardResponseFlusher) Flush() {
+	_ = http.NewResponseController(response.ResponseWriter).Flush()
+}
+
+func (response standardResponseFlusher) Unwrap() http.ResponseWriter {
+	return response.ResponseWriter
 }
 
 func newStandardRequestContextToken() (string, error) {

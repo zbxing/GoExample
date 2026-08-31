@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, readFileSync } from 'node:fs';
+import { closeSync, existsSync, lstatSync, openSync, readFileSync, readSync } from 'node:fs';
 import path from 'node:path';
 
 export const prometheusRuleSchemaVersion = 3;
@@ -45,7 +45,21 @@ function relativePath(root, filePath) {
 }
 
 function hashFile(filePath) {
-  return createHash('sha256').update(readFileSync(filePath)).digest('hex');
+  const hash = createHash('sha256');
+  const buffer = Buffer.allocUnsafe(1024 * 1024);
+  const descriptor = openSync(filePath, 'r');
+  try {
+    let bytesRead;
+    do {
+      bytesRead = readSync(descriptor, buffer, 0, buffer.length, null);
+      if (bytesRead > 0) {
+        hash.update(buffer.subarray(0, bytesRead));
+      }
+    } while (bytesRead > 0);
+  } finally {
+    closeSync(descriptor);
+  }
+  return hash.digest('hex');
 }
 
 function requireExactKeys(value, expectedKeys, name) {

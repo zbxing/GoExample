@@ -60,7 +60,20 @@ test('Kubernetes evidence binds deterministic rendering and repository-only limi
   assert.equal(verified.report.schemaVersion, kubernetesEvidenceSchemaVersion);
   assert.equal(verified.report.status, 'passed');
   assert.equal(verified.report.fixture.image, kubernetesValidationFixture.image);
+  assert.equal(verified.report.fixture.namespace, kubernetesValidationFixture.namespace);
+  assert.equal(verified.report.fixture.secretRevision, kubernetesValidationFixture.secretRevision);
   assert.equal(verified.artifactPaths.length, 4);
+  assert.match(verified.report.limitations.join('\n'), /does not prove namespace creation/);
+  assert.match(verified.report.limitations.join('\n'), /does not prove target Secret contents/);
+  assert.match(verified.report.limitations.join('\n'), /exact eight-resource identity validation rejects unreviewed repository resources/);
+  assert.match(verified.report.limitations.join('\n'), /exact workload label maps and complete selector objects reject extra matchLabels and matchExpressions/);
+  assert.match(verified.report.limitations.join('\n'), /exact Pod and container security-context objects reject extra sysctls, identity overrides, and capability re-additions/);
+  assert.match(verified.report.limitations.join('\n'), /exact PodTemplateSpec object rejects unreviewed annotations, finalizers, owner references/);
+  assert.match(verified.report.limitations.join('\n'), /exact container-port and Service-spec objects reject extra ports, protocol drift, external IP exposure, and unreviewed Service fields/);
+  assert.match(
+    verified.report.limitations.join('\n'),
+    /does not prove target ConfigMap or Secret existence, target dynamic values, Secret key inventory, access isolation, rotation, or successful Pod consumption/,
+  );
   assert.match(verified.report.limitations.join('\n'), /kubernetesDrill remains not_recorded/);
 });
 

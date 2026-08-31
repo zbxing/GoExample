@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
 const evidenceRoot = path.join(repositoryRoot, '.temp', 'transport-benchmark');
-const transports = ['fiber', 'net-http'];
+const transports = ['fiber', 'net-http', 'framework-net-http'];
 const concurrency = 32;
 const windowDurationNanos = 5_000_000_000;
 const minimumDurationNanos = 30_000_000_000;
@@ -93,6 +93,14 @@ function ratio(numerator, denominator) {
     fail('directional ratio denominator must be positive');
   }
   return Number((numerator / denominator).toFixed(6));
+}
+
+function comparePair(numerator, denominator) {
+  return {
+    throughputRatio: ratio(numerator.throughputRps, denominator.throughputRps),
+    p95Ratio: ratio(numerator.p95Nanos, denominator.p95Nanos),
+    p99Ratio: ratio(numerator.p99Nanos, denominator.p99Nanos),
+  };
 }
 
 function validateMeasurement(measurement) {
@@ -267,7 +275,7 @@ const results = Object.fromEntries(
   }),
 );
 const report = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: new Date().toISOString(),
   scope: 'linux_loopback_combined_client_server_soak',
   source: { input: relativePath(options.input) },
@@ -280,10 +288,15 @@ const report = {
     p95FiberToNetHTTP: ratio(results.fiber.p95Nanos, results['net-http'].p95Nanos),
     p99FiberToNetHTTP: ratio(results.fiber.p99Nanos, results['net-http'].p99Nanos),
   },
+  frameworkAdapterRatios: {
+    frameworkNetHTTPToFiber: comparePair(results['framework-net-http'], results.fiber),
+    frameworkNetHTTPToNetHTTP: comparePair(results['framework-net-http'], results['net-http']),
+  },
   limitations: [
     'the soak uses loopback TCP and a combined client/server harness process, not isolated production services',
     'settled heap, goroutine, and file-descriptor thresholds detect coarse regressions but do not prove absence of leaks',
     'the run does not establish target dependency recovery, alert delivery, operator response, RPO, or RTO',
+    'the fixed project payload does not represent a target payload, identity provider, dependency, TLS edge, or production capacity',
   ],
 };
 

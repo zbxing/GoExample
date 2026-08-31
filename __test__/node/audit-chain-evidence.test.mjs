@@ -70,7 +70,7 @@ test('audit chain evidence verifies the exact successful local contract', async 
   const evidenceRoot = await createEvidence(root);
   const verified = verifyAuditChainEvidence({ repositoryRoot, evidenceRoot });
   assert.equal(verified.report.status, 'passed');
-  assert.equal(verified.report.contract.tests.length, 6);
+  assert.equal(verified.report.contract.tests.length, 9);
   assert.equal(verified.artifactPaths.length, 5);
 });
 

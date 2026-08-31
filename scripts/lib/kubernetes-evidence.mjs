@@ -3,17 +3,28 @@ import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { renderManifest } from '../kubernetes-manifest.mjs';
 
-export const kubernetesEvidenceSchemaVersion = 1;
+export const kubernetesEvidenceSchemaVersion = 15;
 export const kubernetesValidationFixture = Object.freeze({
+  namespace: 'goexample-validation',
   image: `ghcr.io/zbxing/goexample-api@sha256:${'0'.repeat(64)}`,
   allowedOrigin: 'https://console.validation.invalid',
   oidcIssuer: 'https://identity.validation.invalid/tenant',
   oidcAudience: 'goexample-api',
   oidcJWKSURL: 'https://identity.validation.invalid/tenant/jwks',
+  secretRevision: 'validation-secret-revision-00000001',
 });
 
 const limitations = Object.freeze([
-  'the deterministic fixture is not a deployable image, credential, target origin, or target identity provider',
+  'the deterministic fixture namespace, image, origin, and identity provider are not target deployment inputs or credentials',
+  'an explicit non-system namespace does not prove namespace creation, labels, quotas, RBAC, admission policy, or isolation',
+  'the fixed non-secret revision does not prove target Secret contents, provider version, or rotation',
+  'exact eight-resource identity validation rejects unreviewed repository resources but does not prove the target cluster applied the same inventory or excluded overlays',
+  'exact workload label maps and complete selector objects reject extra matchLabels and matchExpressions but do not prove target overlays preserve selectors or target controllers select the intended Pods',
+  'exact Pod and container security-context objects reject extra sysctls, identity overrides, and capability re-additions but do not prove target Pod Security admission or runtime enforcement',
+  'the exact PodSpec object rejects init containers, volumes, DNS or scheduler drift, registry credentials, and other unreviewed Pod fields but does not prove target API defaulting, admission mutation, scheduling, or runtime enforcement',
+  'the exact PodTemplateSpec object rejects unreviewed annotations, finalizers, owner references, and other Pod-template metadata but does not prove target admission preserves the rendered template',
+  'exact container-port and Service-spec objects reject extra ports, protocol drift, external IP exposure, and unreviewed Service fields but do not prove target API defaults, EndpointSlice selection, or network reachability',
+  'exact ConfigMap key, fixed-value, dynamic-input, and environment-source validation does not prove target ConfigMap or Secret existence, target dynamic values, Secret key inventory, access isolation, rotation, or successful Pod consumption',
   'repository rendering and semantic validation do not prove Kubernetes API admission, rollout, autoscaling, disruption, network policy enforcement, or rollback',
   'kubernetesDrill remains not_recorded until signed target-cluster evidence is archived and independently verified',
 ]);
@@ -128,6 +139,8 @@ function expectedCommands(repositoryRoot, renderedManifestPath) {
       'node',
       'scripts/kubernetes-manifest.mjs',
       'render',
+      '--namespace',
+      kubernetesValidationFixture.namespace,
       '--image',
       kubernetesValidationFixture.image,
       '--allowed-origin',
@@ -138,6 +151,8 @@ function expectedCommands(repositoryRoot, renderedManifestPath) {
       kubernetesValidationFixture.oidcAudience,
       '--oidc-jwks-url',
       kubernetesValidationFixture.oidcJWKSURL,
+      '--secret-revision',
+      kubernetesValidationFixture.secretRevision,
       '--output',
       outputPath,
     ],

@@ -20,6 +20,12 @@ function run(input, output) {
 }
 
 function measurement(transport, options = {}) {
+  const transportValues = {
+    fiber: { throughputRps: 2100, p95Nanos: 1500, p99Nanos: 2100 },
+    'net-http': { throughputRps: 1900, p95Nanos: 1800, p99Nanos: 2500 },
+    'framework-net-http': { throughputRps: 1700, p95Nanos: 2200, p99Nanos: 3000 },
+  };
+  const values = transportValues[transport];
   const windows = Array.from({ length: 6 }, (_, index) => ({
     index,
     durationNanos: 5_000_000_000,
@@ -45,9 +51,9 @@ function measurement(transport, options = {}) {
     requests: 60000,
     concurrency: 32,
     payloadBytes: 84,
-    throughputRps: transport === 'fiber' ? 2100 : 1900,
-    p95Nanos: transport === 'fiber' ? 1500 : 1800,
-    p99Nanos: transport === 'fiber' ? 2100 : 2500,
+    throughputRps: values.throughputRps,
+    p95Nanos: values.p95Nanos,
+    p99Nanos: values.p99Nanos,
     errorCount: options.errorCount ?? 0,
     errorRate: (options.errorCount ?? 0) / 60000,
     connectionDials: 31,
@@ -67,7 +73,11 @@ function measurement(transport, options = {}) {
 }
 
 function fixture(options = {}) {
-  const transports = options.missingTransport ? ['fiber'] : ['fiber', 'net-http'];
+  const transports = options.duplicateFramework
+    ? ['fiber', 'framework-net-http', 'framework-net-http']
+    : options.missingTransport
+      ? ['fiber', 'net-http']
+      : ['fiber', 'net-http', 'framework-net-http'];
   return `${transports.map((transport) =>
     `transport_benchmark_test.go:1: TRANSPORT_SOAK ${JSON.stringify(measurement(transport, options))}`
   ).join('\n')}\n`;
@@ -84,12 +94,27 @@ test('transport soak report validates stability and settled resources', async (t
   const result = run(input, output);
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(await readFile(output, 'utf8'));
+  assert.equal(report.schemaVersion, 2);
   assert.equal(report.scope, 'linux_loopback_combined_client_server_soak');
   assert.equal(report.results.fiber.requests, 60000);
+  assert.equal(report.results['framework-net-http'].requests, 60000);
   assert.equal(report.results.fiber.resourceDeltas.goroutinesSettled, 1);
   assert.equal(report.results.fiber.windowStability.minimumToMedianRatio, 1);
   assert.equal(report.directionalRatios.throughputFiberToNetHTTP, 1.105263);
+  assert.deepEqual(report.frameworkAdapterRatios, {
+    frameworkNetHTTPToFiber: {
+      throughputRatio: 0.809524,
+      p95Ratio: 1.466667,
+      p99Ratio: 1.428571,
+    },
+    frameworkNetHTTPToNetHTTP: {
+      throughputRatio: 0.894737,
+      p95Ratio: 1.222222,
+      p99Ratio: 1.2,
+    },
+  });
   assert.match(report.limitations[2], /RPO, or RTO/);
+  assert.match(report.limitations[3], /target payload/);
 });
 
 test('transport soak report rejects incomplete, failed, unstable, and unbounded evidence', async (t) => {
@@ -97,7 +122,8 @@ test('transport soak report rejects incomplete, failed, unstable, and unbounded 
   const testRoot = await mkdtemp(path.join(testFixtureRoot, 'soak-report-fail-'));
   t.after(() => rm(testRoot, { recursive: true, force: true }));
   const cases = [
-    { name: 'missing', options: { missingTransport: true }, message: /exactly 2 transport measurements/ },
+    { name: 'missing', options: { missingTransport: true }, message: /exactly 3 transport measurements/ },
+    { name: 'duplicate-framework', options: { duplicateFramework: true }, message: /duplicate soak transport/ },
     { name: 'errors', options: { errorCount: 1 }, message: /without errors/ },
     { name: 'window-total', options: { windowRequestDrift: true }, message: /window totals/ },
     { name: 'throughput-collapse', options: { throughputCollapse: true }, message: /collapsed/ },

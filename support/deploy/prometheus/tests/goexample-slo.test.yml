@@ -126,3 +126,173 @@ tests:
       - eval_time: 12m
         alertname: GoExampleTraceQueueDrops
         exp_alerts: []
+
+  - name: availability warning preserves its threshold and fifteen-minute duration
+    interval: 30s
+    input_series:
+      - series: 'goexample_http_requests_total{status="200"}'
+        values: 0+297x40
+      - series: 'goexample_http_requests_total{status="500"}'
+        values: 0+3x40
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GoExampleAvailabilityBurnRateWarning
+        exp_alerts: []
+      - eval_time: 15m30s
+        alertname: GoExampleAvailabilityBurnRateWarning
+        exp_alerts:
+          - exp_labels:
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample availability error budget is burning above warning threshold
+              description: The 6h and 30m error-budget burn rates exceed 6x for 15m.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+
+  - name: latency warning preserves its 250ms threshold and ten-minute duration
+    interval: 30s
+    input_series:
+      - series: 'goexample_http_request_duration_seconds_bucket{le="0.1",status="200"}'
+        values: 0+1x32
+      - series: 'goexample_http_request_duration_seconds_bucket{le="0.25",status="200"}'
+        values: 0+1x32
+      - series: 'goexample_http_request_duration_seconds_bucket{le="0.5",status="200"}'
+        values: 0+20x32
+      - series: 'goexample_http_request_duration_seconds_bucket{le="+Inf",status="200"}'
+        values: 0+20x32
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: GoExampleLatencySLOViolation
+        exp_alerts: []
+      - eval_time: 10m30s
+        alertname: GoExampleLatencySLOViolation
+        exp_alerts:
+          - exp_labels:
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample p95 latency is above 250ms
+              description: The request p95 latency SLI has exceeded the 250ms objective for 10m.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+
+  - name: trace export and processor alerts preserve duration labels and runbooks
+    interval: 30s
+    input_series:
+      - series: 'goexample_otel_trace_export_batches_total{outcome="failure"}'
+        values: 0+30x24
+      - series: 'goexample_otel_trace_export_attempts_total{outcome="failure"}'
+        values: 0+30x24
+      - series: goexample_otel_trace_processor_pending_spans
+        values: 81x24
+      - series: goexample_otel_trace_processor_capacity_spans
+        values: 100x24
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoExampleTraceExportFailures
+        exp_alerts: []
+      - eval_time: 5m30s
+        alertname: GoExampleTraceExportFailures
+        exp_alerts:
+          - exp_labels:
+              outcome: failure
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample trace batches are failing to export
+              description: Final OTLP batch exports have failed continuously; traces may be missing even when requests succeed.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+      - eval_time: 5m
+        alertname: GoExampleTraceExportAttemptFailures
+        exp_alerts: []
+      - eval_time: 5m30s
+        alertname: GoExampleTraceExportAttemptFailures
+        exp_alerts:
+          - exp_labels:
+              outcome: failure
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample OTLP export attempts are repeatedly failing
+              description: OTLP HTTP attempts are failing at more than 0.01 per second even if bounded retries recover final batches.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+      - eval_time: 4m30s
+        alertname: GoExampleTraceProcessorSaturation
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: GoExampleTraceProcessorSaturation
+        exp_alerts:
+          - exp_labels:
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample trace processor is close to capacity
+              description: More than 80 percent of trace processor capacity has remained occupied for 5m; span drops may follow.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+
+  - name: queue and authentication alerts preserve duration labels and runbooks
+    interval: 30s
+    input_series:
+      - series: 'goexample_queue_delivery_events_total{event="dead_lettered"}'
+        values: 0+30x24
+      - series: 'goexample_queue_delivery_events_total{event="settlement_failed"}'
+        values: 0+30x24
+      - series: 'goexample_queue_delivery_lease_events_total{event="failure"}'
+        values: 0+30x24
+      - series: 'goexample_security_events_total{event="login",outcome="limited"}'
+        values: 0+30x24
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GoExampleQueueDeliveryDeadLetters
+        exp_alerts: []
+      - eval_time: 5m30s
+        alertname: GoExampleQueueDeliveryDeadLetters
+        exp_alerts:
+          - exp_labels:
+              event: dead_lettered
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample queue deliveries are being dead-lettered
+              description: Reliable-delivery handlers have continuously exhausted retry or rejected messages as non-retryable for 5m.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+      - eval_time: 5m
+        alertname: GoExampleQueueSettlementFailures
+        exp_alerts: []
+      - eval_time: 5m30s
+        alertname: GoExampleQueueSettlementFailures
+        exp_alerts:
+          - exp_labels:
+              event: settlement_failed
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample queue delivery settlement is failing
+              description: Acknowledgement or dead-letter callbacks have continuously failed, timed out, or panicked for 5m; affected workers stop fail closed.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+      - eval_time: 5m
+        alertname: GoExampleQueueLeaseExtensionFailures
+        exp_alerts: []
+      - eval_time: 5m30s
+        alertname: GoExampleQueueLeaseExtensionFailures
+        exp_alerts:
+          - exp_labels:
+              event: failure
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample queue delivery lease extension is failing
+              description: Configured delivery lease-extension callbacks have continuously failed, timed out, or panicked for 5m; affected workers stop before settlement.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/observability/SLO-and-alerts.md
+      - eval_time: 5m
+        alertname: GoExampleAuthenticationRateLimited
+        exp_alerts: []
+      - eval_time: 5m30s
+        alertname: GoExampleAuthenticationRateLimited
+        exp_alerts:
+          - exp_labels:
+              service: goexample
+              severity: warning
+            exp_annotations:
+              summary: GoExample login rate limiting is persistently active
+              description: The configured authentication limiter has continuously rejected login attempts for 5m; review privacy-minimized security audit events.
+              runbook_url: https://github.com/zbxing/goexample/blob/main/docs/security/server-audit-events.md

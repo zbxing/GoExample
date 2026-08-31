@@ -3,32 +3,45 @@ import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
-export const auditChainEvidenceSchemaVersion = 1;
-export const auditChainTests = Object.freeze([
-  'TestSecurityAuditSinkReceivesBoundedLowSensitivityRecord',
-  'TestSecurityAuditSinkFailuresAreIsolatedAndCredentialSafe',
-  'TestSecurityAuditSinkHonorsConfiguredTimeoutWithoutChangingResponse',
-  'TestHashChainAuditSinkWritesAndVerifiesLinkedRecords',
-  'TestHashChainAuditSinkRejectsTamperingAndInvalidRecords',
-  'TestHashChainAuditSinkHonorsCancellationAndWriterBounds',
-  'TestHashChainAuditSinkSerializesConcurrentWriters',
-  'TestEncryptedAuditWriterEncryptsAndSupportsKeyRotation',
-  'TestEncryptedAuditWriterRejectsTamperingUnknownKeysAndInvalidConfig',
+export const sdkConsumerEvidenceSchemaVersion = 1;
+export const sdkConsumerTests = Object.freeze([
+  'TestHealthProbeMigratesFromDeprecatedAliasToCanonicalReadiness',
+  'TestHealthProbeRejectsUnavailableAndMalformedResponses',
+  'TestGeneratedBillingSDKReadsSummaryFromIndependentFrameworkService',
+  'TestGeneratedBillingSDKInvokesEveryPublicOperationThroughFrameworkHandler',
 ]);
-export const auditChainGoArguments = Object.freeze([
+export const sdkConsumerBillingOperations = Object.freeze([
+  'getServiceInfo',
+  'getMetrics',
+  'getLegacyHealth',
+  'getLegacyReadiness',
+  'getLegacyStartup',
+  'getSystemInfo',
+  'getLiveness',
+  'getReadiness',
+  'getStartup',
+  'getExampleHello',
+  'postExampleEcho',
+  'postExampleValidate',
+  'getExampleDelay',
+  'getBillingSummary',
+]);
+export const sdkConsumerGoArguments = Object.freeze([
   'test',
   '-v',
   '-count=1',
   '-timeout=90s',
-  `-run=^(${auditChainTests.join('|')})$`,
-  './httpapi',
+  `-run=^(${sdkConsumerTests.join('|')})$`,
+  './support/consumer/HealthProbe/cmd/healthprobe',
+  './Services/Billing/internal/billingapi',
 ]);
-export const auditChainLimitations = Object.freeze([
-  'proves repository-local hash chaining, encryption, rotation, bounds, cancellation, concurrency, and tamper rejection only',
-  'does not establish durable or immutable production storage, KMS or Vault custody, access control, retention, deletion, or trusted time',
-  'does not establish target SIEM ingestion, paging delivery, named operator response, remote provenance, or production incident closure',
+export const sdkConsumerLimitations = Object.freeze([
+  'proves repository-local HealthProbe migration and Billing generated-SDK integration behavior only',
+  'does not establish an external consumer cross-version matrix, a formal SDK tag, or package publication',
+  'does not establish deprecation-window execution, target deployment migration, or production consumer ownership',
+  'does not establish remote provenance, target identity, target dependencies, or production availability evidence',
 ]);
-export const auditChainArtifactNames = Object.freeze([
+export const sdkConsumerArtifactNames = Object.freeze([
   'go-output.txt',
   'go-error.txt',
   'go-status.txt',
@@ -36,16 +49,17 @@ export const auditChainArtifactNames = Object.freeze([
   'SHA256SUMS',
 ]);
 
-const checksumArtifactNames = auditChainArtifactNames.filter((name) => name !== 'SHA256SUMS');
+const checksumArtifactNames = sdkConsumerArtifactNames.filter((name) => name !== 'SHA256SUMS');
 const sha256Pattern = /^[a-f0-9]{64}$/;
 const gitCommitPattern = /^[a-f0-9]{40}$/;
 const canonicalTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const maximumArtifactBytes = 4 * 1024 * 1024;
 const maximumReportBytes = 1024 * 1024;
-const executionTimeoutMs = 120_000;
+export const sdkConsumerProcessTimeoutMs = 120_000;
+const executionBudgetMs = 150_000;
 
 function reject(message) {
-  throw new Error(`Audit chain evidence: ${message}`);
+  throw new Error(`SDK consumer evidence: ${message}`);
 }
 
 function toPosix(value) {
@@ -137,20 +151,25 @@ function requiredGoVersion(repositoryRoot) {
     ?? reject('go.work must declare an exact Go patch toolchain');
 }
 
-export function resolveAuditChainGoCommand(repositoryRoot) {
-  const executableName = process.platform === 'win32' ? 'go.exe' : 'go';
+function toolCandidates(repositoryRoot, executableName, environmentValue) {
   const version = requiredGoVersion(repositoryRoot);
-  const candidates = [
-    process.env.GO_BINARY?.trim(),
+  return [
+    environmentValue?.trim(),
     path.join(repositoryRoot, '.temp', 'toolchain', `go${version}`, 'go', 'bin', executableName),
     path.join(repositoryRoot, '.temp', 'toolchain', 'go', 'bin', executableName),
+    executableName,
   ].filter(Boolean);
-  return candidates.find((candidate) => existsSync(candidate)) ?? executableName;
+}
+
+export function resolveSDKConsumerGoCommand(repositoryRoot) {
+  const executableName = process.platform === 'win32' ? 'go.exe' : 'go';
+  return toolCandidates(repositoryRoot, executableName, process.env.GO_BINARY)
+    .find((candidate) => !path.isAbsolute(candidate) || existsSync(candidate));
 }
 
 function currentGoVersion(repositoryRoot) {
-  const result = spawnSync(resolveAuditChainGoCommand(repositoryRoot), ['version'], {
-    cwd: path.join(repositoryRoot, 'Framework'),
+  const result = spawnSync(resolveSDKConsumerGoCommand(repositoryRoot), ['version'], {
+    cwd: repositoryRoot,
     encoding: 'utf8',
     shell: false,
     windowsHide: true,
@@ -180,20 +199,35 @@ function sourcePaths() {
   return {
     packageDocument: 'package.json',
     workspace: 'go.work',
-    frameworkGoMod: 'Framework/go.mod',
-    frameworkGoSum: 'Framework/go.sum',
-    auditSink: 'Framework/httpapi/security_audit_sink.go',
-    auditSinkTests: 'Framework/httpapi/security_audit_sink_test.go',
-    auditChain: 'Framework/httpapi/security_audit_chain.go',
-    auditChainTests: 'Framework/httpapi/security_audit_chain_test.go',
-    auditRunbook: 'docs/security/server-audit-events.md',
-    evidenceRunner: 'scripts/audit-chain-evidence.mjs',
-    evidenceVerifier: 'scripts/lib/audit-chain-evidence.mjs',
-    evidenceTests: '__test__/node/audit-chain-evidence.test.mjs',
-    evidenceManifest: 'scripts/evidence-manifest.mjs',
-    independentVerifier: 'scripts/evidence-verify.mjs',
-    evidenceInputContract: 'scripts/lib/evidence-manifest-contract.mjs',
-    workflow: '.github/workflows/go-quality.yml',
+    projectManifest: 'contracts/projects.json',
+    projectContractDocs: 'docs/openapi/project-contracts.md',
+    exampleSDKVersion: 'SDK/GoExample/VERSION',
+    exampleSDKModule: 'SDK/GoExample/go.mod',
+    exampleSDKClient: 'SDK/GoExample/client.gen.go',
+    exampleSDKReleaseManifest: 'SDK/GoExample/release-manifest.json',
+    billingSDKVersion: 'SDK/Billing/VERSION',
+    billingSDKModule: 'SDK/Billing/go.mod',
+    billingSDKClient: 'SDK/Billing/client.gen.go',
+    billingSDKReleaseManifest: 'SDK/Billing/release-manifest.json',
+    healthProbeModule: 'support/consumer/HealthProbe/go.mod',
+    healthProbeSums: 'support/consumer/HealthProbe/go.sum',
+    healthProbeReadme: 'support/consumer/HealthProbe/README.md',
+    healthProbeMain: 'support/consumer/HealthProbe/cmd/healthprobe/main.go',
+    healthProbeTests: 'support/consumer/HealthProbe/cmd/healthprobe/main_test.go',
+    billingModule: 'Services/Billing/go.mod',
+    billingReadme: 'Services/Billing/README.md',
+    billingRoutes: 'Services/Billing/internal/billingapi/routes.go',
+    billingContractTests: 'Services/Billing/internal/billingapi/openapi_contract_test.go',
+    billingSDKTests: 'Services/Billing/internal/billingapi/sdk_integration_test.go',
+    sdkGenerator: 'scripts/go-sdk.mjs',
+    sdkReleaseVerifier: 'scripts/lib/sdk-release.mjs',
+    evidenceRunner: 'scripts/sdk-consumer-evidence.mjs',
+    evidenceVerifier: 'scripts/lib/sdk-consumer-evidence.mjs',
+    evidenceTests: '__test__/node/sdk-consumer-evidence.test.mjs',
+    aggregateGenerator: 'scripts/evidence-manifest.mjs',
+    aggregateVerifier: 'scripts/evidence-verify.mjs',
+    aggregateInputContract: 'scripts/lib/evidence-manifest-contract.mjs',
+    workflow: '.github/workflows/node-tools-quality.yml',
   };
 }
 
@@ -210,18 +244,53 @@ function verifySource(source, repositoryRoot) {
   const paths = sourcePaths();
   requireExactKeys(source, Object.keys(paths), 'source');
   for (const [name, relative] of Object.entries(paths)) {
-    const filePath = path.join(repositoryRoot, ...relative.split('/'));
-    verifyFileRecord(source[name], filePath, relative, `source.${name}`);
+    verifyFileRecord(
+      source[name],
+      path.join(repositoryRoot, ...relative.split('/')),
+      relative,
+      `source.${name}`,
+    );
   }
 }
 
-function parseJSON(filePath, name, maximumBytes) {
+function parseJSON(filePath, name, maximumBytes = maximumReportBytes) {
   requireRegularFile(filePath, name, maximumBytes);
   try {
     return JSON.parse(readFileSync(filePath, 'utf8'));
   } catch {
     reject(`${name} must contain valid JSON`);
   }
+}
+
+function consumerContract() {
+  return {
+    consumers: [
+      {
+        name: 'HealthProbe',
+        modulePath: 'support/consumer/HealthProbe',
+        packagePath: './support/consumer/HealthProbe/cmd/healthprobe',
+        testCount: 2,
+        canonicalPath: '/readyz',
+        deprecatedPath: '/api/health/ready',
+      },
+      {
+        name: 'Billing',
+        modulePath: 'Services/Billing',
+        packagePath: './Services/Billing/internal/billingapi',
+        testCount: 2,
+        operationCount: sdkConsumerBillingOperations.length,
+        operationIds: [...sdkConsumerBillingOperations],
+      },
+    ],
+    assertions: {
+      healthProbeCanonicalReadiness: true,
+      deprecatedReadinessHeadersBound: true,
+      billingOperationMatrixBound: true,
+      billingFrameworkHandlerBound: true,
+      generatedSDKVersionsBound: true,
+      externalMigrationNotChecked: true,
+    },
+  };
 }
 
 function expectedStatusText(execution) {
@@ -241,8 +310,8 @@ function validateExecution(execution, name = 'execution') {
   );
   const startedAt = requireTimestamp(value.startedAt, `${name}.startedAt`);
   const completedAt = requireTimestamp(value.completedAt, `${name}.completedAt`);
-  if (startedAt > completedAt || completedAt - startedAt > executionTimeoutMs) {
-    reject(`${name} must stay inside the ${executionTimeoutMs}ms budget`);
+  if (startedAt > completedAt || completedAt - startedAt > executionBudgetMs) {
+    reject(`${name} must stay inside the ${executionBudgetMs}ms budget`);
   }
   const exitCodeValid = value.exitCode === null
     || (Number.isSafeInteger(value.exitCode) && value.exitCode >= 0 && value.exitCode <= 255);
@@ -267,11 +336,36 @@ function verifySuccessfulGoOutput(content) {
   if (content.includes('--- FAIL:') || !/(?:^|\n)PASS\r?\n/.test(content)) {
     reject('go-output.txt must contain a successful Go test result');
   }
-  for (const testName of auditChainTests) {
+  for (const testName of sdkConsumerTests) {
     if (!new RegExp(`^--- PASS: ${testName} \\(`, 'm').test(content)) {
       reject(`go-output.txt is missing the passed marker for ${testName}`);
     }
   }
+  for (const operationId of sdkConsumerBillingOperations) {
+    if (!new RegExp(`^    --- PASS: ${sdkConsumerTests[3]}/${operationId} \\(`, 'm').test(content)) {
+      reject(`go-output.txt is missing the passed Billing operation marker for ${operationId}`);
+    }
+  }
+}
+
+export function expectedSDKConsumerGoOutput() {
+  const parents = sdkConsumerTests.map((testName) => `--- PASS: ${testName} (0.00s)`);
+  const operations = sdkConsumerBillingOperations
+    .map((operationId) => `    --- PASS: ${sdkConsumerTests[3]}/${operationId} (0.00s)`)
+    .join('\n');
+  return [
+    '=== RUN   TestHealthProbeMigratesFromDeprecatedAliasToCanonicalReadiness',
+    parents[0],
+    '=== RUN   TestHealthProbeRejectsUnavailableAndMalformedResponses',
+    parents[1],
+    '=== RUN   TestGeneratedBillingSDKReadsSummaryFromIndependentFrameworkService',
+    parents[2],
+    '=== RUN   TestGeneratedBillingSDKInvokesEveryPublicOperationThroughFrameworkHandler',
+    operations,
+    parents[3],
+    'PASS',
+    '',
+  ].join('\n');
 }
 
 function verifyChecksums(evidenceRoot) {
@@ -281,7 +375,7 @@ function verifyChecksums(evidenceRoot) {
     .map((name) => `${hashFile(path.join(evidenceRoot, name))}  ${name}\n`)
     .join('');
   if (readFileSync(checksumPath, 'utf8') !== expected) {
-    reject('SHA256SUMS must contain the exact ordered audit evidence artifact set');
+    reject('SHA256SUMS must contain the exact ordered SDK consumer evidence artifact set');
   }
 }
 
@@ -294,13 +388,13 @@ function verifyDirectory(evidenceRoot) {
     reject('evidence directory may only contain regular files');
   }
   const names = actual.map((entry) => entry.name).sort();
-  const expected = [...auditChainArtifactNames].sort();
+  const expected = [...sdkConsumerArtifactNames].sort();
   if (JSON.stringify(names) !== JSON.stringify(expected)) {
     reject(`evidence directory files must be exactly ${expected.join(', ')}`);
   }
 }
 
-export function buildAuditChainEvidenceReport({ repositoryRoot, evidenceRoot, execution }) {
+export function buildSDKConsumerEvidenceReport({ repositoryRoot, evidenceRoot, execution }) {
   const checkedExecution = validateExecution(execution);
   const status = processPassed(checkedExecution) ? 'passed' : 'failed';
   const output = readFileSync(path.join(evidenceRoot, 'go-output.txt'), 'utf8');
@@ -312,12 +406,12 @@ export function buildAuditChainEvidenceReport({ repositoryRoot, evidenceRoot, ex
     reject('go-status.txt does not match the process result');
   }
   return {
-    schemaVersion: auditChainEvidenceSchemaVersion,
+    schemaVersion: sdkConsumerEvidenceSchemaVersion,
     generatedAt: checkedExecution.completedAt,
-    scope: 'local_audit_chain_contract',
+    scope: 'local_sdk_consumer_migration_contract',
     status,
-    command: ['go', ...auditChainGoArguments],
-    workingDirectory: 'Framework',
+    command: ['go', ...sdkConsumerGoArguments],
+    workingDirectory: '.',
     runtime: {
       platform: process.platform,
       architecture: process.arch,
@@ -327,22 +421,8 @@ export function buildAuditChainEvidenceReport({ repositoryRoot, evidenceRoot, ex
     repository: { gitCommit: currentGitCommit(repositoryRoot) },
     execution: { ...checkedExecution },
     contract: {
-      timeoutMs: executionTimeoutMs,
-      tests: [...auditChainTests],
-      assertions: {
-        httpSinkCorrelation: true,
-        httpSinkFailureIsolation: true,
-        httpSinkTimeoutBounded: true,
-        linkedRecords: true,
-        strictRecordValidation: true,
-        cancellationAndBounds: true,
-        concurrentSerialization: true,
-        aes256GCMEncryption: true,
-        keyRotation: true,
-        ciphertextTamperRejected: true,
-        unknownKeyRejected: true,
-        duplicateNonceRejected: true,
-      },
+      processTimeoutMs: sdkConsumerProcessTimeoutMs,
+      ...consumerContract(),
     },
     source: collectSource(repositoryRoot),
     artifacts: {
@@ -350,32 +430,32 @@ export function buildAuditChainEvidenceReport({ repositoryRoot, evidenceRoot, ex
       stderr: describeArtifact(evidenceRoot, 'go-error.txt'),
       status: describeArtifact(evidenceRoot, 'go-status.txt'),
     },
-    limitations: [...auditChainLimitations],
+    limitations: [...sdkConsumerLimitations],
   };
 }
 
-export function writeAuditChainEvidenceChecksums(evidenceRoot) {
+export function writeSDKConsumerEvidenceChecksums(evidenceRoot) {
   const content = checksumArtifactNames
     .map((name) => `${hashFile(path.join(evidenceRoot, name))}  ${name}\n`)
     .join('');
   writeFileSync(path.join(evidenceRoot, 'SHA256SUMS'), content, 'utf8');
 }
 
-export function verifyAuditChainEvidence({ repositoryRoot, evidenceRoot }) {
+export function verifySDKConsumerEvidence({ repositoryRoot, evidenceRoot }) {
   verifyDirectory(evidenceRoot);
   const report = requireExactKeys(
-    parseJSON(path.join(evidenceRoot, 'report.json'), 'report.json', maximumReportBytes),
+    parseJSON(path.join(evidenceRoot, 'report.json'), 'report.json'),
     [
       'artifacts', 'command', 'contract', 'execution', 'generatedAt', 'limitations', 'repository',
       'runtime', 'schemaVersion', 'scope', 'source', 'status', 'workingDirectory',
     ],
     'report',
   );
-  if (report.schemaVersion !== auditChainEvidenceSchemaVersion) {
-    reject(`report.schemaVersion must equal ${auditChainEvidenceSchemaVersion}`);
+  if (report.schemaVersion !== sdkConsumerEvidenceSchemaVersion) {
+    reject(`report.schemaVersion must equal ${sdkConsumerEvidenceSchemaVersion}`);
   }
-  if (report.scope !== 'local_audit_chain_contract' || report.workingDirectory !== 'Framework') {
-    reject('report must identify the fixed local audit chain contract');
+  if (report.scope !== 'local_sdk_consumer_migration_contract' || report.workingDirectory !== '.') {
+    reject('report must identify the fixed local SDK consumer migration contract');
   }
   const generatedAt = requireTimestamp(report.generatedAt, 'report.generatedAt');
   const execution = validateExecution(report.execution, 'report.execution');
@@ -386,8 +466,8 @@ export function verifyAuditChainEvidence({ repositoryRoot, evidenceRoot }) {
   if (report.status !== expectedStatus) {
     reject('report.status does not match the process result');
   }
-  if (JSON.stringify(report.command) !== JSON.stringify(['go', ...auditChainGoArguments])) {
-    reject('report.command must match the fixed Go audit contract');
+  if (JSON.stringify(report.command) !== JSON.stringify(['go', ...sdkConsumerGoArguments])) {
+    reject('report.command must match the fixed SDK consumer migration command');
   }
   requireExactKeys(report.runtime, ['architecture', 'go', 'node', 'platform'], 'report.runtime');
   if (
@@ -409,38 +489,33 @@ export function verifyAuditChainEvidence({ repositoryRoot, evidenceRoot }) {
   ) {
     reject('report.repository.gitCommit does not match the current repository');
   }
-  const contract = requireExactKeys(report.contract, ['assertions', 'tests', 'timeoutMs'], 'report.contract');
-  if (
-    contract.timeoutMs !== executionTimeoutMs ||
-    JSON.stringify(contract.tests) !== JSON.stringify(auditChainTests)
-  ) {
-    reject('report.contract does not match the fixed audit test matrix');
-  }
-  const assertions = requireExactKeys(
-    contract.assertions,
-    [
-      'aes256GCMEncryption', 'cancellationAndBounds', 'ciphertextTamperRejected',
-      'concurrentSerialization', 'duplicateNonceRejected', 'keyRotation', 'linkedRecords',
-      'httpSinkCorrelation', 'httpSinkFailureIsolation', 'httpSinkTimeoutBounded',
-      'strictRecordValidation', 'unknownKeyRejected',
-    ],
-    'report.contract.assertions',
+  const contract = requireExactKeys(
+    report.contract,
+    ['assertions', 'consumers', 'processTimeoutMs'],
+    'report.contract',
   );
-  if (Object.values(assertions).some((value) => value !== true)) {
-    reject('report.contract.assertions must all be true');
+  if (contract.processTimeoutMs !== sdkConsumerProcessTimeoutMs) {
+    reject('report.contract.processTimeoutMs does not match the fixed execution budget');
   }
-  if (JSON.stringify(report.limitations) !== JSON.stringify(auditChainLimitations)) {
-    reject('report.limitations must match the fixed local-only boundary');
+  const expectedContract = consumerContract();
+  if (JSON.stringify(contract.consumers) !== JSON.stringify(expectedContract.consumers)) {
+    reject('report.contract.consumers does not match the fixed SDK consumer project matrix');
+  }
+  if (JSON.stringify(contract.assertions) !== JSON.stringify(expectedContract.assertions)) {
+    reject('report.contract.assertions must match the fixed SDK consumer assertions');
+  }
+  if (JSON.stringify(report.limitations) !== JSON.stringify(sdkConsumerLimitations)) {
+    reject('report.limitations must match the fixed repository-only boundary');
   }
   verifySource(report.source, repositoryRoot);
   const artifacts = requireExactKeys(report.artifacts, ['status', 'stderr', 'stdout'], 'report.artifacts');
-  const outputPath = verifyFileRecord(
+  const stdoutPath = verifyFileRecord(
     artifacts.stdout,
     path.join(evidenceRoot, 'go-output.txt'),
     'go-output.txt',
     'report.artifacts.stdout',
   );
-  verifyFileRecord(
+  const stderrPath = verifyFileRecord(
     artifacts.stderr,
     path.join(evidenceRoot, 'go-error.txt'),
     'go-error.txt',
@@ -456,12 +531,15 @@ export function verifyAuditChainEvidence({ repositoryRoot, evidenceRoot }) {
     reject('go-status.txt does not match report.execution');
   }
   if (report.status === 'passed') {
-    verifySuccessfulGoOutput(readFileSync(outputPath, 'utf8'));
+    verifySuccessfulGoOutput(readFileSync(stdoutPath, 'utf8'));
+    if (readFileSync(stderrPath, 'utf8') !== '') {
+      reject('go-error.txt must be empty for passed evidence');
+    }
   }
   verifyChecksums(evidenceRoot);
   return {
     report,
-    artifactPaths: auditChainArtifactNames.map((name) =>
+    artifactPaths: sdkConsumerArtifactNames.map((name) =>
       repositoryRelativePath(repositoryRoot, path.join(evidenceRoot, name))),
   };
 }

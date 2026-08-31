@@ -132,6 +132,82 @@ test('OpenAPI compatibility detects constraints added to requests or removed fro
   assert.match(issues, /response enum compatibility narrowed/);
 });
 
+test('OpenAPI compatibility rejects parameter wire-format and polymorphism drift', () => {
+  const baseline = document();
+  baseline.openapi = '3.0.3';
+  const baselineOperation = baseline.paths['/widgets'].post;
+  baselineOperation.parameters[0].style = 'form';
+  baselineOperation.parameters[0].explode = true;
+  baselineOperation.parameters[0].schema.nullable = true;
+  baselineOperation.requestBody.content['application/json'].schema.discriminator = {
+    propertyName: 'kind',
+  };
+
+  const current = structuredClone(baseline);
+  const currentOperation = current.paths['/widgets'].post;
+  currentOperation.parameters[0].style = 'spaceDelimited';
+  currentOperation.parameters[0].schema.nullable = false;
+  currentOperation.requestBody.content['application/json'].schema.discriminator.propertyName = 'type';
+
+  const issues = findOpenAPIBreakingChanges(baseline, current).join('\n');
+  assert.match(issues, /parameter query:locale parameter serialization changed/);
+  assert.match(issues, /parameter query:locale request nullable changed from true to false/);
+  assert.match(issues, /requestBody application\/json discriminator changed/);
+});
+
+test('OpenAPI compatibility rejects widened response representations and missing type contracts', () => {
+  const baseline = document();
+  baseline.paths['/widgets'].post.parameters.push({
+    name: 'filter',
+    in: 'query',
+    required: false,
+    schema: {},
+  });
+  baseline.paths['/widgets'].post.responses[200].headers = {
+    'X-Request-ID': { schema: { type: 'string' } },
+  };
+
+  const current = structuredClone(baseline);
+  current.paths['/widgets'].post.parameters[1].schema.type = 'string';
+  delete current.paths['/widgets'].post.responses[200].headers['X-Request-ID'].schema;
+  delete current.paths['/widgets'].post.responses[200].content['application/json'].schema.properties.id.type;
+  current.paths['/widgets'].post.responses[200].content['application/xml'] = {
+    schema: { type: 'string' },
+  };
+
+  const issues = findOpenAPIBreakingChanges(baseline, current).join('\n');
+  assert.match(issues, /parameter query:filter request types changed from  to string/);
+  assert.match(issues, /header X-Request-ID removed its schema/);
+  assert.match(issues, /\.id response types changed from string to /);
+  assert.match(issues, /added response media type application\/xml/);
+});
+
+test('OpenAPI compatibility accepts directionally wider requests and narrower responses', () => {
+  const baseline = document();
+  baseline.openapi = '3.0.3';
+  const baselineOperation = baseline.paths['/widgets'].post;
+  baselineOperation.parameters[0].schema.nullable = false;
+  baselineOperation.responses[200].headers = {
+    'X-Request-ID': { schema: { type: 'string' } },
+  };
+  baselineOperation.responses[200].content['application/json'].schema.properties.id = {
+    nullable: true,
+  };
+
+  const current = structuredClone(baseline);
+  const currentOperation = current.paths['/widgets'].post;
+  delete currentOperation.parameters[0].schema.type;
+  currentOperation.parameters[0].schema.nullable = true;
+  currentOperation.responses[200].headers['x-request-id'] = currentOperation.responses[200].headers['X-Request-ID'];
+  delete currentOperation.responses[200].headers['X-Request-ID'];
+  currentOperation.responses[200].content['application/json'].schema.properties.id = {
+    type: 'string',
+    nullable: false,
+  };
+
+  assert.deepEqual(findOpenAPIBreakingChanges(baseline, current), []);
+});
+
 test('OpenAPI compatibility rejects newly required authentication', () => {
   const baseline = document();
   const current = structuredClone(baseline);

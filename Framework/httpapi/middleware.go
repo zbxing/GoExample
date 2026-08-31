@@ -137,11 +137,13 @@ func requestDeadline(applicationContext context.Context, timeout time.Duration) 
 			previous = context.Background()
 		}
 		ctx, cancel := context.WithTimeout(previous, timeout)
-		stopApplicationCancellation := context.AfterFunc(applicationContext, cancel)
+		lifetime := newRequestStreamLifetime(ctx, cancel, context.AfterFunc(applicationContext, cancel))
+		c.Locals(requestStreamLifetimeLocalKey, lifetime)
 		c.SetContext(ctx)
 		defer func() {
-			stopApplicationCancellation()
-			cancel()
+			if !lifetime.claimed || !c.Response().IsBodyStream() {
+				lifetime.complete()
+			}
 			c.SetContext(previous)
 		}()
 		return c.Next()

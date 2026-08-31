@@ -115,8 +115,56 @@ jobs:
       - name: Verify generated Go SDK
         run: yarn sdk:check
 
-      - name: Verify SDK release readiness manifests
-        run: yarn sdk:release:verify
+      - name: Generate SDK release readiness evidence
+        run: yarn sdk:release:evidence
+
+      - name: Verify SDK release readiness evidence
+        if: always()
+        run: yarn sdk:release:evidence:verify
+
+      - name: Upload SDK release readiness evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sdk-release-readiness-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/workflow-artifacts/sdk-release-readiness
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Generate SDK consumer migration evidence
+        run: yarn sdk:consumer:evidence
+
+      - name: Verify SDK consumer migration evidence
+        if: always()
+        run: yarn sdk:consumer:evidence:verify
+
+      - name: Upload SDK consumer migration evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sdk-consumer-migration-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/workflow-artifacts/sdk-consumer-migration
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Verify SDK consumer migration matrix
+        run: yarn sdk:matrix:check
+
+      - name: Generate SDK consumer migration matrix evidence
+        run: yarn sdk:matrix:evidence
+
+      - name: Verify SDK consumer migration matrix evidence
+        if: always()
+        run: yarn sdk:matrix:evidence:verify
+
+      - name: Upload SDK consumer migration matrix evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sdk-consumer-matrix-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .temp/workflow-artifacts/sdk-consumer-matrix
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Generate deterministic Kubernetes deployment evidence
         run: yarn kubernetes:evidence

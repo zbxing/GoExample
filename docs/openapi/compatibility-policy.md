@@ -17,6 +17,8 @@
 - 删除既有 path、HTTP method、response status、参数、请求/响应 media type 或 schema property；
 - 修改既有 `operationId`，增加必填参数或请求属性，将可选 request body 改为必填；
 - 收紧认证要求、请求 enum/type/长度/数值范围，或让响应超出旧客户端声明的 enum/type/范围；
+- 改变参数序列化，收紧请求 `nullable`、放宽响应 `nullable`，删除响应头 schema，或让响应新增 media type；
+- 改动 `discriminator`，以及请求 media type 的 `encoding` 等会改变 wire contract 的定义；
 - 改动 `oneOf`、`anyOf`、`allOf` 或 `not` 等无法自动证明兼容的组合 schema。
 
 比较器解析本地 `$ref`，但不访问网络或外部 schema。外部项目必须先由

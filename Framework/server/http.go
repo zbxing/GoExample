@@ -2,12 +2,14 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/zbxing/goexample/Framework/health"
@@ -46,7 +48,9 @@ type HTTPOptions struct {
 	IdleTimeout         time.Duration
 	MaxHeaderBytes      int
 	MaxConnections      int
-	Attributes          []any
+	// TLSConfig enables direct TLS serving. RunHTTP clones it before use.
+	TLSConfig  *tls.Config
+	Attributes []any
 }
 
 // HTTPConnectionObserver receives only fixed net/http lifecycle states and
@@ -80,6 +84,10 @@ func RunHTTP(ctx context.Context, options HTTPOptions) error {
 	if options.MaxConnections > maximumHTTPMaxConnections {
 		return errors.New("server max connections must not exceed 1048576")
 	}
+	tlsConfig, err := prepareHTTPServerTLSConfig(options.TLSConfig)
+	if err != nil {
+		return err
+	}
 
 	listener, err := net.Listen("tcp", options.Address)
 	if err != nil {
@@ -87,6 +95,8 @@ func RunHTTP(ctx context.Context, options HTTPOptions) error {
 	}
 	notifyHTTPConnectionCapacity(options.ConnectionObserver, options.MaxConnections)
 	listener = netutil.LimitListener(listener, options.MaxConnections)
+	connectionTracker := newHTTPConnectionTracker()
+	listener = &trackedHTTPListener{Listener: listener, tracker: connectionTracker}
 
 	httpServer := &http.Server{
 		Handler:           options.Handler,
@@ -95,13 +105,19 @@ func RunHTTP(ctx context.Context, options HTTPOptions) error {
 		WriteTimeout:      options.WriteTimeout,
 		IdleTimeout:       options.IdleTimeout,
 		MaxHeaderBytes:    options.MaxHeaderBytes,
-		ConnState: func(_ net.Conn, state http.ConnState) {
+		TLSConfig:         tlsConfig,
+		ConnState: func(connection net.Conn, state http.ConnState) {
+			connectionTracker.observe(connection, state)
 			notifyHTTPConnectionState(options.ConnectionObserver, state)
 		},
 	}
 	serverErr := make(chan error, 1)
 	go func() {
-		serverErr <- httpServer.Serve(listener)
+		if tlsConfig == nil {
+			serverErr <- httpServer.Serve(listener)
+			return
+		}
+		serverErr <- httpServer.ServeTLS(listener, "", "")
 	}()
 
 	attributes := []any{
@@ -148,6 +164,7 @@ func RunHTTP(ctx context.Context, options HTTPOptions) error {
 			shutdownErr = errors.Join(shutdownErr, closeErr)
 		}
 	}
+	shutdownErr = errors.Join(shutdownErr, connectionTracker.closeHijacked())
 	if err := <-serverErr; !isExpectedHTTPServerClose(err) {
 		shutdownErr = errors.Join(shutdownErr, fmt.Errorf("listen after shutdown: %w", err))
 	}
@@ -156,6 +173,94 @@ func RunHTTP(ctx context.Context, options HTTPOptions) error {
 	}
 
 	options.Logger.Info("server_stopped")
+	return nil
+}
+
+type httpConnectionTracker struct {
+	mu       sync.Mutex
+	closing  bool
+	hijacked map[*trackedHTTPConnection]struct{}
+}
+
+type trackedHTTPListener struct {
+	net.Listener
+	tracker *httpConnectionTracker
+}
+
+type trackedHTTPConnection struct {
+	net.Conn
+	tracker   *httpConnectionTracker
+	closeOnce sync.Once
+}
+
+func newHTTPConnectionTracker() *httpConnectionTracker {
+	return &httpConnectionTracker{hijacked: make(map[*trackedHTTPConnection]struct{})}
+}
+
+func (listener *trackedHTTPListener) Accept() (net.Conn, error) {
+	connection, err := listener.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	return &trackedHTTPConnection{Conn: connection, tracker: listener.tracker}, nil
+}
+
+func (connection *trackedHTTPConnection) Close() error {
+	err := connection.Conn.Close()
+	if err == nil || errors.Is(err, net.ErrClosed) {
+		connection.closeOnce.Do(func() {
+			connection.tracker.remove(connection)
+		})
+	}
+	return err
+}
+
+func (tracker *httpConnectionTracker) observe(connection net.Conn, state http.ConnState) {
+	if state != http.StateHijacked {
+		return
+	}
+	if tlsConnection, ok := connection.(*tls.Conn); ok {
+		connection = tlsConnection.NetConn()
+	}
+	trackedConnection, ok := connection.(*trackedHTTPConnection)
+	if !ok {
+		return
+	}
+
+	tracker.mu.Lock()
+	if !tracker.closing {
+		tracker.hijacked[trackedConnection] = struct{}{}
+		tracker.mu.Unlock()
+		return
+	}
+	tracker.mu.Unlock()
+	_ = trackedConnection.Close()
+}
+
+func (tracker *httpConnectionTracker) remove(connection *trackedHTTPConnection) {
+	tracker.mu.Lock()
+	delete(tracker.hijacked, connection)
+	tracker.mu.Unlock()
+}
+
+func (tracker *httpConnectionTracker) closeHijacked() error {
+	tracker.mu.Lock()
+	tracker.closing = true
+	connections := make([]*trackedHTTPConnection, 0, len(tracker.hijacked))
+	for connection := range tracker.hijacked {
+		connections = append(connections, connection)
+	}
+	tracker.mu.Unlock()
+
+	var closeFailed bool
+	for _, connection := range connections {
+		if err := connection.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			closeFailed = true
+		}
+	}
+	if closeFailed {
+		return errors.New("server hijacked connection close failed")
+	}
 	return nil
 }
 
@@ -185,6 +290,35 @@ func defaultHTTPOptions(options HTTPOptions) HTTPOptions {
 		options.MaxConnections = defaultHTTPMaxConnections
 	}
 	return options
+}
+
+func prepareHTTPServerTLSConfig(config *tls.Config) (*tls.Config, error) {
+	if config == nil {
+		return nil, nil
+	}
+	prepared := config.Clone()
+	if prepared.MinVersion == 0 {
+		prepared.MinVersion = tls.VersionTLS12
+	}
+	if prepared.MinVersion < tls.VersionTLS12 {
+		return nil, errors.New("server TLS minimum version must be TLS 1.2 or newer")
+	}
+	if prepared.MaxVersion != 0 && prepared.MaxVersion < prepared.MinVersion {
+		return nil, errors.New("server TLS maximum version must not be lower than minimum")
+	}
+	if len(prepared.Certificates) == 0 && prepared.GetCertificate == nil && prepared.GetConfigForClient == nil {
+		return nil, errors.New("server TLS certificate source is required")
+	}
+	if selectConfig := prepared.GetConfigForClient; selectConfig != nil {
+		prepared.GetConfigForClient = func(clientHello *tls.ClientHelloInfo) (*tls.Config, error) {
+			selected, err := selectConfig(clientHello)
+			if err != nil || selected == nil {
+				return selected, err
+			}
+			return prepareHTTPServerTLSConfig(selected)
+		}
+	}
+	return prepared, nil
 }
 
 func shutdownHTTP(ctx context.Context, httpServer *http.Server, applicationShutdown func(context.Context) error) error {

@@ -1,8 +1,10 @@
 package httpapi
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +13,36 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 )
+
+type unwrappingResponseWriter struct {
+	http.ResponseWriter
+}
+
+func (response unwrappingResponseWriter) Unwrap() http.ResponseWriter {
+	return response.ResponseWriter
+}
+
+type opaqueResponseWriter struct {
+	header http.Header
+}
+
+func (response *opaqueResponseWriter) Header() http.Header {
+	return response.header
+}
+
+func (*opaqueResponseWriter) Write(body []byte) (int, error) {
+	return len(body), nil
+}
+
+func (*opaqueResponseWriter) WriteHeader(int) {}
+
+type cyclicResponseWriter struct {
+	*opaqueResponseWriter
+}
+
+func (response *cyclicResponseWriter) Unwrap() http.ResponseWriter {
+	return response
+}
 
 func TestNewHTTPHandlerComposesWithStandardMiddleware(t *testing.T) {
 	app := newTestApp()
@@ -37,6 +69,30 @@ func TestNewHTTPHandlerComposesWithStandardMiddleware(t *testing.T) {
 func TestNewHTTPHandlerRejectsNilApp(t *testing.T) {
 	if _, err := NewHTTPHandler(nil); err == nil {
 		t.Fatal("NewHTTPHandler(nil) error = nil")
+	}
+}
+
+func TestStandardStreamingResponseWriterPreservesUnsupportedWriters(t *testing.T) {
+	opaque := &opaqueResponseWriter{header: make(http.Header)}
+	cyclic := &cyclicResponseWriter{opaqueResponseWriter: &opaqueResponseWriter{header: make(http.Header)}}
+	for name, writer := range map[string]http.ResponseWriter{
+		"opaque": opaque,
+		"cyclic": cyclic,
+	} {
+		t.Run(name, func(t *testing.T) {
+			adapted := standardStreamingResponseWriter(writer)
+			if adapted != writer {
+				t.Fatalf("adapted writer = %T, want original %T", adapted, writer)
+			}
+			if _, ok := adapted.(http.Flusher); ok {
+				t.Fatal("writer without a bounded flush path unexpectedly implements http.Flusher")
+			}
+		})
+	}
+
+	recorder := httptest.NewRecorder()
+	if adapted := standardStreamingResponseWriter(recorder); adapted != recorder {
+		t.Fatalf("direct flusher = %T, want original %T", adapted, recorder)
 	}
 }
 
@@ -138,6 +194,146 @@ func TestNewHTTPHandlerPropagatesStandardClientDisconnect(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("standard client disconnect did not cancel application work")
+	}
+}
+
+func TestNewHTTPHandlerStreamsThroughUnwrappingStandardMiddleware(t *testing.T) {
+	releaseSecondChunk := make(chan struct{})
+	app := newStandardStreamingTestApp(releaseSecondChunk)
+	handler, err := NewHTTPHandler(app)
+	if err != nil {
+		t.Fatalf("NewHTTPHandler() error = %v", err)
+	}
+	wrapped := http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		handler.ServeHTTP(unwrappingResponseWriter{ResponseWriter: response}, request)
+	})
+	server := httptest.NewServer(wrapped)
+	defer server.Close()
+	assertIncrementalStandardStream(t, &http.Client{Timeout: 3 * time.Second}, server.URL, releaseSecondChunk, 1, "HTTP/1.1")
+}
+
+func TestNewHTTPHandlerStreamsIncrementallyOverHTTP2(t *testing.T) {
+	releaseSecondChunk := make(chan struct{})
+	app := newStandardStreamingTestApp(releaseSecondChunk)
+	handler, err := NewHTTPHandler(app)
+	if err != nil {
+		t.Fatalf("NewHTTPHandler() error = %v", err)
+	}
+	server := httptest.NewUnstartedServer(handler)
+	server.EnableHTTP2 = true
+	server.StartTLS()
+	defer server.Close()
+	client := server.Client()
+	client.Timeout = 3 * time.Second
+	assertIncrementalStandardStream(t, client, server.URL, releaseSecondChunk, 2, "HTTP/2")
+}
+
+func newStandardStreamingTestApp(releaseSecondChunk <-chan struct{}) *fiber.App {
+	options := testOptions()
+	options.RegisterRoutes = func(router fiber.Router) {
+		router.Get("/standard-stream", func(c fiber.Ctx) error {
+			c.Set(fiber.HeaderContentType, fiber.MIMETextPlain)
+			c.Set("X-GoExample-Protocol", c.Protocol())
+			return c.SendStreamWriter(func(writer *bufio.Writer) {
+				if _, err := writer.WriteString("first\n"); err != nil {
+					return
+				}
+				if err := writer.Flush(); err != nil {
+					return
+				}
+				<-releaseSecondChunk
+				_, _ = writer.WriteString("second\n")
+			})
+		})
+	}
+	return New(options)
+}
+
+func assertIncrementalStandardStream(
+	t *testing.T,
+	client *http.Client,
+	serverURL string,
+	releaseSecondChunk chan struct{},
+	expectedProtocolMajor int,
+	expectedApplicationProtocol string,
+) {
+	t.Helper()
+	type firstChunkResult struct {
+		status              int
+		protocolMajor       int
+		applicationProtocol string
+		contentType         string
+		chunk               string
+		err                 error
+	}
+	firstChunk := make(chan firstChunkResult, 1)
+	remainder := make(chan struct {
+		body string
+		err  error
+	}, 1)
+	go func() {
+		response, err := client.Get(serverURL + "/api/v1/standard-stream")
+		if err != nil {
+			firstChunk <- firstChunkResult{err: err}
+			return
+		}
+		defer response.Body.Close()
+		reader := bufio.NewReader(response.Body)
+		chunk, readErr := reader.ReadString('\n')
+		firstChunk <- firstChunkResult{
+			status:              response.StatusCode,
+			protocolMajor:       response.ProtoMajor,
+			applicationProtocol: response.Header.Get("X-GoExample-Protocol"),
+			contentType:         response.Header.Get(fiber.HeaderContentType),
+			chunk:               chunk,
+			err:                 readErr,
+		}
+		body, readErr := io.ReadAll(reader)
+		remainder <- struct {
+			body string
+			err  error
+		}{body: string(body), err: readErr}
+	}()
+
+	select {
+	case result := <-firstChunk:
+		if result.err != nil {
+			close(releaseSecondChunk)
+			t.Fatalf("read first streaming chunk: %v", result.err)
+		}
+		if result.status != http.StatusOK ||
+			result.protocolMajor != expectedProtocolMajor ||
+			result.applicationProtocol != expectedApplicationProtocol ||
+			result.contentType != fiber.MIMETextPlain ||
+			result.chunk != "first\n" {
+			close(releaseSecondChunk)
+			t.Fatalf(
+				"first streaming response = %d/HTTP%d/%q/%q/%q, want %d/HTTP%d/%q/%q/%q",
+				result.status,
+				result.protocolMajor,
+				result.applicationProtocol,
+				result.contentType,
+				result.chunk,
+				http.StatusOK,
+				expectedProtocolMajor,
+				expectedApplicationProtocol,
+				fiber.MIMETextPlain,
+				"first\n",
+			)
+		}
+	case <-time.After(time.Second):
+		close(releaseSecondChunk)
+		t.Fatal("first streaming chunk was buffered behind the second chunk")
+	}
+
+	close(releaseSecondChunk)
+	select {
+	case result := <-remainder:
+		if result.err != nil || result.body != "second\n" {
+			t.Fatalf("streaming remainder = %q/%v, want %q/nil", result.body, result.err, "second\n")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("streaming response did not finish after releasing the second chunk")
 	}
 }
 

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, readFileSync } from 'node:fs';
+import { closeSync, existsSync, lstatSync, openSync, readFileSync, readdirSync, readSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,27 +26,35 @@ import { verifyNginxEdgeEvidence } from './lib/nginx-edge-evidence.mjs';
 import { verifyPostgresRecoveryEvidence } from './lib/postgres-recovery-evidence.mjs';
 import { verifyPrometheusRuleEvidence } from './lib/prometheus-rules.mjs';
 import { verifyRedisSentinelEvidence } from './lib/redis-sentinel-evidence.mjs';
+import { verifySDKReleaseEvidence } from './lib/sdk-release-evidence.mjs';
+import { verifySDKConsumerEvidence } from './lib/sdk-consumer-evidence.mjs';
+import { verifySDKConsumerMatrixEvidence } from './lib/sdk-consumer-matrix-evidence.mjs';
 import { verifyServerRecoveryEvidence } from './lib/server-recovery-evidence.mjs';
 import { verifyWorkflowLintEvidence } from './lib/workflow-lint.mjs';
+import {
+  evidenceInputPaths,
+  optionalEvidenceInputPaths,
+} from './lib/evidence-manifest-contract.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
 const tempRoot = path.join(repositoryRoot, '.temp');
 const defaultManifest = path.join(tempRoot, 'evidence', 'manifest.json');
-const evidenceCategories = [
-  'coverage',
-  'benchmark',
-  'profiles',
-  'sbom',
-  'scans',
-  'workflowArtifacts',
-  'deployment',
-  'recovery',
-  'natsRestart',
-  'natsSnapshot',
-  'natsCluster',
-  'release',
+const evidenceRoots = [
+  ['coverage', path.join(tempRoot, 'coverage')],
+  ['benchmark', path.join(tempRoot, 'transport-benchmark')],
+  ['profiles', path.join(tempRoot, 'profiles')],
+  ['sbom', path.join(tempRoot, 'sbom')],
+  ['scans', path.join(tempRoot, 'scans')],
+  ['workflowArtifacts', path.join(tempRoot, 'workflow-artifacts')],
+  ['deployment', path.join(tempRoot, 'deployment')],
+  ['recovery', path.join(tempRoot, 'recovery')],
+  ['natsRestart', path.join(tempRoot, 'nats-restart-evidence')],
+  ['natsSnapshot', path.join(tempRoot, 'nats-snapshot-evidence')],
+  ['natsCluster', path.join(tempRoot, 'nats-cluster-evidence')],
+  ['release', path.join(tempRoot, 'server-release')],
 ];
+const evidenceCategories = evidenceRoots.map(([name]) => name);
 const boundaryNames = [
   'linuxRemoteBenchmark',
   'productionSharedStore',
@@ -72,6 +80,36 @@ function fail(message) {
 function isWithin(parent, candidate) {
   const relative = path.relative(parent, candidate);
   return relative === '' || (!relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
+}
+
+function requireUnlinkedDirectoryChain(root, directory, name) {
+  if (!isWithin(root, directory)) {
+    fail(`${name} escapes its allowed directory`);
+  }
+  const relative = path.relative(root, directory);
+  const directories = [root];
+  let current = root;
+  for (const segment of relative ? relative.split(path.sep) : []) {
+    current = path.join(current, segment);
+    directories.push(current);
+  }
+  for (const currentDirectory of directories) {
+    if (!existsSync(currentDirectory)) {
+      fail(`${name} is missing: ${relativePath(currentDirectory)}`);
+    }
+    const stats = lstatSync(currentDirectory);
+    if (!stats.isDirectory() || stats.isSymbolicLink()) {
+      fail(`${name} must not contain symbolic links or non-directories: ${relativePath(currentDirectory)}`);
+    }
+  }
+}
+
+function requireSingleLinkFile(filePath, name) {
+  const stats = lstatSync(filePath);
+  if (!stats.isFile() || stats.isSymbolicLink() || stats.nlink !== 1) {
+    fail(`${name} must be a regular file with exactly one hard link: ${relativePath(filePath)}`);
+  }
+  return stats;
 }
 
 function parseManifestArgument() {
@@ -120,10 +158,8 @@ function resolveManifestPath() {
   if (!existsSync(manifestPath)) {
     fail(`manifest does not exist: ${relativePath(manifestPath)}`);
   }
-  const stats = lstatSync(manifestPath);
-  if (!stats.isFile() || stats.isSymbolicLink()) {
-    fail('manifest must be a regular file and not a symbolic link');
-  }
+  requireUnlinkedDirectoryChain(tempRoot, path.dirname(manifestPath), 'manifest parent directory');
+  requireSingleLinkFile(manifestPath, 'manifest');
   return manifestPath;
 }
 
@@ -133,8 +169,80 @@ function relativePath(filePath) {
 
 function hashFile(filePath) {
   const hash = createHash('sha256');
-  hash.update(readFileSync(filePath));
+  const buffer = Buffer.allocUnsafe(1024 * 1024);
+  const descriptor = openSync(filePath, 'r');
+  try {
+    let bytesRead;
+    do {
+      bytesRead = readSync(descriptor, buffer, 0, buffer.length, null);
+      if (bytesRead > 0) {
+        hash.update(buffer.subarray(0, bytesRead));
+      }
+    } while (bytesRead > 0);
+  } finally {
+    closeSync(descriptor);
+  }
   return hash.digest('hex');
+}
+
+function walkFiles(directory) {
+  if (!existsSync(directory)) {
+    return [];
+  }
+  const directoryStats = lstatSync(directory);
+  if (!directoryStats.isDirectory() || directoryStats.isSymbolicLink()) {
+    fail(`evidence inventory root must be a directory without symbolic links: ${relativePath(directory)}`);
+  }
+  const files = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const entryPath = path.join(directory, entry.name);
+    if (entry.isSymbolicLink()) {
+      fail(`evidence inventory must not contain symbolic links: ${relativePath(entryPath)}`);
+    }
+    if (entry.isDirectory()) {
+      if (entry.name === '.test-fixtures') {
+        continue;
+      }
+      files.push(...walkFiles(entryPath));
+    } else if (entry.isFile()) {
+      if (lstatSync(entryPath).nlink !== 1) {
+        fail(`evidence inventory must not contain hard-linked files: ${relativePath(entryPath)}`);
+      }
+      files.push(entryPath);
+    } else {
+      fail(`evidence inventory must contain only regular files and directories: ${relativePath(entryPath)}`);
+    }
+  }
+  return files.sort((left, right) => left.localeCompare(right));
+}
+
+function collectEvidencePaths(manifestPath) {
+  const filesByRoot = new Map(
+    evidenceRoots.map(([name, root]) => [
+      name,
+      walkFiles(root).filter((filePath) => {
+        const rootRelativePath = path.relative(root, filePath);
+        const isTestFixture = rootRelativePath.split(path.sep).includes('.test-fixtures');
+        return filePath !== manifestPath && isWithin(tempRoot, filePath) && !isTestFixture;
+      }),
+    ]),
+  );
+  const benchmarkFiles = filesByRoot.get('benchmark') ?? [];
+  const profileFiles = [
+    ...(filesByRoot.get('profiles') ?? []),
+    ...benchmarkFiles.filter((filePath) => path.extname(filePath).toLowerCase() === '.pprof'),
+  ];
+  filesByRoot.set(
+    'benchmark',
+    benchmarkFiles.filter((filePath) => path.extname(filePath).toLowerCase() !== '.pprof'),
+  );
+  filesByRoot.set('profiles', [...new Set(profileFiles)].sort((left, right) => left.localeCompare(right)));
+  return new Map(
+    evidenceCategories.map((category) => [
+      category,
+      (filesByRoot.get(category) ?? []).map(relativePath),
+    ]),
+  );
 }
 
 function requireObject(value, name) {
@@ -142,6 +250,16 @@ function requireObject(value, name) {
     fail(`${name} must be an object`);
   }
   return value;
+}
+
+function requireExactKeys(value, name, keys) {
+  const object = requireObject(value, name);
+  const expected = [...keys].sort();
+  const actual = Object.keys(object).sort();
+  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+    fail(`${name} must contain exactly these keys: ${expected.join(', ')}`);
+  }
+  return object;
 }
 
 function requireNonNegativeInteger(value, name) {
@@ -169,16 +287,13 @@ function resolveRecordedPath(value, parent, name) {
   return resolved;
 }
 
-function verifyFile(record, parent, name) {
-  const item = requireObject(record, name);
+function verifyFile(record, parent, name, keys = ['path', 'bytes', 'sha256']) {
+  const item = requireExactKeys(record, name, keys);
   const filePath = resolveRecordedPath(item.path, parent, `${name}.path`);
   if (!existsSync(filePath)) {
     fail(`${name} is missing: ${item.path}`);
   }
-  const stats = lstatSync(filePath);
-  if (!stats.isFile() || stats.isSymbolicLink()) {
-    fail(`${name} must resolve to a regular file: ${item.path}`);
-  }
+  const stats = requireSingleLinkFile(filePath, name);
   requireNonNegativeInteger(item.bytes, `${name}.bytes`);
   if (stats.size !== item.bytes) {
     fail(`${name} size mismatch: ${item.path}`);
@@ -196,38 +311,50 @@ function verifyInputs(inputs) {
   if (!Array.isArray(inputs)) {
     fail('inputs must be an array');
   }
+  if (inputs.length !== evidenceInputPaths.length) {
+    fail('inputs must exactly match the evidence input contract');
+  }
   const paths = new Set();
   for (const [index, rawInput] of inputs.entries()) {
     const name = `inputs[${index}]`;
     const input = requireObject(rawInput, name);
+    if (typeof input.present !== 'boolean') {
+      fail(`${name}.present must be a boolean`);
+    }
+    requireExactKeys(input, name, input.present ? ['path', 'present', 'bytes', 'sha256'] : ['path', 'present']);
     const filePath = resolveRecordedPath(input.path, repositoryRoot, `${name}.path`);
+    if (input.path !== evidenceInputPaths[index]) {
+      fail(`${name}.path must exactly match the evidence input contract`);
+    }
     if (paths.has(input.path)) {
       fail(`inputs contains duplicate path: ${input.path}`);
     }
     paths.add(input.path);
-    if (typeof input.present !== 'boolean') {
-      fail(`${name}.present must be a boolean`);
-    }
     if (!input.present) {
+      if (!optionalEvidenceInputPaths.includes(input.path)) {
+        fail(`${name} is a required evidence input and must be present: ${input.path}`);
+      }
       if (existsSync(filePath)) {
         fail(`${name} was recorded absent but now exists: ${input.path}`);
       }
       continue;
     }
-    verifyFile(input, repositoryRoot, name);
+    verifyFile(input, repositoryRoot, name, ['path', 'present', 'bytes', 'sha256']);
   }
   return paths.size;
 }
 
-function verifyEvidence(evidence) {
+function verifyEvidence(evidence, manifestPath) {
   const document = requireObject(evidence, 'evidence');
   const paths = new Set();
+  const pathsByCategory = new Map();
   let count = 0;
   for (const category of evidenceCategories) {
     const artifacts = document[category];
     if (!Array.isArray(artifacts)) {
       fail(`evidence.${category} must be an array`);
     }
+    const categoryPaths = [];
     for (const [index, artifact] of artifacts.entries()) {
       const name = `evidence.${category}[${index}]`;
       const artifactPath = verifyFile(artifact, tempRoot, name);
@@ -235,12 +362,22 @@ function verifyEvidence(evidence) {
         fail(`evidence contains duplicate artifact path: ${artifactPath}`);
       }
       paths.add(artifactPath);
+      categoryPaths.push(artifactPath);
       count += 1;
     }
+    pathsByCategory.set(category, categoryPaths);
   }
   for (const category of Object.keys(document)) {
     if (!evidenceCategories.includes(category)) {
       fail(`evidence contains unknown category: ${category}`);
+    }
+  }
+  const currentPathsByCategory = collectEvidencePaths(manifestPath);
+  for (const category of evidenceCategories) {
+    const declared = pathsByCategory.get(category) ?? [];
+    const current = currentPathsByCategory.get(category) ?? [];
+    if (declared.length !== current.length || declared.some((artifactPath, index) => artifactPath !== current[index])) {
+      fail(`evidence.${category} must exactly match the current artifact inventory`);
     }
   }
   return { count, paths };
@@ -249,7 +386,7 @@ function verifyEvidence(evidence) {
 function verifyBoundaries(boundaries, evidencePaths) {
   const document = requireObject(boundaries, 'boundaries');
   for (const name of boundaryNames) {
-    const boundary = requireObject(document[name], `boundaries.${name}`);
+    const boundary = requireExactKeys(document[name], `boundaries.${name}`, ['status', 'reason']);
     if (!boundaryStatuses.has(boundary.status)) {
       fail(`boundaries.${name}.status must be recorded, failed, or not_recorded`);
     }
@@ -585,51 +722,118 @@ function verifyBoundaries(boundaries, evidencePaths) {
   }
 }
 
-function runGit(args) {
-  const result = spawnSync('git', args, {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
-  });
-  if (result.status !== 0) {
-    return null;
+function runCommand(command, args, { raw = false } = {}) {
+  const candidates = process.platform === 'win32' ? [command, `${command}.cmd`, `${command}.exe`] : [command];
+  for (const candidate of candidates) {
+    const result = spawnSync(candidate, args, {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      shell: false,
+      windowsHide: true,
+    });
+    if (result.status === 0) {
+      const output = `${result.stdout ?? ''}`;
+      return raw ? output : output.trim() || null;
+    }
   }
-  return `${result.stdout ?? ''}`.trim();
+  if (process.platform === 'win32' && !path.isAbsolute(command)) {
+    const commandShell = process.env.ComSpec ?? 'cmd.exe';
+    const result = spawnSync(commandShell, ['/d', '/s', '/c', [command, ...args].join(' ')], {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      shell: false,
+      windowsHide: true,
+    });
+    if (result.status === 0) {
+      const output = `${result.stdout ?? ''}`;
+      return raw ? output : output.trim() || null;
+    }
+  }
+  return null;
+}
+
+function runGit(args, options) {
+  return runCommand('git', args, options);
 }
 
 function verifyRepository(repository) {
-  const value = requireObject(repository, 'repository');
+  const value = requireExactKeys(
+    repository,
+    'repository',
+    ['root', 'gitCommit', 'dirty', 'changedFileCount', 'statusSha256'],
+  );
   if (value.root !== '.') {
     fail('repository.root must be .');
   }
-  if (typeof value.gitCommit !== 'string' || !/^[a-f0-9]{40}$|^unknown$/.test(value.gitCommit)) {
-    fail('repository.gitCommit must be a full lowercase Git commit or unknown');
+  if (typeof value.gitCommit !== 'string' || !/^[a-f0-9]{40}$/.test(value.gitCommit)) {
+    fail('repository.gitCommit must be a full lowercase Git commit');
   }
   if (typeof value.dirty !== 'boolean') {
     fail('repository.dirty must be a boolean');
   }
   requireNonNegativeInteger(value.changedFileCount, 'repository.changedFileCount');
+  if (typeof value.statusSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(value.statusSha256)) {
+    fail('repository.statusSha256 must be a lowercase SHA-256 digest');
+  }
+  if (value.dirty !== (value.changedFileCount > 0)) {
+    fail('repository dirty state and changed file count are inconsistent');
+  }
 
   const currentCommit = runGit(['rev-parse', 'HEAD']);
-  const currentStatus = runGit(['status', '--porcelain=v1']);
-  if (value.gitCommit !== 'unknown' && currentCommit !== value.gitCommit) {
-    fail('repository Git commit no longer matches the manifest');
+  if (typeof currentCommit !== 'string' || !/^[a-f0-9]{40}$/.test(currentCommit)) {
+    fail('current repository Git commit is unavailable');
   }
-  if (currentStatus !== null) {
-    const dirty = currentStatus.length > 0;
-    const changedFileCount = dirty ? currentStatus.split('\n').filter(Boolean).length : 0;
-    if (dirty !== value.dirty || changedFileCount !== value.changedFileCount) {
-      fail('repository dirty state no longer matches the manifest');
-    }
+  const currentStatus = runGit(['status', '--porcelain=v1', '--untracked-files=all'], { raw: true });
+  if (currentStatus === null) {
+    fail('current repository Git status is unavailable');
+  }
+  if (currentCommit !== value.gitCommit) {
+    fail('repository Git commit must match the current repository commit');
+  }
+  const statusSha256 = createHash('sha256').update(currentStatus).digest('hex');
+  if (statusSha256 !== value.statusSha256) {
+    fail('repository Git status hash no longer matches the manifest');
+  }
+  const dirty = currentStatus.length > 0;
+  const changedFileCount = dirty ? currentStatus.split('\n').filter(Boolean).length : 0;
+  if (dirty !== value.dirty || changedFileCount !== value.changedFileCount) {
+    fail('repository dirty state no longer matches the manifest');
   }
 }
 
 function verifyToolchain(toolchain) {
-  const value = requireObject(toolchain, 'toolchain');
+  const value = requireExactKeys(toolchain, 'toolchain', ['node', 'yarn', 'go', 'goToolchain']);
   for (const name of ['node', 'yarn', 'go', 'goToolchain']) {
     if (typeof value[name] !== 'string' || value[name].length === 0) {
       fail(`toolchain.${name} must be a non-empty string`);
+    }
+  }
+
+  const workspace = readFileSync(path.join(repositoryRoot, 'go.work'), 'utf8');
+  const declaredGoToolchain = workspace.match(/^toolchain\s+(\S+)$/m)?.[1] ?? 'undeclared';
+  const localGoCandidates = declaredGoToolchain === 'undeclared'
+    ? []
+    : [
+        path.join(
+          tempRoot,
+          'toolchain',
+          declaredGoToolchain,
+          'go',
+          'bin',
+          process.platform === 'win32' ? 'go.exe' : 'go',
+        ),
+        path.join(tempRoot, 'toolchain', 'go', 'bin', process.platform === 'win32' ? 'go.exe' : 'go'),
+      ];
+  const goBinary = localGoCandidates.find((candidate) => existsSync(candidate)) ?? 'go';
+  const current = {
+    node: process.version,
+    yarn: runCommand('yarn', ['--version']) ?? 'unavailable',
+    go: runCommand(goBinary, ['version']) ?? 'unavailable',
+    goToolchain: declaredGoToolchain,
+  };
+  for (const name of ['node', 'yarn', 'go', 'goToolchain']) {
+    if (value[name] !== current[name]) {
+      fail(`toolchain.${name} does not match the current repository runtime`);
     }
   }
 }
@@ -641,21 +845,29 @@ try {
 } catch {
   fail('manifest must contain valid JSON');
 }
-const document = requireObject(manifest, 'manifest');
+const document = requireExactKeys(
+  manifest,
+  'manifest',
+  ['schemaVersion', 'generatedAt', 'repository', 'toolchain', 'inputs', 'evidence', 'boundaries'],
+);
 if (document.schemaVersion !== 1) {
   fail('schemaVersion must equal 1');
 }
+const generatedAt = Date.parse(document.generatedAt);
 if (
   typeof document.generatedAt !== 'string' ||
-  Number.isNaN(Date.parse(document.generatedAt)) ||
+  Number.isNaN(generatedAt) ||
   new Date(document.generatedAt).toISOString() !== document.generatedAt
 ) {
   fail('generatedAt must be a canonical ISO-8601 timestamp');
 }
+if (generatedAt > Date.now()) {
+  fail('generatedAt must not be in the future');
+}
 verifyRepository(document.repository);
 verifyToolchain(document.toolchain);
 const inputCount = verifyInputs(document.inputs);
-const { count: artifactCount, paths: evidencePaths } = verifyEvidence(document.evidence);
+const { count: artifactCount, paths: evidencePaths } = verifyEvidence(document.evidence, manifestPath);
 const auditChainArtifactPrefix = '.temp/workflow-artifacts/audit-chain/';
 if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(auditChainArtifactPrefix))) {
   let auditChainEvidence;
@@ -704,6 +916,57 @@ if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(oidcBrowse
   for (const artifactPath of oidcBrowserEvidence.artifactPaths) {
     if (!evidencePaths.has(artifactPath)) {
       fail(`OIDC browser evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const sdkReleaseArtifactPrefix = '.temp/workflow-artifacts/sdk-release-readiness/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(sdkReleaseArtifactPrefix))) {
+  let sdkReleaseEvidence;
+  try {
+    sdkReleaseEvidence = verifySDKReleaseEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'sdk-release-readiness'),
+    });
+  } catch (error) {
+    fail(`SDK release evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of sdkReleaseEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`SDK release evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const sdkConsumerArtifactPrefix = '.temp/workflow-artifacts/sdk-consumer-migration/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(sdkConsumerArtifactPrefix))) {
+  let sdkConsumerEvidence;
+  try {
+    sdkConsumerEvidence = verifySDKConsumerEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'sdk-consumer-migration'),
+    });
+  } catch (error) {
+    fail(`SDK consumer evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of sdkConsumerEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`SDK consumer evidence artifact is missing from the manifest: ${artifactPath}`);
+    }
+  }
+}
+const sdkConsumerMatrixArtifactPrefix = '.temp/workflow-artifacts/sdk-consumer-matrix/';
+if ([...evidencePaths].some((artifactPath) => artifactPath.startsWith(sdkConsumerMatrixArtifactPrefix))) {
+  let sdkConsumerMatrixEvidence;
+  try {
+    sdkConsumerMatrixEvidence = verifySDKConsumerMatrixEvidence({
+      repositoryRoot,
+      evidenceRoot: path.join(tempRoot, 'workflow-artifacts', 'sdk-consumer-matrix'),
+    });
+  } catch (error) {
+    fail(`SDK consumer matrix evidence is invalid: ${error.message}`);
+  }
+  for (const artifactPath of sdkConsumerMatrixEvidence.artifactPaths) {
+    if (!evidencePaths.has(artifactPath)) {
+      fail(`SDK consumer matrix evidence artifact is missing from the manifest: ${artifactPath}`);
     }
   }
 }

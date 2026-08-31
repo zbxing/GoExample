@@ -1,5 +1,15 @@
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  writeFileSync,
+} from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,8 +36,15 @@ import { verifyNginxEdgeEvidence } from './lib/nginx-edge-evidence.mjs';
 import { verifyPostgresRecoveryEvidence } from './lib/postgres-recovery-evidence.mjs';
 import { verifyPrometheusRuleEvidence } from './lib/prometheus-rules.mjs';
 import { verifyRedisSentinelEvidence } from './lib/redis-sentinel-evidence.mjs';
+import { verifySDKReleaseEvidence } from './lib/sdk-release-evidence.mjs';
+import { verifySDKConsumerEvidence } from './lib/sdk-consumer-evidence.mjs';
+import { verifySDKConsumerMatrixEvidence } from './lib/sdk-consumer-matrix-evidence.mjs';
 import { verifyServerRecoveryEvidence } from './lib/server-recovery-evidence.mjs';
 import { verifyWorkflowLintEvidence } from './lib/workflow-lint.mjs';
+import {
+  evidenceInputPaths,
+  optionalEvidenceInputPaths,
+} from './lib/evidence-manifest-contract.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -85,7 +102,7 @@ function resolveOutputPath() {
   return outputPath;
 }
 
-function run(command, args) {
+function run(command, args, { raw = false } = {}) {
   const candidates = process.platform === 'win32' ? [command, `${command}.cmd`, `${command}.exe`] : [command];
   for (const candidate of candidates) {
     const result = spawnSync(candidate, args, {
@@ -95,7 +112,8 @@ function run(command, args) {
       windowsHide: true,
     });
     if (result.status === 0) {
-      return `${result.stdout ?? ''}`.trim() || null;
+      const output = `${result.stdout ?? ''}`;
+      return raw ? output : output.trim() || null;
     }
   }
   if (process.platform === 'win32' && !path.isAbsolute(command)) {
@@ -107,7 +125,8 @@ function run(command, args) {
       windowsHide: true,
     });
     if (result.status === 0) {
-      return `${result.stdout ?? ''}`.trim() || null;
+      const output = `${result.stdout ?? ''}`;
+      return raw ? output : output.trim() || null;
     }
   }
   return null;
@@ -115,7 +134,19 @@ function run(command, args) {
 
 function hashFile(filePath) {
   const hash = createHash('sha256');
-  hash.update(readFileSync(filePath));
+  const buffer = Buffer.allocUnsafe(1024 * 1024);
+  const descriptor = openSync(filePath, 'r');
+  try {
+    let bytesRead;
+    do {
+      bytesRead = readSync(descriptor, buffer, 0, buffer.length, null);
+      if (bytesRead > 0) {
+        hash.update(buffer.subarray(0, bytesRead));
+      }
+    } while (bytesRead > 0);
+  } finally {
+    closeSync(descriptor);
+  }
   return hash.digest('hex');
 }
 
@@ -128,27 +159,72 @@ function isWithin(parent, candidate) {
   return relative === '' || (!relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
 }
 
+function requireUnlinkedDirectoryChain(root, directory, name, { create = false } = {}) {
+  if (!isWithin(root, directory)) {
+    fail(`${name} escapes its allowed directory`);
+  }
+  const relative = path.relative(root, directory);
+  const directories = [root];
+  let current = root;
+  for (const segment of relative ? relative.split(path.sep) : []) {
+    current = path.join(current, segment);
+    directories.push(current);
+  }
+  for (const currentDirectory of directories) {
+    if (!existsSync(currentDirectory)) {
+      if (!create) {
+        fail(`${name} is missing: ${relativePath(currentDirectory)}`);
+      }
+      mkdirSync(currentDirectory);
+    }
+    const stats = lstatSync(currentDirectory);
+    if (!stats.isDirectory() || stats.isSymbolicLink()) {
+      fail(`${name} must not contain symbolic links or non-directories: ${relativePath(currentDirectory)}`);
+    }
+  }
+}
+
+function requireSingleLinkFile(filePath, name) {
+  const stats = lstatSync(filePath);
+  if (!stats.isFile() || stats.isSymbolicLink() || stats.nlink !== 1) {
+    fail(`${name} must be a regular file with exactly one hard link: ${relativePath(filePath)}`);
+  }
+  return stats;
+}
+
 function walkFiles(directory) {
-  if (!existsSync(directory) || !lstatSync(directory).isDirectory()) {
+  if (!existsSync(directory)) {
     return [];
+  }
+  const directoryStats = lstatSync(directory);
+  if (!directoryStats.isDirectory() || directoryStats.isSymbolicLink()) {
+    fail(`evidence inventory root must be a directory without symbolic links: ${relativePath(directory)}`);
   }
   const files = [];
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    if (entry.isSymbolicLink()) {
-      continue;
-    }
     const entryPath = path.join(directory, entry.name);
+    if (entry.isSymbolicLink()) {
+      fail(`evidence inventory must not contain symbolic links: ${relativePath(entryPath)}`);
+    }
     if (entry.isDirectory()) {
+      if (entry.name === '.test-fixtures') {
+        continue;
+      }
       files.push(...walkFiles(entryPath));
     } else if (entry.isFile()) {
+      if (lstatSync(entryPath).nlink !== 1) {
+        fail(`evidence inventory must not contain hard-linked files: ${relativePath(entryPath)}`);
+      }
       files.push(entryPath);
+    } else {
+      fail(`evidence inventory must contain only regular files and directories: ${relativePath(entryPath)}`);
     }
   }
   return files.sort((left, right) => left.localeCompare(right));
 }
 
 function describeFile(filePath) {
-  const stats = lstatSync(filePath);
+  const stats = requireSingleLinkFile(filePath, 'evidence artifact');
   return {
     path: relativePath(filePath),
     bytes: stats.size,
@@ -158,10 +234,13 @@ function describeFile(filePath) {
 
 function describeInput(inputPath) {
   const filePath = path.join(repositoryRoot, inputPath);
-  if (!existsSync(filePath) || !lstatSync(filePath).isFile()) {
+  if (!existsSync(filePath)) {
+    if (!optionalEvidenceInputPaths.includes(inputPath)) {
+      fail(`required evidence input is missing: ${inputPath}`);
+    }
     return { path: inputPath, present: false };
   }
-  const stats = lstatSync(filePath);
+  const stats = requireSingleLinkFile(filePath, 'evidence input');
   return {
     path: inputPath,
     present: true,
@@ -211,8 +290,10 @@ function collectEvidence(outputPath) {
 }
 
 const outputPath = resolveOutputPath();
-mkdirSync(path.dirname(outputPath), { recursive: true });
-mkdirSync(tempRoot, { recursive: true });
+requireUnlinkedDirectoryChain(tempRoot, path.dirname(outputPath), 'manifest output parent directory', { create: true });
+if (existsSync(outputPath)) {
+  requireSingleLinkFile(outputPath, 'manifest output');
+}
 
 const auditChainEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'audit-chain');
 const auditChainEvidencePresent = [
@@ -259,6 +340,54 @@ if (oidcBrowserEvidencePresent) {
     verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot: oidcBrowserEvidenceRoot });
   } catch (error) {
     fail(`OIDC browser evidence is invalid: ${error.message}`);
+  }
+}
+
+const sdkReleaseEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'sdk-release-readiness');
+const sdkReleaseEvidencePresent = [
+  'verification-output.txt',
+  'verification-error.txt',
+  'verification-status.txt',
+  'report.json',
+  'SHA256SUMS',
+].some((name) => existsSync(path.join(sdkReleaseEvidenceRoot, name)));
+if (sdkReleaseEvidencePresent) {
+  try {
+    verifySDKReleaseEvidence({ repositoryRoot, evidenceRoot: sdkReleaseEvidenceRoot });
+  } catch (error) {
+    fail(`SDK release evidence is invalid: ${error.message}`);
+  }
+}
+
+const sdkConsumerEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'sdk-consumer-migration');
+const sdkConsumerEvidencePresent = [
+  'go-output.txt',
+  'go-error.txt',
+  'go-status.txt',
+  'report.json',
+  'SHA256SUMS',
+].some((name) => existsSync(path.join(sdkConsumerEvidenceRoot, name)));
+if (sdkConsumerEvidencePresent) {
+  try {
+    verifySDKConsumerEvidence({ repositoryRoot, evidenceRoot: sdkConsumerEvidenceRoot });
+  } catch (error) {
+    fail(`SDK consumer evidence is invalid: ${error.message}`);
+  }
+}
+
+const sdkConsumerMatrixEvidenceRoot = path.join(tempRoot, 'workflow-artifacts', 'sdk-consumer-matrix');
+const sdkConsumerMatrixEvidencePresent = [
+  'verification-output.txt',
+  'verification-error.txt',
+  'verification-status.txt',
+  'report.json',
+  'SHA256SUMS',
+].some((name) => existsSync(path.join(sdkConsumerMatrixEvidenceRoot, name)));
+if (sdkConsumerMatrixEvidencePresent) {
+  try {
+    verifySDKConsumerMatrixEvidence({ repositoryRoot, evidenceRoot: sdkConsumerMatrixEvidenceRoot });
+  } catch (error) {
+    fail(`SDK consumer matrix evidence is invalid: ${error.message}`);
   }
 }
 
@@ -425,8 +554,14 @@ if (serverRecoveryEvidencePresent) {
   }
 }
 
-const gitStatus = run('git', ['status', '--porcelain=v1']) ?? '';
+const gitStatus = run('git', ['status', '--porcelain=v1', '--untracked-files=all'], { raw: true });
 const gitCommit = run('git', ['rev-parse', 'HEAD']);
+if (typeof gitCommit !== 'string' || !/^[a-f0-9]{40}$/.test(gitCommit)) {
+  fail('current repository Git commit is unavailable');
+}
+if (gitStatus === null) {
+  fail('current repository Git status is unavailable');
+}
 const evidence = collectEvidence(outputPath);
 const benchmarkFiles = [...(evidence.benchmark ?? []), ...(evidence.profiles ?? [])];
 const runningInGitHubActions = process.env.GITHUB_ACTIONS === 'true';
@@ -781,9 +916,10 @@ const manifest = {
   generatedAt: new Date().toISOString(),
   repository: {
     root: '.',
-    gitCommit: gitCommit ?? 'unknown',
+    gitCommit,
     dirty: gitStatus.length > 0,
     changedFileCount: gitStatus ? gitStatus.split('\n').filter(Boolean).length : 0,
+    statusSha256: createHash('sha256').update(gitStatus).digest('hex'),
   },
   toolchain: {
     node: process.version,
@@ -791,233 +927,7 @@ const manifest = {
     go: (goVersion ? run(goVersion, ['version']) : run('go', ['version'])) ?? 'unavailable',
     goToolchain: toolchainVersion ?? 'undeclared',
   },
-  inputs: [
-    'go.work',
-    'go.work.sum',
-    'Framework/go.mod',
-    'Framework/go.sum',
-    'Framework/VERSION',
-    'Framework/api-snapshot.json',
-    'Framework/COMPATIBILITY.md',
-	'Framework/CHANGELOG.md',
-	'Framework/authorization/authorization.go',
-	'Framework/authorization/authorization_test.go',
-    'Framework/auth/service.go',
-    'Framework/auth/jwks.go',
-    'Framework/auth/jwks_test.go',
-    'Framework/auth/oidc_flow.go',
-    'Framework/auth/oidc_flow_test.go',
-    'Framework/auth/oidc_client.go',
-    'Framework/auth/oidc_client_test.go',
-    'Framework/auth/oidc_callback.go',
-    'Framework/auth/oidc_callback_test.go',
-	'Framework/sharedstate/authorization_request_store.go',
-	'Framework/sharedstate/authorization_request_store_test.go',
-    'Framework/auth/session.go',
-    'Framework/auth/session_test.go',
-	'Framework/auth/browser_session.go',
-	'Framework/auth/browser_session_test.go',
-    'Framework/config/config.go',
-    'Framework/config/config_test.go',
-    'Framework/httpclient/client.go',
-	'Framework/httpapi/application_authorization.go',
-	'Framework/httpapi/app.go',
-	'Framework/httpapi/application_resource_authorization_test.go',
-    'Framework/httpapi/application_query.go',
-    'Framework/httpapi/application_command.go',
-    'Framework/httpapi/application_precondition.go',
-    'Framework/httpapi/auth_middleware.go',
-	'Framework/httpapi/oidc_browser.go',
-	'Framework/httpapi/oidc_browser_test.go',
-    'Framework/httpapi/idempotency_fingerprint.go',
-    'Framework/httpapi/middleware.go',
-    'Framework/httpapi/response.go',
-    'Framework/httpapi/app_test.go',
-    'Framework/httpapi/security_audit.go',
-    'Framework/httpapi/security_audit_chain.go',
-    'Framework/httpapi/security_audit_chain_test.go',
-    'Framework/httpapi/security_audit_sink.go',
-    'Framework/httpapi/security_audit_sink_test.go',
-    'Framework/httpapi/token_verifier_test.go',
-    'Framework/sharedstate/redis.go',
-    'Framework/sharedstate/session_store.go',
-    'Framework/sharedstate/session_store_test.go',
-	'Framework/sharedstate/browser_session_store.go',
-	'Framework/sharedstate/browser_session_store_test.go',
-    'Framework/sharedstate/redis_tracing.go',
-    'Framework/sharedstate/redis_test.go',
-    'Framework/sharedstate/redis_sentinel_integration_test.go',
-    'Framework/httpapi/redis_shared_state_test.go',
-    'Framework/observability/metrics.go',
-    'Framework/observability/tracing_provider.go',
-    'Framework/observability/tracing_test.go',
-    'Framework/queueclient/client.go',
-    'Framework/queueclient/client_test.go',
-    'Framework/queueclient/worker.go',
-    'Framework/queueclient/worker_test.go',
-    'Framework/queueclient/nats_integration_test.go',
-    'Framework/queueclient/natsjetstream/adapter.go',
-    'Framework/queueclient/natsjetstream/adapter_test.go',
-    'Framework/queueclient/natsjetstream/integration_test.go',
-    'Framework/queueclient/natsjetstream/restart_integration_test.go',
-    'Framework/queueclient/natsjetstream/snapshot_integration_test.go',
-    'Framework/queueclient/natsjetstream/cluster_integration_test.go',
-    'Framework/server/http.go',
-    'Framework/server/http_test.go',
-    'Framework/sqlclient/client.go',
-    'Framework/sqlclient/client_test.go',
-    'Framework/sqlclient/postgres_integration_test.go',
-    'Solutions/Example/go.mod',
-    'Solutions/Example/go.sum',
-    'Solutions/Example/cmd/server/main.go',
-    'Solutions/Example/cmd/server/main_test.go',
-    'Solutions/Example/internal/projectapi/routes.go',
-    'Solutions/Example/internal/projectapi/routes_test.go',
-    'Solutions/Example/internal/projectapi/openapi_contract_test.go',
-    'Solutions/Example/internal/projectapi/transport_benchmark_test.go',
-	'Solutions/Example/internal/projectapp/service.go',
-	'Solutions/Example/internal/projectapp/service_test.go',
-    'Solutions/Example/internal/projectapp/authorization.go',
-	'Solutions/Example/internal/projectapp/authorization_test.go',
-    'Services/Billing/go.mod',
-    'Services/Billing/README.md',
-    'Services/Billing/cmd/server/main.go',
-    'Services/Billing/internal/billingapi/routes.go',
-    'Services/Billing/internal/billingapi/routes_test.go',
-    'Services/Billing/internal/billingapi/openapi_contract_test.go',
-    'Services/Billing/internal/billingapi/sdk_integration_test.go',
-    'Services/Billing/internal/billingapp/service.go',
-    'Services/Billing/internal/billingapp/service_test.go',
-    'SDK/GoExample/go.mod',
-    'SDK/GoExample/VERSION',
-    'SDK/GoExample/README.md',
-    'SDK/GoExample/CHANGELOG.md',
-    'SDK/GoExample/client.gen.go',
-    'SDK/GoExample/client_test.go',
-    'SDK/GoExample/release-manifest.json',
-    'SDK/Billing/go.mod',
-    'SDK/Billing/VERSION',
-    'SDK/Billing/README.md',
-    'SDK/Billing/CHANGELOG.md',
-    'SDK/Billing/client.gen.go',
-    'SDK/Billing/client_test.go',
-    'SDK/Billing/release-manifest.json',
-    'contracts/projects.json',
-    'support/consumer/HealthProbe/go.mod',
-    'support/consumer/HealthProbe/go.sum',
-    'support/consumer/HealthProbe/cmd/healthprobe/main.go',
-    'support/consumer/HealthProbe/cmd/healthprobe/main_test.go',
-    'support/deploy/prometheus/.gitignore',
-    'support/deploy/prometheus/README.md',
-    'support/deploy/prometheus/prometheus.yml',
-    'support/deploy/prometheus/rules/goexample-slo.yml',
-    'support/deploy/prometheus/tests/goexample-slo.test.yml',
-    'support/deploy/edge/goexample-nginx.contract.json',
-    'support/deploy/edge/README.md',
-    'support/deploy/kubernetes/goexample-api.template.json',
-    'support/deploy/kubernetes/README.md',
-    'docs/adr/0001-http-framework-selection.md',
-    'docs/adr/0002-http-request-lifecycle-and-protocol-boundary.md',
-    'docs/openapi/openapi.json',
-    'docs/openapi/billing.json',
-    'docs/openapi/consumer-matrix.md',
-    'docs/openapi/project-contracts.md',
-    'docs/observability/SLO-and-alerts.md',
-    'docs/security/server-threat-model.md',
-    'docs/security/server-audit-events.md',
-    'docs/待优化/待优化V12.md',
-    'docs/待优化/待优化V13.md',
-    'docs/评估/项目架构与性能评估.md',
-    'scripts/evidence-manifest.mjs',
-    'scripts/evidence-verify.mjs',
-    'scripts/go-project.mjs',
-    'scripts/go-sdk.mjs',
-    'scripts/sdk-release.mjs',
-    'scripts/project-contracts.mjs',
-    'scripts/lib/project-contracts.mjs',
-    'scripts/lib/audit-chain-evidence.mjs',
-    'scripts/lib/authorization-evidence.mjs',
-    'scripts/lib/oidc-browser-evidence.mjs',
-    'scripts/lib/release-provenance.mjs',
-    'scripts/lib/sdk-release.mjs',
-    'scripts/lib/kubernetes-evidence.mjs',
-    'scripts/lib/nginx-edge-evidence.mjs',
-    'scripts/lib/nats-cluster-evidence.mjs',
-    'scripts/lib/nats-delivery-evidence.mjs',
-    'scripts/lib/nats-restart-evidence.mjs',
-    'scripts/lib/nats-snapshot-evidence.mjs',
-    'scripts/lib/postgres-recovery-evidence.mjs',
-    'scripts/lib/prometheus-rules.mjs',
-    'scripts/lib/redis-sentinel-evidence.mjs',
-    'scripts/lib/server-recovery-evidence.mjs',
-    'scripts/lib/workflow-lint.mjs',
-    'scripts/kubernetes-manifest.mjs',
-    'scripts/audit-chain-evidence.mjs',
-    'scripts/authorization-evidence.mjs',
-    'scripts/oidc-browser-evidence.mjs',
-    'scripts/kubernetes-evidence.mjs',
-    'scripts/nginx-edge.mjs',
-    'scripts/nginx-edge-contract.mjs',
-    'scripts/nginx-edge-evidence.mjs',
-    'scripts/nats-cluster-evidence.mjs',
-    'scripts/nats-delivery-evidence.mjs',
-    'scripts/nats-restart-evidence.mjs',
-    'scripts/nats-snapshot-evidence.mjs',
-    'scripts/postgres-recovery-contract.mjs',
-    'scripts/postgres-recovery-evidence.mjs',
-    'scripts/postgres-recovery-report.mjs',
-    'scripts/prometheus-rules.mjs',
-    'scripts/redis-sentinel-contract.mjs',
-    'scripts/redis-sentinel-evidence.mjs',
-    'scripts/server-recovery-drill.mjs',
-    'scripts/server-recovery-evidence.mjs',
-    'scripts/server-release.mjs',
-    'scripts/transport-benchmark-baseline.mjs',
-    'scripts/transport-benchmark-report.mjs',
-    'scripts/lib/transport-benchmark-environment.mjs',
-    'scripts/transport-soak-report.mjs',
-    'scripts/v13-evidence.mjs',
-    'scripts/workflow-lint.mjs',
-    '__test__/node/kubernetes-manifest.test.mjs',
-    '__test__/node/audit-chain-evidence.test.mjs',
-    '__test__/node/authorization-evidence.test.mjs',
-    '__test__/node/oidc-browser-evidence.test.mjs',
-    '__test__/node/kubernetes-evidence.test.mjs',
-    '__test__/node/sdk-release.test.mjs',
-    '__test__/node/nginx-edge.test.mjs',
-    '__test__/node/nginx-edge-evidence.test.mjs',
-    '__test__/node/nats-cluster-evidence.test.mjs',
-    '__test__/node/nats-delivery-evidence.test.mjs',
-    '__test__/node/nats-restart-evidence.test.mjs',
-    '__test__/node/nats-snapshot-evidence.test.mjs',
-    '__test__/node/project-contracts.test.mjs',
-    '__test__/node/postgres-recovery-report.test.mjs',
-    '__test__/node/postgres-recovery-evidence.test.mjs',
-    '__test__/node/prometheus-rules.test.mjs',
-    '__test__/node/redis-sentinel-evidence.test.mjs',
-    '__test__/node/release-provenance.test.mjs',
-    '__test__/node/script-guards.test.mjs',
-    '__test__/node/server-release.test.mjs',
-    '__test__/node/server-recovery-evidence.test.mjs',
-    '__test__/node/transport-benchmark-baseline.test.mjs',
-    '__test__/node/transport-benchmark-report.test.mjs',
-    '__test__/node/transport-soak-report.test.mjs',
-    '__test__/node/v13-evidence.test.mjs',
-    '__test__/node/workflow-lint.test.mjs',
-    'tools/actionlint/go.mod',
-    'tools/actionlint/go.sum',
-    'tools/promtool/go.mod',
-    'tools/promtool/go.sum',
-    '.github/workflows/dependency-review.yml',
-    '.github/workflows/go-quality.yml',
-    '.github/workflows/go-transport-benchmark.yml',
-    '.github/workflows/node-tools-quality.yml',
-    '.github/workflows/security-analysis.yml',
-    '.github/workflows/supply-chain.yml',
-    'docs/recovery/server-failure-matrix.md',
-    'package.json',
-    'yarn.lock',
-  ].map(describeInput),
+  inputs: evidenceInputPaths.map(describeInput),
   evidence,
   boundaries: {
     linuxRemoteBenchmark: {

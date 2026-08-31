@@ -8,6 +8,7 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const tempRoot = path.join(repositoryRoot, '.temp');
 const defaultIndex = path.join(tempRoot, 'evidence', 'v13.json');
 const statusValues = new Set(['not_recorded', 'recorded', 'failed']);
+const notRecordedReason = 'No immutable target-environment run and archived artifact has been recorded.';
 const packageScopes = new Map([
   ['V13-01', 'target edge and protocol evidence'],
   ['V13-02', 'target Redis HA and recovery evidence'],
@@ -19,6 +20,7 @@ const packageScopes = new Map([
   ['V13-08', 'second consumer and SDK migration evidence'],
   ['V13-09', 'target soak, fault, and RPO/RTO evidence'],
 ]);
+const packageIds = [...packageScopes.keys()];
 const packageRequirements = new Map([
   ['V13-01', { criteria: ['target-edge-certificate-dns', 'tls-http2-http3', 'proxy-lifecycle-failure-trace'], requiresRPOApproval: false }],
   ['V13-02', { criteria: ['redis-ha-topology-security', 'failover-resilience-and-alerts', 'backup-recovery-rpo-rto'], requiresRPOApproval: true }],
@@ -98,6 +100,16 @@ function requireObject(value, name) {
   return value;
 }
 
+function requireExactKeys(value, name, keys) {
+  const object = requireObject(value, name);
+  const expected = [...keys].sort();
+  const actual = Object.keys(object).sort();
+  if (actual.length !== expected.length || actual.some((key, index) => key !== expected[index])) {
+    fail(`${name} must contain exactly these keys: ${expected.join(', ')}`);
+  }
+  return object;
+}
+
 function requireString(value, name, { nullable = false } = {}) {
   if (nullable && value === null) return;
   if (typeof value !== 'string' || value.trim() === '') fail(`${name} must be a non-empty string${nullable ? ' or null' : ''}`);
@@ -139,7 +151,7 @@ function resolveArtifact(value, name) {
 }
 
 function verifyOutput(output, name) {
-  const item = requireObject(output, name);
+  const item = requireExactKeys(output, name, ['path', 'bytes', 'sha256']);
   const filePath = resolveArtifact(item.path, `${name}.path`);
   if (!existsSync(filePath)) fail(`${name} is missing: ${item.path}`);
   const stats = lstatSync(filePath);
@@ -150,12 +162,14 @@ function verifyOutput(output, name) {
   if (hashFile(filePath) !== item.sha256) fail(`${name} hash mismatch: ${item.path}`);
 }
 
-function verifyExecution(value, name) {
-  const execution = requireObject(value, name);
+function verifyExecution(value, name, documentGeneratedAt = null) {
+  const execution = requireExactKeys(value, name, ['command', 'startedAt', 'finishedAt', 'exitCode', 'rawOutputPath']);
   requireString(execution.command, `${name}.command`);
   const startedAt = requireTimestamp(execution.startedAt, `${name}.startedAt`);
   const finishedAt = requireTimestamp(execution.finishedAt, `${name}.finishedAt`);
   if (finishedAt < startedAt) fail(`${name}.finishedAt must not precede startedAt`);
+  if (documentGeneratedAt !== null && startedAt > documentGeneratedAt) fail(`${name}.startedAt must not be after document.generatedAt`);
+  if (documentGeneratedAt !== null && finishedAt > documentGeneratedAt) fail(`${name}.finishedAt must not be after document.generatedAt`);
   if (!Number.isSafeInteger(execution.exitCode) || execution.exitCode < 0 || execution.exitCode > 255) {
     fail(`${name}.exitCode must be an integer from 0 through 255`);
   }
@@ -163,23 +177,30 @@ function verifyExecution(value, name) {
   return execution;
 }
 
-function verifyProvenance(value, name, outputPaths) {
-  const provenance = requireObject(value, name);
+function verifyProvenance(value, name, outputPaths, executionFinishedAt = null, documentGeneratedAt = null) {
+  const provenance = requireExactKeys(value, name, ['kind', 'reference', 'verificationCommand', 'verifiedAt', 'verificationOutputPath']);
   if (!['signature', 'platform'].includes(provenance.kind)) fail(`${name}.kind must be signature or platform`);
   requireHTTPSURL(provenance.reference, `${name}.reference`);
   requireString(provenance.verificationCommand, `${name}.verificationCommand`);
-  requireTimestamp(provenance.verifiedAt, `${name}.verifiedAt`);
+  const verifiedAt = requireTimestamp(provenance.verifiedAt, `${name}.verifiedAt`);
+  if (executionFinishedAt !== null && verifiedAt < executionFinishedAt) {
+    fail(`${name}.verifiedAt must not precede execution.finishedAt`);
+  }
+  if (documentGeneratedAt !== null && verifiedAt > documentGeneratedAt) fail(`${name}.verifiedAt must not be after document.generatedAt`);
   requireString(provenance.verificationOutputPath, `${name}.verificationOutputPath`);
   if (!outputPaths.has(provenance.verificationOutputPath)) {
     fail(`${name}.verificationOutputPath must reference an archived output`);
   }
 }
 
-function verifyRPOApproval(value, name, outputPaths) {
-  const approval = requireObject(value, name);
+function verifyRPOApproval(value, name, outputPaths, documentGeneratedAt = null) {
+  const approval = requireExactKeys(value, name, ['approver', 'decision', 'approvedAt', 'rpoMinutes', 'rtoMinutes', 'outputPath']);
   requireString(approval.approver, `${name}.approver`);
   if (approval.decision !== 'approved') fail(`${name}.decision must be approved`);
-  requireTimestamp(approval.approvedAt, `${name}.approvedAt`);
+  const approvedAt = requireTimestamp(approval.approvedAt, `${name}.approvedAt`);
+  if (documentGeneratedAt !== null && approvedAt > documentGeneratedAt) {
+    fail(`${name}.approvedAt must not be after document.generatedAt`);
+  }
   for (const field of ['rpoMinutes', 'rtoMinutes']) {
     if (!Number.isSafeInteger(approval[field]) || approval[field] < 1) {
       fail(`${name}.${field} must be a positive safe integer`);
@@ -189,19 +210,25 @@ function verifyRPOApproval(value, name, outputPaths) {
   if (!outputPaths.has(approval.outputPath)) fail(`${name}.outputPath must reference an archived output`);
 }
 
-function verifyCompletion(value, name, outputPaths, requirement, { complete }) {
-  const completion = requireObject(value, name);
+function verifyCompletion(value, name, outputPaths, requirement, { complete, documentGeneratedAt = null }) {
+  const completion = requireExactKeys(value, name, ['criteria', 'rpoApproval']);
   if (!Array.isArray(completion.criteria) || completion.criteria.length === 0) {
     fail(`${name}.criteria must contain at least one criterion`);
   }
   const expected = new Set(requirement.criteria);
   const seen = new Set();
+  let previousCriterionIndex = -1;
   for (const [index, raw] of completion.criteria.entries()) {
-    const criterion = requireObject(raw, `${name}.criteria[${index}]`);
+    const criterion = requireExactKeys(raw, `${name}.criteria[${index}]`, ['id', 'outputPath', 'summary']);
     requireString(criterion.id, `${name}.criteria[${index}].id`);
     if (!expected.has(criterion.id) || seen.has(criterion.id)) {
       fail(`${name}.criteria[${index}].id is not a unique requirement for this work package`);
     }
+    const criterionIndex = requirement.criteria.indexOf(criterion.id);
+    if (criterionIndex <= previousCriterionIndex) {
+      fail(`${name}.criteria[${index}].id must follow the fixed requirement order`);
+    }
+    previousCriterionIndex = criterionIndex;
     seen.add(criterion.id);
     requireString(criterion.outputPath, `${name}.criteria[${index}].outputPath`);
     if (!outputPaths.has(criterion.outputPath)) {
@@ -219,21 +246,26 @@ function verifyCompletion(value, name, outputPaths, requirement, { complete }) {
   if (!requirement.requiresRPOApproval && completion.rpoApproval !== null) {
     fail(`${name}.rpoApproval is only valid for a work package with RPO/RTO approval`);
   }
-  if (completion.rpoApproval !== null) verifyRPOApproval(completion.rpoApproval, `${name}.rpoApproval`, outputPaths);
+  if (completion.rpoApproval !== null) verifyRPOApproval(completion.rpoApproval, `${name}.rpoApproval`, outputPaths, documentGeneratedAt);
 }
 
 function verifyDocument(document) {
-  requireObject(document, 'document');
+  requireExactKeys(document, 'document', ['schemaVersion', 'generatedAt', 'repository', 'workPackages']);
   if (document.schemaVersion !== 3) fail('schemaVersion must be 3');
-  requireTimestamp(document.generatedAt, 'generatedAt');
-  const repository = requireObject(document.repository, 'repository');
+  const documentGeneratedAt = requireTimestamp(document.generatedAt, 'generatedAt');
+  const repository = requireExactKeys(document.repository, 'repository', ['gitCommit']);
   requireCommit(repository.gitCommit, 'repository.gitCommit');
   if (!Array.isArray(document.workPackages) || document.workPackages.length !== packageScopes.size) fail('workPackages must contain exactly V13-01 through V13-09');
   const seen = new Set();
+  const artifactOwners = new Map();
   for (const [index, raw] of document.workPackages.entries()) {
-    const item = requireObject(raw, `workPackages[${index}]`);
+    const item = requireExactKeys(raw, `workPackages[${index}]`, [
+      'id', 'scope', 'status', 'targetEnvironment', 'immutableVersion', 'runUrl', 'sourceCommit',
+      'fingerprint', 'execution', 'provenance', 'completion', 'outputs', 'reason',
+    ]);
     const id = item.id;
     if (!packageScopes.has(id) || seen.has(id)) fail(`workPackages[${index}].id is not a unique V13 package`);
+    if (id !== packageIds[index]) fail(`workPackages[${index}].id must follow the fixed V13 package order`);
     seen.add(id);
     const requirement = packageRequirements.get(id);
     if (!requirement) fail(`${id} has no fixed completion requirements`);
@@ -244,7 +276,7 @@ function verifyDocument(document) {
     requireString(item.immutableVersion, `${id}.immutableVersion`, { nullable: true });
     requireString(item.runUrl, `${id}.runUrl`, { nullable: true });
     requireCommit(item.sourceCommit, `${id}.sourceCommit`, { nullable: true });
-    const fingerprint = requireObject(item.fingerprint, `${id}.fingerprint`);
+    const fingerprint = requireExactKeys(item.fingerprint, `${id}.fingerprint`, ['runner', 'toolchain', 'environment']);
     for (const field of ['runner', 'toolchain', 'environment']) requireString(fingerprint[field], `${id}.fingerprint.${field}`, { nullable: true });
     if (item.execution !== null && (typeof item.execution !== 'object' || Array.isArray(item.execution))) fail(`${id}.execution must be an object or null`);
     if (item.provenance !== null && (typeof item.provenance !== 'object' || Array.isArray(item.provenance))) fail(`${id}.provenance must be an object or null`);
@@ -255,9 +287,15 @@ function verifyDocument(document) {
       const outputName = `${id}.outputs[${outputIndex}]`;
       verifyOutput(output, outputName);
       if (outputPaths.has(output.path)) fail(`${id}.outputs contains a duplicate path`);
+      const previousOwner = artifactOwners.get(output.path);
+      if (previousOwner) {
+        fail(`${id}.outputs path is already used by ${previousOwner}; work-package artifacts must be independent`);
+      }
+      artifactOwners.set(output.path, id);
       outputPaths.add(output.path);
     }
     if (item.status === 'not_recorded') {
+      if (item.reason !== notRecordedReason) fail(`${id} not_recorded reason must preserve the fixed boundary`);
       if (item.targetEnvironment !== null || item.immutableVersion !== null || item.runUrl !== null || item.sourceCommit !== null || Object.values(fingerprint).some((value) => value !== null) || item.execution !== null || item.provenance !== null || item.completion !== null || item.outputs.length !== 0) {
         fail(`${id} not_recorded must not claim target-run evidence`);
       }
@@ -271,14 +309,23 @@ function verifyDocument(document) {
     if (Object.values(fingerprint).some((value) => value === null)) fail(`${id} ${item.status} requires a complete fingerprint`);
     if (item.outputs.length === 0) fail(`${id} ${item.status} requires at least one archived output`);
     if (item.execution === null) fail(`${id} ${item.status} requires execution metadata`);
-    const execution = verifyExecution(item.execution, `${id}.execution`);
+    const execution = verifyExecution(item.execution, `${id}.execution`, documentGeneratedAt);
     if (!outputPaths.has(execution.rawOutputPath)) fail(`${id}.execution.rawOutputPath must reference an archived output`);
     if (item.completion === null) fail(`${id} ${item.status} requires completion coverage`);
-    verifyCompletion(item.completion, `${id}.completion`, outputPaths, requirement, { complete: item.status === 'recorded' });
+    verifyCompletion(item.completion, `${id}.completion`, outputPaths, requirement, {
+      complete: item.status === 'recorded',
+      documentGeneratedAt,
+    });
     if (item.status === 'recorded') {
       if (execution.exitCode !== 0) fail(`${id} recorded requires a zero execution exitCode`);
       if (item.provenance === null) fail(`${id} recorded requires provenance`);
-      verifyProvenance(item.provenance, `${id}.provenance`, outputPaths);
+      verifyProvenance(
+        item.provenance,
+        `${id}.provenance`,
+        outputPaths,
+        requireTimestamp(execution.finishedAt, `${id}.execution.finishedAt`),
+        documentGeneratedAt,
+      );
     }
     if (item.status === 'failed' && execution.exitCode === 0) fail(`${id} failed requires a non-zero execution exitCode`);
   }

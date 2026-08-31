@@ -28,6 +28,7 @@ test('V13 evidence index generates and verifies all packages as not_recorded', a
     assert.equal(document.schemaVersion, 3);
     assert.equal(document.workPackages.length, 9);
     assert.ok(document.workPackages.every((item) => item.status === 'not_recorded'));
+    assert.ok(document.workPackages.every((item) => item.reason === 'No immutable target-environment run and archived artifact has been recorded.'));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -84,6 +85,78 @@ test('V13 evidence verifier accepts complete immutable recorded evidence', async
     await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
     const verified = run(index, true);
     assert.equal(verified.status, 0, verified.stderr);
+
+    const packageOrder = [...document.workPackages];
+    document.workPackages = [...packageOrder].reverse();
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    const reorderedPackages = run(index, true);
+    assert.equal(reorderedPackages.status, 1);
+    assert.match(reorderedPackages.stderr, /must follow the fixed V13 package order/);
+    document.workPackages = packageOrder;
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    assert.equal(run(index, true).status, 0);
+
+    const criteriaOrder = [...packageItem.completion.criteria];
+    packageItem.completion.criteria = [...criteriaOrder].reverse();
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    const reorderedCriteria = run(index, true);
+    assert.equal(reorderedCriteria.status, 1);
+    assert.match(reorderedCriteria.stderr, /must follow the fixed requirement order/);
+    packageItem.completion.criteria = criteriaOrder;
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    assert.equal(run(index, true).status, 0);
+
+    const exactKeyCases = [
+      [document, 'document'],
+      [packageItem, 'workPackages[1]'],
+      [packageItem.fingerprint, 'V13-02.fingerprint'],
+      [packageItem.outputs[0], 'V13-02.outputs[0]'],
+      [packageItem.execution, 'V13-02.execution'],
+      [packageItem.provenance, 'V13-02.provenance'],
+      [packageItem.completion, 'V13-02.completion'],
+      [packageItem.completion.criteria[0], 'V13-02.completion.criteria[0]'],
+      [packageItem.completion.rpoApproval, 'V13-02.completion.rpoApproval'],
+    ];
+    for (const [object, name] of exactKeyCases) {
+      object.__unexpected = true;
+      await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+      const rejected = run(index, true);
+      assert.equal(rejected.status, 1);
+      assert.ok(rejected.stderr.includes(`${name} must contain exactly`), rejected.stderr);
+      delete object.__unexpected;
+    }
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    assert.equal(run(index, true).status, 0);
+
+    packageItem.provenance.verifiedAt = '2026-08-27T00:00:00Z';
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    const outOfOrderProvenance = run(index, true);
+    assert.equal(outOfOrderProvenance.status, 1);
+    assert.match(outOfOrderProvenance.stderr, /verifiedAt must not precede execution\.finishedAt/);
+    packageItem.provenance.verifiedAt = '2026-08-27T00:00:02Z';
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    assert.equal(run(index, true).status, 0);
+
+    packageItem.execution.finishedAt = '2026-09-01T00:00:01Z';
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    const futureExecution = run(index, true);
+    assert.equal(futureExecution.status, 1);
+    assert.match(futureExecution.stderr, /execution\.finishedAt must not be after document\.generatedAt/);
+    packageItem.execution.finishedAt = '2026-08-27T00:00:01Z';
+
+    packageItem.provenance.verifiedAt = '2026-09-01T00:00:02Z';
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    const futureProvenance = run(index, true);
+    assert.equal(futureProvenance.status, 1);
+    assert.match(futureProvenance.stderr, /provenance\.verifiedAt must not be after document\.generatedAt/);
+    packageItem.provenance.verifiedAt = '2026-08-27T00:00:02Z';
+
+    packageItem.completion.rpoApproval.approvedAt = '2026-09-01T00:00:03Z';
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    const futureApproval = run(index, true);
+    assert.equal(futureApproval.status, 1);
+    assert.match(futureApproval.stderr, /rpoApproval\.approvedAt must not be after document\.generatedAt/);
+    packageItem.completion.rpoApproval.approvedAt = '2026-08-27T00:00:03Z';
 
     packageItem.completion.rpoApproval = null;
     await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
@@ -188,6 +261,12 @@ test('V13 evidence verifier rejects forged recorded state and unsafe artifact pa
     const generated = run(index);
     assert.equal(generated.status, 0, generated.stderr);
     const document = JSON.parse(await readFile(index, 'utf8'));
+    document.workPackages[0].reason = 'target run completed';
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    const forgedReason = run(index, true);
+    assert.equal(forgedReason.status, 1);
+    assert.match(forgedReason.stderr, /not_recorded reason must preserve the fixed boundary/);
+    document.workPackages[0].reason = 'No immutable target-environment run and archived artifact has been recorded.';
     document.workPackages[0].status = 'recorded';
     document.workPackages[0].targetEnvironment = 'prod';
     const forged = await writeFile(index, `${JSON.stringify(document, null, 2)}\n`).then(() => run(index, true));
@@ -201,6 +280,54 @@ test('V13 evidence verifier rejects forged recorded state and unsafe artifact pa
     const unsafe = run(index, true);
     assert.equal(unsafe.status, 1);
     assert.match(unsafe.stderr, /unsafe path/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('V13 evidence verifier rejects artifact reuse across work packages', async () => {
+  const root = await mkdtemp(path.join(repositoryRoot, '.temp', 'v13-evidence-test-'));
+  const artifact = path.join(root, 'shared-run.txt');
+  const index = path.join(root, 'index.json');
+  try {
+    const bytes = Buffer.from('bounded target run failed\n');
+    await writeFile(artifact, bytes);
+    const output = {
+      path: `.temp/${path.relative(path.join(repositoryRoot, '.temp'), artifact).split(path.sep).join('/')}`,
+      bytes: bytes.length,
+      sha256: createHash('sha256').update(bytes).digest('hex'),
+    };
+    const generated = run(index);
+    assert.equal(generated.status, 0, generated.stderr);
+    const document = JSON.parse(await readFile(index, 'utf8'));
+    for (const [indexInDocument, criterion] of [
+      [0, 'target-edge-certificate-dns'],
+      [1, 'redis-ha-topology-security'],
+    ]) {
+      const item = document.workPackages[indexInDocument];
+      item.status = 'failed';
+      item.targetEnvironment = `target-fixture-${indexInDocument}`;
+      item.immutableVersion = `sha256:${String(indexInDocument).repeat(64)}`;
+      item.runUrl = `https://ci.example.invalid/runs/${indexInDocument}`;
+      item.sourceCommit = document.repository.gitCommit;
+      item.fingerprint = { runner: 'runner-abc', toolchain: 'go1.25.0', environment: 'fixture@sha256:abc' };
+      item.outputs = [output];
+      item.execution = {
+        command: 'yarn target:contract',
+        startedAt: '2026-08-29T00:00:00Z',
+        finishedAt: '2026-08-29T00:00:01Z',
+        exitCode: 1,
+        rawOutputPath: output.path,
+      };
+      item.completion = {
+        criteria: [{ id: criterion, outputPath: output.path, summary: 'The bounded target run was attempted.' }],
+        rpoApproval: null,
+      };
+    }
+    await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
+    const verified = run(index, true);
+    assert.equal(verified.status, 1);
+    assert.match(verified.stderr, /already used by V13-01/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

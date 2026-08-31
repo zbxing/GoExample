@@ -36,7 +36,7 @@ async function createEvidence(t) {
   const checkConfigOutputPath = path.join(evidenceRoot, 'check-config-output.txt');
   const checkRulesOutputPath = path.join(evidenceRoot, 'check-rules-output.txt');
   const testRulesOutputPath = path.join(evidenceRoot, 'test-rules-output.txt');
-  await writeFile(binaryPath, 'bounded promtool fixture', 'utf8');
+  await writeFile(binaryPath, Buffer.alloc(2 * 1024 * 1024 + 17, 0x5a));
   await writeFile(buildOutputPath, 'stdout:\n\nstderr:\n', 'utf8');
   await writeFile(
     versionOutputPath,

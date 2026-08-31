@@ -194,6 +194,7 @@ function sourcePaths() {
     evidenceTests: '__test__/node/authorization-evidence.test.mjs',
     evidenceManifest: 'scripts/evidence-manifest.mjs',
     independentVerifier: 'scripts/evidence-verify.mjs',
+    evidenceInputContract: 'scripts/lib/evidence-manifest-contract.mjs',
     workflow: '.github/workflows/go-quality.yml',
   };
 }

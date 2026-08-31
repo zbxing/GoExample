@@ -81,7 +81,7 @@ function environmentFingerprint() {
 
 function candidate() {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     generatedAt: '2026-08-25T00:00:00.000Z',
     scope: 'linux_loopback_combined_client_server_harness',
     environmentFingerprint: environmentFingerprint(),
@@ -93,6 +93,9 @@ function candidate() {
         results: {
           fiber: { median: { throughputRps: 1200, p95Nanos: 1400, p99Nanos: 1800 } },
           'net-http': { median: { throughputRps: 1000, p95Nanos: 1750, p99Nanos: 2300 } },
+          'framework-net-http': {
+            median: { throughputRps: 800, p95Nanos: 2200, p99Nanos: 2900 },
+          },
         },
       })),
     },
@@ -109,7 +112,7 @@ function candidate() {
               p99Nanos: 1800,
             },
           },
-          'net-http': {
+          'framework-net-http': {
             rounds: 5,
             median: {
               throughputRps: 1000,
@@ -174,7 +177,7 @@ test('transport benchmark baseline prepares a compatible trusted-run candidate',
   assert.equal(provenance.source.event, 'push');
   assert.equal(provenance.source.headBranch, 'main');
   assert.match(provenance.candidate.sha256, /^[a-f0-9]{64}$/);
-  assert.equal(provenance.candidate.reportSchemaVersion, 4);
+  assert.equal(provenance.candidate.reportSchemaVersion, 5);
   assert.equal(
     provenance.candidate.environmentFingerprintSha256,
     candidate().environmentFingerprint.sha256,
@@ -204,6 +207,30 @@ test('transport benchmark baseline records a missing candidate without inventing
   assert.equal(provenance.status, 'not_available');
   assert.equal(provenance.reason, 'compatible_candidate_missing');
   await assert.rejects(readFile(outputPath, 'utf8'), /ENOENT/);
+});
+
+test('transport benchmark baseline treats the prior schema as a one-run migration gap', async (t) => {
+  await mkdir(candidateFixtureRoot, { recursive: true });
+  await mkdir(outputFixtureRoot, { recursive: true });
+  const candidateRoot = await mkdtemp(path.join(candidateFixtureRoot, 'schema-migration-'));
+  const outputRoot = await mkdtemp(path.join(outputFixtureRoot, 'schema-migration-'));
+  t.after(() => Promise.all([
+    rm(candidateRoot, { recursive: true, force: true }),
+    rm(outputRoot, { recursive: true, force: true }),
+  ]));
+  const candidatePath = path.join(candidateRoot, 'baseline-candidate.json');
+  const outputPath = path.join(outputRoot, 'baseline.json');
+  const provenancePath = path.join(outputRoot, 'baseline-source.json');
+  const legacy = candidate();
+  legacy.schemaVersion = 4;
+  await writeFile(candidatePath, `${JSON.stringify(legacy)}\n`, 'utf8');
+
+  const result = runPrepare(candidatePath, outputPath, provenancePath);
+  assert.equal(result.status, 0, result.stderr);
+  await assert.rejects(readFile(outputPath, 'utf8'), /ENOENT/);
+  const provenance = JSON.parse(await readFile(provenancePath, 'utf8'));
+  assert.equal(provenance.status, 'not_available');
+  assert.equal(provenance.reason, 'report_schema_migration');
 });
 
 test('transport benchmark baseline unavailable command clears stale output', async (t) => {
@@ -253,12 +280,32 @@ test('transport benchmark baseline rejects untrusted events and incompatible rep
   assert.equal(invalidReport.status, 1);
   assert.match(invalidReport.stderr, /candidate workload matrix is incompatible/);
 
+  const missingFrameworkCapacity = candidate();
+  delete missingFrameworkCapacity.capacity.workloads[0].results['framework-net-http'];
+  await writeFile(candidatePath, `${JSON.stringify(missingFrameworkCapacity)}\n`, 'utf8');
+  const invalidFrameworkCapacity = runPrepare(candidatePath, outputPath, provenancePath);
+  assert.equal(invalidFrameworkCapacity.status, 1);
+  assert.match(
+    invalidFrameworkCapacity.stderr,
+    /candidate is missing a valid steady-c1\/framework-net-http median/,
+  );
+
   const missingScenario = candidate();
   missingScenario.scenarios.workloads.pop();
   await writeFile(candidatePath, `${JSON.stringify(missingScenario)}\n`, 'utf8');
   const invalidScenarioMatrix = runPrepare(candidatePath, outputPath, provenancePath);
   assert.equal(invalidScenarioMatrix.status, 1);
   assert.match(invalidScenarioMatrix.stderr, /candidate scenario matrix is incompatible/);
+
+  const missingFrameworkScenario = candidate();
+  delete missingFrameworkScenario.scenarios.workloads[0].results['framework-net-http'];
+  await writeFile(candidatePath, `${JSON.stringify(missingFrameworkScenario)}\n`, 'utf8');
+  const invalidFrameworkScenario = runPrepare(candidatePath, outputPath, provenancePath);
+  assert.equal(invalidFrameworkScenario.status, 1);
+  assert.match(
+    invalidFrameworkScenario.stderr,
+    /candidate is missing a valid response-32k-c16\/framework-net-http scenario median/,
+  );
 
   const incompatibleScenario = candidate();
   incompatibleScenario.scenarios.workloads[0].concurrency += 1;

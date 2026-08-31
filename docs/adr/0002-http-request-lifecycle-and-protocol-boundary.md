@@ -12,6 +12,7 @@
 3. `NewHTTPHandler` 用不可预测、一次性且仅进程内解析的令牌把原始 `http.Request.Context()` 交给 Framework 的第一个 middleware；令牌在任何日志、路由或业务 handler 前从请求删除。caller deadline、主动取消、标准 middleware value 和标准 listener 的真实 TCP 断连因此会进入 application context。
 4. 原生 Fiber/fasthttp listener 仍不承诺客户端断开后及时取消下游任务。保留的真实 TCP 对照固定了该限制：客户端发送请求后关闭 socket，不会在 100 ms 内关闭应用 context；该兼容入口仍由主动 request deadline 或 server shutdown 兜底，不用于依赖即时断连取消的大上传、昂贵查询或长流式请求。
 5. Example 默认由 `server.RunHTTP` 的标准 listener 承载经 Fiber adaptor 组装的 handler；accepted connection、read-header/read/write/idle/header、request cancellation、draining 和 shutdown 均有本地契约。Fiber direct listener 的 HTTP/1.1/TLS 行为和标准 `net/http` TLS/HTTP/2、loopback reverse proxy 另有对照。仓库现固定 Nginx 1.30.4 edge 配置与真实容器 CI 入口，但这仍不代表目标 Nginx/Ingress 已运行或 HTTP/3 已支持；在完成目标 edge 的握手、header、buffering、timeout 和断连传播测试前不得宣称为生产能力。
+6. SSE 必须通过 `SendServerSentEvents` 或纯新增的 `SendServerSentEventsFromSource` 使用 Framework request lifecycle。普通请求仍在 handler 返回时释放 deadline；SSE body stream 则把取消所有权移交给 producer，并以一次性清理统一响应请求 deadline、标准客户端断连和应用停机。静态 channel 继续使用原 options 布局；恢复入口的 `ServerSentEventSource` 接收最多 1024 bytes、单行且为有效 UTF-8 的 `Last-Event-ID` 和同一有界 context，使业务可以按游标恢复。事件 channel 不经过内部队列，每次接收跟随前一次 flush；EventSource wire format、UTF-8/字段/大小、心跳范围和 cache headers 都是固定契约。该决定不扩展到原生 Fiber listener、WebSocket、目标 edge 或 HTTP/3。
 
 ## 已验证行为
 
@@ -21,7 +22,8 @@
 - server shutdown 在 500 ms 上限内取消活动 handler，应用 context 返回 `context.Canceled`；
 - `NewHTTPHandler` 保留 caller 的较短 deadline 与 middleware context value；主动取消和标准 TCP 客户端直接关闭 socket 都会使 application context 返回 `context.Canceled`，伪造的内部桥接 header 在原生/标准入口都不会到达路由；
 - Fiber `tls.Listener` 能完成受信任证书的 HTTPS/HTTP/1.1 请求并在 shutdown 时清理；
-- Fiber `SendStreamWriter` 能按 flush 顺序发送最小多块响应；受控慢读客户端会制造 socket 背压，并证明 `HTTP_WRITE_TIMEOUT` 安装的写截止时间终止底层写入和流生产；该契约仍不代表 SSE/WebSocket 已获得完整生命周期支持；
+- Fiber `SendStreamWriter` 能按 flush 顺序发送最小多块响应；受控慢读客户端会制造 socket 背压，并证明 `HTTP_WRITE_TIMEOUT` 安装的写截止时间终止底层写入和流生产；该通用契约仍不代表 WebSocket 已获得应用协议生命周期支持；
+- 标准 HTTP/1.1 与 TLS/HTTP2 下的 `SendServerSentEvents` 会在流保持活动时刷新首事件与心跳，固定 `text/event-stream`、`no-cache, no-transform`、有界事件和多行 data 编码；恢复 source 在两种协议下都接收经过边界校验的 `Last-Event-ID`，stream 完成后 producer context 取消；关闭客户端 body 后 producer 会退出，`RunHTTP` 配合 `app.ShutdownWithContext` 会在停机预算内收敛活动 SSE；
 - `/api/v1` 的 `HTTP_MAX_IN_FLIGHT` 提供非阻塞应用 admission：容量耗尽返回 `503` 与 `Retry-After`，顶层健康探针不占用业务 slot；这不是传输层慢客户端背压的替代品；
 - readiness 进入 draining 后，新的 `/api/v1` 请求返回 `503` 与 `Retry-After`，已经开始的 handler 不被该 gate 中断；容量拒绝和摘流拒绝分别计数；
 - `HTTP_READ_BUFFER_SIZE` 显式限定请求头读取预算（默认 16 KiB，4 KiB–1 MiB），真实 TCP 超限请求返回 431；该上限必须与 edge、认证头和 Cookie 预算一致；
@@ -57,5 +59,6 @@ SHUTDOWN_DRAIN_DELAY + HTTP_REQUEST_TIMEOUT < SHUTDOWN_TIMEOUT (20s)
 - 目标 edge-to-client 真实证书 TLS/HTTP/2 与 HTTP/3 自动握手测试；
 - 目标 edge-to-app timeout、buffering、header 与断连传播实验；仓库固定容器入口不替代目标平台；
 - 目标 edge 下的慢上传、慢响应、半关闭、连接容量和断连传播测试；应用直连 TCP 与固定 Nginx loopback 只覆盖基础行为；
-- SSE/WebSocket 的背压、心跳、断连清理和停机契约；当前通用流响应测试不代表这些协议已受支持；
+- WebSocket 的背压、心跳、graceful close、断连清理和停机契约；
+- 目标 edge 下 SSE 的 buffering、断连传播、连接容量、浏览器实际重连、持久化 replay store 的缺口恢复/去重/跨副本一致性和长稳内存证据；仓库内标准入口契约不替代目标平台；
 - 目标 edge 到标准入口的断连取消与长请求清理证据；本地直连标准 TCP 契约不替代目标平台代理行为。

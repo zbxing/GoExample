@@ -35,6 +35,8 @@ const workloads = [
   ...steadyWorkloads,
   { name: 'connection-churn-c16', requests: 800, concurrency: 16, keepAlive: false },
 ];
+const capacityTransports = ['fiber', 'net-http', 'framework-net-http'];
+const scenarioTransports = ['fiber', 'framework-net-http'];
 const scenarios = [
   {
     name: 'response-32k-c16',
@@ -44,7 +46,7 @@ const scenarios = [
     dependencyDelayNanos: 0,
     payloadBytes: 32 * 1024 + 32,
     fiberThroughput: 780,
-    netHTTPThroughput: 700,
+    frameworkNetHTTPThroughput: 700,
   },
   {
     name: 'auth-reject-c16',
@@ -54,7 +56,7 @@ const scenarios = [
     dependencyDelayNanos: 0,
     payloadBytes: 67,
     fiberThroughput: 1400,
-    netHTTPThroughput: 1200,
+    frameworkNetHTTPThroughput: 1200,
   },
   {
     name: 'dependency-delay-5ms-c32',
@@ -64,7 +66,7 @@ const scenarios = [
     dependencyDelayNanos: 5_000_000,
     payloadBytes: 52,
     fiberThroughput: 5100,
-    netHTTPThroughput: 4800,
+    frameworkNetHTTPThroughput: 4800,
   },
 ];
 const steadyThroughput = new Map([
@@ -123,23 +125,33 @@ function fixture({
   driftScenarioContract = false,
   scenarioErrorCount = 0,
   driftScenarioPayload = false,
+  omitCapacityTransport = '',
+  omitScenarioTransport = '',
+  tamperFrameworkTransport = false,
 } = {}) {
   const lines = [];
   for (let round = 1; round <= rounds; round += 1) {
-    for (const transport of ['fiber', 'net-http']) {
+    for (const transport of capacityTransports) {
       const fiber = transport === 'fiber';
+      const framework = transport === 'framework-net-http';
+      const measurementTransport = tamperFrameworkTransport && framework && round === rounds
+        ? 'framework-net-http-tampered'
+        : transport;
       lines.push(`TRANSPORT_LATENCY ${JSON.stringify({
         schemaVersion: 1,
-        transport,
+        transport: measurementTransport,
         requests: 2000,
         concurrency: 16,
         payloadBytes: 88,
-        throughputRps: (fiber ? 1200 : 1000) + round,
-        p50Nanos: (fiber ? 1000 : 1200) + round,
-        p95Nanos: (fiber ? 1500 : 1800) + round,
-        p99Nanos: (fiber ? 1900 : 2400) + round,
+        throughputRps: (fiber ? 1200 : framework ? 800 : 1000) + round,
+        p50Nanos: (fiber ? 1000 : framework ? 1400 : 1200) + round,
+        p95Nanos: (fiber ? 1500 : framework ? 2100 : 1800) + round,
+        p99Nanos: (fiber ? 1900 : framework ? 2800 : 2400) + round,
         errorRate: 0,
       })}`);
+      if (transport === omitCapacityTransport) {
+        continue;
+      }
       for (const workload of workloads) {
         const currentErrorCount = errorCount && round === 1 && fiber && workload.name === 'steady-c1'
           ? errorCount
@@ -147,6 +159,7 @@ function fixture({
         const throughputBase = workload.keepAlive
           ? steadyThroughput.get(workload.concurrency)
           : 700;
+        const throughputFactor = fiber ? 1.2 : framework ? 0.8 : 1;
         lines.push(`transport_benchmark_test.go:391: TRANSPORT_CAPACITY ${JSON.stringify({
           schemaVersion: 1,
           transport,
@@ -155,25 +168,31 @@ function fixture({
           concurrency: workload.concurrency,
           keepAlive: workload.keepAlive,
           payloadBytes: driftPayload && round === 5 && fiber && workload.name === 'steady-c64' ? 89 : 88,
-          throughputRps: (fiber ? throughputBase * 1.2 : throughputBase) + round,
-          p50Nanos: (fiber ? 900 : 1100) + round,
-          p95Nanos: (fiber ? 1400 : 1750) + round,
-          p99Nanos: (fiber ? 1800 : 2300) + round,
-          connectionWaitP95Nanos: (fiber ? 300 : 400) + round,
+          throughputRps: throughputBase * throughputFactor + round,
+          p50Nanos: (fiber ? 900 : framework ? 1350 : 1100) + round,
+          p95Nanos: (fiber ? 1400 : framework ? 2200 : 1750) + round,
+          p99Nanos: (fiber ? 1800 : framework ? 2900 : 2300) + round,
+          connectionWaitP95Nanos: (fiber ? 300 : framework ? 500 : 400) + round,
           errorCount: currentErrorCount,
           errorRate: currentErrorCount / workload.requests,
           connectionDials: workload.keepAlive ? workload.concurrency : workload.requests,
           maxInFlight: workload.concurrency,
-          totalAllocBytes: (fiber ? 100000 : 125000) + round,
-          mallocs: (fiber ? 1000 : 1300) + round,
+          totalAllocBytes: (fiber ? 100000 : framework ? 175000 : 125000) + round,
+          mallocs: (fiber ? 1000 : framework ? 1800 : 1300) + round,
           gcCycles: 1,
-          gcPauseNanos: (fiber ? 10000 : 12000) + round,
+          gcPauseNanos: (fiber ? 10000 : framework ? 15000 : 12000) + round,
           goroutinesBefore: 8,
           goroutinesAfter: 8,
           openFileDescriptorsBefore: 10,
           openFileDescriptorsAfter: 10,
         })}`);
       }
+    }
+    for (const transport of scenarioTransports) {
+      if (transport === omitScenarioTransport) {
+        continue;
+      }
+      const fiber = transport === 'fiber';
       for (const scenario of scenarios) {
         if (scenario.name === omitScenario) {
           continue;
@@ -200,7 +219,9 @@ function fixture({
             && scenario.name === 'response-32k-c16'
             ? scenario.payloadBytes + 1
             : scenario.payloadBytes,
-          throughputRps: (fiber ? scenario.fiberThroughput : scenario.netHTTPThroughput) + round,
+          throughputRps: (
+            fiber ? scenario.fiberThroughput : scenario.frameworkNetHTTPThroughput
+          ) + round,
           p50Nanos: (fiber ? 1000 : 1100) + round,
           p95Nanos: (fiber ? 1500 : 1700) + round,
           p99Nanos: (fiber ? 1900 : 2200) + round,
@@ -224,7 +245,7 @@ test('transport benchmark report validates the matrix and emits medians and rati
   const result = run(input, output);
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(await readFile(output, 'utf8'));
-  assert.equal(report.schemaVersion, 4);
+  assert.equal(report.schemaVersion, 5);
   assert.equal(report.scope, 'linux_loopback_combined_client_server_harness');
   assert.equal(report.environmentFingerprint.runner.provider, 'github-actions');
   assert.equal(report.environmentFingerprint.runner.os, 'Linux');
@@ -236,21 +257,39 @@ test('transport benchmark report validates the matrix and emits medians and rati
   assert.equal(report.latency.results.fiber.median.throughputRps, 1203);
   assert.equal(report.capacity.workloads.length, 9);
   assert.equal(report.capacity.workloads[0].results['net-http'].median.totalAllocBytes, 125003);
+  assert.equal(
+    report.capacity.workloads[0].results['framework-net-http'].median.totalAllocBytes,
+    175003,
+  );
   assert.equal(report.capacity.workloads[0].directionalRatios.throughputFiberToNetHTTP, 1.194175);
+  assert.equal(
+    report.capacity.workloads[0].frameworkAdapterRatios.frameworkNetHTTPToFiber.throughputRatio,
+    0.674797,
+  );
+  assert.equal(
+    report.capacity.workloads[0].frameworkAdapterRatios.frameworkNetHTTPToNetHTTP.throughputRatio,
+    0.805825,
+  );
   assert.deepEqual(report.capacity.capacityKnee.steps, [1, 2, 4, 8, 16, 32, 64, 128]);
   assert.equal(report.capacity.capacityKnee.results.fiber.concurrency, 32);
   assert.equal(report.capacity.capacityKnee.results.fiber.observedPeakConcurrency, 64);
   assert.equal(report.capacity.capacityKnee.results['net-http'].concurrency, 32);
   assert.equal(report.capacity.capacityKnee.results['net-http'].observedPeakConcurrency, 64);
+  assert.equal(report.capacity.capacityKnee.results['framework-net-http'].concurrency, 32);
+  assert.equal(report.capacity.capacityKnee.results['framework-net-http'].observedPeakConcurrency, 64);
   assert.match(report.capacity.capacityKnee.definition, /90% of observed peak/);
   assert.equal(report.scenarios.workloads.length, 3);
   assert.deepEqual(report.scenarios.workloads.map((scenario) => scenario.name), scenarios.map((scenario) => scenario.name));
   assert.ok(report.scenarios.workloads.every((scenario) => (
-    scenario.results.fiber.rounds === 5 && scenario.results['net-http'].rounds === 5
+    scenario.results.fiber.rounds === 5 && scenario.results['framework-net-http'].rounds === 5
   )));
   assert.equal(report.scenarios.workloads[0].payloadBytes, 32 * 1024 + 32);
   assert.equal(report.scenarios.workloads[2].dependencyDelayNanos, 5_000_000);
-  assert.equal(report.scenarios.workloads[0].directionalRatios.throughputFiberToNetHTTP, 1.113798);
+  assert.equal(
+    report.scenarios.workloads[0].directionalRatios
+      .fiberToFrameworkNetHTTP.throughputRatio,
+    1.113798,
+  );
   assert.match(report.limitations[0], /combined client\/server harness-process deltas/);
   assert.match(report.limitations[2], /not a production capacity limit/);
   assert.match(report.limitations[3], /fixed loopback synthetic contracts/);
@@ -273,7 +312,7 @@ test('transport benchmark report applies fixed cross-run regression thresholds',
   assert.equal(passing.status, 0, passing.stderr);
   const report = JSON.parse(await readFile(output, 'utf8'));
   assert.equal(report.regression.status, 'passed');
-  assert.equal(report.regression.comparisons.length, 18);
+  assert.equal(report.regression.comparisons.length, 27);
   assert.equal(report.regression.scenarioComparisons.length, 6);
   assert.equal(report.regression.thresholds.maxThroughputRegressionFraction, 0.1);
   assert.equal(report.regression.environmentComparison.status, 'comparable');
@@ -359,6 +398,21 @@ test('transport benchmark report rejects incomplete, failed, and payload-drifted
     { name: 'incomplete', raw: fixture({ rounds: 4 }), message: /has 4 rounds; expected 5/ },
     { name: 'errors', raw: fixture({ errorCount: 1 }), message: /error rates must be zero/ },
     { name: 'payload-drift', raw: fixture({ driftPayload: true }), message: /payloadBytes must remain stable/ },
+    {
+      name: 'framework-capacity-missing',
+      raw: fixture({ omitCapacityTransport: 'framework-net-http' }),
+      message: /capacity steady-c1\/framework-net-http has 0 rounds; expected 5/,
+    },
+    {
+      name: 'framework-transport-tamper',
+      raw: fixture({ tamperFrameworkTransport: true }),
+      message: /unexpected transport: framework-net-http-tampered/,
+    },
+    {
+      name: 'framework-scenario-missing',
+      raw: fixture({ omitScenarioTransport: 'framework-net-http' }),
+      message: /scenario response-32k-c16\/framework-net-http has 0 rounds; expected 5/,
+    },
     {
       name: 'scenario-missing',
       raw: fixture({ omitScenario: 'auth-reject-c16' }),

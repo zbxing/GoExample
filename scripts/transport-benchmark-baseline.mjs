@@ -23,6 +23,7 @@ const unavailableReasons = new Set([
   'no_trusted_successful_run',
   'artifact_download_failed',
   'pull_request_not_eligible',
+  'report_schema_migration',
 ]);
 const workloadNames = [
   'steady-c1',
@@ -61,7 +62,8 @@ const scenarioWorkloads = [
     minimumPayloadBytes: 1,
   },
 ];
-const transports = ['fiber', 'net-http'];
+const capacityTransports = ['fiber', 'net-http', 'framework-net-http'];
+const scenarioTransports = ['fiber', 'framework-net-http'];
 
 function fail(message) {
   console.error(`Transport benchmark baseline: ${message}`);
@@ -148,8 +150,8 @@ function removeBaseline(filePath) {
 }
 
 function validateCandidate(candidate) {
-  if (candidate.schemaVersion !== 4 || candidate.scope !== reportScope) {
-    fail('candidate must be a schemaVersion 4 transport capacity and scenario report');
+  if (candidate.schemaVersion !== 5 || candidate.scope !== reportScope) {
+    fail('candidate must be a schemaVersion 5 transport capacity and scenario report');
   }
   try {
     validateEnvironmentFingerprint(candidate.environmentFingerprint, { requireGitHubActions: true });
@@ -171,7 +173,7 @@ function validateCandidate(candidate) {
     fail('candidate workload matrix is incompatible');
   }
   for (const workload of candidate.capacity.workloads) {
-    for (const transport of transports) {
+    for (const transport of capacityTransports) {
       const median = workload.results?.[transport]?.median;
       if (
         !median
@@ -208,7 +210,7 @@ function validateCandidate(candidate) {
     ) {
       fail(`candidate scenario contract is incompatible for ${candidateScenario.name}`);
     }
-    for (const transport of transports) {
+    for (const transport of scenarioTransports) {
       const result = candidateScenario.results?.[transport];
       const median = result?.median;
       if (
@@ -298,6 +300,10 @@ function prepare(options) {
     candidate = JSON.parse(raw);
   } catch (error) {
     fail(`candidate is not valid JSON: ${error.message}`);
+  }
+  if (candidate.schemaVersion === 4 && candidate.scope === reportScope) {
+    unavailable(outputPath, provenancePath, 'report_schema_migration', source);
+    return;
   }
   validateCandidate(candidate);
   mkdirSync(path.dirname(outputPath), { recursive: true });

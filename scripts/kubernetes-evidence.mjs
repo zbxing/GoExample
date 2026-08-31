@@ -51,6 +51,8 @@ function run() {
   const render = check.status === 0
     ? commandResult([
         'render',
+        '--namespace',
+        kubernetesValidationFixture.namespace,
         '--image',
         kubernetesValidationFixture.image,
         '--allowed-origin',
@@ -61,6 +63,8 @@ function run() {
         kubernetesValidationFixture.oidcAudience,
         '--oidc-jwks-url',
         kubernetesValidationFixture.oidcJWKSURL,
+        '--secret-revision',
+        kubernetesValidationFixture.secretRevision,
         '--output',
         path.relative(repositoryRoot, renderedManifestPath),
       ])

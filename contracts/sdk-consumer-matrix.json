@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "sunset": {
+    "deprecatedAt": "2026-08-20T00:00:00.000Z",
+    "sunsetAt": "2027-02-20T00:00:00.000Z",
+    "minimumWindowDays": 184
+  },
+  "consumers": [
+    {
+      "name": "HealthProbe",
+      "projectPath": "Solutions/Example",
+      "modulePath": "support/consumer/HealthProbe",
+      "sdkPath": "SDK/GoExample",
+      "sdkVersion": "1.4.0",
+      "contractVersion": "1.4.0",
+      "canonicalPaths": ["/readyz"],
+      "deprecatedPaths": ["/api/health/ready"],
+      "migrationStatus": "repository_local",
+      "deploymentStatus": "not_recorded"
+    },
+    {
+      "name": "Billing",
+      "projectPath": "Services/Billing",
+      "modulePath": "Services/Billing",
+      "sdkPath": "SDK/Billing",
+      "sdkVersion": "1.0.0",
+      "contractVersion": "1.0.0",
+      "canonicalPaths": ["/readyz", "/api/v1/billing/summary"],
+      "deprecatedPaths": [],
+      "migrationStatus": "repository_local",
+      "deploymentStatus": "not_recorded"
+    }
+  ],
+  "release": {
+    "formalTag": "not_checked",
+    "packagePublication": "not_checked",
+    "externalConsumerMatrix": "not_recorded",
+    "deprecationWindowExecution": "not_recorded",
+    "targetDeployment": "not_recorded"
+  },
+  "limitations": [
+    "the matrix binds repository-local consumers, generated SDK versions, and the documented deprecation window",
+    "it does not prove a formal tag, package publication, external consumer execution, or target deployment migration"
+  ]
+}

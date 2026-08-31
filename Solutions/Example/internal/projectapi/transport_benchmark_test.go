@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -155,20 +156,25 @@ type transportSoakWindowCounters struct {
 	errorCount atomic.Int64
 }
 
+type projectTransportCandidate struct {
+	name  string
+	start func(testing.TB, projectapp.Project) transportServer
+}
+
+func measuredProjectTransports() []projectTransportCandidate {
+	return []projectTransportCandidate{
+		{name: "fiber", start: startFiberProjectTransport},
+		{name: "net-http", start: startNetHTTPProjectTransport},
+		{name: "framework-net-http", start: startFrameworkNetHTTPProjectTransport},
+	}
+}
+
 func TestProjectTransportsReturnTheSameEnvelopeOverTCP(t *testing.T) {
 	project := projectapp.Project{Name: "Example", Environment: "benchmark", Version: "v1"}
-	service := projectapp.NewService(project)
-	servers := []struct {
-		name  string
-		start func(testing.TB, *projectapp.Service) transportServer
-	}{
-		{name: "fiber", start: startFiberTransport},
-		{name: "net-http", start: startNetHTTPTransport},
-	}
 
-	for _, candidate := range servers {
+	for _, candidate := range measuredProjectTransports() {
 		t.Run(candidate.name, func(t *testing.T) {
-			server := candidate.start(t, service)
+			server := candidate.start(t, project)
 			response, err := newTransportClient(t).Get(server.baseURL + "/api/v1/project")
 			if err != nil {
 				t.Fatalf("GET project: %v", err)
@@ -273,17 +279,10 @@ func TestProjectTransportLatencyTCP(t *testing.T) {
 		concurrency  = 16
 	)
 	project := projectapp.Project{Name: "Example", Environment: "benchmark", Version: "v1"}
-	servers := []struct {
-		name  string
-		start func(testing.TB, *projectapp.Service) transportServer
-	}{
-		{name: "fiber", start: startFiberTransport},
-		{name: "net-http", start: startNetHTTPTransport},
-	}
 
-	for _, candidate := range servers {
+	for _, candidate := range measuredProjectTransports() {
 		t.Run(candidate.name, func(t *testing.T) {
-			server := candidate.start(t, projectapp.NewService(project))
+			server := candidate.start(t, project)
 			client := newTransportClient(t)
 			url := server.baseURL + "/api/v1/project"
 			payloadBytes, _, err := requestProjectMeasurement(client, url)
@@ -370,18 +369,11 @@ func TestProjectTransportCapacityMatrixTCP(t *testing.T) {
 		{Name: "connection-churn-c16", Requests: 800, Concurrency: 16, DisableKeepAlives: true},
 	}
 	project := projectapp.Project{Name: "Example", Environment: "capacity", Version: "v1"}
-	servers := []struct {
-		name  string
-		start func(testing.TB, *projectapp.Service) transportServer
-	}{
-		{name: "fiber", start: startFiberTransport},
-		{name: "net-http", start: startNetHTTPTransport},
-	}
 
 	for _, workload := range workloads {
-		for _, candidate := range servers {
+		for _, candidate := range measuredProjectTransports() {
 			t.Run(workload.Name+"/"+candidate.name, func(t *testing.T) {
-				server := candidate.start(t, projectapp.NewService(project))
+				server := candidate.start(t, project)
 				client, connectionDials := newCapacityTransportClient(t, workload.DisableKeepAlives)
 				url := server.baseURL + "/api/v1/project"
 				payloadBytes, _, err := requestProjectMeasurement(client, url)
@@ -528,7 +520,7 @@ func TestProjectTransportScenarioMatrixTCP(t *testing.T) {
 		start func(testing.TB, *fiber.App) transportServer
 	}{
 		{name: "fiber", start: startFiberApplicationTransport},
-		{name: "net-http", start: startNetHTTPApplicationTransport},
+		{name: "framework-net-http", start: startNetHTTPApplicationTransport},
 	}
 
 	for _, scenario := range scenarios {
@@ -671,17 +663,10 @@ func TestProjectTransportSoakTCP(t *testing.T) {
 		settleDuration    = 250 * time.Millisecond
 	)
 	project := projectapp.Project{Name: "Example", Environment: "soak", Version: "v1"}
-	servers := []struct {
-		name  string
-		start func(testing.TB, *projectapp.Service) transportServer
-	}{
-		{name: "fiber", start: startFiberTransport},
-		{name: "net-http", start: startNetHTTPTransport},
-	}
 
-	for _, candidate := range servers {
+	for _, candidate := range measuredProjectTransports() {
 		t.Run(candidate.name, func(t *testing.T) {
-			server := candidate.start(t, projectapp.NewService(project))
+			server := candidate.start(t, project)
 			client, connectionDials := newCapacityTransportClient(t, false)
 			url := server.baseURL + "/api/v1/project"
 			payloadBytes, _, err := requestProjectMeasurement(client, url)
@@ -838,17 +823,10 @@ func runProjectTransportBenchmarks(b *testing.B, parallel bool) {
 	}
 
 	project := projectapp.Project{Name: "Example", Environment: "benchmark", Version: "v1"}
-	servers := []struct {
-		name  string
-		start func(testing.TB, *projectapp.Service) transportServer
-	}{
-		{name: "fiber", start: startFiberTransport},
-		{name: "net-http", start: startNetHTTPTransport},
-	}
 
-	for _, candidate := range servers {
+	for _, candidate := range measuredProjectTransports() {
 		b.Run(candidate.name, func(b *testing.B) {
-			server := candidate.start(b, projectapp.NewService(project))
+			server := candidate.start(b, project)
 			client := newTransportClient(b)
 			url := server.baseURL + "/api/v1/project"
 			for range 20 {
@@ -952,6 +930,32 @@ func startFiberApplicationTransport(tb testing.TB, app *fiber.App) transportServ
 		return app.ShutdownWithContext(ctx)
 	}, serveErrors)
 	return transportServer{baseURL: "http://" + listener.Addr().String()}
+}
+
+func startFiberProjectTransport(tb testing.TB, project projectapp.Project) transportServer {
+	tb.Helper()
+	return startFiberTransport(tb, projectapp.NewService(project))
+}
+
+func startNetHTTPProjectTransport(tb testing.TB, project projectapp.Project) transportServer {
+	tb.Helper()
+	return startNetHTTPTransport(tb, projectapp.NewService(project))
+}
+
+func startFrameworkNetHTTPProjectTransport(tb testing.TB, project projectapp.Project) transportServer {
+	tb.Helper()
+	options := httpapi.Options{
+		Name:           project.Name,
+		Environment:    project.Environment,
+		Version:        project.Version,
+		RateLimitMax:   math.MaxInt,
+		MaxInFlight:    512,
+		RequestTimeout: 2 * time.Second,
+		Logger:         slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Endpoints:      Endpoints(false),
+	}
+	options.ApplicationQueries = Queries(options)
+	return startNetHTTPApplicationTransport(tb, httpapi.New(options))
 }
 
 func startNetHTTPApplicationTransport(tb testing.TB, app *fiber.App) transportServer {

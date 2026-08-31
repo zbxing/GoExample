@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { link, mkdir, mkdtemp, readFile, readdir, rm, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import {
+  evidenceInputPaths,
+  optionalEvidenceInputPaths,
+} from '../../scripts/lib/evidence-manifest-contract.mjs';
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, '..', '..');
@@ -15,6 +19,10 @@ function runScript(relativePath, args = [], environment = {}) {
     encoding: 'utf8',
     env: { ...process.env, ...environment },
   });
+}
+
+function assertEvidenceInput(relativePath) {
+  assert.ok(evidenceInputPaths.includes(relativePath), `missing evidence input contract path: ${relativePath}`);
 }
 
 test('Go project runner rejects unsafe project selectors', () => {
@@ -115,6 +123,14 @@ test('Prometheus config and rules use pinned promtool with independently checked
   assert.match(verifier, /promtoolVersion = '3\.5\.0'/);
   assert.match(verifier, /prometheusRuleSchemaVersion = 3/);
   assert.match(verifier, /prometheusModuleVersion = 'v0\.305\.0'/);
+  assert.match(verifier, /Buffer\.allocUnsafe\(1024 \* 1024\)/);
+  assert.match(verifier, /readSync\(descriptor, buffer, 0, buffer\.length, null\)/);
+  assert.doesNotMatch(verifier, /hash\.update\(readFileSync\(filePath\)\)/);
+  for (const manifestScript of [evidenceManifest, evidenceVerifier]) {
+    assert.match(manifestScript, /Buffer\.allocUnsafe\(1024 \* 1024\)/);
+    assert.match(manifestScript, /readSync\(descriptor, buffer, 0, buffer\.length, null\)/);
+    assert.doesNotMatch(manifestScript, /hash\.update\(readFileSync\(filePath\)\)/);
+  }
   assert.match(verifier, /\['buildExitCode', 'checkConfigExitCode', 'checkRulesExitCode', 'endedAt', 'startedAt', 'testRulesExitCode', 'versionExitCode'\]/);
   assert.match(verifier, /\['build', 'checkConfig', 'checkRules', 'testRules', 'version'\]/);
   assert.match(toolModule, /tool github\.com\/prometheus\/prometheus\/cmd\/promtool/);
@@ -137,17 +153,34 @@ test('Prometheus config and rules use pinned promtool with independently checked
   assert.match(ruleTests, /GoExampleHTTPConnectionSaturation/);
   assert.match(ruleTests, /GoExampleSecurityAuditSinkFailures/);
   assert.match(ruleTests, /GoExampleTraceQueueDrops/);
+  for (const alertName of [
+    'GoExampleAvailabilityBurnRateWarning',
+    'GoExampleLatencySLOViolation',
+    'GoExampleTraceExportFailures',
+    'GoExampleTraceExportAttemptFailures',
+    'GoExampleTraceProcessorSaturation',
+    'GoExampleQueueDeliveryDeadLetters',
+    'GoExampleQueueSettlementFailures',
+    'GoExampleQueueLeaseExtensionFailures',
+    'GoExampleAuthenticationRateLimited',
+  ]) {
+    assert.match(ruleTests, new RegExp(`alertname: ${alertName}`));
+  }
+  assert.equal(ruleTests.match(/^  - name:/gm)?.length, 10);
   assert.match(evidenceManifest, /verifyPrometheusRuleEvidence/);
   assert.match(evidenceVerifier, /Prometheus rule evidence artifact is missing from the manifest/);
 });
 
 test('Kubernetes rendering produces deterministic tamper-checked repository evidence', async () => {
-  const [workflow, workspacePackage, runner, verifier, behaviorTest, runbook, evidenceManifest, evidenceVerifier] = await Promise.all([
+  const [workflow, workspacePackage, runner, verifier, behaviorTest, manifestBehaviorTest, manifestScript, template, runbook, evidenceManifest, evidenceVerifier] = await Promise.all([
     readFile(path.join(repositoryRoot, '.github', 'workflows', 'node-tools-quality.yml'), 'utf8'),
     readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'kubernetes-evidence.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'lib', 'kubernetes-evidence.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, '__test__', 'node', 'kubernetes-evidence.test.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, '__test__', 'node', 'kubernetes-manifest.test.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'kubernetes-manifest.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'support', 'deploy', 'kubernetes', 'goexample-api.template.json'), 'utf8'),
     readFile(path.join(repositoryRoot, 'support', 'deploy', 'kubernetes', 'README.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'evidence-verify.mjs'), 'utf8'),
@@ -161,24 +194,212 @@ test('Kubernetes rendering produces deterministic tamper-checked repository evid
   assert.match(workspacePackage, /kubernetes-evidence\.test\.mjs/);
   assert.match(runner, /kubernetesValidationFixture/);
   assert.match(runner, /verifyKubernetesEvidence/);
-  assert.match(verifier, /kubernetesEvidenceSchemaVersion = 1/);
+  assert.match(verifier, /kubernetesEvidenceSchemaVersion = 15/);
   assert.match(verifier, /'0'\.repeat\(64\)/);
+  assert.match(verifier, /namespace: 'goexample-validation'/);
   assert.match(verifier, /https:\/\/console\.validation\.invalid/);
+  assert.match(verifier, /validation-secret-revision-00000001/);
+  assert.match(verifier, /does not prove target ConfigMap or Secret existence, target dynamic values, Secret key inventory/);
+  assert.match(verifier, /exact PodSpec object rejects init containers, volumes, DNS or scheduler drift, registry credentials/);
+  assert.match(verifier, /exact PodTemplateSpec object rejects unreviewed annotations, finalizers, owner references/);
   assert.match(verifier, /kubernetesDrill remains not_recorded/);
   assert.match(verifier, /rendered manifest does not exactly match the deterministic validated fixture/);
   assert.match(behaviorTest, /semanticTamper/);
   assert.match(behaviorTest, /Deployment replicas|does not exactly match/);
+  assert.match(manifestBehaviorTest, /unhealthy pod eviction/);
+  assert.match(manifestBehaviorTest, /zone spreading/);
+  assert.match(manifestBehaviorTest, /host namespace isolation/);
+  assert.match(manifestBehaviorTest, /service link isolation/);
+  assert.match(manifestBehaviorTest, /missing config checksum annotation/);
+  assert.match(manifestBehaviorTest, /forged config checksum annotation/);
+  assert.match(manifestBehaviorTest, /missing secret revision annotation/);
+  assert.match(manifestBehaviorTest, /concrete secret revision in template/);
+  assert.match(manifestBehaviorTest, /resource namespace drift/);
+  assert.match(manifestBehaviorTest, /concrete namespace in template/);
+  assert.match(manifestBehaviorTest, /pod identity/);
+  assert.match(manifestBehaviorTest, /pod security sysctl/);
+  assert.match(manifestBehaviorTest, /startup probe timing/);
+  assert.match(manifestBehaviorTest, /readiness probe timing/);
+  assert.match(manifestBehaviorTest, /liveness probe timing/);
+  assert.match(manifestBehaviorTest, /ephemeral storage request/);
+  assert.match(manifestBehaviorTest, /privileged container/);
+  assert.match(manifestBehaviorTest, /non-default proc mount/);
+  assert.match(manifestBehaviorTest, /container capability re-add/);
+  assert.match(manifestBehaviorTest, /container identity override/);
+  assert.match(manifestBehaviorTest, /container image pull policy drift/);
+  assert.match(manifestBehaviorTest, /container command override/);
+  assert.match(manifestBehaviorTest, /container lifecycle hook/);
+  assert.match(manifestBehaviorTest, /interactive container standard input/);
+  assert.match(manifestBehaviorTest, /pod init container injection/);
+  assert.match(manifestBehaviorTest, /pod host path volume injection/);
+  assert.match(manifestBehaviorTest, /pod DNS policy drift/);
+  assert.match(manifestBehaviorTest, /pod registry credential injection/);
+  assert.match(manifestBehaviorTest, /pod template sidecar injection annotation/);
+  assert.match(manifestBehaviorTest, /pod template finalizer injection/);
+  assert.match(manifestBehaviorTest, /pod template owner reference injection/);
+  assert.match(manifestBehaviorTest, /missing egress policy/);
+  assert.match(manifestBehaviorTest, /extra permissive network policy/);
+  assert.match(manifestBehaviorTest, /ingress source broadening/);
+  assert.match(manifestBehaviorTest, /dns namespace broadening/);
+  assert.match(manifestBehaviorTest, /egress port broadening/);
+  assert.match(manifestBehaviorTest, /rollout guardrails/);
+  assert.match(manifestBehaviorTest, /autoscaler replica bounds/);
+  assert.match(manifestBehaviorTest, /autoscaler utilization targets/);
+  assert.match(manifestBehaviorTest, /autoscaler scale-up rate/);
+  assert.match(manifestBehaviorTest, /autoscaler scale-down rate/);
+  assert.match(manifestBehaviorTest, /optional runtime secret/);
+  assert.match(manifestBehaviorTest, /extra environment source/);
+  assert.match(manifestBehaviorTest, /environment source precedence/);
+  assert.match(manifestBehaviorTest, /inline environment override/);
+  assert.match(manifestBehaviorTest, /extra config environment key/);
+  assert.match(manifestBehaviorTest, /missing config environment key/);
+  assert.match(manifestBehaviorTest, /fixed config environment value drift/);
+  assert.match(manifestBehaviorTest, /extra namespaced role/);
+  assert.match(manifestBehaviorTest, /extra deployment selector label/);
+  assert.match(manifestBehaviorTest, /deployment selector match expression/);
+  assert.match(manifestBehaviorTest, /mismatched pod template label/);
+  assert.match(manifestBehaviorTest, /extra service selector label/);
+  assert.match(manifestBehaviorTest, /extra container port/);
+  assert.match(manifestBehaviorTest, /container port protocol drift/);
+  assert.match(manifestBehaviorTest, /service external IP exposure/);
+  assert.match(manifestBehaviorTest, /service port protocol drift/);
+  assert.match(manifestBehaviorTest, /extra disruption selector label/);
+  assert.match(manifestBehaviorTest, /disruption selector match expression/);
+  assert.match(manifestBehaviorTest, /extra topology selector label/);
+  assert.match(manifestBehaviorTest, /topology selector match expression/);
+  assert.match(manifestScript, /pod\?\.enableServiceLinks !== false/);
+  assert.match(manifestScript, /pod\?\.hostNetwork !== false/);
+  assert.match(manifestScript, /pod\?\.hostPID !== false/);
+  assert.match(manifestScript, /pod\?\.hostIPC !== false/);
+  assert.match(manifestScript, /pod\?\.shareProcessNamespace !== false/);
+  assert.match(manifestScript, /const podSecurityContext = Object\.freeze\(\{/);
+  assert.match(manifestScript, /const containerSecurityContext = Object\.freeze\(\{/);
+  assert.match(manifestScript, /capabilities: Object\.freeze\(\{ drop: Object\.freeze\(\['ALL'\]\) \}\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(pod\?\.securityContext, podSecurityContext\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(container\.securityContext, containerSecurityContext\)/);
+  assert.match(manifestScript, /const containerPorts = Object\.freeze\(\[/);
+  assert.match(manifestScript, /const serviceSpec = Object\.freeze\(\{/);
+  assert.match(manifestScript, /isDeepStrictEqual\(container\.ports, containerPorts\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(service\.spec, serviceSpec\)/);
+  assert.match(manifestScript, /const probeDefinitions = Object\.freeze\(\{/);
+  assert.match(manifestScript, /httpGet: Object\.freeze\(\{ path: '\/startupz', port: 'http', scheme: 'HTTP' \}\)/);
+  assert.match(manifestScript, /httpGet: Object\.freeze\(\{ path: '\/readyz', port: 'http', scheme: 'HTTP' \}\)/);
+  assert.match(manifestScript, /httpGet: Object\.freeze\(\{ path: '\/livez', port: 'http', scheme: 'HTTP' \}\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(container\[name\], expected\)/);
+  assert.match(manifestScript, /function containerDefinition\(image\)/);
+  assert.match(manifestScript, /imagePullPolicy: 'IfNotPresent'/);
+  assert.match(manifestScript, /isDeepStrictEqual\(container, containerDefinition\(container\.image\)\)/);
+  assert.match(manifestScript, /const topologySpreadConstraints = Object\.freeze\(\[/);
+  assert.match(manifestScript, /function podSpecDefinition\(image\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(pod, podSpecDefinition\(container\.image\)\)/);
+  assert.match(manifestScript, /function podTemplateDefinition\(image, configChecksum, secretRevision\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(deployment\.spec\?\.template, podTemplateDefinition\(container\.image, configChecksum, secretRevision\)\)/);
+  assert.match(manifestScript, /'ephemeral-storage': '64Mi'/);
+  assert.match(manifestScript, /'ephemeral-storage': '256Mi'/);
+  assert.match(manifestScript, /const environmentSources = Object\.freeze\(\[/);
+  assert.match(manifestScript, /const environmentConfigKeys = Object\.freeze\(\[/);
+  assert.match(manifestScript, /const fixedEnvironmentConfigValues = Object\.freeze\(\{/);
+  assert.match(manifestScript, /const resourceIdentities = Object\.freeze\(\[/);
+  assert.match(manifestScript, /const workloadLabels = Object\.freeze\(\{/);
+  assert.match(manifestScript, /const workloadSelector = Object\.freeze\(\{ matchLabels: workloadLabels \}\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(actual, workloadLabels\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(actual, workloadSelector\)/);
+  assert.match(manifestScript, /configMapRef: Object\.freeze\(\{ name: 'goexample-api-config', optional: false \}\)/);
+  assert.match(manifestScript, /secretRef: Object\.freeze\(\{ name: 'goexample-api-runtime', optional: false \}\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(container\.envFrom, environmentSources\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(Object\.keys\(config\.data \?\? \{\}\)\.sort\(\), environmentConfigKeys\)/);
+  assert.match(manifestScript, /Object\.entries\(fixedEnvironmentConfigValues\)\.some\(\(\[key, value\]\) => config\.data\[key\] !== value\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(\[\.\.\.identities\]\.sort\(\), resourceIdentities\)/);
+  assert.match(manifestScript, /container\.env !== undefined/);
+  assert.match(manifestScript, /networkPolicies\.length !== 2/);
+  assert.match(manifestScript, /isDeepStrictEqual\(ingressNetworkPolicy\.spec, ingressNetworkPolicySpec\)/);
+  assert.match(manifestScript, /isDeepStrictEqual\(egressNetworkPolicy\.spec, egressNetworkPolicySpec\)/);
+  assert.match(manifestScript, /'kubernetes\.io\/metadata\.name': 'kube-system'/);
+  assert.match(manifestScript, /\{ protocol: 'TCP', port: 6380 \}/);
+  assert.match(manifestScript, /topologySpreadConstraints\?\.length !== 2/);
+  assert.match(manifestScript, /topologyKey === 'kubernetes\.io\/hostname'/);
+  assert.match(manifestScript, /topologyKey === 'topology\.kubernetes\.io\/zone'/);
+  assert.match(manifestScript, /unhealthyPodEvictionPolicy !== 'AlwaysAllow'/);
+  assert.match(manifestScript, /revisionHistoryLimit !== 5/);
+  assert.match(manifestScript, /progressDeadlineSeconds !== 600/);
+  assert.match(manifestScript, /autoscaler\.spec\?\.minReplicas !== 3/);
+  assert.match(manifestScript, /isUtilizationMetric\(metric, 'cpu', 70\)/);
+  assert.match(manifestScript, /isUtilizationMetric\(metric, 'memory', 75\)/);
+  assert.match(manifestScript, /scaleUp\?\.selectPolicy !== 'Max'/);
+  assert.match(manifestScript, /scaleDown\?\.selectPolicy !== 'Min'/);
+  assert.match(manifestScript, /createHash\('sha256'\)/);
+  assert.match(manifestScript, /configDataChecksum\(renderedConfig\.data\)/);
+  assert.match(manifestScript, /configChecksum !== configDataChecksum\(config\.data\)/);
+  assert.match(manifestScript, /validateSecretRevision\(secretRevision, false\)/);
+  assert.match(manifestScript, /'--secret-revision', 'secretRevision'/);
+  assert.match(manifestScript, /validateNamespace\(namespace, false\)/);
+  assert.match(manifestScript, /'--namespace', 'namespace'/);
+  assert.match(manifestScript, /all resources must use exactly one explicit namespace/);
+  assert.match(template, /"enableServiceLinks": false/);
+  assert.match(template, /"hostNetwork": false/);
+  assert.match(template, /"hostPID": false/);
+  assert.match(template, /"hostIPC": false/);
+  assert.match(template, /"shareProcessNamespace": false/);
+  assert.match(template, /"ephemeral-storage": "64Mi"/);
+  assert.match(template, /"ephemeral-storage": "256Mi"/);
+  assert.match(template, /"privileged": false/);
+  assert.match(template, /"procMount": "Default"/);
+  assert.equal((template.match(/"optional": false/g) ?? []).length, 2);
+  assert.match(runbook, /precisely contain the following 41 reviewed non-sensitive environment keys|精确包含以下 41 个已复核的非敏感环境键/);
+  assert.match(runbook, /缺少或增加任何键都会使检查失败/);
+  assert.match(runbook, /其余 37 项必须精确保持模板中的生产基线值/);
+  assert.match(runbook, /`HTTP_REQUEST_TIMEOUT=8s`/);
+  assert.match(runbook, /清单资源身份也必须精确等于已复核的 8 项集合/);
+  assert.match(runbook, /额外 namespaced 资源都会使检查失败/);
+  assert.match(runbook, /Deployment selector、Pod template labels、Service selector、PDB selector/);
+  assert.match(runbook, /selector 对象只能包含这两个 `matchLabels`，不得增加 `matchExpressions`/);
+  assert.match(template, /"name": "goexample-api-egress"/);
+  assert.match(template, /"kubernetes\.io\/metadata\.name": "kube-system"/);
+  assert.match(template, /"protocol": "UDP",\s*"port": 53/);
+  assert.match(template, /"protocol": "TCP",\s*"port": 6380/);
+  assert.match(template, /"unhealthyPodEvictionPolicy": "AlwaysAllow"/);
+  assert.match(template, /"revisionHistoryLimit": 5/);
+  assert.match(template, /"progressDeadlineSeconds": 600/);
+  assert.match(template, /"goexample\.io\/config-sha256": "__GOEXAMPLE_CONFIG_SHA256__"/);
+  assert.match(template, /"goexample\.io\/secret-revision": "__GOEXAMPLE_SECRET_REVISION__"/);
+  assert.match(template, /"namespace": "__GOEXAMPLE_NAMESPACE__"/);
+  assert.match(template, /"scaleDown":\s*\{[\s\S]*?"selectPolicy": "Min"[\s\S]*?"type": "Pods"[\s\S]*?"value": 1/);
   assert.match(runbook, /yarn kubernetes:evidence/);
   assert.match(runbook, /yarn kubernetes:evidence:verify/);
+  assert.match(runbook, /ephemeral-storage/);
+  assert.match(runbook, /UID\/GID\/fsGroup/);
+  assert.match(runbook, /完整 `securityContext` 对象执行结构化深比较/);
+  assert.match(runbook, /拒绝额外 sysctl、容器身份覆盖、capability re-add/);
+  assert.match(runbook, /三个探针的完整对象执行结构化深比较/);
+  assert.match(runbook, /不允许额外 `host`、`httpHeaders`、`initialDelaySeconds`、单探针 `terminationGracePeriodSeconds`/);
+  assert.match(runbook, /Pod template 的完整 `spec` 也必须精确匹配受检基线/);
+  assert.match(runbook, /拒绝额外 init\/ephemeral container、volume\/hostPath、`imagePullSecrets`/);
+  assert.match(runbook, /完整 `PodTemplateSpec` 同样必须精确匹配受检基线/);
+  assert.match(runbook, /拒绝 sidecar\/agent 注入 annotation、finalizer、owner reference/);
+  assert.match(runbook, /schema v15 报告/);
+  assert.match(runbook, /API 容器端口列表必须精确且只包含具名 `http` 的 TCP 3001/);
+  assert.match(runbook, /拒绝额外容器端口、TCP\/UDP 协议漂移、`externalIPs`/);
+  assert.match(runbook, /固定顺序通过 `envFrom` 加载 `goexample-api-config` ConfigMap，再加载 `goexample-api-runtime` Secret/);
+  assert.match(runbook, /不得设置 prefix、追加其他来源或定义 inline `env` 覆盖/);
+  assert.match(runbook, /Secret 会覆盖 ConfigMap 的同名 key/);
+  assert.match(runbook, /goexample-api-egress/);
+  assert.match(runbook, /TCP 443\/6380/);
+  assert.match(runbook, /NetworkPolicy 是可加和的/);
+  assert.match(runbook, /ConfigMap `data`，将其规范 SHA-256/);
+  assert.match(runbook, /--secret-revision/);
+  assert.match(runbook, /--namespace/);
+  assert.match(runbook, /拒绝 `default`、`kube-system`/);
+  assert.match(runbook, /不读取、散列或归档 Secret 内容/);
   assert.match(runbook, /不代表目标 Kubernetes API admission/);
   assert.match(evidenceManifest, /verifyKubernetesEvidence/);
   assert.match(evidenceVerifier, /Kubernetes evidence artifact is missing from the manifest/);
 });
 
 test('OpenAPI compatibility gate compares pull requests with their base commit', async () => {
-  const [workflow, script, policy, migration, routes, app, routeTests, openapiContract, openapiDocument, packageDocument] = await Promise.all([
+  const [workflow, script, compatibilityLibrary, policy, migration, routes, app, routeTests, openapiContract, openapiDocument, packageDocument] = await Promise.all([
     readFile(path.join(repositoryRoot, '.github', 'workflows', 'node-tools-quality.yml'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'openapi-compat.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'openapi-compat.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', 'openapi', 'compatibility-policy.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', 'openapi', 'health-endpoint-migration.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'routes_health.go'), 'utf8'),
@@ -194,7 +415,16 @@ test('OpenAPI compatibility gate compares pull requests with their base commit',
   assert.match(workflow, /yarn openapi:compat --base-ref/);
   assert.match(script, /spawnSync\('git', \['show'/);
   assert.match(script, /shell:\s*false/);
+  assert.match(compatibilityLibrary, /parameter serialization changed/);
+  assert.match(compatibilityLibrary, /nullable changed from/);
+  assert.match(compatibilityLibrary, /discriminator changed and requires explicit versioning review/);
+  assert.match(compatibilityLibrary, /added response media type/);
+  assert.match(compatibilityLibrary, /removed its schema/);
   assert.match(policy, /90 天兼容窗口/);
+  assert.match(policy, /参数序列化/);
+  assert.match(policy, /nullable/);
+  assert.match(policy, /discriminator/);
+  assert.match(policy, /响应新增 media type/);
   assert.match(policy, /184 天迁移窗口/);
   assert.match(migration, /184-day migration window/);
   assert.match(routes, /healthDeprecation\s*=\s*"@1787184000"/);
@@ -397,6 +627,8 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(workflow, /head_repository\?\.full_name/);
   assert.match(workflow, /transport-benchmark-baseline\.mjs prepare/);
   assert.match(workflow, /transport-benchmark-baseline\.mjs unavailable/);
+  assert.match(workflow, /__test__\/node\/transport-benchmark-report\.test\.mjs/);
+  assert.match(workflow, /__test__\/node\/transport-soak-report\.test\.mjs/);
   assert.match(workflow, /baseline-source\.json/);
   assert.match(workflow, /yarn bench:transports/);
   assert.match(workflow, /lscpu/);
@@ -436,7 +668,8 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(transportBaseline, /compatible_candidate_missing/);
   assert.match(transportBaseline, /candidate workload matrix is incompatible/);
   assert.match(transportBaseline, /candidate scenario matrix is incompatible/);
-  assert.match(transportBaseline, /candidate must be a schemaVersion 4/);
+  assert.match(transportBaseline, /candidate must be a schemaVersion 5/);
+  assert.match(transportBaseline, /report_schema_migration/);
   assert.match(transportBaseline, /event must be push or workflow_dispatch/);
   assert.match(transportBaseline, /createHash\('sha256'\)/);
   assert.match(transportBaseline, /validateEnvironmentFingerprint/);
@@ -453,6 +686,10 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(transportBenchmark, /TestHTTP2EdgeToFiberHTTP1Contract/);
   assert.match(transportBenchmark, /NewSingleHostReverseProxy/);
   assert.match(transportBenchmark, /TestProjectTransportLatencyTCP/);
+  assert.match(transportBenchmark, /measuredProjectTransports/);
+  assert.match(transportBenchmark, /framework-net-http/);
+  assert.match(transportBenchmark, /startFrameworkNetHTTPProjectTransport/);
+  assert.match(transportBenchmark, /httpapi\.NewHTTPHandler/);
   assert.match(transportBenchmark, /TRANSPORT_LATENCY/);
   assert.match(transportBenchmark, /TestProjectTransportCapacityMatrixTCP/);
   assert.match(transportBenchmark, /connection-churn-c16/);
@@ -467,6 +704,7 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(transportBenchmark, /TestProjectTransportSoakTCP/);
   assert.match(transportBenchmark, /TRANSPORT_SOAK_DURATION/);
   assert.match(transportBenchmark, /TRANSPORT_SOAK/);
+  assert.match(transportBenchmark, /TestProjectTransportSoakTCP[\s\S]*for _, candidate := range measuredProjectTransports\(\)/);
   assert.match(transportReport, /const expectedRounds = 5/);
   assert.match(transportReport, /steady-c1/);
   assert.match(transportReport, /steady-c2/);
@@ -487,7 +725,10 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(transportReport, /environment_fingerprint_mismatch/);
   assert.match(transportReport, /environmentComparison/);
   assert.match(transportReport, /parseMeasurements\(raw, 'TRANSPORT_SCENARIO'\)/);
-  assert.match(transportReport, /schemaVersion: 4/);
+  assert.match(transportReport, /schemaVersion: 5/);
+  assert.match(transportReport, /capacityTransports = \['fiber', 'net-http', 'framework-net-http'\]/);
+  assert.match(transportReport, /scenarioTransports = \['fiber', 'framework-net-http'\]/);
+  assert.match(transportReport, /frameworkAdapterRatios/);
   assert.match(transportReport, /scenarioComparisons/);
   assert.match(transportEnvironment, /runner\.imageVersion/);
   assert.match(transportEnvironment, /toolchain\.goVersion/);
@@ -498,6 +739,11 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(transportReport, /directionalRatios/);
   assert.match(transportReport, /combined client\/server harness-process deltas/);
   assert.match(transportSoakReport, /minimumDurationNanos = 30_000_000_000/);
+  assert.match(transportSoakReport, /const transports = \['fiber', 'net-http', 'framework-net-http'\]/);
+  assert.match(transportSoakReport, /schemaVersion: 2/);
+  assert.match(transportSoakReport, /frameworkAdapterRatios/);
+  assert.match(transportSoakReport, /frameworkNetHTTPToFiber/);
+  assert.match(transportSoakReport, /frameworkNetHTTPToNetHTTP/);
   assert.match(transportSoakReport, /minimumWindowToMedianThroughputRatio: 0\.5/);
   assert.match(transportSoakReport, /maximumSettledHeapInUseBytesDelta: 32 \* 1024 \* 1024/);
   assert.match(transportSoakReport, /all soak requests must complete without errors/);
@@ -527,7 +773,7 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
 });
 
 test('server admission control remains bounded and probe-safe', async () => {
-  const [app, middleware, metrics, config, environment, lifecycle, authRoutes, authTests] = await Promise.all([
+  const [app, middleware, metrics, config, environment, lifecycle, authRoutes, authTests, serverHTTP, serverHTTPTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'app.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'middleware.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'observability', 'metrics.go'), 'utf8'),
@@ -536,6 +782,8 @@ test('server admission control remains bounded and probe-safe', async () => {
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'lifecycle_contract_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'routes_auth.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'app_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'server', 'http.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'server', 'http_test.go'), 'utf8'),
   ]);
 
   assert.match(app, /MaxInFlight/);
@@ -584,6 +832,11 @@ test('server admission control remains bounded and probe-safe', async () => {
   assert.match(lifecycle, /options\.ReadTimeout\s*=\s*50 \* time\.Millisecond/);
   assert.match(lifecycle, /" 408 "/);
   assert.match(lifecycle, /StatusServiceUnavailable/);
+  assert.match(serverHTTP, /trackedHTTPListener/);
+  assert.match(serverHTTP, /state != http\.StateHijacked/);
+  assert.match(serverHTTP, /connectionTracker\.closeHijacked\(\)/);
+  assert.match(serverHTTPTests, /TestRunHTTPClosesHijackedConnectionsDuringShutdown/);
+  assert.match(serverHTTPTests, /hijacked connection remained open after shutdown/);
   assert.match(authTests, /TestRequestIDBoundaryPreservesValidAndReplacesUntrustedValues/);
   assert.match(lifecycle, /\/readyz/);
   assert.match(authRoutes, /authGroup\.Use/);
@@ -596,20 +849,42 @@ test('server admission control remains bounded and probe-safe', async () => {
 
 test('evidence manifest archives hashes and keeps unverified boundaries explicit', async () => {
   const scriptPath = path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs');
-  const [script, verifier, packageDocument, natsClusterEvidenceHelper] = await Promise.all([
+  const [script, verifier, contract, packageDocument, natsClusterEvidenceHelper] = await Promise.all([
     readFile(scriptPath, 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'evidence-verify.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'evidence-manifest-contract.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'lib', 'nats-cluster-evidence.mjs'), 'utf8'),
   ]);
   assert.match(script, /createHash\(['"]sha256['"]\)/);
   assert.match(script, /changedFileCount/);
+  assert.match(script, /statusSha256/);
+  assert.match(script, /--untracked-files=all/);
   assert.match(script, /productionSharedStore/);
   assert.match(script, /not_recorded/);
   assert.match(script, /output must be a \.json file inside the repository \.temp directory/);
   assert.match(verifier, /Evidence manifest verified/);
   assert.match(verifier, /hash mismatch/);
   assert.match(verifier, /contains an unsafe path/);
+  assert.match(verifier, /function requireExactKeys\(value, name, keys\)/);
+  assert.match(verifier, /must contain exactly these keys/);
+  assert.match(verifier, /repository Git commit must match the current repository commit/);
+  assert.match(verifier, /repository Git status hash no longer matches the manifest/);
+  assert.match(verifier, /current repository Git commit is unavailable/);
+  assert.match(verifier, /generatedAt must not be in the future/);
+  assert.match(verifier, /inputs must exactly match the evidence input contract/);
+  assert.match(verifier, /is a required evidence input and must be present/);
+  assert.match(script, /evidence inventory must not contain symbolic links/);
+  assert.match(verifier, /evidence inventory must not contain symbolic links/);
+  assert.match(script, /manifest output parent directory/);
+  assert.match(verifier, /manifest parent directory/);
+  assert.match(script, /must be a regular file with exactly one hard link/);
+  assert.match(verifier, /must be a regular file with exactly one hard link/);
+  assert.match(script, /evidence inventory must not contain hard-linked files/);
+  assert.match(verifier, /evidence inventory must not contain hard-linked files/);
+  assert.match(verifier, /must exactly match the current artifact inventory/);
+  assert.match(script, /evidenceInputPaths\.map\(describeInput\)/);
+  assert.match(contract, /Object\.freeze\(\[/);
   assert.match(verifier, /recorded localNatsRestart is missing required artifact/);
   assert.match(verifier, /single-node restart contract/);
   assert.match(verifier, /recorded localNatsClusterFailover is missing required artifact/);
@@ -627,23 +902,27 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     'node scripts/evidence-verify.mjs',
   );
 
-  await mkdir(path.join(repositoryRoot, '.temp'), { recursive: true });
-  const recoveryRoot = path.join(repositoryRoot, '.temp', 'recovery');
-  const recoveryFixtureRoot = path.join(recoveryRoot, '.test-fixtures');
-  await mkdir(recoveryFixtureRoot, { recursive: true });
-  const temporaryDirectory = await mkdtemp(path.join(repositoryRoot, '.temp', 'manifest-test-'));
-  const artifactDirectory = await mkdtemp(path.join(recoveryFixtureRoot, 'manifest-verify-'));
-  const outputPath = path.join(temporaryDirectory, 'manifest.json');
-  const artifactPath = path.join(artifactDirectory, 'recovery-result.txt');
-  await writeFile(artifactPath, 'verified recovery artifact\n', 'utf8');
+    await mkdir(path.join(repositoryRoot, '.temp'), { recursive: true });
+    const recoveryRoot = path.join(repositoryRoot, '.temp', 'recovery');
+    await mkdir(recoveryRoot, { recursive: true });
+    const temporaryDirectory = await mkdtemp(path.join(repositoryRoot, '.temp', 'manifest-test-'));
+    const artifactDirectory = await mkdtemp(path.join(recoveryRoot, 'manifest-verify-'));
+    const outputPath = path.join(temporaryDirectory, 'manifest.json');
+    const artifactPath = path.join(artifactDirectory, 'recovery-result.txt');
   try {
     const result = runScript('scripts/evidence-manifest.mjs', ['--output', outputPath]);
     assert.equal(result.status, 0, result.stderr);
     const manifest = JSON.parse(await readFile(outputPath, 'utf8'));
     assert.equal(manifest.schemaVersion, 1);
     assert.match(manifest.generatedAt, /^\d{4}-\d{2}-\d{2}T/);
-    assert.match(manifest.repository.gitCommit, /^[a-f0-9]{40}$|^unknown$/);
+    assert.match(manifest.repository.gitCommit, /^[a-f0-9]{40}$/);
+    assert.match(manifest.repository.statusSha256, /^[a-f0-9]{64}$/);
     assert.ok(Array.isArray(manifest.inputs));
+    assert.deepEqual(manifest.inputs.map((input) => input.path), evidenceInputPaths);
+    assert.deepEqual(optionalEvidenceInputPaths, ['go.work.sum']);
+    assert.ok(
+      manifest.inputs.filter((input) => !input.present).every((input) => optionalEvidenceInputPaths.includes(input.path)),
+    );
     assert.ok(manifest.inputs.some((input) => input.path === 'package.json' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'Framework/observability/metrics.go' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'Framework/auth/jwks.go' && input.sha256));
@@ -674,6 +953,7 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === 'SDK/Billing/release-manifest.json' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/evidence-manifest.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/evidence-verify.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/evidence-manifest-contract.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/audit-chain-evidence.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/audit-chain-evidence.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/authorization-evidence.mjs' && input.sha256));
@@ -682,6 +962,8 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/oidc-browser-evidence.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/release-provenance.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/sdk-release.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'scripts/sdk-release-evidence.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/sdk-release-evidence.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/server-recovery-drill.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/server-recovery-evidence.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/server-recovery-evidence.mjs' && input.sha256));
@@ -713,6 +995,7 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/authorization-evidence.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/oidc-browser-evidence.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/kubernetes-evidence.test.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/sdk-release-evidence.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/nginx-edge.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/nginx-edge-evidence.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/nats-cluster-evidence.test.mjs' && input.sha256));
@@ -749,6 +1032,252 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.equal(verified.status, 0, verified.stderr);
     assert.match(verified.stdout, /Evidence manifest verified/);
 
+    await mkdir(path.join(repositoryRoot, 'node_modules'), { recursive: true });
+    const outsideOutputDirectory = await mkdtemp(
+      path.join(repositoryRoot, 'node_modules', '.manifest-junction-test-'),
+    );
+    const linkedOutputParent = path.join(
+      repositoryRoot,
+      '.temp',
+      `manifest-output-junction-${process.pid}-${Date.now()}`,
+    );
+    await symlink(
+      outsideOutputDirectory,
+      linkedOutputParent,
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
+    try {
+      const linkedManifestPath = path.join(linkedOutputParent, 'manifest.json');
+      const linkedGeneration = runScript(
+        'scripts/evidence-manifest.mjs',
+        ['--output', linkedManifestPath],
+      );
+      assert.equal(linkedGeneration.status, 1);
+      assert.match(linkedGeneration.stderr, /manifest output parent directory must not contain symbolic links/);
+
+      await writeFile(
+        path.join(outsideOutputDirectory, 'manifest.json'),
+        `${JSON.stringify(manifest, null, 2)}\n`,
+        'utf8',
+      );
+      const linkedVerification = runScript(
+        'scripts/evidence-verify.mjs',
+        ['--manifest', linkedManifestPath],
+      );
+      assert.equal(linkedVerification.status, 1);
+      assert.match(linkedVerification.stderr, /manifest parent directory must not contain symbolic links/);
+    } finally {
+      await unlink(linkedOutputParent).catch(() => {});
+      await rm(outsideOutputDirectory, { recursive: true, force: true });
+    }
+
+    const hardlinkOutputDirectory = await mkdtemp(path.join(repositoryRoot, '.temp', 'manifest-hardlink-test-'));
+    try {
+      const peerPath = path.join(hardlinkOutputDirectory, 'peer.txt');
+      const hardlinkManifestPath = path.join(hardlinkOutputDirectory, 'manifest.json');
+      await writeFile(peerPath, 'hardlink peer sentinel\n', 'utf8');
+      await link(peerPath, hardlinkManifestPath);
+      const hardlinkGeneration = runScript(
+        'scripts/evidence-manifest.mjs',
+        ['--output', hardlinkManifestPath],
+      );
+      assert.equal(hardlinkGeneration.status, 1);
+      assert.match(hardlinkGeneration.stderr, /manifest output must be a regular file with exactly one hard link/);
+      assert.equal(await readFile(peerPath, 'utf8'), 'hardlink peer sentinel\n');
+
+      await writeFile(peerPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+      const hardlinkVerification = runScript(
+        'scripts/evidence-verify.mjs',
+        ['--manifest', hardlinkManifestPath],
+      );
+      assert.equal(hardlinkVerification.status, 1);
+      assert.match(hardlinkVerification.stderr, /manifest must be a regular file with exactly one hard link/);
+    } finally {
+      await rm(hardlinkOutputDirectory, { recursive: true, force: true });
+    }
+
+    const hardlinkArtifactPath = path.join(artifactDirectory, 'hardlink-source.txt');
+    const hardlinkArtifactAlias = path.join(artifactDirectory, 'hardlink-alias.txt');
+    await writeFile(hardlinkArtifactPath, 'hard-linked artifact\n', 'utf8');
+    await link(hardlinkArtifactPath, hardlinkArtifactAlias);
+    try {
+      const hardlinkArtifactGeneration = runScript(
+        'scripts/evidence-manifest.mjs',
+        ['--output', outputPath],
+      );
+      assert.equal(hardlinkArtifactGeneration.status, 1);
+      assert.match(hardlinkArtifactGeneration.stderr, /evidence inventory must not contain hard-linked files/);
+
+      const hardlinkArtifactVerification = runScript(
+        'scripts/evidence-verify.mjs',
+        ['--manifest', outputPath],
+      );
+      assert.equal(hardlinkArtifactVerification.status, 1);
+      assert.match(hardlinkArtifactVerification.stderr, /evidence inventory must not contain hard-linked files/);
+    } finally {
+      await rm(hardlinkArtifactAlias, { force: true });
+      await rm(hardlinkArtifactPath, { force: true });
+    }
+
+    const linkedArtifactPath = path.join(recoveryRoot, 'manifest-symlink-test');
+    await symlink(
+      temporaryDirectory,
+      linkedArtifactPath,
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
+    try {
+      const linkedArtifactGeneration = runScript(
+        'scripts/evidence-manifest.mjs',
+        ['--output', outputPath],
+      );
+      assert.equal(linkedArtifactGeneration.status, 1);
+      assert.match(
+        linkedArtifactGeneration.stderr,
+        /evidence inventory must not contain symbolic links/,
+      );
+
+      const linkedArtifactVerification = runScript(
+        'scripts/evidence-verify.mjs',
+        ['--manifest', outputPath],
+      );
+      assert.equal(linkedArtifactVerification.status, 1);
+      assert.match(
+        linkedArtifactVerification.stderr,
+        /evidence inventory must not contain symbolic links/,
+      );
+    } finally {
+      await rm(linkedArtifactPath, { force: true });
+    }
+
+    const downgradedCommitManifest = JSON.parse(JSON.stringify(manifest));
+    downgradedCommitManifest.repository.gitCommit = 'unknown';
+    const downgradedCommitPath = path.join(temporaryDirectory, 'unknown-git-commit.json');
+    await writeFile(downgradedCommitPath, `${JSON.stringify(downgradedCommitManifest, null, 2)}\n`, 'utf8');
+    const downgradedCommit = runScript('scripts/evidence-verify.mjs', ['--manifest', downgradedCommitPath]);
+    assert.equal(downgradedCommit.status, 1);
+    assert.match(downgradedCommit.stderr, /repository\.gitCommit must be a full lowercase Git commit/);
+
+    const unavailableGit = runScript('scripts/evidence-verify.mjs', ['--manifest', outputPath], { PATH: '' });
+    assert.equal(unavailableGit.status, 1);
+    assert.match(unavailableGit.stderr, /current repository Git commit is unavailable/);
+
+    const repositoryTamperCases = [
+      [
+        'status-hash',
+        (copy) => { copy.repository.statusSha256 = `${copy.repository.statusSha256[0] === '0' ? '1' : '0'}${copy.repository.statusSha256.slice(1)}`; },
+        /repository Git status hash no longer matches the manifest/,
+      ],
+      [
+        'dirty',
+        (copy) => { copy.repository.dirty = !copy.repository.dirty; },
+        /repository dirty state/,
+      ],
+      [
+        'changed-file-count',
+        (copy) => { copy.repository.changedFileCount += 1; },
+        /repository dirty state/,
+      ],
+    ];
+    for (const [name, mutate, expectedError] of repositoryTamperCases) {
+      const tamperedManifest = JSON.parse(JSON.stringify(manifest));
+      mutate(tamperedManifest);
+      const tamperedPath = path.join(temporaryDirectory, `tampered-repository-${name}.json`);
+      await writeFile(tamperedPath, `${JSON.stringify(tamperedManifest, null, 2)}\n`, 'utf8');
+      const tampered = runScript('scripts/evidence-verify.mjs', ['--manifest', tamperedPath]);
+      assert.equal(tampered.status, 1, name);
+      assert.match(tampered.stderr, expectedError);
+    }
+
+    const futureManifest = JSON.parse(JSON.stringify(manifest));
+    futureManifest.generatedAt = new Date(Date.now() + 60_000).toISOString();
+    const futureManifestPath = path.join(temporaryDirectory, 'future-generated-at.json');
+    await writeFile(futureManifestPath, `${JSON.stringify(futureManifest, null, 2)}\n`, 'utf8');
+    const futureResult = runScript('scripts/evidence-verify.mjs', ['--manifest', futureManifestPath]);
+    assert.equal(futureResult.status, 1);
+    assert.match(futureResult.stderr, /generatedAt must not be in the future/);
+
+    const omittedArtifactManifest = JSON.parse(JSON.stringify(manifest));
+    assert.ok(omittedArtifactManifest.evidence.workflowArtifacts.length > 0);
+    omittedArtifactManifest.evidence.workflowArtifacts.pop();
+    const omittedArtifactPath = path.join(temporaryDirectory, 'omitted-artifact.json');
+    await writeFile(omittedArtifactPath, `${JSON.stringify(omittedArtifactManifest, null, 2)}\n`, 'utf8');
+    const omittedArtifact = runScript('scripts/evidence-verify.mjs', ['--manifest', omittedArtifactPath]);
+    assert.equal(omittedArtifact.status, 1);
+    assert.match(omittedArtifact.stderr, /evidence\.workflowArtifacts must exactly match the current artifact inventory/);
+
+    const omittedInputManifest = JSON.parse(JSON.stringify(manifest));
+    omittedInputManifest.inputs.pop();
+    const omittedInputPath = path.join(temporaryDirectory, 'omitted-input.json');
+    await writeFile(omittedInputPath, `${JSON.stringify(omittedInputManifest, null, 2)}\n`, 'utf8');
+    const omittedInput = runScript('scripts/evidence-verify.mjs', ['--manifest', omittedInputPath]);
+    assert.equal(omittedInput.status, 1);
+    assert.match(omittedInput.stderr, /inputs must exactly match the evidence input contract/);
+
+    const absentRequiredInputManifest = JSON.parse(JSON.stringify(manifest));
+    absentRequiredInputManifest.inputs[0] = {
+      path: evidenceInputPaths[0],
+      present: false,
+    };
+    const absentRequiredInputPath = path.join(temporaryDirectory, 'absent-required-input.json');
+    await writeFile(
+      absentRequiredInputPath,
+      `${JSON.stringify(absentRequiredInputManifest, null, 2)}\n`,
+      'utf8',
+    );
+    const absentRequiredInput = runScript(
+      'scripts/evidence-verify.mjs',
+      ['--manifest', absentRequiredInputPath],
+    );
+    assert.equal(absentRequiredInput.status, 1);
+    assert.match(absentRequiredInput.stderr, /is a required evidence input and must be present/);
+
+    const replacementContents = await readFile(path.join(repositoryRoot, 'README.md'));
+    const replacedInputManifest = JSON.parse(JSON.stringify(manifest));
+    replacedInputManifest.inputs[0] = {
+      path: 'README.md',
+      present: true,
+      bytes: replacementContents.length,
+      sha256: createHash('sha256').update(replacementContents).digest('hex'),
+    };
+    const replacedInputPath = path.join(temporaryDirectory, 'replaced-input.json');
+    await writeFile(replacedInputPath, `${JSON.stringify(replacedInputManifest, null, 2)}\n`, 'utf8');
+    const replacedInput = runScript('scripts/evidence-verify.mjs', ['--manifest', replacedInputPath]);
+    assert.equal(replacedInput.status, 1);
+    assert.match(replacedInput.stderr, /inputs\[0\]\.path must exactly match the evidence input contract/);
+
+    const exactKeyCases = [
+      ['manifest', (copy) => { copy.unexpected = true; }],
+      ['repository', (copy) => { copy.repository.unexpected = true; }],
+      ['toolchain', (copy) => { copy.toolchain.unexpected = true; }],
+    ];
+    for (const [name, mutate] of exactKeyCases) {
+      const tamperedManifest = JSON.parse(JSON.stringify(manifest));
+      mutate(tamperedManifest);
+      const tamperedPath = path.join(temporaryDirectory, `extra-${name}.json`);
+      await writeFile(tamperedPath, `${JSON.stringify(tamperedManifest, null, 2)}\n`, 'utf8');
+      const tampered = runScript('scripts/evidence-verify.mjs', ['--manifest', tamperedPath]);
+      assert.equal(tampered.status, 1, name);
+      assert.match(tampered.stderr, new RegExp(`${name} must contain exactly these keys`));
+    }
+
+    for (const name of ['node', 'yarn', 'go', 'goToolchain']) {
+      const tamperedManifest = JSON.parse(JSON.stringify(manifest));
+      tamperedManifest.toolchain[name] = `${tamperedManifest.toolchain[name]}-tampered`;
+      const tamperedPath = path.join(temporaryDirectory, `tampered-toolchain-${name}.json`);
+      await writeFile(tamperedPath, `${JSON.stringify(tamperedManifest, null, 2)}\n`, 'utf8');
+      const tampered = runScript('scripts/evidence-verify.mjs', ['--manifest', tamperedPath]);
+      assert.equal(tampered.status, 1, name);
+      assert.match(tampered.stderr, new RegExp(`toolchain\\.${name} does not match`));
+    }
+
+    const extraInputManifest = JSON.parse(JSON.stringify(manifest));
+    extraInputManifest.inputs[0].unexpected = true;
+    const extraInputPath = path.join(temporaryDirectory, 'extra-input.json');
+    await writeFile(extraInputPath, `${JSON.stringify(extraInputManifest, null, 2)}\n`, 'utf8');
+    const extraInput = runScript('scripts/evidence-verify.mjs', ['--manifest', extraInputPath]);
+    assert.equal(extraInput.status, 1);
+    assert.match(extraInput.stderr, /inputs\[0\] must contain exactly these keys/);
+
     const falseRecoveryManifest = JSON.parse(JSON.stringify(manifest));
     falseRecoveryManifest.boundaries.postgresRecovery.status = 'recorded';
     falseRecoveryManifest.boundaries.postgresRecovery.reason = 'forged recorded state';
@@ -766,7 +1295,7 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     await writeFile(falseNatsRestartPath, `${JSON.stringify(falseNatsRestartManifest, null, 2)}\n`, 'utf8');
     const falseNatsRestart = runScript('scripts/evidence-verify.mjs', ['--manifest', falseNatsRestartPath]);
     assert.equal(falseNatsRestart.status, 1);
-    assert.match(falseNatsRestart.stderr, /recorded localNatsRestart is missing required artifact/);
+    assert.match(falseNatsRestart.stderr, /evidence\.natsRestart must exactly match the current artifact inventory/);
 
     const falseNatsClusterManifest = JSON.parse(JSON.stringify(manifest));
     falseNatsClusterManifest.evidence.natsCluster = [];
@@ -776,19 +1305,40 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     await writeFile(falseNatsClusterPath, `${JSON.stringify(falseNatsClusterManifest, null, 2)}\n`, 'utf8');
     const falseNatsCluster = runScript('scripts/evidence-verify.mjs', ['--manifest', falseNatsClusterPath]);
     assert.equal(falseNatsCluster.status, 1);
-    assert.match(falseNatsCluster.stderr, /recorded localNatsClusterFailover is missing required artifact/);
+    assert.match(falseNatsCluster.stderr, /evidence\.natsCluster must exactly match the current artifact inventory/);
 
+    await writeFile(artifactPath, 'verified recovery artifact\n', 'utf8');
     const artifactManifest = JSON.parse(JSON.stringify(manifest));
     const artifactContents = await readFile(artifactPath);
+    const artifactRelativePath = path.relative(repositoryRoot, artifactPath).split(path.sep).join('/');
     artifactManifest.evidence.recovery.push({
-      path: path.relative(repositoryRoot, artifactPath).split(path.sep).join('/'),
+      path: artifactRelativePath,
       bytes: artifactContents.length,
       sha256: createHash('sha256').update(artifactContents).digest('hex'),
     });
+    artifactManifest.evidence.recovery.sort((left, right) => left.path.localeCompare(right.path));
     const artifactManifestPath = path.join(temporaryDirectory, 'artifact.json');
     await writeFile(artifactManifestPath, `${JSON.stringify(artifactManifest, null, 2)}\n`, 'utf8');
     const artifactVerified = runScript('scripts/evidence-verify.mjs', ['--manifest', artifactManifestPath]);
     assert.equal(artifactVerified.status, 0, artifactVerified.stderr);
+
+    const artifactRecord = artifactManifest.evidence.recovery.find((artifact) => artifact.path === artifactRelativePath);
+    assert.ok(artifactRecord);
+    artifactRecord.unexpected = true;
+    await writeFile(artifactManifestPath, `${JSON.stringify(artifactManifest, null, 2)}\n`, 'utf8');
+    const extraArtifact = runScript('scripts/evidence-verify.mjs', ['--manifest', artifactManifestPath]);
+    assert.equal(extraArtifact.status, 1);
+    assert.match(extraArtifact.stderr, /evidence\.recovery\[\d+\] must contain exactly these keys/);
+    delete artifactRecord.unexpected;
+    await writeFile(artifactManifestPath, `${JSON.stringify(artifactManifest, null, 2)}\n`, 'utf8');
+
+    const extraBoundaryManifest = JSON.parse(JSON.stringify(artifactManifest));
+    extraBoundaryManifest.boundaries.targetEdge.unexpected = true;
+    const extraBoundaryPath = path.join(temporaryDirectory, 'extra-boundary.json');
+    await writeFile(extraBoundaryPath, `${JSON.stringify(extraBoundaryManifest, null, 2)}\n`, 'utf8');
+    const extraBoundary = runScript('scripts/evidence-verify.mjs', ['--manifest', extraBoundaryPath]);
+    assert.equal(extraBoundary.status, 1);
+    assert.match(extraBoundary.stderr, /boundaries\.targetEdge must contain exactly these keys/);
 
     await writeFile(artifactPath, 'tampered recovery artifact\n', 'utf8');
     const tampered = runScript('scripts/evidence-verify.mjs', ['--manifest', artifactManifestPath]);
@@ -1118,6 +1668,9 @@ test('encrypted audit chain evidence stays checksum-bound and explicitly local-o
   assert.match(runner, /GOTMPDIR/);
   assert.match(verifier, /local_audit_chain_contract/);
   assert.match(verifier, /aes256GCMEncryption/);
+  assert.match(verifier, /httpSinkCorrelation/);
+  assert.match(verifier, /httpSinkFailureIsolation/);
+  assert.match(verifier, /httpSinkTimeoutBounded/);
   assert.match(verifier, /duplicateNonceRejected/);
   assert.match(verifier, /evidence directory files must be exactly/);
   assert.match(verifier, /does not establish target SIEM ingestion, paging delivery/);
@@ -1208,11 +1761,147 @@ test('resource authorization evidence stays checksum-bound and explicitly local-
   assert.match(independentVerifier, /authorization evidence artifact is missing from the manifest/);
 });
 
+test('SDK release readiness evidence stays checksum-bound and explicitly repository-only', async () => {
+  const [packageDocument, runner, verifier, behaviorTests, workflow, manifest, independentVerifier, projectDocs] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'sdk-release-evidence.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'sdk-release-evidence.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, '__test__', 'node', 'sdk-release-evidence.test.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, '.github', 'workflows', 'node-tools-quality.yml'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'evidence-verify.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', 'openapi', 'project-contracts.md'), 'utf8'),
+  ]);
+  const packageScripts = JSON.parse(packageDocument).scripts;
+  assert.equal(packageScripts['sdk:release:evidence'], 'node scripts/sdk-release-evidence.mjs run');
+  assert.equal(packageScripts['sdk:release:evidence:verify'], 'node scripts/sdk-release-evidence.mjs verify');
+  assert.match(packageScripts['test:node'], /sdk-release-evidence\.test\.mjs/);
+  assert.match(runner, /sdkReleaseEvidenceArguments/);
+  assert.match(runner, /GOFMT_BINARY/);
+  assert.match(runner, /writeSDKReleaseEvidenceChecksums/);
+  assert.match(verifier, /local_sdk_release_readiness_contract/);
+  assert.match(verifier, /operationCount: 26/);
+  assert.match(verifier, /operationCount: 14/);
+  assert.match(verifier, /publication: 'not_checked'/);
+  assert.match(verifier, /releaseSourceCommitBound: true/);
+  assert.match(verifier, /publicationNotChecked: true/);
+  assert.match(verifier, /evidence directory files must be exactly/);
+  assert.match(verifier, /does not query, create, verify, or publish the expected Git module tags or packages/);
+  assert.match(verifier, /does not establish an external consumer cross-version matrix/);
+  assert.match(behaviorTests, /retains a bounded failed run without declaring success/);
+  assert.match(behaviorTests, /rejects source, command, project matrix, scope, and output tampering/);
+  assert.match(behaviorTests, /rejects assertion, limitation, checksum, and extra-artifact tampering/);
+  assert.match(workflow, /Generate SDK release readiness evidence/);
+  assert.match(workflow, /run: yarn sdk:release:evidence/);
+  assert.match(workflow, /if: always\(\)\s+run: yarn sdk:release:evidence:verify/);
+  assert.match(workflow, /if: always\(\)\s+uses: actions\/upload-artifact@[a-f0-9]{40}/);
+  assert.match(workflow, /path: \.temp\/workflow-artifacts\/sdk-release-readiness/);
+  assert.match(manifest, /verifySDKReleaseEvidence/);
+  assert.match(manifest, /workflow-artifacts', 'sdk-release-readiness/);
+  assert.match(independentVerifier, /verifySDKReleaseEvidence/);
+  assert.match(independentVerifier, /SDK release evidence artifact is missing from the manifest/);
+  assert.match(projectDocs, /five checksum-bound files/);
+  assert.match(projectDocs, /does not query, create, or\s+verify Git tags/);
+});
+
+test('SDK consumer migration evidence stays local, complete, and checksum-bound', async () => {
+  const [packageDocument, runner, verifier, behaviorTests, workflow, manifest, independentVerifier, projectDocs] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'sdk-consumer-evidence.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'sdk-consumer-evidence.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, '__test__', 'node', 'sdk-consumer-evidence.test.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, '.github', 'workflows', 'node-tools-quality.yml'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'evidence-verify.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', 'openapi', 'project-contracts.md'), 'utf8'),
+  ]);
+  const packageScripts = JSON.parse(packageDocument).scripts;
+  assert.equal(packageScripts['sdk:consumer:evidence'], 'node scripts/sdk-consumer-evidence.mjs run');
+  assert.equal(packageScripts['sdk:consumer:evidence:verify'], 'node scripts/sdk-consumer-evidence.mjs verify');
+  assert.match(packageScripts['test:node'], /sdk-consumer-evidence\.test\.mjs/);
+  assert.match(runner, /sdkConsumerGoArguments/);
+  assert.match(runner, /sdkConsumerArtifactNames/);
+  assert.match(verifier, /local_sdk_consumer_migration_contract/);
+  assert.match(verifier, /sdkConsumerTests/);
+  assert.match(verifier, /sdkConsumerBillingOperations/);
+  assert.match(verifier, /canonicalPath: '\/readyz'/);
+  assert.match(verifier, /deprecatedPath: '\/api\/health\/ready'/);
+  assert.match(verifier, /operationCount: sdkConsumerBillingOperations\.length/);
+  assert.match(verifier, /externalMigrationNotChecked: true/);
+  assert.match(verifier, /does not establish an external consumer cross-version matrix/);
+  assert.match(verifier, /does not establish deprecation-window execution/);
+  assert.match(verifier, /evidence directory files must be exactly/);
+  for (const artifactName of ['go-output.txt', 'go-error.txt', 'go-status.txt', 'report.json', 'SHA256SUMS']) {
+    assert.match(verifier, new RegExp(artifactName.replace('.', '\\.'), 'g'));
+  }
+  assert.match(behaviorTests, /retains a bounded failed run without declaring success/);
+  assert.match(behaviorTests, /rejects source, command, matrix, and output tampering/);
+  assert.match(behaviorTests, /rejects limitations, checksum, and extra-artifact tampering/);
+  assert.match(workflow, /Generate SDK consumer migration evidence/);
+  assert.match(workflow, /run: yarn sdk:consumer:evidence/);
+  assert.match(workflow, /if: always\(\)\s+run: yarn sdk:consumer:evidence:verify/);
+  assert.match(workflow, /if: always\(\)\s+uses: actions\/upload-artifact@[a-f0-9]{40}/);
+  assert.match(workflow, /path: \.temp\/workflow-artifacts\/sdk-consumer-migration/);
+  assert.match(manifest, /verifySDKConsumerEvidence/);
+  assert.match(manifest, /workflow-artifacts', 'sdk-consumer-migration/);
+  assertEvidenceInput('scripts/sdk-consumer-evidence.mjs');
+  assertEvidenceInput('scripts/lib/sdk-consumer-evidence.mjs');
+  assertEvidenceInput('__test__/node/sdk-consumer-evidence.test.mjs');
+  assertEvidenceInput('support/consumer/HealthProbe/README.md');
+  assert.match(independentVerifier, /verifySDKConsumerEvidence/);
+  assert.match(independentVerifier, /SDK consumer evidence artifact is missing from the manifest/);
+  assert.match(projectDocs, /sdk:consumer:evidence/);
+  assert.match(projectDocs, /local SDK consumer migration/);
+  assert.match(projectDocs, /does not establish an external consumer\s+cross-version matrix/);
+});
+
+test('SDK consumer matrix evidence stays repository-only, complete, and checksum-bound', async () => {
+  const [packageDocument, runner, verifier, behaviorTests, workflow, manifest, independentVerifier] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'sdk-consumer-matrix-evidence.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'sdk-consumer-matrix-evidence.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, '__test__', 'node', 'sdk-consumer-matrix-evidence.test.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, '.github', 'workflows', 'node-tools-quality.yml'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'evidence-verify.mjs'), 'utf8'),
+  ]);
+  const packageScripts = JSON.parse(packageDocument).scripts;
+  assert.equal(packageScripts['sdk:matrix:evidence'], 'node scripts/sdk-consumer-matrix-evidence.mjs run');
+  assert.equal(packageScripts['sdk:matrix:evidence:verify'], 'node scripts/sdk-consumer-matrix-evidence.mjs verify');
+  assert.match(packageScripts['test:node'], /sdk-consumer-matrix-evidence\.test\.mjs/);
+  assert.match(runner, /sdkConsumerMatrixEvidenceArguments/);
+  assert.match(runner, /sdkConsumerMatrixEvidenceArtifactNames/);
+  assert.match(verifier, /local_sdk_consumer_matrix_contract/);
+  assert.match(verifier, /deprecationWindowBound: true/);
+  assert.match(verifier, /publicationAndDeploymentBoundariesExplicit: true/);
+  assert.match(verifier, /does not establish a formal SDK tag/);
+  assert.match(verifier, /evidence directory files must be exactly/);
+  for (const artifactName of ['verification-output.txt', 'verification-error.txt', 'verification-status.txt', 'report.json', 'SHA256SUMS']) {
+    assert.match(verifier, new RegExp(artifactName.replace('.', '\\.'), 'g'));
+  }
+  assert.match(behaviorTests, /retains a bounded failed check without claiming success/);
+  assert.match(behaviorTests, /rejects contract, source, and output tampering/);
+  assert.match(behaviorTests, /rejects limitation, checksum, and extra-artifact tampering/);
+  assert.match(workflow, /Generate SDK consumer migration matrix evidence/);
+  assert.match(workflow, /run: yarn sdk:matrix:evidence/);
+  assert.match(workflow, /if: always\(\)\s+run: yarn sdk:matrix:evidence:verify/);
+  assert.match(workflow, /if: always\(\)\s+uses: actions\/upload-artifact@[a-f0-9]{40}/);
+  assert.match(workflow, /path: \.temp\/workflow-artifacts\/sdk-consumer-matrix/);
+  assert.match(manifest, /verifySDKConsumerMatrixEvidence/);
+  assert.match(manifest, /workflow-artifacts', 'sdk-consumer-matrix/);
+  assertEvidenceInput('scripts/sdk-consumer-matrix-evidence.mjs');
+  assertEvidenceInput('scripts/lib/sdk-consumer-matrix-evidence.mjs');
+  assertEvidenceInput('__test__/node/sdk-consumer-matrix-evidence.test.mjs');
+  assert.match(independentVerifier, /verifySDKConsumerMatrixEvidence/);
+  assert.match(independentVerifier, /SDK consumer matrix evidence artifact is missing from the manifest/);
+});
+
 test('V12 completion and V13 backlog match the weighted evaluation', async () => {
-  const [evaluation, backlog, nextBacklog] = await Promise.all([
+  const [evaluation, backlog, nextBacklog, lifecycleADR] = await Promise.all([
     readFile(path.join(repositoryRoot, 'docs', '评估', '项目架构与性能评估.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V12.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V13.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', 'adr', '0002-http-request-lifecycle-and-protocol-boundary.md'), 'utf8'),
   ]);
   const rows = [
     ...evaluation.matchAll(/^\| (?!\*\*综合评分)([^|]+) \| (\d+)% \| ([\d.]+) \| ([\d.]+) \|/gm),
@@ -1235,7 +1924,7 @@ test('V12 completion and V13 backlog match the weighted evaluation', async () =>
 
   const declared = evaluation.match(/精确加权值 \*\*([\d.]+)\/10\*\*/);
   assert.ok(declared, 'current evaluation must declare an exact weighted score');
-  assert.equal(declared[1], '9.593', 'current score must include the second independent Framework service, six-module workspace, Billing OpenAPI/SDK contract, all-public-operation calls through the real Framework handler, package-level behavior coverage, SDK release readiness manifests, reproducible server release witnesses built from separate empty Go caches, a dependency-closure-derived repository source manifest, exact four-subject release provenance, per-subject remote verification status, offline DSSE in-toto/SLSA subject plus repository/workflow/source-commit/builder/invocation binding gates, clean-source enforcement that includes untracked files, pinned actionlint coverage for every non-MSFront workflow, pinned promtool full-config lint plus behavior-test coverage for all server Prometheus rules, schema-v3 five-command tamper-checked evidence for promtool, deterministic tamper-checked Kubernetes rendering evidence, independently verified local server recovery four-scenario and sixteen-test raw-output evidence, independently verified encrypted audit-chain six-test and five-artifact evidence, independently verified local OIDC browser nine-test and five-artifact evidence, independently verified local resource authorization seven-test and five-artifact evidence, independently verified Nginx TLS/HTTP2/lifecycle evidence, independently verified Redis Sentinel ACL/failover evidence, independently verified PostgreSQL logical-backup and isolated-restore evidence, independently verified NATS single-node delivery and dynamic-lease evidence, file-stream snapshot, consumer-state restore, same-file-store restart, and three-node failover/quorum-loss/route-partition outer evidence, tamper-checked actionlint evidence, and V13 source/execution/provenance plus work-package acceptance evidence gates without claiming offline cryptographic verification, external module or toolchain attestation, remote Linux results, target Redis TLS/HA/recovery/RPO/RTO, target PostgreSQL physical backup/WAL/PITR/failover/RPO/RTO, target NATS broker recovery/RPO/RTO, target Kubernetes admission/rollout/autoscaling/policy/rollback, target Prometheus/Alertmanager or paging, target payload/IdP/dependency/TLS edge capacity, target IdP MFA deployment, native Fiber cancellation, device UI, production policy engine or policy data sources, target recovery, identity, or HA evidence');
+  assert.equal(declared[1], '9.774', 'current score must include the bounded resume-aware standard-entry SSE lifecycle plus the existing capacity, protocol, compatibility, security, deployment, and evidence gates without claiming target-environment completion');
   const roundedCalculatedTotal = Math.round((calculatedTotal + 1e-9) * 1000) / 1000;
   assert.equal(roundedCalculatedTotal.toFixed(3), declared[1]);
   assert.match(backlog, /V12-01/);
@@ -1244,12 +1933,25 @@ test('V12 completion and V13 backlog match the weighted evaluation', async () =>
   assert.match(backlog, /原有“V12 本身仍未完成”均由本次收口决定取代/);
   assert.match(backlog, /当前精确综合评分：\*\*9\.493\/10\*\*/);
   assert.match(nextBacklog, /状态：\*\*实施中\*\*/);
-  assert.match(nextBacklog, /当前精确综合评分：\*\*9\.593\/10\*\*/);
+  assert.match(nextBacklog, /当前精确综合评分：\*\*9\.774\/10\*\*/);
+  assert.match(nextBacklog, /OpenAPI wire contract/);
+  assert.match(nextBacklog, /schema v15 Kubernetes evidence/);
   assert.match(nextBacklog, /actionlint` v1\.7\.12/);
   assert.match(nextBacklog, /promtool` (?:from Prometheus )?3\.5\.0/);
   assert.match(nextBacklog, /V13-01/);
   assert.match(nextBacklog, /V13-09/);
   assert.match(nextBacklog, /V12-06/);
+	assert.match(nextBacklog, /framework-net-http/);
+	assert.match(nextBacklog, /9 × 3 × 5/);
+	assert.match(nextBacklog, /report_schema_migration/);
+	assert.match(nextBacklog, /schema v2/);
+	assert.match(nextBacklog, /32 并发、30 秒/);
+	assert.match(nextBacklog, /SendServerSentEvents/);
+	assert.match(nextBacklog, /ServerSentEventSource/);
+	assert.match(nextBacklog, /Last-Event-ID/);
+	assert.match(nextBacklog, /当前通用 evidence 输入合同同步为 242 项，其中 241 项必需/);
+	assert.match(lifecycleADR, /SSE 必须通过 `SendServerSentEvents` 或纯新增的 `SendServerSentEventsFromSource` 使用 Framework request lifecycle/);
+	assert.match(lifecycleADR, /目标 edge 下 SSE 的 buffering/);
 	assert.match(backlog, /capacityKnee/);
   assert.match(backlog, /9 × 2/);
   assert.match(backlog, /3 × 2 × 5/);
@@ -1293,13 +1995,15 @@ test('V12 completion and V13 backlog match the weighted evaluation', async () =>
 });
 
 test('Example project queries and commands keep Fiber behind the Framework adapter', async () => {
-  const [applicationAuthorization, applicationQuery, applicationCommand, applicationPrecondition, idempotencyFingerprint, middleware, standardHandler, standardHandlerTests, standardServer, standardServerTests, authMiddleware, routes, app, appTests, projectRoutes, projectService, entrypoint, architectureTests, projectRouteTests] = await Promise.all([
+  const [applicationAuthorization, applicationQuery, applicationCommand, applicationPrecondition, idempotencyFingerprint, middleware, eventStream, eventStreamTests, standardHandler, standardHandlerTests, standardServer, standardServerTests, authMiddleware, routes, app, appTests, projectRoutes, projectService, entrypoint, architectureTests, projectRouteTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_authorization.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_query.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_command.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_precondition.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'idempotency_fingerprint.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'middleware.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'event_stream.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'event_stream_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'standard_handler.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'standard_handler_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'server', 'http.go'), 'utf8'),
@@ -1351,15 +2055,55 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
   assert.match(standardHandler, /request\.Clone\(request\.Context\(\)\)/);
   assert.match(standardHandler, /standardRequestContexts\.LoadAndDelete/);
   assert.match(standardHandler, /Header\.Del\(standardRequestContextHeader\)/);
+  assert.match(standardHandler, /const maximumStandardResponseWriterUnwrapDepth = 32/);
+  assert.match(standardHandler, /func supportsStandardResponseFlush\(response http\.ResponseWriter\) bool/);
+  assert.match(standardHandler, /interface\{ FlushError\(\) error \}/);
+  assert.match(standardHandler, /http\.NewResponseController\(response\.ResponseWriter\)\.Flush\(\)/);
+  assert.match(standardHandler, /func \(response standardResponseFlusher\) Unwrap\(\) http\.ResponseWriter/);
   assert.match(app, /app\.Use\(standardRequestContextBridge\(\)\)/);
   assert.match(standardHandler, /app\.ShutdownWithContext/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerComposesWithStandardMiddleware/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerPropagatesRequestCancellation/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerPropagatesStandardClientDisconnect/);
+  assert.match(standardHandlerTests, /TestStandardStreamingResponseWriterPreservesUnsupportedWriters/);
+  assert.match(standardHandlerTests, /TestNewHTTPHandlerStreamsThroughUnwrappingStandardMiddleware/);
+  assert.match(standardHandlerTests, /TestNewHTTPHandlerStreamsIncrementallyOverHTTP2/);
+  assert.match(standardHandlerTests, /X-GoExample-Protocol/);
+  assert.match(standardHandlerTests, /response\.ProtoMajor/);
+  assert.match(standardHandlerTests, /first streaming response =/);
+  assert.match(standardHandlerTests, /first streaming chunk was buffered behind the second chunk/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerPreservesCallerDeadlineAndContextValue/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerRemovesInternalContextHeader/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerShutdownCancelsApplicationWork/);
+  assert.match(middleware, /newRequestStreamLifetime/);
+  assert.match(middleware, /lifetime\.claimed \|\| !c\.Response\(\)\.IsBodyStream\(\)/);
+  assert.match(eventStream, /func SendServerSentEvents\(c fiber\.Ctx, options ServerSentEventOptions\) error/);
+  assert.match(eventStream, /func SendServerSentEventsFromSource\(/);
+  assert.match(eventStream, /Events\s+<-chan ServerSentEvent/);
+  assert.match(eventStream, /maximumServerSentEventLastEventIDBytes\s+= 1024/);
+  assert.match(eventStream, /source\(lifetime\.ctx, lastEventID\)/);
+  assert.match(eventStream, /HeartbeatInterval time\.Duration/);
+  assert.match(eventStream, /MaxEventBytes\s+int/);
+  assert.match(eventStream, /no-cache, no-transform/);
+  assert.match(eventStream, /case <-ctx\.Done\(\)/);
+  assert.match(eventStream, /writer\.WriteString\(": heartbeat\\n\\n"\)/);
+  assert.match(eventStream, /utf8\.ValidString/);
+  assert.match(eventStreamTests, /TestWriteServerSentEventEncodesBoundedWireFormat/);
+  assert.match(eventStreamTests, /TestSendServerSentEventsRejectsInvalidOptionsBeforeStreaming/);
+  assert.match(eventStreamTests, /TestSendServerSentEventsFromSourceFailsClosedBeforeStreaming/);
+  assert.match(eventStreamTests, /TestValidateServerSentEventLastEventID/);
+  assert.match(eventStreamTests, /TestNewHTTPHandlerServerSentEventsResumesFromLastEventID/);
+  assert.match(eventStreamTests, /TestNewHTTPHandlerServerSentEventsFlushAndCleanUpOnDisconnect/);
+  assert.match(eventStreamTests, /protocolMajor: 2/);
+  assert.match(eventStreamTests, /event stream producer remained active after client disconnect/);
+  assert.match(eventStreamTests, /TestRunHTTPStopsServerSentEventsDuringApplicationShutdown/);
   assert.match(standardServer, /func RunHTTP\(ctx context\.Context, options HTTPOptions\) error/);
+  assert.match(standardServer, /TLSConfig\s+\*tls\.Config/);
+  assert.match(standardServer, /config\.Clone\(\)/);
+  assert.match(standardServer, /prepared\.GetConfigForClient/);
+  assert.match(standardServer, /tls\.VersionTLS12/);
+  assert.match(standardServer, /httpServer\.ServeTLS\(listener, "", ""\)/);
+  assert.match(standardServer, /tlsConnection\.NetConn\(\)/);
   assert.match(standardServer, /ReadHeaderTimeout:/);
   assert.match(standardServer, /netutil\.LimitListener\(listener, options\.MaxConnections\)/);
   assert.match(standardServer, /ApplicationShutdown/);
@@ -1370,6 +2114,11 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
   assert.match(standardServerTests, /TestRunHTTPBoundsSlowRequestHeaders/);
   assert.match(standardServerTests, /TestRunHTTPBoundsAcceptedConnections/);
   assert.match(standardServerTests, /TestRunHTTPForcesBoundedShutdown/);
+  assert.match(standardServerTests, /case <-started:[^]*clientErr <- err/);
+  assert.match(standardServerTests, /TestRunHTTPServesTLS12AndHTTP2/);
+  assert.match(standardServerTests, /TestRunHTTPClosesTLSHijackedConnectionsDuringShutdown/);
+  assert.match(standardServerTests, /TestRunHTTPRejectsUnsafeTLSConfiguration/);
+  assert.match(standardServerTests, /TestPrepareHTTPServerTLSConfigValidatesDynamicSelection/);
   assert.match(standardServerTests, /TestRunHTTPBoundsApplicationShutdownHook/);
   assert.match(standardServerTests, /TestRunHTTPIsolatesApplicationShutdownPanic/);
   assert.match(standardServerTests, /TestRunHTTPIsolatesConnectionObserverPanic/);
@@ -1483,12 +2232,32 @@ test('Framework public API compatibility is versioned and compared with the targ
   assert.equal(snapshot.schemaVersion, 1);
   assert.equal(snapshot.module, 'github.com/zbxing/goexample/Framework');
   assert.equal(snapshot.version, version.trim());
-	assert.equal(Object.keys(snapshot.symbols).length, 332);
+	assert.equal(Object.keys(snapshot.symbols).length, 337);
   assert.ok(Object.keys(snapshot.symbols).every((key) => !key.includes('/internal/')));
 	assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/authorization::type Authorizer'], /Authorize\(context\.Context, Request\)/);
 	assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/authorization::type Resource'], /TenantID[\s\S]*Attributes/);
 	assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::func NewResourceAuthorizedQuery'], /authorization\.Authorizer/);
 	assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::func NewResourceAuthorizedJSONCommand'], /ApplicationPrincipal/);
+  assert.equal(
+    snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::func SendServerSentEvents'],
+    'func SendServerSentEvents(c fiber.Ctx, options ServerSentEventOptions) error',
+  );
+  assert.match(
+    snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::func SendServerSentEventsFromSource'],
+    /fiber\.Ctx[\s\S]*ServerSentEventSource[\s\S]*ServerSentEventOptions[\s\S]*error/,
+  );
+  assert.match(
+    snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::type ServerSentEvent'],
+    /ID\s+string[\s\S]*Event string[\s\S]*Data\s+string[\s\S]*Retry time\.Duration/,
+  );
+  assert.match(
+    snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::type ServerSentEventOptions'],
+    /Events\s+<-chan ServerSentEvent[\s\S]*HeartbeatInterval time\.Duration[\s\S]*MaxEventBytes\s+int/,
+  );
+  assert.match(
+    snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::type ServerSentEventSource'],
+    /ctx context\.Context[\s\S]*lastEventID string[\s\S]*<-chan ServerSentEvent, error/,
+  );
   assert.match(
     snapshot.symbols['github.com/zbxing/goexample/Framework/auth::func NewAuthorizationRequestManager'],
     /AuthorizationRequestConfig/,
@@ -1558,6 +2327,10 @@ test('Framework public API compatibility is versioned and compared with the targ
   assert.equal(snapshot.symbols['github.com/zbxing/goexample/Framework/server::func RunHTTP'], 'func RunHTTP(ctx context.Context, options HTTPOptions) error');
   assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/server::type HTTPConnectionObserver'], /ObserveHTTPConnectionState/);
   assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/server::type HTTPOptions'], /Handler\s+http\.Handler/);
+  assert.match(
+    snapshot.symbols['github.com/zbxing/goexample/Framework/server::type HTTPOptions'],
+    /TLSConfig\s+\*tls\.Config/,
+  );
   assert.match(policy, /Framework\/v0\.1\.0/);
   assert.match(policy, /yarn api:compat/);
   assert.match(policy, /Patch releases never permit source-incompatible API changes/);
@@ -1586,9 +2359,9 @@ test('Framework public API compatibility is versioned and compared with the targ
   const packageScripts = JSON.parse(packageDocument).scripts;
   assert.equal(packageScripts['api:compat'], 'node scripts/go-project.mjs api-compat');
   assert.equal(packageScripts['api:snapshot'], 'node scripts/go-project.mjs api-snapshot');
-  assert.match(evidenceManifest, /Framework\/api-snapshot\.json/);
-  assert.match(evidenceManifest, /Framework\/auth\/oidc_flow\.go/);
-  assert.match(evidenceManifest, /Framework\/auth\/oidc_flow_test\.go/);
+  assertEvidenceInput('Framework/api-snapshot.json');
+  assertEvidenceInput('Framework/auth/oidc_flow.go');
+  assertEvidenceInput('Framework/auth/oidc_flow_test.go');
   assert.match(appTests, /default route collision/);
   assert.match(appTests, /enabled auth route collision/);
 });
@@ -1710,7 +2483,7 @@ test('server observability rules define executable SLO evidence', async () => {
   assert.match(runbook, /goexample_http_server_connections/);
   assert.match(runbook, /source-built `promtool` 3\.5\.0 first validates the complete Prometheus configuration/);
   assert.match(runbook, /Standalone lint still validates all 48 rules/);
-  assert.match(runbook, /six behavior scenarios with fixed rule-group order/);
+  assert.match(runbook, /ten behavior scenarios with fixed rule-group order cover all 13 alert rules/);
   assert.match(runbook, /Schema-v3 evidence retains[\s\S]*five outputs[\s\S]*five exit codes/);
   assert.match(runbook, /real OpenTelemetry Collector/);
   assert.match(tracingProvider, /go\.opentelemetry\.io\/otel/);
@@ -1886,11 +2659,11 @@ test('Framework SQL client keeps pool, transaction, timeout, recovery, and trace
   assert.match(readme, /`If-Match`\/412\/`ETag`/);
   assert.match(changelog, /Bounded `database\/sql` PostgreSQL pool adapter/);
   assert.match(changelog, /Typed versioned JSON command adapters/);
-  assert.match(evidenceManifest, /Framework\/sqlclient\/client\.go/);
-  assert.match(evidenceManifest, /Framework\/sqlclient\/client_test\.go/);
-  assert.match(evidenceManifest, /Framework\/sqlclient\/postgres_integration_test\.go/);
-  assert.match(evidenceManifest, /Framework\/httpapi\/application_precondition\.go/);
-  assert.match(evidenceManifest, /Framework\/httpapi\/idempotency_fingerprint\.go/);
+  assertEvidenceInput('Framework/sqlclient/client.go');
+  assertEvidenceInput('Framework/sqlclient/client_test.go');
+  assertEvidenceInput('Framework/sqlclient/postgres_integration_test.go');
+  assertEvidenceInput('Framework/httpapi/application_precondition.go');
+  assertEvidenceInput('Framework/httpapi/idempotency_fingerprint.go');
   assert.match(evidenceManifest, /requiredPostgresRecoveryArtifacts/);
   assert.match(evidenceManifest, /postgresRecoveryStatus/);
   assert.match(evidenceManifest, /verifyPostgresRecoveryEvidence/);
@@ -2252,17 +3025,17 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(changelog, /opt-in mutually exclusive delivery mode/);
   assert.match(changelog, /Opt-in Core NATS integration contract/);
   assert.match(changelog, /NATS JetStream adapter/);
-  assert.match(evidenceManifest, /Framework\/queueclient\/client\.go/);
-  assert.match(evidenceManifest, /Framework\/queueclient\/client_test\.go/);
-  assert.match(evidenceManifest, /Framework\/queueclient\/worker\.go/);
-  assert.match(evidenceManifest, /Framework\/queueclient\/worker_test\.go/);
-  assert.match(evidenceManifest, /Framework\/queueclient\/nats_integration_test\.go/);
-  assert.match(evidenceManifest, /Framework\/queueclient\/natsjetstream\/adapter\.go/);
-  assert.match(evidenceManifest, /Framework\/queueclient\/natsjetstream\/adapter_test\.go/);
-  assert.match(evidenceManifest, /Framework\/queueclient\/natsjetstream\/integration_test\.go/);
-  assert.match(evidenceManifest, /Framework\/queueclient\/natsjetstream\/restart_integration_test\.go/);
-  assert.match(evidenceManifest, /Framework\/queueclient\/natsjetstream\/snapshot_integration_test\.go/);
-  assert.match(evidenceManifest, /Framework\/queueclient\/natsjetstream\/cluster_integration_test\.go/);
+  assertEvidenceInput('Framework/queueclient/client.go');
+  assertEvidenceInput('Framework/queueclient/client_test.go');
+  assertEvidenceInput('Framework/queueclient/worker.go');
+  assertEvidenceInput('Framework/queueclient/worker_test.go');
+  assertEvidenceInput('Framework/queueclient/nats_integration_test.go');
+  assertEvidenceInput('Framework/queueclient/natsjetstream/adapter.go');
+  assertEvidenceInput('Framework/queueclient/natsjetstream/adapter_test.go');
+  assertEvidenceInput('Framework/queueclient/natsjetstream/integration_test.go');
+  assertEvidenceInput('Framework/queueclient/natsjetstream/restart_integration_test.go');
+  assertEvidenceInput('Framework/queueclient/natsjetstream/snapshot_integration_test.go');
+  assertEvidenceInput('Framework/queueclient/natsjetstream/cluster_integration_test.go');
   assert.match(evidenceManifest, /verifyNatsDeliveryEvidence/);
   assert.match(evidenceManifest, /verifyNatsRestartContractArtifacts/);
   assert.match(evidenceManifest, /verifyNatsRestartEvidence/);
@@ -2544,11 +3317,11 @@ test('external OIDC/JWKS bearer verification stays bounded and separate from dem
   assert.match(changelog, /Bounded RS256 JWKS verifier/);
   assert.match(changelog, /Bounded transport-neutral refresh session manager/);
   assert.match(evidenceManifest, /oidcProvider/);
-  assert.match(evidenceManifest, /Framework\/auth\/oidc_client\.go/);
-  assert.match(evidenceManifest, /Framework\/auth\/oidc_callback\.go/);
-	assert.match(evidenceManifest, /Framework\/httpapi\/oidc_browser\.go/);
-	assert.match(evidenceManifest, /Framework\/auth\/browser_session\.go/);
-	assert.match(evidenceManifest, /Framework\/sharedstate\/browser_session_store\.go/);
+  assertEvidenceInput('Framework/auth/oidc_client.go');
+  assertEvidenceInput('Framework/auth/oidc_callback.go');
+  assertEvidenceInput('Framework/httpapi/oidc_browser.go');
+  assertEvidenceInput('Framework/auth/browser_session.go');
+  assertEvidenceInput('Framework/sharedstate/browser_session_store.go');
 });
 
 test('server shared-state boundary keeps production fail-fast explicit', async () => {
@@ -2804,10 +3577,22 @@ test('V13 evidence index keeps production boundaries strict and complete', async
   assert.match(script, /execution metadata/);
   assert.match(script, /sourceCommit/);
   assert.match(script, /packageRequirements/);
+  assert.match(script, /function requireExactKeys\(value, name, keys\)/);
+  assert.match(script, /must contain exactly these keys/);
+  assert.match(script, /notRecordedReason = 'No immutable target-environment run and archived artifact has been recorded\.'/);
+  assert.match(script, /not_recorded reason must preserve the fixed boundary/);
+  assert.match(script, /verifiedAt must not precede execution\.finishedAt/);
+  assert.match(script, /finishedAt must not be after document\.generatedAt/);
+  assert.match(script, /verifiedAt must not be after document\.generatedAt/);
+  assert.match(script, /approvedAt must not be after document\.generatedAt/);
+  assert.match(script, /must follow the fixed V13 package order/);
+  assert.match(script, /must follow the fixed requirement order/);
+  assert.match(script, /verifyCompletion\(value, name, outputPaths, requirement/);
   assert.match(script, /requires completion coverage/);
   assert.match(script, /requires an approved RPO\/RTO/);
   assert.match(script, /hashFile\(filePath\) !== item\.sha256/);
   assert.match(script, /value\.startsWith\('\.temp\/'\)/);
+  assert.match(tests, /exactKeyCases/);
   assert.match(tests, /rejects forged recorded state and unsafe artifact paths/);
   assert.equal(scripts['evidence:v13'], 'node scripts/v13-evidence.mjs');
   assert.equal(scripts['evidence:v13:verify'], 'node scripts/v13-evidence.mjs --verify');

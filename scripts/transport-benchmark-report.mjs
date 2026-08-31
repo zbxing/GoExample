@@ -11,7 +11,9 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
 const evidenceRoot = path.join(repositoryRoot, '.temp', 'transport-benchmark');
 const expectedRounds = 5;
-const transports = ['fiber', 'net-http'];
+const capacityTransports = ['fiber', 'net-http', 'framework-net-http'];
+const scenarioTransports = ['fiber', 'framework-net-http'];
+const supportedTransports = new Set([...capacityTransports, ...scenarioTransports]);
 const capacityKneePeakFraction = 0.9;
 const regressionThresholds = {
   maxThroughputRegressionFraction: 0.1,
@@ -136,7 +138,7 @@ function validateCommon(measurement) {
   if (measurement.schemaVersion !== 1) {
     fail('each measurement must use schemaVersion 1');
   }
-  if (!transports.includes(measurement.transport)) {
+  if (!supportedTransports.has(measurement.transport)) {
     fail(`unexpected transport: ${measurement.transport}`);
   }
   requireFiniteNumber(measurement, 'payloadBytes', { integer: true, minimum: 1 });
@@ -197,9 +199,14 @@ function summarizeLatency(measurements) {
       fail('latency measurements must use 2000 requests at concurrency 16');
     }
   }
-  const groups = groupExactRounds(measurements, (measurement) => measurement.transport, transports, 'latency');
+  const groups = groupExactRounds(
+    measurements,
+    (measurement) => measurement.transport,
+    capacityTransports,
+    'latency',
+  );
   const results = Object.fromEntries(
-    transports.map((transport) => {
+    capacityTransports.map((transport) => {
       const group = groups.get(transport);
       return [transport, {
         rounds: group.length,
@@ -216,6 +223,7 @@ function summarizeLatency(measurements) {
     payloadBytes: assertStablePayload(measurements, 'latency'),
     results,
     directionalRatios: compare(results.fiber.median, results['net-http'].median),
+    frameworkAdapterRatios: compareFrameworkAdapter(results),
   };
 }
 
@@ -256,10 +264,32 @@ function compare(fiber, netHTTP) {
   };
 }
 
+function comparePair(numerator, denominator) {
+  return {
+    throughputRatio: ratio(numerator.throughputRps, denominator.throughputRps),
+    p50Ratio: ratio(numerator.p50Nanos, denominator.p50Nanos),
+    p95Ratio: ratio(numerator.p95Nanos, denominator.p95Nanos),
+    p99Ratio: ratio(numerator.p99Nanos, denominator.p99Nanos),
+  };
+}
+
+function compareFrameworkAdapter(results) {
+  return {
+    frameworkNetHTTPToFiber: comparePair(
+      results['framework-net-http'].median,
+      results.fiber.median,
+    ),
+    frameworkNetHTTPToNetHTTP: comparePair(
+      results['framework-net-http'].median,
+      results['net-http'].median,
+    ),
+  };
+}
+
 function summarizeCapacityKnee(workloadSummaries) {
   const byName = new Map(workloadSummaries.map((workload) => [workload.name, workload]));
   const steps = steadyWorkloads.map((workload) => workload.concurrency);
-  const results = Object.fromEntries(transports.map((transport) => {
+  const results = Object.fromEntries(capacityTransports.map((transport) => {
     const points = steadyWorkloads.map((workload) => {
       const summary = byName.get(workload.name)?.results?.[transport]?.median;
       if (!summary) {
@@ -341,7 +371,7 @@ function summarizeCapacity(measurements) {
     }
   }
   const expectedKeys = workloads.flatMap((workload) =>
-    transports.map((transport) => `${workload.name}/${transport}`),
+    capacityTransports.map((transport) => `${workload.name}/${transport}`),
   );
   const groups = groupExactRounds(
     measurements,
@@ -351,7 +381,7 @@ function summarizeCapacity(measurements) {
   );
   const workloadSummaries = workloads.map((workload) => {
     const results = Object.fromEntries(
-      transports.map((transport) => [
+      capacityTransports.map((transport) => [
         transport,
         summarizeCapacityMeasurement(groups.get(`${workload.name}/${transport}`)),
       ]),
@@ -374,6 +404,7 @@ function summarizeCapacity(measurements) {
           results['net-http'].median.mallocs,
         ),
       },
+      frameworkAdapterRatios: compareFrameworkAdapter(results),
     };
   });
   return {
@@ -410,7 +441,7 @@ function summarizeScenarios(measurements) {
   }
 
   const expectedKeys = scenarioWorkloads.flatMap((scenario) =>
-    transports.map((transport) => `${scenario.name}/${transport}`),
+    scenarioTransports.map((transport) => `${scenario.name}/${transport}`),
   );
   const groups = groupExactRounds(
     measurements,
@@ -420,10 +451,10 @@ function summarizeScenarios(measurements) {
   );
   return {
     workloads: scenarioWorkloads.map((scenario) => {
-      const scenarioMeasurements = transports.flatMap(
+      const scenarioMeasurements = scenarioTransports.flatMap(
         (transport) => groups.get(`${scenario.name}/${transport}`),
       );
-      const results = Object.fromEntries(transports.map((transport) => {
+      const results = Object.fromEntries(scenarioTransports.map((transport) => {
         const group = groups.get(`${scenario.name}/${transport}`);
         return [transport, {
           rounds: group.length,
@@ -443,7 +474,12 @@ function summarizeScenarios(measurements) {
         dependencyDelayNanos: scenario.dependencyDelayNanos,
         payloadBytes: assertStablePayload(scenarioMeasurements, `scenario ${scenario.name}`),
         results,
-        directionalRatios: compare(results.fiber.median, results['net-http'].median),
+        directionalRatios: {
+          fiberToFrameworkNetHTTP: comparePair(
+            results.fiber.median,
+            results['framework-net-http'].median,
+          ),
+        },
       };
     }),
   };
@@ -462,8 +498,8 @@ function requireBaselineReport(baselinePath) {
   } catch (error) {
     fail(`baseline is not valid JSON: ${error.message}`);
   }
-  if (baseline.schemaVersion !== 4 || baseline.scope !== 'linux_loopback_combined_client_server_harness') {
-    fail('baseline must be a schemaVersion 4 transport capacity and scenario report');
+  if (baseline.schemaVersion !== 5 || baseline.scope !== 'linux_loopback_combined_client_server_harness') {
+    fail('baseline must be a schemaVersion 5 transport capacity and scenario report');
   }
   try {
     validateEnvironmentFingerprint(baseline.environmentFingerprint, { requireGitHubActions: true });
@@ -486,7 +522,7 @@ function requireBaselineReport(baselinePath) {
     fail('baseline capacity workloads must match the current workload matrix');
   }
   for (const workload of baseline.capacity.workloads) {
-    for (const transport of transports) {
+    for (const transport of capacityTransports) {
       const median = workload.results?.[transport]?.median;
       if (!median || typeof median !== 'object') {
         fail(`baseline is missing ${workload.name}/${transport} median`);
@@ -522,7 +558,7 @@ function requireBaselineReport(baselinePath) {
       integer: true,
       minimum: scenario.minimumPayloadBytes,
     });
-    for (const transport of transports) {
+    for (const transport of scenarioTransports) {
       const result = baselineScenario.results?.[transport];
       if (result?.rounds !== expectedRounds || !result.median || typeof result.median !== 'object') {
         fail(`baseline is missing ${baselineScenario.name}/${transport} scenario median`);
@@ -568,7 +604,7 @@ function compareAgainstBaseline(report, baseline, baselinePath) {
     if (!baselineWorkload) {
       fail(`baseline is missing workload ${workload.name}`);
     }
-    for (const transport of transports) {
+    for (const transport of capacityTransports) {
       const currentMedian = workload.results?.[transport]?.median;
       const baselineMedian = baselineWorkload.results?.[transport]?.median;
       if (!currentMedian || !baselineMedian) {
@@ -610,7 +646,7 @@ function compareAgainstBaseline(report, baseline, baselinePath) {
     if (baselineScenario.payloadBytes !== scenario.payloadBytes) {
       fail(`baseline scenario payloadBytes must match current report for ${scenario.name}`);
     }
-    for (const transport of transports) {
+    for (const transport of scenarioTransports) {
       const currentMedian = scenario.results?.[transport]?.median;
       const baselineMedian = baselineScenario.results?.[transport]?.median;
       if (!currentMedian || !baselineMedian) {
@@ -675,7 +711,7 @@ try {
   fail(`environment fingerprint could not be captured: ${error.message}`);
 }
 const report = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   generatedAt: new Date().toISOString(),
   scope: 'linux_loopback_combined_client_server_harness',
   source: { input: relativePath(options.input), expectedRounds },
@@ -696,6 +732,7 @@ const report = {
     'the capacity knee is an empirical saturation point within the fixed concurrency sweep, not a production capacity limit',
     'scenario workloads are fixed loopback synthetic contracts, not target payload, target identity provider, target dependency, or TLS edge evidence',
     'directional ratios are descriptive medians and require a successful remote artifact before a transport decision',
+    'net-http is a minimal native migration baseline; framework-net-http measures the production Framework adapter and middleware path',
   ],
 };
 
