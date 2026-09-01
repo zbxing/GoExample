@@ -188,6 +188,40 @@ func TestTraceRequestContextLazilyPreservesTheServerSpan(t *testing.T) {
 	}
 }
 
+func TestTraceRequestContextWithoutParentReusesSpanContext(t *testing.T) {
+	traceID, err := trace.TraceIDFromHex("4bf92f3577b34da6a3ce929d0e0e4736")
+	if err != nil {
+		t.Fatalf("parse trace ID: %v", err)
+	}
+	spanID, err := trace.SpanIDFromHex("00f067aa0ba902b7")
+	if err != nil {
+		t.Fatalf("parse span ID: %v", err)
+	}
+	current := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+	})
+	base := trace.ContextWithSpanContext(context.Background(), current)
+
+	requestContext := newTraceRequestContext(base, current, trace.SpanContext{})
+	if requestContext != base {
+		t.Fatal("request context without a parent must reuse the span context")
+	}
+	observed, ok := FromContext(requestContext)
+	if !ok || observed.TraceID != traceID.String() || observed.SpanID != spanID.String() ||
+		observed.ParentSpanID != "" || observed.RemoteParent {
+		t.Fatalf("request trace = %#v/%t", observed, ok)
+	}
+
+	allocations := testing.AllocsPerRun(1000, func() {
+		requestContextResult = newTraceRequestContext(base, current, trace.SpanContext{})
+	})
+	if allocations != 0 {
+		t.Fatalf("parentless request trace attachment allocations = %.1f, want 0", allocations)
+	}
+}
+
 func TestStandardServerSpanStartConfigurationIsReusable(t *testing.T) {
 	serverSpanKind := trace.WithSpanKind(trace.SpanKindServer)
 	standard := newStandardServerSpanStartConfigurations(serverSpanKind)

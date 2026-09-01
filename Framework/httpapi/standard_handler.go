@@ -59,7 +59,13 @@ func NewHTTPHandler(app *fiber.App) (http.Handler, error) {
 		})
 		defer standardRequestContexts.Delete(token)
 
-		bridgedRequest := request.Clone(request.Context())
+		// The adaptor only reads the net/http request. Copy the request value and
+		// clone the header map because this bridge injects one private header;
+		// http.Request.Clone also deep-copies URL, Trailer, forms and transfer
+		// metadata that remain read-only on this path.
+		bridgedRequest := new(http.Request)
+		*bridgedRequest = *request
+		bridgedRequest.Header = request.Header.Clone()
 		bridgedRequest.Header.Set(standardRequestContextHeader, token)
 		adapted.ServeHTTP(standardStreamingResponseWriter(response), bridgedRequest)
 	}), nil

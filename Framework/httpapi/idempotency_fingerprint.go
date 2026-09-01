@@ -82,15 +82,16 @@ func fingerprintLifetime(responseLifetime time.Duration) time.Duration {
 
 func idempotencyRequestFingerprint(c fiber.Ctx, fingerprintHeaders ...string) [sha256.Size]byte {
 	digest := sha256.New()
-	writeFingerprintPart(digest, []byte(c.Method()))
-	writeFingerprintPart(digest, []byte(c.OriginalURL()))
-	writeFingerprintPart(digest, []byte(idempotencyPrincipal(c)))
-	writeFingerprintPart(digest, []byte(normalizedMediaType(c.Get(fiber.HeaderContentType))))
+	var length [8]byte
+	writeFingerprintPart(digest, &length, []byte(c.Method()))
+	writeFingerprintPart(digest, &length, []byte(c.OriginalURL()))
+	writeFingerprintPart(digest, &length, []byte(idempotencyPrincipal(c)))
+	writeFingerprintPart(digest, &length, []byte(normalizedMediaType(c.Get(fiber.HeaderContentType))))
 	for _, header := range fingerprintHeaders {
-		writeFingerprintPart(digest, []byte(strings.ToLower(header)))
-		writeFingerprintPart(digest, []byte(c.Get(header)))
+		writeFingerprintPart(digest, &length, []byte(strings.ToLower(header)))
+		writeFingerprintPart(digest, &length, []byte(c.Get(header)))
 	}
-	writeFingerprintPart(digest, c.Body())
+	writeFingerprintPart(digest, &length, c.Body())
 
 	var result [sha256.Size]byte
 	copy(result[:], digest.Sum(nil))
@@ -112,8 +113,7 @@ func normalizedMediaType(value string) string {
 	return mime.FormatMediaType(strings.ToLower(mediaType), parameters)
 }
 
-func writeFingerprintPart(target hash.Hash, value []byte) {
-	var length [8]byte
+func writeFingerprintPart(target hash.Hash, length *[8]byte, value []byte) {
 	binary.BigEndian.PutUint64(length[:], uint64(len(value)))
 	_, _ = target.Write(length[:])
 	_, _ = target.Write(value)

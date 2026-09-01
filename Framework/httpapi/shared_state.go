@@ -102,12 +102,10 @@ type namespacedLocker struct {
 	prefix string
 }
 
-func newNamespacedLocker(locker idempotency.Locker, namespace string) idempotency.Locker {
-	if locker == nil {
-		return nil
-	}
+func newNamespacedLocker(locker idempotency.Locker, namespace string) namespacedLocker {
 	return namespacedLocker{locker: locker, prefix: sharedStateKey("lock:"+namespace, "")}
 }
 
-func (l namespacedLocker) Lock(key string) error   { return l.locker.Lock(l.prefix + key) }
-func (l namespacedLocker) Unlock(key string) error { return l.locker.Unlock(l.prefix + key) }
+func (l namespacedLocker) key(key string) string   { return l.prefix + key }
+func (l namespacedLocker) Lock(key string) error   { return l.locker.Lock(l.key(key)) }
+func (l namespacedLocker) Unlock(key string) error { return l.locker.Unlock(l.key(key)) }

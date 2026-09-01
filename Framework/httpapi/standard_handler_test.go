@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
 
@@ -69,6 +70,35 @@ func TestNewHTTPHandlerComposesWithStandardMiddleware(t *testing.T) {
 func TestNewHTTPHandlerRejectsNilApp(t *testing.T) {
 	if _, err := NewHTTPHandler(nil); err == nil {
 		t.Fatal("NewHTTPHandler(nil) error = nil")
+	}
+}
+
+func TestNewHTTPHandlerDoesNotMutateCallerRequest(t *testing.T) {
+	options := testOptions()
+	options.RegisterRoutes = func(router fiber.Router) {
+		router.Get("/standard-request-isolation", func(c fiber.Ctx) error {
+			c.Request().Header.Set("X-Application-Mutation", "fiber")
+			return c.SendStatus(http.StatusNoContent)
+		})
+	}
+	handler, err := NewHTTPHandler(New(options))
+	if err != nil {
+		t.Fatalf("NewHTTPHandler() error = %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/standard-request-isolation", http.NoBody)
+	request.Header["X-Caller-Multi-Value"] = []string{"one", "two"}
+	request.Header.Set(standardRequestContextHeader, "caller-supplied")
+	originalHeader := request.Header.Clone()
+	response := httptest.NewRecorder()
+
+	handler.ServeHTTP(response, request)
+
+	if response.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", response.Code, http.StatusNoContent)
+	}
+	if !reflect.DeepEqual(request.Header, originalHeader) {
+		t.Fatalf("caller request header = %#v, want unchanged %#v", request.Header, originalHeader)
 	}
 }
 

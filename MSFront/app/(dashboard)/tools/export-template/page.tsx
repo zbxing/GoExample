@@ -1,10 +1,5 @@
-﻿import { FnaFeaturePlaceholderPage } from '@/components/pages/fna-feature-placeholder-page';
+﻿import { ExportTemplatePage } from '@/components/pages/export-template-page';
 
 export default function Page() {
-  return (
-    <FnaFeaturePlaceholderPage
-      title="导出模板"
-      description="配置导入导出模板字段映射。"
-    />
-  );
+  return <ExportTemplatePage />;
 }

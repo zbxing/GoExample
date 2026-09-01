@@ -6610,3 +6610,206 @@ html[data-fna-card='border'] .fnaWarningBar {
   }
 }
 
+.fnaTag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--el-fill-color-light, #f5f7fa);
+  color: var(--el-text-color-regular, #606266);
+}
+
+.fnaTag.success {
+  background: color-mix(in srgb, var(--el-color-success, #67c23a) 14%, transparent);
+  color: var(--el-color-success, #67c23a);
+}
+
+.fnaTag.danger {
+  background: color-mix(in srgb, var(--el-color-danger, #f56c6c) 14%, transparent);
+  color: var(--el-color-danger, #f56c6c);
+}
+
+.fnaCodeBlock {
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border-radius: 6px;
+  background: var(--el-fill-color-lighter, #fafafa);
+  color: var(--el-text-color-primary, #303133);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.fnaDemoSplit {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 12px;
+  min-height: 420px;
+}
+
+.fnaDemoSplitPane {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--el-border-color-lighter, #ebeef5);
+  border-radius: var(--fna-radius, 0.75rem);
+  background: var(--fna-card-bg, #fff);
+}
+
+.fnaDemoSplitPane h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.fnaDemoList {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fnaDemoList button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fnaDemoList button:hover,
+.fnaDemoList button.is-active {
+  background: color-mix(in srgb, var(--el-color-primary, #409eff) 10%, transparent);
+  color: var(--el-color-primary, #409eff);
+}
+
+.fnaMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.fnaMetricCard {
+  padding: 16px;
+  border-radius: var(--fna-radius, 0.75rem);
+  background: var(--fna-card-bg, #fff);
+  border: 1px solid var(--el-border-color-lighter, #ebeef5);
+}
+
+.fnaMetricCard .label {
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 13px;
+}
+
+.fnaMetricCard .value {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.fnaProgressTrack {
+  height: 8px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--el-fill-color, #f0f2f5);
+}
+
+.fnaProgressBar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--el-color-primary, #409eff);
+}
+
+.fnaSecuritySections {
+  display: grid;
+  gap: 12px;
+}
+
+.fnaSecuritySection {
+  padding: 16px;
+  border: 1px solid var(--el-border-color-lighter, #ebeef5);
+  border-radius: var(--fna-radius, 0.75rem);
+  background: var(--fna-card-bg, #fff);
+}
+
+.fnaSecuritySection h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.fnaChunkDropzone {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  min-height: 160px;
+  margin-bottom: 12px;
+  padding: 24px;
+  border: 1px dashed var(--el-border-color, #dcdfe6);
+  border-radius: var(--fna-radius, 0.75rem);
+  background: var(--el-fill-color-blank, #fff);
+  color: var(--el-text-color-secondary, #909399);
+  text-align: center;
+  cursor: pointer;
+}
+
+.fnaChunkDropzone.is-dragging {
+  border-color: var(--el-color-primary, #409eff);
+  color: var(--el-color-primary, #409eff);
+}
+
+.fnaToolWizard {
+  display: grid;
+  gap: 12px;
+}
+
+.fnaToolSteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.fnaToolStep {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--el-fill-color-light, #f5f7fa);
+  color: var(--el-text-color-regular, #606266);
+  font-size: 13px;
+}
+
+.fnaToolStep.is-active {
+  background: color-mix(in srgb, var(--el-color-primary, #409eff) 14%, transparent);
+  color: var(--el-color-primary, #409eff);
+}
+
+@media (max-width: 1100px) {
+  .fnaDemoSplit,
+  .fnaMetricGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fnaDemoListRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fnaDemoListRow > button:first-child {
+  flex: 1;
+  min-width: 0;
+}

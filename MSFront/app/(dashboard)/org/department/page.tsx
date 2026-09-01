@@ -1,10 +1,5 @@
-﻿import { FnaFeaturePlaceholderPage } from '@/components/pages/fna-feature-placeholder-page';
+﻿import { DepartmentPage } from '@/components/pages/department-page';
 
 export default function Page() {
-  return (
-    <FnaFeaturePlaceholderPage
-      title="部门管理"
-      description="维护组织架构中的部门树与成员归属。"
-    />
-  );
+  return <DepartmentPage />;
 }

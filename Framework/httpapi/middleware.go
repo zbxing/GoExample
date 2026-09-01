@@ -255,11 +255,12 @@ func idempotencyMiddleware(route string, lifetime time.Duration, storage fiber.S
 			if err := idempotency.ConfigDefault.KeyHeaderValidate(key); err != nil {
 				return err
 			}
-			if err := cacheLock.Lock(key); err != nil {
+			fingerprintLockKey := cacheLock.key(key)
+			if err := cacheLock.locker.Lock(fingerprintLockKey); err != nil {
 				return fmt.Errorf("lock idempotency fingerprint: %w", err)
 			}
 			bindErr := fingerprints.bind(c, key, idempotencyRequestFingerprint(c, fingerprintHeaders...), lifetime)
-			unlockErr := cacheLock.Unlock(key)
+			unlockErr := cacheLock.locker.Unlock(fingerprintLockKey)
 			if bindErr != nil {
 				return fmt.Errorf("bind idempotency fingerprint: %w", bindErr)
 			}
@@ -336,17 +337,21 @@ func atomicRateLimiter(
 		if resetSeconds < 1 {
 			resetSeconds = 1
 		}
-		reset := strconv.FormatInt(resetSeconds, 10)
-		c.Set("X-RateLimit-Limit", strconv.Itoa(maxRequests))
-		c.Set("X-RateLimit-Remaining", strconv.Itoa(result.Remaining))
-		c.Set("X-RateLimit-Reset", reset)
+		setRateLimitHeader(c, "X-RateLimit-Limit", int64(maxRequests))
+		setRateLimitHeader(c, "X-RateLimit-Remaining", int64(result.Remaining))
+		setRateLimitHeader(c, "X-RateLimit-Reset", resetSeconds)
 		if result.Allowed {
 			return c.Next()
 		}
-		c.Set(fiber.HeaderRetryAfter, reset)
+		setRateLimitHeader(c, fiber.HeaderRetryAfter, resetSeconds)
 		if onLimitReached != nil {
 			onLimitReached(c)
 		}
 		return failure(c, fiber.StatusTooManyRequests, message)
 	}
+}
+
+func setRateLimitHeader(c fiber.Ctx, name string, value int64) {
+	var storage [20]byte
+	c.Response().Header.SetBytesV(name, strconv.AppendInt(storage[:0], value, 10))
 }

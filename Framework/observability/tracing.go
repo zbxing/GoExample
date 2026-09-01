@@ -33,6 +33,12 @@ func newTraceRequestContext(
 	current trace.SpanContext,
 	parent trace.SpanContext,
 ) context.Context {
+	// The span context returned by tracer.Start already supports parentless
+	// FromContext lookups. The wrapper is only needed to retain parent metadata
+	// and cache its public string representation.
+	if !parent.IsValid() {
+		return ctx
+	}
 	return &traceRequestContext{
 		Context: ctx,
 		current: current,

@@ -359,6 +359,7 @@ css
 csv
 ctx
 current
+curve
 custom
 cyclic
 cyclone
@@ -398,6 +399,8 @@ deploy
 deployment
 deprecated
 deprecation
+dept
+depts
 derive
 descendant
 describe
@@ -414,8 +417,10 @@ device
 diagnostics
 dial
 dialog
+dict
 dictionaries
 dictionary
+dicts
 differs
 digest
 dir
@@ -784,6 +789,7 @@ item
 items
 iterable
 its
+java
 jet
 jetstream
 jittered
@@ -810,6 +816,7 @@ labels
 ladder
 large
 last
+late
 latency
 latest
 layer
@@ -1059,6 +1066,7 @@ panel
 panic
 panics
 parallel
+param
 parameter
 parameters
 params
@@ -1090,6 +1098,7 @@ pill
 pin
 ping
 pipeline
+pixel
 pkce
 pkg
 place
@@ -1112,6 +1121,7 @@ port
 portfolio
 ports
 position
+positions
 posix
 post
 postcss
@@ -1245,6 +1255,7 @@ regular
 rehash
 reject
 rejected
+rejection
 rejections
 rejects
 relationships
@@ -1344,6 +1355,7 @@ runner
 runtime
 safe
 same
+sample
 save
 sbom
 scaling
@@ -1641,6 +1653,7 @@ universal
 unknown
 unlinked
 unlock
+unregister
 unreleased
 unsafe
 unsupported
@@ -1787,6 +1800,7 @@ zod
 兼容策略
 内部错误脱敏
 决策门槛
+减少标准适配器请求深拷贝
 分仍需完成
 分布式状态
 分所需工作
@@ -1798,6 +1812,7 @@ zod
 半关闭与连接收敛
 协议与网络
 单一事实源
+原状态迁移的未完成项
 双语言分析
 发布证明
 可测试的进程生命周期
@@ -1819,6 +1834,7 @@ zod
 和主流服务器框架详细比较
 响应安全头
 固定工作负载
+基准结果
 基础复核命令
 基础设施端点响应策略
 复核命令
@@ -1838,6 +1854,7 @@ zod
 完成定义
 完成状态与
 完整性
+完结与迁移记录
 官方与社区基线
 实施中
 实施项
@@ -1883,6 +1900,7 @@ zod
 执行前事实核验
 执行指令
 执行结论
+执行顺序
 执行顺序与依赖
 扩展点与生命周期
 扫描发现
@@ -1928,6 +1946,7 @@ zod
 本轮结论
 本轮评分变化
 本轮验证结果
+本项目综合性能在这些主流服务框架中处理什么水平
 构建可追溯性与本地执行稳定性
 架构分层与
 标准生态与可替换性
@@ -1959,6 +1978,7 @@ zod
 漂移契约
 漏洞扫描的多
 然后按照该文档对项目进行优化修改
+版本目标与边界
 版本边界
 状态定义
 独立浏览器
@@ -1971,6 +1991,7 @@ zod
 生命周期与
 生成部署清单
 的准入条件
+的详细性能比较
 目录结构
 目标提高综合评分
 目标是提高综合评分
@@ -2006,6 +2027,7 @@ zod
 语义加固
 请根据项目修改提示词内容文档
 请求生命周期与协议边界
+请给出本项目和主流服务器框架
 请继续
 超时与生命周期
 超时预算
@@ -2037,6 +2059,7 @@ zod
 长稳与故障注入
 门禁与评分规则
 降低探针日志噪声
+限流头
 需要完善
 项目定位
 项目待优化
@@ -2044,5 +2067,6 @@ zod
 项目架构与性能评估
 项目真实上下文
 项目结构扫描
+首个中间件成本预算与
 验证结果
 验证记录

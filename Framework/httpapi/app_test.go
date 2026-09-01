@@ -3,6 +3,7 @@ package httpapi
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -2196,6 +2197,21 @@ func TestReadinessReflectsChecksAndDraining(t *testing.T) {
 	defer draining.Body.Close()
 	if draining.StatusCode != http.StatusServiceUnavailable {
 		t.Fatalf("draining status = %d", draining.StatusCode)
+	}
+}
+
+func TestWriteFingerprintPartReusesLengthBufferWithoutAllocating(t *testing.T) {
+	digest := sha256.New()
+	var length [8]byte
+	value := []byte("fingerprint-part")
+
+	allocations := testing.AllocsPerRun(1000, func() {
+		digest.Reset()
+		writeFingerprintPart(digest, &length, value)
+		writeFingerprintPart(digest, &length, value)
+	})
+	if allocations != 0 {
+		t.Fatalf("write fingerprint parts allocations = %.1f, want 0", allocations)
 	}
 }
 

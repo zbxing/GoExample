@@ -25,6 +25,26 @@ import (
 
 type RouteRegistrar func(fiber.Router)
 
+type appMiddlewareSet struct {
+	requestLog  bool
+	trace       bool
+	metrics     bool
+	cors        bool
+	compression bool
+	etag        bool
+}
+
+func defaultAppMiddlewareSet() appMiddlewareSet {
+	return appMiddlewareSet{
+		requestLog:  true,
+		trace:       true,
+		metrics:     true,
+		cors:        true,
+		compression: true,
+		etag:        true,
+	}
+}
+
 type Options struct {
 	Name                string
 	Environment         string
@@ -78,6 +98,10 @@ type Options struct {
 }
 
 func New(options Options) *fiber.App {
+	return newApp(options, defaultAppMiddlewareSet())
+}
+
+func newApp(options Options, middleware appMiddlewareSet) *fiber.App {
 	options = withDefaults(options)
 	applicationContext, cancelApplication := context.WithCancel(context.Background())
 	requestCancellations := newRequestCancellationRegistry()
@@ -117,9 +141,15 @@ func New(options Options) *fiber.App {
 	app.Use(standardRequestContextBridge())
 	app.Use(requestIDBoundary(options.Metrics))
 	app.Use(requestid.New())
-	app.Use(observability.TraceMiddlewareWithProvider(options.TracerProvider))
-	app.Use(observability.RequestLogger(options.Logger, options.LogSkipPaths...))
-	app.Use(options.Metrics.Middleware)
+	if middleware.trace {
+		app.Use(observability.TraceMiddlewareWithProvider(options.TracerProvider))
+	}
+	if middleware.requestLog {
+		app.Use(observability.RequestLogger(options.Logger, options.LogSkipPaths...))
+	}
+	if middleware.metrics {
+		app.Use(options.Metrics.Middleware)
+	}
 	app.Use(recover.New(recover.Config{
 		EnableStackTrace: true,
 		StackTraceHandler: func(c fiber.Ctx, recovered any) {
@@ -140,54 +170,60 @@ func New(options Options) *fiber.App {
 	}))
 	app.Use(helmet.New(helmetConfig))
 	app.Use(earlydata.New())
-	restrictedCORS := corsRequiresOriginVary(options.AllowedOrigins)
-	var corsNext func(fiber.Ctx) bool
-	if restrictedCORS {
-		app.Use("/api/v1", seedAPIOriginVary())
-		corsNext = skipPreseededAPICORS
+	restrictedCORS := middleware.cors && corsRequiresOriginVary(options.AllowedOrigins)
+	if middleware.cors {
+		var corsNext func(fiber.Ctx) bool
+		if restrictedCORS {
+			app.Use("/api/v1", seedAPIOriginVary())
+			corsNext = skipPreseededAPICORS
+		}
+		app.Use(cors.New(cors.Config{
+			Next:         corsNext,
+			AllowOrigins: options.AllowedOrigins,
+			AllowMethods: []string{
+				fiber.MethodGet,
+				fiber.MethodPost,
+				fiber.MethodPut,
+				fiber.MethodPatch,
+				fiber.MethodDelete,
+				fiber.MethodOptions,
+			},
+			AllowHeaders: []string{
+				fiber.HeaderAccept,
+				fiber.HeaderAuthorization,
+				fiber.HeaderContentType,
+				fiber.HeaderXRequestID,
+				observability.TraceparentHeader,
+				observability.TracestateHeader,
+				"X-Idempotency-Key",
+				"X-Tenant-ID",
+				browserCSRFHeaderName,
+			},
+			ExposeHeaders: []string{
+				fiber.HeaderXRequestID,
+				fiber.HeaderWWWAuthenticate,
+				observability.TraceparentHeader,
+				fiber.HeaderRetryAfter,
+				deprecationHeader,
+				sunsetHeader,
+				linkHeader,
+				"X-Idempotency-Replayed",
+				"X-RateLimit-Limit",
+				"X-RateLimit-Remaining",
+				"X-RateLimit-Reset",
+			},
+			AllowCredentials: options.AllowCredentials,
+			MaxAge:           300,
+		}))
 	}
-	app.Use(cors.New(cors.Config{
-		Next:         corsNext,
-		AllowOrigins: options.AllowedOrigins,
-		AllowMethods: []string{
-			fiber.MethodGet,
-			fiber.MethodPost,
-			fiber.MethodPut,
-			fiber.MethodPatch,
-			fiber.MethodDelete,
-			fiber.MethodOptions,
-		},
-		AllowHeaders: []string{
-			fiber.HeaderAccept,
-			fiber.HeaderAuthorization,
-			fiber.HeaderContentType,
-			fiber.HeaderXRequestID,
-			observability.TraceparentHeader,
-			observability.TracestateHeader,
-			"X-Idempotency-Key",
-			"X-Tenant-ID",
-			browserCSRFHeaderName,
-		},
-		ExposeHeaders: []string{
-			fiber.HeaderXRequestID,
-			fiber.HeaderWWWAuthenticate,
-			observability.TraceparentHeader,
-			fiber.HeaderRetryAfter,
-			deprecationHeader,
-			sunsetHeader,
-			linkHeader,
-			"X-Idempotency-Replayed",
-			"X-RateLimit-Limit",
-			"X-RateLimit-Remaining",
-			"X-RateLimit-Reset",
-		},
-		AllowCredentials: options.AllowCredentials,
-		MaxAge:           300,
-	}))
 	registerDiagnostics(app, options)
-	app.Use("/api/v1", streamSafeETag())
-	app.Use("/api/v1", compress.New(compress.Config{Level: compress.LevelBestSpeed}))
-	if restrictedCORS {
+	if middleware.etag {
+		app.Use("/api/v1", streamSafeETag())
+	}
+	if middleware.compression {
+		app.Use("/api/v1", compress.New(compress.Config{Level: compress.LevelBestSpeed}))
+	}
+	if restrictedCORS && middleware.compression {
 		app.Use("/api/v1", coalesceCompressionVary())
 	}
 

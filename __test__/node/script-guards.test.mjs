@@ -795,7 +795,7 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(httpMiddlewareETagTest, /TestGenerateWeakETagMatchesFiberWithoutAllocations/);
   assertEvidenceInput('Framework/httpapi/middleware_etag_test.go');
   assert.match(httpMiddleware, /response\.Header\.Del\(fiber\.HeaderETag\)/);
-  assert.match(httpApp, /restrictedCORS := corsRequiresOriginVary\(options\.AllowedOrigins\)/);
+  assert.match(httpApp, /restrictedCORS := middleware\.cors && corsRequiresOriginVary\(options\.AllowedOrigins\)/);
   assert.match(httpApp, /Next:\s+corsNext/);
   assert.match(httpApp, /app\.Use\("\/api\/v1", seedAPIOriginVary\(\)\)/);
   assert.match(httpApp, /app\.Use\("\/api\/v1", coalesceCompressionVary\(\)\)/);
@@ -1025,6 +1025,9 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === 'Framework/httpapi/application_query.go' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'Framework/httpapi/auth_middleware.go' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'Framework/httpapi/app_test.go' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'Framework/httpapi/middleware_rate_limit_test.go' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'Framework/httpapi/standard_handler.go' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'Framework/httpapi/standard_handler_test.go' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'Framework/httpapi/security_audit.go' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'Framework/httpapi/security_audit_chain.go' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'Framework/httpapi/security_audit_chain_test.go' && input.sha256));
@@ -1044,6 +1047,7 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/security/server-threat-model.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/security/server-audit-events.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V13.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V14.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'SDK/GoExample/release-manifest.json' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'SDK/Billing/release-manifest.json' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/evidence-manifest.mjs' && input.sha256));
@@ -1991,12 +1995,20 @@ test('SDK consumer matrix evidence stays repository-only, complete, and checksum
   assert.match(independentVerifier, /SDK consumer matrix evidence artifact is missing from the manifest/);
 });
 
-test('V12 completion and V13 backlog match the weighted evaluation', async () => {
-  const [evaluation, backlog, nextBacklog, lifecycleADR] = await Promise.all([
+test('V13 completion and V14 backlog match the weighted evaluation', async () => {
+  const [evaluation, v12Backlog, backlog, nextBacklog, lifecycleADR, benchmark, app, appTests, fingerprint, middleware, tracing, tracingTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'docs', '评估', '项目架构与性能评估.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V12.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V13.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V14.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', 'adr', '0002-http-request-lifecycle-and-protocol-boundary.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'benchmark_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'app.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'app_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'idempotency_fingerprint.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'middleware.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'observability', 'tracing.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'observability', 'tracing_test.go'), 'utf8'),
   ]);
   const rows = [
     ...evaluation.matchAll(/^\| (?!\*\*综合评分)([^|]+) \| (\d+)% \| ([\d.]+) \| ([\d.]+) \|/gm),
@@ -2019,90 +2031,62 @@ test('V12 completion and V13 backlog match the weighted evaluation', async () =>
 
   const declared = evaluation.match(/精确加权值 \*\*([\d.]+)\/10\*\*/);
   assert.ok(declared, 'current evaluation must declare an exact weighted score');
-  assert.equal(declared[1], '9.820', 'current score must include the application-scoped request cancellation registry, single-call sampled span finalization, direct zero-allocation strict W3C parent parsing, the precomputed CORS/compression Vary fast path, pre-encoded default hello envelope, decoded-query-byte hello fast path, typed fixed Example responses, the stack-buffer weak ETag fast path, lazy request trace-context attachment, the context-carried request lifetime, bounded request-logger, traceparent, and standard server-span start allocation fast paths, independent SSE stream and transport write deadlines, constant-allocation line framing, and existing gates without claiming target-environment completion');
+  assert.equal(declared[1], '9.824', 'current score must include the standard adapter request-copy fast path, zero-allocation atomic rate-limit header encoder, middleware matrix, parentless trace-context reuse, and keyed idempotency replay allocation reduction in addition to the existing lifecycle, compatibility, and evidence gates without claiming target-environment completion');
   const roundedCalculatedTotal = Math.round((calculatedTotal + 1e-9) * 1000) / 1000;
   assert.equal(roundedCalculatedTotal.toFixed(3), declared[1]);
-  assert.match(backlog, /V12-01/);
-  assert.match(backlog, /V12-10/);
-  assert.match(backlog, /状态：\*\*已完成\*\*/);
-  assert.match(backlog, /原有“V12 本身仍未完成”均由本次收口决定取代/);
-  assert.match(backlog, /当前精确综合评分：\*\*9\.493\/10\*\*/);
+  assert.match(v12Backlog, /V12-01/);
+  assert.match(v12Backlog, /V12-10/);
+  assert.match(v12Backlog, /状态：\*\*已完成\*\*/);
+  assert.match(v12Backlog, /原有“V12 本身仍未完成”均由本次收口决定取代/);
+  assert.match(v12Backlog, /当前精确综合评分：\*\*9\.493\/10\*\*/);
+  assert.match(backlog, /状态：\*\*已完结\*\*/);
+  assert.match(backlog, /9 个工作包仍保持 `not_recorded`/);
+  assert.match(backlog, /V13-01/);
+  assert.match(backlog, /V13-09/);
+  assert.match(backlog, /V14-07/);
+  assert.match(backlog, /V14-15/);
   assert.match(nextBacklog, /状态：\*\*实施中\*\*/);
-  assert.match(nextBacklog, /当前精确综合评分：\*\*9\.820\/10\*\*/);
-  assert.match(nextBacklog, /基线为 109–110 allocs\/op/);
-  assert.match(nextBacklog, /优化后两组共十轮为 5 轮 106 allocs\/op、5 轮 107 allocs\/op/);
-  assert.match(nextBacklog, /延迟区间重叠，不作吞吐或延迟提升结论/);
-  assert.match(nextBacklog, /优化后两组共十轮固定为 97 allocs\/op/);
-  assert.match(nextBacklog, /优化后两组共十轮固定为 99 allocs\/op/);
-  assert.match(nextBacklog, /优化后两组共十轮为 9 轮 102 allocs\/op、1 轮 103 allocs\/op/);
-  assert.match(nextBacklog, /优化后两组共十轮固定为 104 allocs\/op/);
-  assert.match(nextBacklog, /优化后两组共十轮固定为 109 allocs\/op/);
-  assert.match(nextBacklog, /9 轮 119 allocs\/op、1 轮 120 allocs\/op/);
-  assert.match(nextBacklog, /优化后五轮固定为 116 allocs\/op/);
-  assert.match(nextBacklog, /优化后五轮固定为 113 allocs\/op/);
-  assert.match(nextBacklog, /优化后两组共十轮固定为 111 allocs\/op/);
-	assert.match(nextBacklog, /优化后两组共十轮固定为 95 allocs\/op/);
-	assert.match(nextBacklog, /两组共十轮固定 104 allocs\/op/);
-	assert.match(nextBacklog, /246 项、其中 245 项必需/);
-  assert.match(nextBacklog, /仅在 `FromContext` 首次读取时通过 `sync\.Once`/);
-  assert.match(nextBacklog, /OpenAPI wire contract/);
-  assert.match(nextBacklog, /schema v15 Kubernetes evidence/);
-  assert.match(nextBacklog, /actionlint` v1\.7\.12/);
-  assert.match(nextBacklog, /promtool` (?:from Prometheus )?3\.5\.0/);
-  assert.match(nextBacklog, /V13-01/);
-  assert.match(nextBacklog, /V13-09/);
-  assert.match(nextBacklog, /V12-06/);
-	assert.match(nextBacklog, /framework-net-http/);
-	assert.match(nextBacklog, /9 × 3 × 5/);
-	assert.match(nextBacklog, /report_schema_migration/);
-	assert.match(nextBacklog, /schema v2/);
-	assert.match(nextBacklog, /32 并发、30 秒/);
-	assert.match(nextBacklog, /SendServerSentEvents/);
-	assert.match(nextBacklog, /ServerSentEventSource/);
-	assert.match(nextBacklog, /Last-Event-ID/);
-	assert.match(nextBacklog, /该轮通用 evidence 输入合同同步为 244 项，其中 243 项必需/);
+  assert.match(nextBacklog, /当前精确综合评分：\*\*9\.824\/10\*\*/);
+  assert.match(nextBacklog, /当前综合等级：\*\*A−\*\*/);
+  assert.match(nextBacklog, /目标综合等级：\*\*A\*\*/);
+  assert.match(nextBacklog, /37 → 36 allocs\/op/);
+  assert.match(nextBacklog, /B\/op 与 ns\/op 区间均重叠/);
+  assert.match(nextBacklog, /BenchmarkStandardHTTPHandler/);
+  assert.match(nextBacklog, /BenchmarkStandardHTTPHandlerParallel/);
+  assert.match(nextBacklog, /BenchmarkHelloFiberHandlerAtomicRateLimiter/);
+  assert.match(nextBacklog, /BenchmarkHelloFiberHandlerMiddlewareMatrix/);
+  assert.match(nextBacklog, /BenchmarkAuthenticationMiddlewareMatrix/);
+  assert.match(nextBacklog, /BenchmarkIdempotencyMiddlewareMatrix/);
+  assert.match(nextBacklog, /16 → 14 allocs\/op/);
+  assert.match(nextBacklog, /1,001 → 953 B\/op/);
+  assert.match(nextBacklog, /15 allocs\/op、753 B\/op/);
+  assert.match(nextBacklog, /13 allocs\/op、729 B\/op/);
+  assert.match(nextBacklog, /89 allocs\/op、5,204 B\/op/);
+  assert.match(nextBacklog, /39 allocs\/op、2,167–2,182 B\/op/);
+  assert.match(nextBacklog, /34 allocs\/op、2,039–2,052 B\/op/);
+  assert.match(nextBacklog, /framework-net-http/);
+  assert.match(nextBacklog, /Node Fastify\/Express/);
+  assert.match(nextBacklog, /Java Spring Boot MVC\/WebFlux/);
+  assert.match(nextBacklog, /V14-01/);
+  assert.match(nextBacklog, /V14-15/);
 	assert.match(lifecycleADR, /SSE 必须通过 `SendServerSentEvents` 或纯新增的 `SendServerSentEventsFromSource` 使用 Framework request lifecycle/);
 	assert.match(lifecycleADR, /目标 edge 下 SSE 的 buffering/);
-	assert.match(backlog, /capacityKnee/);
-  assert.match(backlog, /9 × 2/);
-  assert.match(backlog, /3 × 2 × 5/);
-  assert.match(backlog, /10%\/20%\/25%/);
-  assert.match(backlog, /baseline-source\.json/);
-  assert.match(backlog, /environmentFingerprint/);
-  assert.match(backlog, /明确排除 PR 运行/);
-	assert.match(backlog, /hash-only opaque session\/CSRF\/logout/);
-	assert.match(backlog, /AuthorizationRequestStore/);
-	assert.match(backlog, /并发恰好一个成功/);
-	assert.match(backlog, /RequiredACR/);
-	assert.match(backlog, /RequiredAMR/);
-	assert.match(backlog, /MaxAuthAge/);
-	assert.match(backlog, /BrowserSessionInventoryStore/);
-	assert.match(backlog, /MaxSessionsPerSubject/);
-	assert.match(backlog, /GET \/api\/v1\/auth\/oidc\/sessions/);
-	assert.match(backlog, /Framework API snapshot 已更新为 332 个符号/);
-	assert.match(backlog, /Framework\/authorization/);
-  assert.match(backlog, /schema v5/);
-  assert.match(backlog, /schema v6/);
-  assert.match(backlog, /route 网络分区/);
-  assert.match(backlog, /屏障同步/);
-  assert.match(backlog, /NATS_SERVER_BINARY/);
-  assert.match(backlog, /localNatsSnapshotRestore=recorded/);
-  assert.match(backlog, /主动篡改拒绝/);
-  assert.match(backlog, /SecurityAuditSink/);
-  assert.match(backlog, /support\/consumer\/HealthProbe/);
-  assert.match(nextBacklog, /Services\/Billing/);
-  assert.match(nextBacklog, /每个公开方法到清单 method\/path 的实际请求映射/);
-  assert.match(nextBacklog, /覆盖全部 14 个公开操作的 HTTP 状态和 envelope/);
-  assert.match(backlog, /Framework\/sqlclient/);
-  assert.match(backlog, /Framework\/queueclient/);
-  assert.match(nextBacklog, /V13-05/);
-  assert.match(nextBacklog, /目标数据库与消息系统实证/);
-  assert.match(backlog, /生产 broker/);
-  assert.match(backlog, /NATS_TEST_URL/);
-  assert.match(backlog, /OIDC\/JWKS 资源服务器基础/);
-  assert.match(backlog, /Authorization Code \+ PKCE/);
-  assert.match(backlog, /yarn sdk:check/);
-  assert.match(backlog, /10\.0\/10/);
+  assert.match(nextBacklog, /environmentFingerprint/);
+  assert.match(nextBacklog, /真实业务 PostgreSQL\/queue 接入/);
+  assert.match(nextBacklog, /生产审计 sink/);
+  assert.match(benchmark, /func BenchmarkHelloFiberHandlerMiddlewareMatrix/);
+  assert.match(benchmark, /func BenchmarkAuthenticationMiddlewareMatrix/);
+  assert.match(benchmark, /func BenchmarkIdempotencyMiddlewareMatrix/);
+  assert.match(benchmark, /name: "enabled_replay"/);
+  assert.match(app, /func defaultAppMiddlewareSet\(\) appMiddlewareSet/);
+  assert.match(app, /return newApp\(options, defaultAppMiddlewareSet\(\)\)/);
+  assert.match(appTests, /func TestWriteFingerprintPartReusesLengthBufferWithoutAllocating/);
+  assert.match(fingerprint, /var length \[8\]byte/);
+  assert.match(fingerprint, /writeFingerprintPart\(digest, &length,/);
+  assert.match(middleware, /fingerprintLockKey := cacheLock\.key\(key\)/);
+  assert.match(middleware, /cacheLock\.locker\.Unlock\(fingerprintLockKey\)/);
+  assert.match(tracing, /if !parent\.IsValid\(\) \{\s*return ctx\s*\}/);
+  assert.match(tracingTests, /func TestTraceRequestContextWithoutParentReusesSpanContext/);
 });
 
 test('Example project queries and commands keep Fiber behind the Framework adapter', async () => {
@@ -2163,7 +2147,9 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
   assert.match(applicationCommand, /func \(command ApplicationCommand\) WithMethod\(method string\)/);
   assert.match(applicationCommand, /router\.Add\(\[\]string\{command\.method\}/);
   assert.match(standardHandler, /func NewHTTPHandler\(app \*fiber\.App\) \(http\.Handler, error\)/);
-  assert.match(standardHandler, /request\.Clone\(request\.Context\(\)\)/);
+  assert.match(standardHandler, /\*bridgedRequest = \*request/);
+  assert.match(standardHandler, /bridgedRequest\.Header = request\.Header\.Clone\(\)/);
+  assert.doesNotMatch(standardHandler, /request\.Clone\(request\.Context\(\)\)/);
   assert.match(standardHandler, /standardRequestContexts\.LoadAndDelete/);
   assert.match(standardHandler, /Header\.Del\(standardRequestContextHeader\)/);
   assert.match(standardHandler, /type standardRequestBridge struct/);
@@ -2179,6 +2165,7 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
   assert.match(app, /app\.Use\(standardRequestContextBridge\(\)\)/);
   assert.match(standardHandler, /app\.ShutdownWithContext/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerComposesWithStandardMiddleware/);
+  assert.match(standardHandlerTests, /TestNewHTTPHandlerDoesNotMutateCallerRequest/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerPropagatesRequestCancellation/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerPropagatesStandardClientDisconnect/);
   assert.match(standardHandlerTests, /TestStandardStreamingResponseWriterPreservesUnsupportedWriters/);
@@ -3699,11 +3686,12 @@ test('Nginx edge baseline stays pinned, bounded, archived, and target-explicit',
 });
 
 test('V13 evidence index keeps production boundaries strict and complete', async () => {
-  const [script, tests, packageDocument, backlog] = await Promise.all([
+  const [script, tests, packageDocument, backlog, nextBacklog] = await Promise.all([
     readFile(path.join(repositoryRoot, 'scripts', 'v13-evidence.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, '__test__', 'node', 'v13-evidence.test.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V13.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V14.md'), 'utf8'),
   ]);
   const scripts = JSON.parse(packageDocument).scripts;
   for (const id of ['V13-01', 'V13-02', 'V13-03', 'V13-04', 'V13-05', 'V13-06', 'V13-07', 'V13-08', 'V13-09']) {
@@ -3738,4 +3726,9 @@ test('V13 evidence index keeps production boundaries strict and complete', async
   assert.equal(scripts['evidence:v13'], 'node scripts/v13-evidence.mjs');
   assert.equal(scripts['evidence:v13:verify'], 'node scripts/v13-evidence.mjs --verify');
   assert.match(backlog, /9 个工作包仍保持 `not_recorded`/);
+  assert.match(backlog, /状态：\*\*已完结\*\*/);
+  for (const id of ['V14-07', 'V14-08', 'V14-09', 'V14-10', 'V14-11', 'V14-12', 'V14-13', 'V14-14', 'V14-15']) {
+    assert.match(nextBacklog, new RegExp(id));
+  }
+  assert.match(nextBacklog, /均未取得满足严格 verifier 的完整目标环境证据/);
 });
