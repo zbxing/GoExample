@@ -8,8 +8,8 @@ import type { Route } from 'next';
 import { useAuth } from '@/providers/auth-provider';
 import { flattenMenuTree } from '@/lib/utils/menu-access';
 import { resolveMenuIcon } from '@/lib/utils/menu-icons';
-import { beginGvaRouteProgress } from '@/lib/utils/ga-page-loading';
-import { triggerGvaPageLeave } from '@/lib/utils/ga-page-leave';
+import { beginFnaRouteProgress } from '@/lib/utils/fna-page-loading';
+import { triggerFnaPageLeave } from '@/lib/utils/fna-page-leave';
 
 interface TagsViewItem {
   path: string;
@@ -26,7 +26,7 @@ const HOME_TAB: TagsViewItem = {
 };
 
 const SERVER_SNAPSHOT: TagsViewItem[] = [HOME_TAB];
-const storageKey = 'msfront:gva-tags';
+const storageKey = 'msfront:fna-tags';
 const listeners = new Set<() => void>();
 
 let cachedClientSnapshot: TagsViewItem[] = SERVER_SNAPSHOT;
@@ -378,7 +378,7 @@ const TAB_SHIFT_MS = 250;
 
 function ChromeTabBg({ symbolId }: { symbolId: string }) {
   return (
-    <svg className="gvaChromeSvg" aria-hidden="true">
+    <svg className="fnaChromeSvg" aria-hidden="true">
       <svg width="51%" height="100%">
         <use href={`#${symbolId}`} width="214" height="100%" fill="currentColor" />
       </svg>
@@ -532,9 +532,9 @@ export function TagsView({
     if (pathname === path) {
       return;
     }
-    const leaving = triggerGvaPageLeave();
-    beginGvaRouteProgress();
-    // 内容区 loading 只由 apiFetch 驱动（对齐 GVA），导航处不再 begin，避免无 end 卡住
+    const leaving = triggerFnaPageLeave();
+    beginFnaRouteProgress();
+    // 内容区 loading 只由 apiFetch 驱动（对齐 gin-vue-admin），导航处不再 begin，避免无 end 卡住
     void leaving;
     router.push(path as Route);
   }
@@ -805,17 +805,17 @@ export function TagsView({
 
   return (
     <div
-      className={`gvaTagsView gvaTabs-${tabMode}${draggingPath ? ' is-dragging-tabs' : ''}`}
+      className={`fnaTagsView fnaTabs-${tabMode}${draggingPath ? ' is-dragging-tabs' : ''}`}
       data-tab-mode={tabMode}
     >
-      <svg width="0" height="0" className="gvaChromeDefs" aria-hidden="true">
+      <svg width="0" height="0" className="fnaChromeDefs" aria-hidden="true">
         <defs>
-          <symbol id="gva-chrome-geometry-left" viewBox="0 0 214 36" preserveAspectRatio="none">
+          <symbol id="fna-chrome-geometry-left" viewBox="0 0 214 36" preserveAspectRatio="none">
             <path d="M17 0h197v36H0v-2c4.5 0 9-3.5 9-8V8c0-4.5 3.5-8 8-8z" />
           </symbol>
         </defs>
       </svg>
-      <div className="gvaTagsScroll">
+      <div className="fnaTagsScroll">
         {dragTags.map((tag, index) => {
           const active = draggingPath
             ? frozenActivePathRef.current === tag.path
@@ -848,7 +848,7 @@ export function TagsView({
             <Fragment key={tag.path}>
               {isDragging && dragGhost ? (
                 <div
-                  className="gvaPageTabPlaceholder"
+                  className="fnaPageTabPlaceholder"
                   style={{
                     // 占位用标签自身宽 + margin，保留父级 gap；slotAdvance 含 gap 不能当 width
                     width: dragGhost.width,
@@ -870,8 +870,8 @@ export function TagsView({
               data-tab-path={tag.path}
               data-tab-pinned={tag.closable ? undefined : 'true'}
               className={[
-                'gvaPageTab',
-                `gvaPageTab-${tabMode}`,
+                'fnaPageTab',
+                `fnaPageTab-${tabMode}`,
                 active ? 'is-active' : '',
                 draggable ? 'is-draggable' : 'is-pinned',
                 isDragging ? 'is-dragging' : '',
@@ -934,7 +934,7 @@ export function TagsView({
                 if (event.button !== 0 || !draggable) {
                   return;
                 }
-                if ((event.target as HTMLElement).closest('.gvaPageTabClose')) {
+                if ((event.target as HTMLElement).closest('.fnaPageTabClose')) {
                   return;
                 }
                 const tabEl = event.currentTarget;
@@ -963,23 +963,23 @@ export function TagsView({
             >
               {tabMode === 'chrome' ? (
                 <>
-                  <div className="gvaChromeBg" aria-hidden="true">
-                    <ChromeTabBg symbolId="gva-chrome-geometry-left" />
+                  <div className="fnaChromeBg" aria-hidden="true">
+                    <ChromeTabBg symbolId="fna-chrome-geometry-left" />
                   </div>
-                  <div className="gvaChromeHover" aria-hidden="true" />
+                  <div className="fnaChromeHover" aria-hidden="true" />
                 </>
               ) : null}
 
               {showTabIcon && Icon
-                ? createElement(Icon, { size: 16, className: 'gvaPageTabIcon' })
+                ? createElement(Icon, { size: 16, className: 'fnaPageTabIcon' })
                 : null}
 
-              <span className="gvaPageTabLabel">{tag.title}</span>
+              <span className="fnaPageTabLabel">{tag.title}</span>
 
               {tag.closable ? (
                 <button
                   type="button"
-                  className="gvaPageTabClose"
+                  className="fnaPageTabClose"
                   aria-label={`关闭 ${tag.title}`}
                   onClick={(event) => {
                     event.preventDefault();
@@ -992,7 +992,7 @@ export function TagsView({
                 </button>
               ) : null}
 
-              {tabMode === 'chrome' ? <div className="gvaChromeDivider" aria-hidden="true" /> : null}
+              {tabMode === 'chrome' ? <div className="fnaChromeDivider" aria-hidden="true" /> : null}
             </div>
             </Fragment>
           );
@@ -1004,7 +1004,7 @@ export function TagsView({
             <>
               <button
                 type="button"
-                className="gvaTagsMenuBackdrop"
+                className="fnaTagsMenuBackdrop"
                 aria-label="关闭菜单"
                 onClick={() => setMenuOpen(false)}
                 onContextMenu={(event) => {
@@ -1013,7 +1013,7 @@ export function TagsView({
                 }}
               />
               <div
-                className="gvaTagsContextMenu"
+                className="fnaTagsContextMenu"
                 style={{ left: menuPos.x, top: menuPos.y }}
                 role="menu"
               >

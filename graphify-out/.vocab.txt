@@ -21,6 +21,7 @@ adapter
 add
 added
 additions
+addr
 address
 addresses
 admin
@@ -40,6 +41,9 @@ algorithm
 alias
 alive
 all
+allocate
+allocation
+allocations
 allow
 allowed
 allows
@@ -52,6 +56,7 @@ and
 answer
 any
 api
+apicors
 apis
 apisnapshot
 app
@@ -223,6 +228,8 @@ checksums
 child
 chrome
 chunk
+claim
+claimed
 claims
 clamp
 class
@@ -230,6 +237,7 @@ classification
 classify
 claude
 clean
+cleans
 cleanup
 clear
 cleared
@@ -247,6 +255,7 @@ closes
 clsx
 cluster
 cmd
+coalesce
 code
 col
 collapse
@@ -277,6 +286,7 @@ completes
 completion
 composes
 composition
+compression
 compute
 concurrency
 concurrent
@@ -284,6 +294,7 @@ concurrently
 conditional
 config
 configuration
+configurations
 configure
 configured
 confirm
@@ -421,6 +432,7 @@ discovery
 dismiss
 dist
 docker
+docs
 docume
 document
 documentation
@@ -428,6 +440,7 @@ documented
 documents
 does
 dom
+done
 dot
 dotenv
 double
@@ -500,6 +513,7 @@ errors
 escape
 eslint
 eslintrc
+etag
 evaluate
 event
 events
@@ -570,6 +584,7 @@ fallbacks
 false
 families
 family
+fast
 feature
 feedback
 fetch
@@ -601,6 +616,7 @@ flow
 flush
 flusher
 flushes
+fna
 focus
 folder
 footer
@@ -610,6 +626,7 @@ force
 forces
 form
 format
+formats
 forward
 found
 fraction
@@ -649,7 +666,6 @@ groups
 grype
 guard
 guards
-gva
 half
 handle
 handler
@@ -798,6 +814,7 @@ latency
 latest
 layer
 layout
+lazily
 ldflags
 leader
 leaf
@@ -810,6 +827,7 @@ leaving
 left
 lefts
 legacy
+length
 letter
 lettered
 letters
@@ -972,6 +990,7 @@ normalizes
 nos
 not
 note
+notices
 notify
 now
 number
@@ -1017,6 +1036,7 @@ outage
 outcome
 outcomes
 outer
+outlive
 output
 outputs
 over
@@ -1058,6 +1078,7 @@ payload
 payloads
 peer
 pending
+per
 percent
 percentile
 permanent
@@ -1106,6 +1127,7 @@ preferences
 prefix
 preflight
 prepare
+preseeded
 present
 presentation
 preserve
@@ -1282,6 +1304,7 @@ retry
 retryable
 return
 returns
+reusable
 reuse
 reused
 review
@@ -1339,6 +1362,7 @@ score
 script
 scripted
 scripts
+scrollbar
 sdk
 search
 seconds
@@ -1366,6 +1390,7 @@ separates
 sequence
 serialization
 serializes
+series
 serious
 serve
 server
@@ -1392,6 +1417,7 @@ shares
 shell
 shift
 short
+shorter
 should
 show
 shutdown
@@ -1418,6 +1444,7 @@ slo
 slog
 slow
 slugify
+smooth
 snap
 snapshot
 soak
@@ -1542,6 +1569,7 @@ threat
 thresholds
 through
 throughput
+thumb
 tightened
 time
 timeline
@@ -1562,6 +1590,7 @@ tool
 toolbar
 toolchain
 tools
+tooltip
 topbar
 topology
 tops
@@ -1644,6 +1673,7 @@ validation
 validator
 value
 values
+vary
 vault
 verification
 verifie
@@ -1709,6 +1739,8 @@ zod
 下一项不涉及
 不做项
 不可变
+不可变规则
+不可抗因素除外
 不得据此宣称完成
 与供应链契约
 与依赖补丁
@@ -1724,6 +1756,7 @@ zod
 与模块治理
 与跨框架
 且能提升综合评分的仓库内优化是什么
+两个互斥执行分支
 两个步骤是互斥的
 中间件与应用安全
 事务型
@@ -1739,6 +1772,7 @@ zod
 优化清单
 会话与密钥治理
 会话与授权
+例如真实硬件或设备等等
 供应链交付证明
 健康接口弃用契约
 健康检查与停机
@@ -1746,6 +1780,7 @@ zod
 全量优缺点
 全量优缺点扫描
 关系数据库
+其高性能是否有利用到
 兼容性政策
 兼容性门禁
 兼容治理
@@ -1768,6 +1803,7 @@ zod
 可测试的进程生命周期
 可观测性
 可观测性与
+可诚实推进的优化
 同源保护
 后续实施细节
 否则生成新待优化文档并优化
@@ -1775,8 +1811,12 @@ zod
 否则继续评估并生成新的待优化文档
 否则评估并生成新文档后实施
 否则请继续评估并生成新的待优化文档
+否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优
+否则重新评估并生成新的待优化文档
 启动与检查
 告警行为门禁如何覆盖全部服务端规则并提高综合评分
+和主流
+和主流服务器框架详细比较
 响应安全头
 固定工作负载
 基础复核命令
@@ -1801,19 +1841,23 @@ zod
 官方与社区基线
 实施中
 实施项
+实现与验证要求
 审计与故障矩阵
 容量与交付证明
 容量证据
 密码哈希升级与兼容迁移
 尚未完成
 尚未完成时
+工作区与模块边界
 工具链下载完整性
 已完成与证据
 已完成优化
 已实测
+已有能力基线
 已验证行为
 幂等与约束集成测试
 幂等请求指纹与冲突治理
+并列出表格给我
 并发与性能回归
 并提高综合评分
 并核验
@@ -1823,13 +1867,11 @@ zod
 开发体验与文档治理
 引用与
 引用守卫
-当前主要短板
-当前代码能力基线
+当前优化基线
 当前实现与命令
 当前技术栈
 当前状态
-当前目录约定
-当前项目上下文补充
+当前项目的服务器性能有多高
 待优化
 待优化文档中可提高综合评分的仓库内高收益缺口
 待优化清单
@@ -1838,9 +1880,10 @@ zod
 性能与多浏览器
 性能瓶颈判断
 恢复与长稳
+执行前事实核验
+执行指令
 执行结论
 执行顺序与依赖
-执行风格要求
 扩展点与生命周期
 扫描发现
 拆分顺序
@@ -1860,10 +1903,13 @@ zod
 断连取消与协议部署契约
 新设备没有这些文件是否还可以正常使用记忆图谱
 最小权限
+最新待优化文档尚未完成
+最新待优化文档已经完成
 最新待优化文档是否完成
 最新待优化文档未完成则继续实施
 最新的待优化文档全部完成了吗
 最新的待优化文档是否完成
+有什么作用
 有意破坏兼容性
 服务器威胁模型与复审治理
 服务器安全审计事件
@@ -1899,6 +1945,7 @@ zod
 正式身份与分布式状态
 正式身份与密钥治理
 没有请继续
+没有请继续优化
 流式响应与慢客户端能力
 测试与质量工程
 测试契约防回退
@@ -1939,6 +1986,7 @@ zod
 若未完成继续
 获取远端
 认证与恢复
+证据与评分纪律
 证据完整性与生产就绪
 证据归档与独立校验
 证据归档与评分自动化
@@ -1953,8 +2001,10 @@ zod
 评分影响
 评分表
 评分规则
+该文档是我从其它项目拷贝的
 详细分项评分
 语义加固
+请根据项目修改提示词内容文档
 请求生命周期与协议边界
 请继续
 超时与生命周期
@@ -1988,10 +2038,11 @@ zod
 门禁与评分规则
 降低探针日志噪声
 需要完善
+项目定位
 项目待优化
 项目扩展
 项目架构与性能评估
-项目目标
+项目真实上下文
 项目结构扫描
 验证结果
 验证记录

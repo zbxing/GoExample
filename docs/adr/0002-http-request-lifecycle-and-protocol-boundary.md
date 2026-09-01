@@ -12,7 +12,7 @@
 3. `NewHTTPHandler` 用不可预测、一次性且仅进程内解析的令牌把原始 `http.Request.Context()` 交给 Framework 的第一个 middleware；令牌在任何日志、路由或业务 handler 前从请求删除。caller deadline、主动取消、标准 middleware value 和标准 listener 的真实 TCP 断连因此会进入 application context。
 4. 原生 Fiber/fasthttp listener 仍不承诺客户端断开后及时取消下游任务。保留的真实 TCP 对照固定了该限制：客户端发送请求后关闭 socket，不会在 100 ms 内关闭应用 context；该兼容入口仍由主动 request deadline 或 server shutdown 兜底，不用于依赖即时断连取消的大上传、昂贵查询或长流式请求。
 5. Example 默认由 `server.RunHTTP` 的标准 listener 承载经 Fiber adaptor 组装的 handler；accepted connection、read-header/read/write/idle/header、request cancellation、draining 和 shutdown 均有本地契约。Fiber direct listener 的 HTTP/1.1/TLS 行为和标准 `net/http` TLS/HTTP/2、loopback reverse proxy 另有对照。仓库现固定 Nginx 1.30.4 edge 配置与真实容器 CI 入口，但这仍不代表目标 Nginx/Ingress 已运行或 HTTP/3 已支持；在完成目标 edge 的握手、header、buffering、timeout 和断连传播测试前不得宣称为生产能力。
-6. SSE 必须通过 `SendServerSentEvents` 或纯新增的 `SendServerSentEventsFromSource` 使用 Framework request lifecycle。普通请求仍在 handler 返回时释放 deadline；SSE body stream 则把取消所有权移交给 producer，并以一次性清理统一响应请求 deadline、标准客户端断连和应用停机。静态 channel 继续使用原 options 布局；恢复入口的 `ServerSentEventSource` 接收最多 1024 bytes、单行且为有效 UTF-8 的 `Last-Event-ID` 和同一有界 context，使业务可以按游标恢复。事件 channel 不经过内部队列，每次接收跟随前一次 flush；EventSource wire format、UTF-8/字段/大小、心跳范围和 cache headers 都是固定契约。该决定不扩展到原生 Fiber listener、WebSocket、目标 edge 或 HTTP/3。
+6. SSE 必须通过 `SendServerSentEvents` 或纯新增的 `SendServerSentEventsFromSource` 使用 Framework request lifecycle。普通请求仍在 handler 返回时释放 deadline；SSE body stream 则把取消所有权移交给 producer，并以一次性清理统一响应 deadline、标准客户端断连和应用停机。`ServerSentEventOptions.StreamTimeout=0` 保留普通请求和标准服务器写预算；正值必须大于心跳且不超过 24 小时，在 stream 被认领后从原始 caller context 派生独立有限预算，因此不需要放大全部 API 的 `HTTP_REQUEST_TIMEOUT`，同时仍服从 caller 更短 deadline、断连和应用停机。标准 adapter 还通过 `http.ResponseController` 将传输写期限设置为有效 stream deadline 加固定 1 秒协议收尾预算，提前结束时把剩余预算收紧为 1 秒；这既防止 `server.RunHTTP.WriteTimeout` 提前截断合法长流，也不给卡住的 flush 留下无界等待。标准期限能力不受支持时保持兼容，其它控制器错误在写出响应前失败关闭。恢复入口的 `ServerSentEventSource` 接收最多 1024 bytes、单行且为有效 UTF-8 的 `Last-Event-ID` 和该有界 context，使业务可以按游标恢复。事件 channel 不经过内部队列，每次接收跟随前一次 flush；EventSource wire format、UTF-8/字段/大小、心跳范围和 cache headers 都是固定契约。多行 data 以两次有界扫描计算并直接写入 wire framing，不按行数分配切片或聚合字符串。该决定不扩展到原生 Fiber listener、WebSocket、目标 edge 或 HTTP/3。
 
 ## 已验证行为
 
@@ -23,7 +23,7 @@
 - `NewHTTPHandler` 保留 caller 的较短 deadline 与 middleware context value；主动取消和标准 TCP 客户端直接关闭 socket 都会使 application context 返回 `context.Canceled`，伪造的内部桥接 header 在原生/标准入口都不会到达路由；
 - Fiber `tls.Listener` 能完成受信任证书的 HTTPS/HTTP/1.1 请求并在 shutdown 时清理；
 - Fiber `SendStreamWriter` 能按 flush 顺序发送最小多块响应；受控慢读客户端会制造 socket 背压，并证明 `HTTP_WRITE_TIMEOUT` 安装的写截止时间终止底层写入和流生产；该通用契约仍不代表 WebSocket 已获得应用协议生命周期支持；
-- 标准 HTTP/1.1 与 TLS/HTTP2 下的 `SendServerSentEvents` 会在流保持活动时刷新首事件与心跳，固定 `text/event-stream`、`no-cache, no-transform`、有界事件和多行 data 编码；恢复 source 在两种协议下都接收经过边界校验的 `Last-Event-ID`，stream 完成后 producer context 取消；关闭客户端 body 后 producer 会退出，`RunHTTP` 配合 `app.ShutdownWithContext` 会在停机预算内收敛活动 SSE；
+- 标准 HTTP/1.1 与 TLS/HTTP2 下的 `SendServerSentEvents` 会在流保持活动时刷新首事件与心跳，固定 `text/event-stream`、`no-cache, no-transform`、有界事件和多行 data 编码；显式 `StreamTimeout` 的行为测试证明 producer 可以在普通请求预算之后发送事件、会在独立上限到期时返回 `DeadlineExceeded`，客户端断连和 `RunHTTP + app.ShutdownWithContext` 仍会提前收敛；真实 `RunHTTP` 回归把服务器 `WriteTimeout` 压到 50ms，在 500ms stream 预算内延迟到 150ms 的第二事件仍完整到达，修复前同一场景稳定返回 `unexpected EOF`；单元门禁同时锁定较短 caller deadline、1 秒传输收尾预算、零值不改写服务器期限、标准不支持错误兼容和其它控制器错误脱敏失败；恢复 source 在两种协议下都接收经过边界校验的 `Last-Event-ID`，stream 完成后 producer context 取消；8,191 个换行的事件性能门禁要求行 framing 不产生随行数增长的辅助分配；
 - `/api/v1` 的 `HTTP_MAX_IN_FLIGHT` 提供非阻塞应用 admission：容量耗尽返回 `503` 与 `Retry-After`，顶层健康探针不占用业务 slot；这不是传输层慢客户端背压的替代品；
 - readiness 进入 draining 后，新的 `/api/v1` 请求返回 `503` 与 `Retry-After`，已经开始的 handler 不被该 gate 中断；容量拒绝和摘流拒绝分别计数；
 - `HTTP_READ_BUFFER_SIZE` 显式限定请求头读取预算（默认 16 KiB，4 KiB–1 MiB），真实 TCP 超限请求返回 431；该上限必须与 edge、认证头和 Cookie 预算一致；
@@ -51,6 +51,8 @@ yarn test:server
 downstream timeout < HTTP_REQUEST_TIMEOUT (8s) < HTTP_WRITE_TIMEOUT (10s)
 SHUTDOWN_DRAIN_DELAY + HTTP_REQUEST_TIMEOUT < SHUTDOWN_TIMEOUT (20s)
 ```
+
+显式 SSE `StreamTimeout` 是上述普通请求关系的窄例外：producer deadline 取 caller deadline 与 stream timeout 的较小值；标准传输写期限为该值加固定 1 秒协议收尾预算，提前完成时也只保留 1 秒。目标 edge 的外层 timeout 必须另行配置并实测，仓库内期限桥不能控制代理。
 
 生产 edge 的单次请求 timeout 必须大于应用 `HTTP_REQUEST_TIMEOUT`，同时小于调用方总预算。负载均衡器摘除传播时间计入 `SHUTDOWN_DRAIN_DELAY`；配置校验继续拒绝 drain 与活动请求预算超过总停机预算。
 

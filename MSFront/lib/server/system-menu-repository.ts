@@ -61,7 +61,7 @@ export async function listAsyncMenusForRoles(menuIds: string[]) {
   return buildMenuTree(menus);
 }
 
-/** GVA SysBaseMenu.ID is auto-increment uint — keep numeric string ids */
+/** gin-vue-admin SysBaseMenu.ID is auto-increment uint — keep numeric string ids */
 function nextNumericMenuId(menus: SystemMenuRecord[]) {
   let max = 0;
   for (const menu of menus) {

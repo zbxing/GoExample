@@ -25,7 +25,7 @@ import {
   useAdminToast,
 } from '@/components/admin/admin-primitives';
 import { apiFetch } from '@/lib/api/client';
-import { useGvaListLoad } from '@/lib/hooks/use-gva-list-load';
+import { useFnaListLoad } from '@/lib/hooks/use-fna-list-load';
 import { Can } from '@/providers/auth-provider';
 import type {
   CasbinPolicyRecord,
@@ -113,7 +113,7 @@ export function SystemApisPage() {
     description: '',
   });
 
-  useGvaListLoad(() => {
+  useFnaListLoad(() => {
     let cancelled = false;
 
     async function sync() {
@@ -639,7 +639,7 @@ export function SystemApisPage() {
               render: (row) => {
                 const api = row as unknown as SystemApiRecord;
                 return (
-                  <div className="gvaRowActions">
+                  <div className="fnaRowActions">
                     <Can btn="api:edit">
                       <AdminLinkButton icon="edit" onClick={() => openEdit(api)}>
                         编辑
@@ -682,7 +682,7 @@ export function SystemApisPage() {
         onConfirm={() => void saveApi()}
         busy={busy}
       >
-        <div className="adminForm gvaDialogForm">
+        <div className="adminForm fnaDialogForm">
           <AdminField label="请求方法">
             <select
               value={form.method}
@@ -781,9 +781,9 @@ export function SystemApisPage() {
         busy={syncBusy}
       >
         <AdminWarningBar title="同步API，不输入路由分组将不会被自动同步，如果api不需要参与鉴权，可以按忽略按钮进行忽略。" />
-        <h4 className="gvaSyncSectionTitle">
+        <h4 className="fnaSyncSectionTitle">
           新增路由
-          <span className="gvaSyncSectionHint">存在于当前路由中，但是不存在于api表</span>
+          <span className="fnaSyncSectionHint">存在于当前路由中，但是不存在于api表</span>
         </h4>
         <AdminTable
           columns={[
@@ -844,7 +844,7 @@ export function SystemApisPage() {
               render: (row) => {
                 const item = row as unknown as SyncApiItem;
                 return (
-                  <div className="gvaRowActions">
+                  <div className="fnaRowActions">
                     <AdminLinkButton icon="edit" onClick={() => void addOneSyncApi(item)}>
                       单条新增
                     </AdminLinkButton>
@@ -863,9 +863,9 @@ export function SystemApisPage() {
           emptyText="暂无新增路由"
         />
 
-        <h4 className="gvaSyncSectionTitle">
+        <h4 className="fnaSyncSectionTitle">
           已删除路由
-          <span className="gvaSyncSectionHint">
+          <span className="fnaSyncSectionHint">
             已经不存在于当前项目的路由中，确定同步后会自动从apis表删除
           </span>
         </h4>
@@ -888,9 +888,9 @@ export function SystemApisPage() {
           emptyText="暂无待删除路由"
         />
 
-        <h4 className="gvaSyncSectionTitle">
+        <h4 className="fnaSyncSectionTitle">
           忽略路由
-          <span className="gvaSyncSectionHint">忽略路由不参与api同步，常见为不需要进行鉴权行为的路由</span>
+          <span className="fnaSyncSectionHint">忽略路由不参与api同步，常见为不需要进行鉴权行为的路由</span>
         </h4>
         <AdminTable
           columns={[

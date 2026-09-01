@@ -10,7 +10,12 @@ import {
 } from 'react';
 import type { ThemeMode } from '@/lib/types/management';
 import { siteConfig } from '@/lib/config/site';
-import { THEME_STORAGE_KEY, themeClassMap } from '@/lib/utils/theme';
+import {
+  applyFnaShellCss,
+  hydrateFnaShellSettings,
+  readFnaShellSettings,
+} from '@/lib/utils/fna-shell-settings';
+import { THEME_STORAGE_KEY, themeClassMap, normalizeStoredThemeMode } from '@/lib/utils/theme';
 
 interface ThemeContextValue {
   theme: ThemeMode;
@@ -24,13 +29,17 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export function ThemeProvider({ children }: PropsWithChildren) {
   // 服务端 / 客户端首屏必须同一默认值，禁止在 useState 初始化时读 localStorage
   const [theme, setThemeState] = useState<ThemeMode>(siteConfig.defaultTheme);
-  const [systemTheme, setSystemTheme] = useState<Exclude<ThemeMode, 'system'>>('gva');
+  const [systemTheme, setSystemTheme] = useState<Exclude<ThemeMode, 'system'>>('fna');
   const [themeReady, setThemeReady] = useState(false);
 
   useEffect(() => {
-    const storedValue = window.localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
-    if (storedValue && (siteConfig.themes as readonly string[]).includes(storedValue)) {
-      setThemeState(storedValue);
+    const storedValue = window.localStorage.getItem(THEME_STORAGE_KEY);
+    const normalized = normalizeStoredThemeMode(storedValue, siteConfig.themes);
+    if (normalized) {
+      if (storedValue !== normalized) {
+        window.localStorage.setItem(THEME_STORAGE_KEY, normalized);
+      }
+      setThemeState(normalized);
     }
     setSystemTheme(resolveSystemTheme());
     setThemeReady(true);
@@ -65,7 +74,10 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     if (!themeReady) {
       return;
     }
+    // 先同步 html.dark，再写 Element 主色阶；登录页也依赖这套通用配置
     applyTheme(theme === 'system' ? systemTheme : theme);
+    hydrateFnaShellSettings();
+    applyFnaShellCss(readFnaShellSettings());
   }, [systemTheme, theme, themeReady]);
 
   const value = useMemo<ThemeContextValue>(
@@ -86,8 +98,8 @@ export function ThemeProvider({ children }: PropsWithChildren) {
 }
 
 /**
- * 管理台布局 CSS 绑定在 `.theme-gva` 上。
- * graphite（暗色）必须保留 theme-gva，另加 html.dark；不能换成 theme-graphite，否则侧栏/顶栏样式全丢。
+ * 管理台布局 CSS 绑定在 `.theme-fna` 上。
+ * graphite（暗色）必须保留 theme-fna，另加 html.dark；不能换成 theme-graphite，否则侧栏/顶栏样式全丢。
  */
 export function applyTheme(theme: Exclude<ThemeMode, 'system'>) {
   if (typeof document === 'undefined') {
@@ -102,13 +114,13 @@ export function applyTheme(theme: Exclude<ThemeMode, 'system'>) {
   root.classList.remove('dark');
 
   if (theme === 'graphite') {
-    root.classList.add(themeClassMap.gva);
+    root.classList.add(themeClassMap.fna);
     root.classList.add('dark');
     return;
   }
 
-  if (theme === 'gva') {
-    root.classList.add(themeClassMap.gva);
+  if (theme === 'fna') {
+    root.classList.add(themeClassMap.fna);
     return;
   }
 
@@ -122,7 +134,7 @@ function resolveSystemTheme(
     return 'graphite';
   }
 
-  return 'gva';
+  return 'fna';
 }
 
 export function useTheme() {

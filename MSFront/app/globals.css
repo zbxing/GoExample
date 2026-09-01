@@ -2054,7 +2054,7 @@ select:disabled {
 
 .theme-system,
 .theme-aurora {
-  --page-background: var(--gva-page-bg, #f5f6f8);
+  --page-background: var(--fna-page-bg, #f5f6f8);
   --surface-primary: #ffffff;
   --surface-secondary: #f7f8fa;
   --surface-strong: #ffffff;
@@ -3034,7 +3034,7 @@ thead th {
 
 /* Gin-Vue-Admin inspired reference surface */
 :root {
-  --page-background: var(--gva-page-bg, #f5f6f8);
+  --page-background: var(--fna-page-bg, #f5f6f8);
   --surface-primary: #ffffff;
   --surface-secondary: #f7f8fa;
   --surface-strong: #ffffff;
@@ -3051,7 +3051,7 @@ thead th {
 
 html,
 body {
-  background: var(--gva-page-bg, #f5f6f8);
+  background: var(--fna-page-bg, #f5f6f8);
   color: #1d2129;
 }
 
@@ -3063,7 +3063,7 @@ body {
   grid-template-columns: 248px minmax(0, 1fr);
   grid-template-rows: 88px minmax(0, 1fr);
   min-height: 100vh;
-  background: var(--gva-page-bg, #f5f6f8);
+  background: var(--fna-page-bg, #f5f6f8);
 }
 
 .appShell[data-sidebar-collapsed='true'] {
@@ -3082,7 +3082,7 @@ body {
   border: 0;
   border-bottom: 1px solid #e5e6eb;
   border-radius: 0;
-  background: var(--gva-card-bg, #ffffff);
+  background: var(--fna-card-bg, #ffffff);
   box-shadow: 0 1px 4px rgba(29, 33, 41, 0.04);
   backdrop-filter: none;
 }
@@ -3150,7 +3150,7 @@ body {
   padding: 0 24px;
   overflow-x: auto;
   border: 0;
-  background: var(--gva-card-bg, #ffffff);
+  background: var(--fna-card-bg, #ffffff);
   scrollbar-width: none;
 }
 
@@ -3274,7 +3274,7 @@ body {
   overflow-y: auto;
   border: 0;
   border-right: 1px solid var(--el-border-color-lighter, var(--border-subtle, #e5e6eb));
-  background: var(--gva-card-bg, #ffffff);
+  background: var(--fna-card-bg, #ffffff);
   color: #4e5969;
   box-shadow: none;
   backdrop-filter: none;
@@ -3380,7 +3380,7 @@ body {
   min-width: 0;
   overflow-x: clip;
   padding: 0;
-  background: var(--gva-page-bg, #f5f6f8);
+  background: var(--fna-page-bg, #f5f6f8);
 }
 
 .pageContent {
@@ -3393,8 +3393,18 @@ body {
 
 .referenceDashboard {
   display: grid;
-  gap: 16px;
+  gap: var(--fna-page-gutter, 8px);
   min-width: 0;
+}
+
+/* 仪表盘内容块默认无描边，靠底色与圆角区分（对齐参考项目常见 shadow/默认观感） */
+.referenceWelcome,
+.referenceMetricCard,
+.referencePanel {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: var(--fna-card-bg, #ffffff);
+  border-radius: var(--fna-radius, 0.75rem);
 }
 
 .referenceWelcome {
@@ -3402,24 +3412,43 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  min-height: 142px;
-  padding: 24px 28px;
-  border: 1px solid var(--gva-welcome-border, #dce8ff);
-  border-radius: 8px;
-  background: var(--gva-welcome-bg, linear-gradient(110deg, #eef5ff 0%, #f7fbff 65%, #ffffff 100%));
+  min-height: 0;
+  padding: 24px 20px;
+}
+
+.referenceMetricCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+  min-height: 112px;
+  padding: 16px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.referencePanel {
+  min-width: 0;
+  padding: 16px;
+  overflow: visible;
+}
+
+.referenceLicenseCard {
+  min-width: 0;
 }
 
 .referenceEyebrow,
 .referenceRailLabel {
   display: block;
-  color: var(--gva-text-sub, #5f6b7a);
+  color: var(--fna-text-sub, #5f6b7a);
   font-size: 0.72rem;
   letter-spacing: 0.08em;
 }
 
 .referenceWelcome h1 {
   margin: 8px 0 6px;
-  color: var(--gva-text-main, #1d2129);
+  color: var(--fna-text-main, #1d2129);
   font-size: clamp(1.35rem, 2.1vw, 1.9rem);
   font-weight: 650;
   line-height: 1.35;
@@ -3427,7 +3456,7 @@ body {
 
 .referenceWelcome p {
   margin: 0;
-  color: var(--gva-text-sub, #5f6b7a);
+  color: var(--fna-text-sub, #5f6b7a);
   font-size: 0.84rem;
 }
 
@@ -3447,118 +3476,116 @@ body {
 }
 
 .referenceWelcome .primaryButton {
-  background: #1d4ed8;
+  background: var(--el-color-primary, #2264f2);
 }
 
 .referenceWelcome .primaryButton:hover {
-  background: #1e40af;
+  background: var(--el-color-primary-dark-2, #1e40af);
 }
 
-.referenceMetricGrid {
+/*
+ * 统一三列网格：
+ * 访问人数 + 间隔 + 新增客户 = 内容数据宽度
+ * 解决数量宽度 = 右侧快捷栏宽度
+ */
+.referenceDashboardBody {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(290px, 0.75fr);
-  gap: 16px;
-  align-items: stretch;
-}
-
-.referenceMetricMain {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: inherit;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--fna-page-gutter, 8px);
+  align-items: start;
   min-width: 0;
 }
 
-.referenceMetricSide {
-  display: grid;
-  min-width: 0;
+.referenceMetric-1 {
+  grid-column: 1;
+  grid-row: 1;
 }
 
-.referenceMetricCard {
-  position: relative;
+.referenceMetric-2 {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.referenceMetric-3 {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.referenceDashboardMain {
+  grid-column: 1 / 3;
+  grid-row: 2;
   display: grid;
-  gap: 7px;
-  min-height: 138px;
-  padding: 18px 20px 14px;
-  overflow: hidden;
-  border: 1px solid var(--gva-card-border, #e5e6eb);
-  border-radius: 8px;
-  background: var(--gva-card-bg, #ffffff);
+  gap: var(--fna-page-gutter, 8px);
+  min-width: 0;
+  align-content: start;
+}
+
+.referenceDashboardRail {
+  grid-column: 3;
+  grid-row: 2;
+  display: grid;
+  gap: var(--fna-page-gutter, 8px);
+  min-width: 0;
+  align-content: start;
 }
 
 .referenceMetricCard strong {
-  color: var(--gva-text-main, #1d2129);
-  font-size: 0.84rem;
-  font-weight: 500;
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  color: var(--fna-text-main, #1d2129);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* 数值区相对定位：迷你图只贴在数值右侧，不含标题 */
+.referenceMetricBody {
+  position: relative;
+  width: 100%;
+  margin-top: 16px;
+  min-height: 72px;
 }
 
 .referenceMetricValue {
-  color: var(--gva-text-main, #1d2129);
-  font-size: 1.72rem;
-  font-weight: 650;
+  position: relative;
+  z-index: 1;
+  max-width: 54%;
+  color: var(--fna-text-main, #1d2129);
+  font-size: 1.875rem;
+  font-weight: 600;
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-.referenceMetricCard > span {
+.referenceMetricDelta {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  color: #075e2b;
-  font-size: 0.78rem;
+  margin-top: 8px;
+  max-width: 54%;
+  color: var(--fna-text-sub, #64748b);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .referenceSparkline {
   position: absolute;
-  right: 18px;
-  bottom: 15px;
-  width: 42%;
-  height: 42px;
-}
-
-.referenceSparklineBase {
-  fill: none;
-  stroke: #e8f3ff;
-  stroke-width: 1.5;
+  top: 0;
+  right: 4px;
+  width: 40%;
+  height: 64px;
+  pointer-events: none;
 }
 
 .referenceSparklinePath {
   fill: none;
-  stroke: #2468f2;
   stroke-linecap: round;
-  stroke-width: 2.4;
-}
-
-.referenceMetricCard:nth-child(2) .referenceSparklinePath {
-  stroke: #00b42a;
-}
-
-.referenceMetricCard:nth-child(3) .referenceSparklinePath {
-  stroke: #ff7d00;
-}
-
-.referenceDashboardColumns {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(290px, 0.75fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.referenceDashboardMain,
-.referenceDashboardRail {
-  display: grid;
-  gap: 16px;
-  min-width: 0;
-}
-
-.referencePanel,
-.referenceLicenseCard {
-  min-width: 0;
-  border: 1px solid var(--gva-card-border, #e5e6eb);
-  border-radius: 8px;
-  background: var(--gva-card-bg, #ffffff);
-}
-
-.referencePanel {
-  padding: 18px 20px;
+  stroke-width: 2.5;
 }
 
 .referencePanelTitle {
@@ -3567,80 +3594,281 @@ body {
   justify-content: space-between;
   gap: 12px;
   min-height: 22px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .referencePanelTitle h2 {
   margin: 0;
-  color: var(--gva-text-main, #1d2129);
-  font-size: 1rem;
+  color: var(--fna-text-main, #1d2129);
+  font-size: 0.875rem;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-.referencePanelTitle a {
-  color: #2468f2;
-  font-size: 0.78rem;
+.referencePanelTitle a,
+.referencePanelAction {
+  color: var(--fna-text-sub, #64748b);
+  font-size: 0.75rem;
+}
+
+.referencePanelTitle a:hover,
+.referencePanelAction:hover {
+  color: var(--el-color-primary, #2264f2);
 }
 
 .referenceChartPanel {
-  padding-bottom: 13px;
+  padding-bottom: 12px;
+  overflow: visible;
 }
 
 .referenceContentChart {
-  position: relative;
-  height: 258px;
-  padding: 4px 0 24px 42px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: stretch;
+  width: 100%;
+  height: 14rem;
+  overflow: visible;
 }
 
-.referenceChartGrid {
-  position: absolute;
-  inset: 5px 0 30px 0;
-  display: grid;
-  grid-template-rows: repeat(6, 1fr);
+.referenceChartYAxis {
+  position: relative;
+  height: calc(14rem - 28px);
+  color: var(--reference-chart-axis, rgba(0, 0, 0, 0.7));
+  font-size: 12px;
+  line-height: 1;
+  text-align: right;
   pointer-events: none;
 }
 
-.referenceChartGrid span {
+.referenceChartYAxis span {
+  position: absolute;
+  right: 0;
+  left: 0;
+  transform: translateY(-50%);
+  padding-right: 6px;
+}
+
+.referenceChartYAxis span:first-child {
+  transform: translateY(0);
+}
+
+.referenceChartYAxis span:last-child {
+  transform: translateY(-100%);
+}
+
+.referenceChartPlot {
   display: flex;
-  align-items: start;
-  color: var(--gva-text-main, #1d2129);
-  font-size: 0.7rem;
+  flex-direction: column;
+  min-width: 0;
+  height: 14rem;
+  overflow: visible;
 }
 
-.referenceChartGrid span::after {
-  flex: 1;
-  height: 1px;
-  margin: 8px 0 0 10px;
-  content: "";
-  background: #f0f1f3;
-}
-
-.referenceContentChart svg {
+.referenceChartCanvas {
   position: relative;
-  z-index: 1;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  overflow: visible;
+  cursor: default;
+}
+
+.referenceChartCanvas.is-on-curve {
+  cursor: pointer;
+}
+
+.referenceContentChartSvg {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
-  height: 208px;
+  height: 100%;
+  overflow: hidden;
 }
 
-.referenceChartArea {
-  fill: rgba(36, 104, 242, 0.08);
+.referenceChartGridLine {
+  fill: none;
+  stroke: var(--reference-chart-grid, rgba(0, 0, 0, 0.08));
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
 }
 
 .referenceChartPath {
   fill: none;
-  stroke: #2468f2;
   stroke-linecap: round;
+  stroke-linejoin: round;
   stroke-width: 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.referenceChartPointer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 0;
+  border-left: 2px dashed var(--el-color-primary, #2264f2);
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition:
+    left 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.referenceChartDot {
+  position: absolute;
+  z-index: 3;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border: 2px solid var(--el-color-primary, #2264f2);
+  border-radius: 50%;
+  background: #fff;
+  box-sizing: border-box;
+  pointer-events: none;
+  transition:
+    left 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+    top 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* 对齐 echarts tooltip：跟随鼠标 + transitionDuration≈0.4s；left/top 由 JS confine 计算 */
+.echarts-tooltip-diy.referenceChartTooltip,
+.referenceChartTooltip.echarts-tooltip-diy {
+  position: absolute;
+  z-index: 4;
+  padding: 10px;
+  border: none !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  box-shadow: rgba(0, 0, 0, 0.2) 1px 2px 10px;
+  pointer-events: none;
+  transform: none;
+  white-space: nowrap;
+  transition:
+    left 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+    top 0.4s cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 0.2s cubic-bezier(0.23, 1, 0.32, 1),
+    visibility 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.echarts-tooltip-diy .tooltip-title {
+  margin: 0 0 4px;
+  color: #4e5969;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 15px;
+}
+
+.echarts-tooltip-diy .content-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 148px;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  line-height: 1.4;
+  color: #86909c;
+  font-size: 13px;
+}
+
+.echarts-tooltip-diy .content-panel > span:first-child {
+  color: #86909c;
+  font-weight: 400;
+}
+
+.echarts-tooltip-diy .tooltip-value {
+  display: inline-flex;
+  align-items: center;
+  color: #1d2129;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.echarts-tooltip-diy p {
+  margin: 0;
 }
 
 .referenceChartLabels {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding-top: 8px;
-  color: var(--gva-text-sub, #5f6b7a);
-  font-size: 0.7rem;
+  position: relative;
+  flex: 0 0 28px;
+  height: 28px;
+  color: var(--reference-chart-axis, rgba(0, 0, 0, 0.7));
+  font-size: 12px;
+}
+
+.referenceChartLabels span {
+  position: absolute;
+  top: 8px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.referenceChartLabels span.is-hidden {
+  visibility: hidden;
+}
+
+@media (max-width: 1280px) {
+  .referenceDashboardBody {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .referenceMetric-1 {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .referenceMetric-2 {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .referenceMetric-3 {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .referenceDashboardMain {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .referenceDashboardRail {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .referenceDashboardBody {
+    grid-template-columns: 1fr;
+  }
+
+  .referenceMetric-1,
+  .referenceMetric-2,
+  .referenceMetric-3,
+  .referenceDashboardMain,
+  .referenceDashboardRail {
+    grid-column: 1;
+  }
+
+  .referenceMetric-1 { grid-row: 1; }
+  .referenceMetric-2 { grid-row: 2; }
+  .referenceMetric-3 { grid-row: 3; }
+  .referenceDashboardMain { grid-row: 4; }
+  .referenceDashboardRail {
+    grid-row: 5;
+    grid-template-columns: 1fr;
+  }
 }
 
 .referenceTableWrap {
@@ -3648,7 +3876,7 @@ body {
 }
 
 .referenceTableWrap:focus-visible {
-  outline: 2px solid #2468f2;
+  outline: 2px solid var(--el-color-primary, #2264f2);
   outline-offset: 2px;
 }
 
@@ -3656,34 +3884,49 @@ body {
   width: 100%;
   min-width: 520px;
   border-collapse: collapse;
-  color: #4e5969;
-  font-size: 0.78rem;
+  color: var(--fna-text-sub, #4e5969);
+  font-size: 0.8125rem;
 }
 
 .referenceTable th,
 .referenceTable td {
   padding: 12px 8px;
-  border-bottom: 1px solid #f0f1f3;
+  border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
   line-height: 1.5;
 }
 
 .referenceTable th {
-  color: var(--gva-text-sub, #5f6b7a);
-  font-size: 0.72rem;
+  color: var(--el-table-header-text-color, var(--fna-text-sub, #909399));
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: transparent;
+}
+
+.referenceTable td {
+  color: var(--el-table-text-color, var(--fna-text-sub, #606266));
+}
+
+.referenceTable td:first-child,
+.referenceTable td strong {
+  color: var(--fna-text-main, #303133);
   font-weight: 500;
 }
 
-.referenceTable td:first-child {
-  width: 25%;
-  color: var(--gva-text-main, #1d2129);
+.referenceTable td:last-child {
+  width: 96px;
+  white-space: nowrap;
+  color: var(--fna-text-main, #303133);
 }
 
-.referenceTable td:last-child {
-  width: 17%;
-  color: var(--gva-text-sub, #5f6b7a);
-  white-space: nowrap;
+.referenceTableRank {
+  width: 64px;
+  text-align: center !important;
+}
+
+.referenceTableStriped tbody tr:nth-child(even) {
+  background: var(--reference-table-stripe, rgba(0, 0, 0, 0.02));
 }
 
 .referenceTable tr:last-child td {
@@ -3692,7 +3935,8 @@ body {
 
 .referenceQuickPanel {
   display: grid;
-  gap: 13px;
+  gap: 16px;
+  min-height: 300px;
 }
 
 .referenceQuickPanel .referencePanelTitle {
@@ -3708,34 +3952,57 @@ body {
 .referenceQuickLink {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 12px;
   min-width: 0;
-  min-height: 34px;
-  padding: 0 8px;
-  border-radius: 5px;
-  color: #4e5969;
-  font-size: 0.78rem;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--fna-text-main, #1d2129);
+  font-size: 0.875rem;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
-.referenceQuickLink svg {
+.referenceQuickIcon {
+  display: inline-flex;
   flex: 0 0 auto;
-  color: #2468f2;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--el-fill-color-light, #f5f7fa);
+  color: var(--fna-text-main, #1d2129);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
-.referenceQuickLink span {
+.referenceQuickLink span:last-child {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .referenceQuickLink:hover {
-  background: #f2f6ff;
-  color: #2468f2;
+  border-color: var(--el-color-primary, #2264f2);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  color: var(--fna-text-main, #1d2129);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.referenceQuickLink:hover .referenceQuickIcon {
+  background: var(--el-color-primary, #2264f2);
+  color: #fff;
 }
 
 .referenceExternalList {
   display: grid;
-  gap: 2px;
+  gap: 8px;
 }
 
 .referenceExternalLink {
@@ -3743,150 +4010,247 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 32px;
-  color: #4e5969;
-  font-size: 0.78rem;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--fna-text-main, #1d2129);
+  font-size: 0.875rem;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .referenceExternalLink > span {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   min-width: 0;
 }
 
 .referenceExternalLink svg {
-  color: var(--gva-text-sub, #5f6b7a);
+  color: var(--fna-text-sub, #64748b);
 }
 
 .referenceExternalLink small {
   flex: 0 0 auto;
-  color: var(--gva-text-sub, #5f6b7a);
-  font-size: 0.7rem;
+  color: var(--fna-text-sub, #64748b);
+  font-size: 0.75rem;
 }
 
 .referenceExternalLink:hover {
-  color: #2468f2;
+  border-color: var(--el-color-primary, #2264f2);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  color: var(--fna-text-main, #1d2129);
 }
 
 .referenceNoticePanel {
   display: grid;
-  gap: 0;
+  gap: 12px;
+  min-height: 300px;
 }
 
 .referenceNoticePanel .referencePanelTitle {
-  margin-bottom: 5px;
+  margin-bottom: 0;
+}
+
+.referenceNoticeList {
+  display: grid;
+  gap: 8px;
 }
 
 .referenceNotice {
-  display: grid;
-  grid-template-columns: 7px minmax(0, 1fr) auto;
-  gap: 9px;
-  align-items: start;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f1f3;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.referenceNotice:last-child {
-  border-bottom: 0;
+.referenceNotice:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .referenceNoticeDot {
-  width: 7px;
-  height: 7px;
-  margin-top: 5px;
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  flex: 0 0 auto;
   border-radius: 50%;
-  background: #2468f2;
+  background: #06b6d4;
 }
 
-.referenceNoticeDot.tone-1 {
-  background: #ff7d00;
+.referenceNoticeDot.tone-cyan {
+  background: #06b6d4;
 }
 
-.referenceNoticeDot.tone-2 {
-  background: #00b42a;
+.referenceNoticeDot.tone-emerald {
+  background: #10b981;
 }
 
-.referenceNotice span:not(.referenceNoticeDot) {
-  color: var(--gva-text-sub, #5f6b7a);
-  font-size: 0.7rem;
+.referenceNoticeDot.tone-amber {
+  background: #f59e0b;
+}
+
+.referenceNoticeDot.tone-violet {
+  background: #8b5cf6;
+}
+
+.referenceNoticeBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.referenceNoticeMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.referenceNoticeTag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.referenceNoticeTag.tone-cyan {
+  background: #cffafe;
+  color: #0e7490;
+}
+
+.referenceNoticeTag.tone-emerald {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.referenceNoticeTag.tone-amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.referenceNoticeTag.tone-violet {
+  background: #ede9fe;
+  color: #6d28d9;
 }
 
 .referenceNotice p {
-  margin: 4px 0 0;
-  color: #4e5969;
-  font-size: 0.76rem;
+  margin: 6px 0 0;
+  color: var(--fna-text-main, #1d2129);
+  font-size: 0.875rem;
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .referenceNotice time {
-  color: var(--gva-text-sub, #64748b);
-  font-size: 0.7rem;
+  color: var(--fna-text-sub, #64748b);
+  font-size: 11px;
   white-space: nowrap;
 }
 
 .referenceDocsPanel {
   display: grid;
-  gap: 0;
+  gap: 12px;
+  min-height: 120px;
 }
 
 .referenceDocsPanel .referencePanelTitle {
-  margin-bottom: 4px;
+  margin-bottom: 0;
+}
+
+.referenceDocsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .referenceDocLink {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 38px;
-  border-bottom: 1px solid #f0f1f3;
-  color: #4e5969;
-  font-size: 0.78rem;
-}
-
-.referenceDocLink:last-child {
-  border-bottom: 0;
-}
-
-.referenceDocLink svg:first-child {
-  color: #2468f2;
-}
-
-.referenceDocLink svg:last-child {
-  margin-left: auto;
-  color: var(--gva-text-sub, #64748b);
+  display: block;
+  min-height: 28px;
+  color: var(--fna-text-main, #1d2129);
+  font-size: 0.875rem;
+  text-decoration: none;
 }
 
 .referenceDocLink:hover {
-  color: #2468f2;
+  color: var(--el-color-primary, #2264f2);
 }
 
 .referenceLicenseCard {
+  position: relative;
   display: grid;
-  gap: 9px;
+  gap: 12px;
+  min-height: 200px;
   padding: 20px;
-  border-color: var(--gva-welcome-border, #d7e4ff);
-  background: var(--gva-license-bg, linear-gradient(145deg, #edf4ff, #f8fbff));
+  overflow: hidden;
+  border: 1px solid #1e293b;
+  border-radius: var(--fna-radius, 0.75rem);
+  background: #0f172a;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
-.referenceLicenseCard > span {
-  color: #2468f2;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
+.referenceLicenseBadge {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.75rem;
 }
 
 .referenceLicenseCard h3 {
   margin: 0;
-  color: var(--gva-text-main, #1d2129);
-  font-size: 1rem;
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 600;
   line-height: 1.45;
 }
 
 .referenceLicenseCard p {
   margin: 0;
-  color: var(--gva-text-sub, #5f6b7a);
-  font-size: 0.76rem;
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 0.875rem;
   line-height: 1.55;
+}
+
+.referenceLicensePills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.referenceLicensePills span {
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+  font-size: 0.75rem;
+}
+
+.referenceLicenseActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
 }
 
 .referenceLicenseCard .primaryButton {
@@ -3894,22 +4258,16 @@ body {
   min-height: 34px;
   padding: 0 14px;
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: 0.8125rem;
 }
 
-@media (max-width: 1100px) {
-  .referenceDashboardColumns,
-  .referenceMetricGrid {
-    grid-template-columns: 1fr;
-  }
+.referenceLicenseLink {
+  color: #67e8f9;
+  font-size: 0.875rem;
+}
 
-  .referenceDashboardRail {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .referenceLicenseCard {
-    grid-column: 1 / -1;
-  }
+.referenceLicenseLink:hover {
+  color: #a5f3fc;
 }
 
 @media (max-width: 920px) {
@@ -4066,23 +4424,15 @@ body {
     justify-content: center;
   }
 
-  .referenceMetricGrid,
-  .referenceMetricMain {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
   .referenceMetricCard {
-    min-height: 128px;
+    min-height: 112px;
     overflow: hidden;
+    cursor: pointer;
   }
 
   .referenceSparkline {
-    width: 34%;
-  }
-
-  .referenceDashboardRail {
-    grid-template-columns: 1fr;
+    width: 38%;
+    height: 56px;
   }
 
   .referenceLicenseCard {
@@ -4093,13 +4443,13 @@ body {
     padding: 16px;
   }
 
-  .referenceContentChart {
-    height: 220px;
-    padding-left: 34px;
+  .referenceContentChart,
+  .referenceChartPlot {
+    height: 14rem;
   }
 
-  .referenceContentChart svg {
-    height: 174px;
+  .referenceChartYAxis {
+    height: calc(14rem - 28px);
   }
 }
 
@@ -4289,7 +4639,7 @@ body {
 
   .sidebar {
     padding: 14px 12px;
-    background: var(--gva-card-bg, #ffffff);
+    background: var(--fna-card-bg, #ffffff);
     color: #4e5969;
   }
 
@@ -4304,8 +4654,8 @@ body {
   }
 }
 
-/* ===== GVA / Element admin theme overrides ===== */
-.theme-gva {
+/* ===== gin-vue-admin / Element admin theme overrides ===== */
+.theme-fna {
   --page-background: #f5f7fb;
   --surface-primary: #ffffff;
   --surface-secondary: #f5f7fa;
@@ -4323,35 +4673,35 @@ body {
   --radius-lg: 6px;
   --radius-md: 4px;
   --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.08);
-  --gva-sidebar: #ffffff;
-  --gva-sidebar-text: #606266;
-  --gva-sidebar-active: #2264f2;
-  --gva-radius: 0.5rem;
-  --gva-header-bg: #ffffff;
-  --gva-header-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
-  --gva-tab-bg: #ffffff;
-  --gva-tabs-bg: #ffffff;
+  --fna-sidebar: #ffffff;
+  --fna-sidebar-text: #606266;
+  --fna-sidebar-active: #2264f2;
+  --fna-radius: 0.5rem;
+  --fna-header-bg: #ffffff;
+  --fna-header-shadow: 0 1px 0 rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --fna-tab-bg: #ffffff;
+  --fna-tabs-bg: #ffffff;
 }
 
-.theme-gva body,
-html.theme-gva body {
+.theme-fna body,
+html.theme-fna body {
   background: var(--page-background);
 }
 
-/* Shell layout/visuals live in ga-parity.css to match current GVA. */
+/* Shell layout/visuals live in fna-parity.css to match current gin-vue-admin. */
 
 .authLayout,
 .loginPage {
   min-height: 100vh;
   display: block;
-  background: var(--gva-card-bg, #fff);
+  background: var(--fna-card-bg, #fff);
 }
 
 .loginPanel {
   width: min(420px, calc(100vw - 32px));
   padding: 32px 28px;
   border-radius: 8px;
-  background: var(--gva-card-bg, #fff);
+  background: var(--fna-card-bg, #fff);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
 }
 
@@ -4392,7 +4742,7 @@ html.theme-gva body {
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   padding: 0 12px;
-  background: var(--gva-card-bg, #fff);
+  background: var(--fna-card-bg, #fff);
   color: #303133;
 }
 
@@ -4417,7 +4767,7 @@ html.theme-gva body {
   padding: 0 14px;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
-  background: var(--gva-card-bg, #fff);
+  background: var(--fna-card-bg, #fff);
   color: #606266;
   cursor: pointer;
   font-size: 13px;
@@ -4471,7 +4821,7 @@ html.theme-gva body {
 }
 
 .adminCard {
-  background: var(--gva-card-bg, #fff);
+  background: var(--fna-card-bg, #fff);
   border: 1px solid var(--border-subtle);
   border-radius: 4px;
   padding: 16px;
@@ -4527,7 +4877,7 @@ html.theme-gva body {
 
 .adminTable th {
   background: #f5f7fa;
-  /* 对齐 GVA text-gray-700，非 EP secondary 灰 */
+  /* 对齐 gin-vue-admin text-gray-700，非 EP secondary 灰 */
   color: #374151;
   font-weight: 600;
 }
@@ -4553,8 +4903,8 @@ html.theme-gva body {
 
 .adminDialog {
   width: min(560px, 100%);
-  background: var(--gva-card-bg, #fff);
-  border-radius: var(--el-border-radius-base, var(--gva-radius, 0.625rem));
+  background: var(--fna-card-bg, #fff);
+  border-radius: var(--el-border-radius-base, var(--fna-radius, 0.625rem));
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
 }
 
@@ -4708,12 +5058,12 @@ html.theme-gva body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gvaPage-fade.is-enter,
-  .gvaPage-fade.is-leave,
-  .gvaPage-slide.is-enter,
-  .gvaPage-slide.is-leave,
-  .gvaPage-zoom.is-enter,
-  .gvaPage-zoom.is-leave {
+  .fnaPage-fade.is-enter,
+  .fnaPage-fade.is-leave,
+  .fnaPage-slide.is-enter,
+  .fnaPage-slide.is-leave,
+  .fnaPage-zoom.is-enter,
+  .fnaPage-zoom.is-leave {
     animation-duration: 0.01ms !important;
   }
 
@@ -4723,8 +5073,8 @@ html.theme-gva body {
 }
 
 @media (max-width: 920px) {
-  .theme-gva .gvaAppShell,
-  .theme-gva .gvaAppShell[data-sidebar-collapsed='true'] {
+  .theme-fna .fnaAppShell,
+  .theme-fna .fnaAppShell[data-sidebar-collapsed='true'] {
     display: flex;
     flex-direction: column;
     grid-template-columns: none;

@@ -142,6 +142,97 @@ func TestHealthAndSecurityHeaders(t *testing.T) {
 	}
 }
 
+func TestExampleRouteResponseContracts(t *testing.T) {
+	options := testOptions()
+	app := New(options)
+	tests := []struct {
+		name     string
+		path     string
+		wantData string
+	}{
+		{name: "hello default", path: "/api/v1/example/hello", wantData: `{"message":"Hello, Fiber!"}`},
+		{name: "hello explicit default", path: "/api/v1/example/hello?name=Fiber", wantData: `{"message":"Hello, Fiber!"}`},
+		{name: "hello trims name", path: "/api/v1/example/hello?name=%20Ada%20", wantData: `{"message":"Hello, Ada!"}`},
+		{name: "hello blank fallback", path: "/api/v1/example/hello?name=%20%20", wantData: `{"message":"Hello, Fiber!"}`},
+		{name: "hello plus decoding", path: "/api/v1/example/hello?name=Billing+SDK", wantData: `{"message":"Hello, Billing SDK!"}`},
+		{name: "hello percent decoding", path: "/api/v1/example/hello?name=A%2FB", wantData: `{"message":"Hello, A/B!"}`},
+		{name: "hello unicode whitespace", path: "/api/v1/example/hello?name=%C2%A0Ada%C2%A0", wantData: `{"message":"Hello, Ada!"}`},
+		{name: "hello repeated name", path: "/api/v1/example/hello?name=First&name=Second", wantData: `{"message":"Hello, First!"}`},
+		{name: "hello JSON escaping", path: "/api/v1/example/hello?name=%22%3C%26", wantData: `{"message":"Hello, \"\u003c\u0026!"}`},
+		{name: "zero delay", path: "/api/v1/example/delay?ms=0", wantData: `{"delayedMs":0}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			response, err := app.Test(httptest.NewRequest(http.MethodGet, test.path, http.NoBody))
+			if err != nil {
+				t.Fatalf("request error = %v", err)
+			}
+			defer response.Body.Close()
+			if response.StatusCode != http.StatusOK {
+				t.Fatalf("status = %d", response.StatusCode)
+			}
+			if envelope := decodeEnvelope(t, response); string(envelope.Data) != test.wantData {
+				t.Fatalf("data = %s, want %s", envelope.Data, test.wantData)
+			}
+		})
+	}
+
+	user, authenticated := options.Auth.Authenticate("demo", "demo123")
+	if !authenticated {
+		t.Fatal("private route test authentication failed")
+	}
+	rawToken, _, err := options.Auth.Issue(user)
+	if err != nil {
+		t.Fatalf("issue private route token: %v", err)
+	}
+	response := doJSONRequest(t, app, http.MethodGet, "/api/v1/example/private", "", rawToken)
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("private status = %d", response.StatusCode)
+	}
+	wantData := `{"message":"authenticated request succeeded","subject":"` + user.ID + `"}`
+	if envelope := decodeEnvelope(t, response); string(envelope.Data) != wantData {
+		t.Fatalf("private data = %s, want %s", envelope.Data, wantData)
+	}
+}
+
+func TestDefaultHelloFastPathMatchesJSONContract(t *testing.T) {
+	app := New(testOptions())
+	wantBody, err := json.Marshal(Envelope{
+		Code: 0,
+		Data: helloResponse{Message: defaultHelloMessage},
+		Msg:  "success",
+	})
+	if err != nil {
+		t.Fatalf("marshal expected hello envelope: %v", err)
+	}
+
+	for _, path := range []string{
+		"/api/v1/example/hello",
+		"/api/v1/example/hello?name=Fiber",
+		"/api/v1/example/hello?name=%20%20",
+	} {
+		response, requestErr := app.Test(httptest.NewRequest(http.MethodGet, path, http.NoBody))
+		if requestErr != nil {
+			t.Fatalf("request %q: %v", path, requestErr)
+		}
+		body, readErr := io.ReadAll(response.Body)
+		response.Body.Close()
+		if readErr != nil {
+			t.Fatalf("read %q: %v", path, readErr)
+		}
+		if !bytes.Equal(body, wantBody) {
+			t.Fatalf("body %q = %q, want %q", path, body, wantBody)
+		}
+		if contentType := response.Header.Get(fiber.HeaderContentType); contentType != fiber.MIMEApplicationJSONCharsetUTF8 {
+			t.Fatalf("Content-Type %q = %q", path, contentType)
+		}
+		if tag := response.Header.Get(fiber.HeaderETag); !strings.HasPrefix(tag, `W/"`) {
+			t.Fatalf("ETag %q = %q, want weak validator", path, tag)
+		}
+	}
+}
+
 func TestCompatibilityHealthRoutesAdvertiseDeprecation(t *testing.T) {
 	app := newTestApp()
 	tests := []struct {
@@ -365,6 +456,79 @@ func TestCORSAllowsCredentialsOnlyWhenConfigured(t *testing.T) {
 	if value := response.Header.Get(fiber.HeaderAccessControlAllowCredentials); value != "true" {
 		t.Fatalf("configured allow credentials = %q", value)
 	}
+}
+
+func TestAPIVaryHeadersPreserveCORSAndCompressionContracts(t *testing.T) {
+	t.Run("restricted origin success", func(t *testing.T) {
+		app := New(testOptions())
+		for _, origin := range []string{"", "http://localhost:3000"} {
+			request := httptest.NewRequest(http.MethodGet, "/api/v1/example/hello", http.NoBody)
+			if origin != "" {
+				request.Header.Set(fiber.HeaderOrigin, origin)
+			}
+			response, err := app.Test(request)
+			if err != nil {
+				t.Fatalf("origin %q request error = %v", origin, err)
+			}
+			response.Body.Close()
+			if vary := response.Header.Get(fiber.HeaderVary); vary != "Origin, Accept-Encoding" {
+				t.Fatalf("origin %q Vary = %q", origin, vary)
+			}
+		}
+	})
+
+	t.Run("handler error", func(t *testing.T) {
+		app := New(testOptions())
+		response, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/example/delay?ms=invalid", http.NoBody))
+		if err != nil {
+			t.Fatalf("request error = %v", err)
+		}
+		response.Body.Close()
+		if vary := response.Header.Get(fiber.HeaderVary); vary != fiber.HeaderOrigin {
+			t.Fatalf("error Vary = %q", vary)
+		}
+	})
+
+	t.Run("preflight", func(t *testing.T) {
+		app := New(testOptions())
+		request := httptest.NewRequest(http.MethodOptions, "/api/v1/example/hello", http.NoBody)
+		request.Header.Set(fiber.HeaderOrigin, "http://localhost:3000")
+		request.Header.Set(fiber.HeaderAccessControlRequestMethod, http.MethodGet)
+		response, err := app.Test(request)
+		if err != nil {
+			t.Fatalf("request error = %v", err)
+		}
+		response.Body.Close()
+		if vary := response.Header.Get(fiber.HeaderVary); vary != "Access-Control-Request-Method, Access-Control-Request-Headers, Origin" {
+			t.Fatalf("preflight Vary = %q", vary)
+		}
+	})
+
+	t.Run("wildcard origin", func(t *testing.T) {
+		options := testOptions()
+		options.AllowedOrigins = []string{"*"}
+		app := New(options)
+		response, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/example/hello", http.NoBody))
+		if err != nil {
+			t.Fatalf("request error = %v", err)
+		}
+		response.Body.Close()
+		if vary := response.Header.Get(fiber.HeaderVary); vary != fiber.HeaderAcceptEncoding {
+			t.Fatalf("wildcard Vary = %q", vary)
+		}
+	})
+
+	t.Run("non API response", func(t *testing.T) {
+		app := New(testOptions())
+		response, err := app.Test(httptest.NewRequest(http.MethodGet, "/livez", http.NoBody))
+		if err != nil {
+			t.Fatalf("request error = %v", err)
+		}
+		response.Body.Close()
+		if vary := response.Header.Get(fiber.HeaderVary); vary != fiber.HeaderOrigin {
+			t.Fatalf("non API Vary = %q", vary)
+		}
+	})
 }
 
 func TestMutationRequiresJSONMediaType(t *testing.T) {

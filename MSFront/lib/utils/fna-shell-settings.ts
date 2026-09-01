@@ -1,21 +1,21 @@
-export type GvaTabMode = 'chrome' | 'button' | 'slider';
-export type GvaThemeScheme = 'light' | 'dark' | 'auto';
-export type GvaLayoutMode = 'normal' | 'head' | 'combination' | 'sidebar' | 'vertical';
-export type GvaMenuTheme = 'design' | 'light' | 'group';
+export type FnaTabMode = 'chrome' | 'button' | 'slider';
+export type FnaThemeScheme = 'light' | 'dark' | 'auto';
+export type FnaLayoutMode = 'normal' | 'head' | 'combination' | 'sidebar' | 'vertical';
+export type FnaMenuTheme = 'design' | 'light' | 'group';
 /** 侧边栏折叠：默认仅当前路径 / 全部展开 / 自定义多开 */
-export type GvaMenuCollapseMode = 'current' | 'all' | 'custom';
-export type GvaCardMode = 'border' | 'shadow';
-export type GvaSize = 'default' | 'large' | 'small';
-export type GvaShadow = 'none' | 'sm' | 'md' | 'lg';
-export type GvaPageTransition = 'fade' | 'slide' | 'zoom' | 'none';
+export type FnaMenuCollapseMode = 'current' | 'all' | 'custom';
+export type FnaCardMode = 'border' | 'shadow';
+export type FnaSize = 'default' | 'large' | 'small';
+export type FnaShadow = 'none' | 'sm' | 'md' | 'lg';
+export type FnaPageTransition = 'fade' | 'slide' | 'zoom' | 'none';
 
-export interface GvaShellSettings {
-  themeScheme: GvaThemeScheme;
+export interface FnaShellSettings {
+  themeScheme: FnaThemeScheme;
   grayscale: boolean;
   colourWeakness: boolean;
   themeColor: string;
   themeRadius: number;
-  size: GvaSize;
+  size: FnaSize;
   otherColor: {
     info: string;
     success: string;
@@ -24,13 +24,13 @@ export interface GvaShellSettings {
   };
   isInfoFollowPrimary: boolean;
   layout: {
-    mode: GvaLayoutMode;
+    mode: FnaLayoutMode;
     sideWidth: number;
     sideCollapsedWidth: number;
     sideItemHeight: number;
   };
   page: {
-    transition: GvaPageTransition;
+    transition: FnaPageTransition;
   };
   header: {
     breadcrumb: { visible: boolean; showIcon: boolean };
@@ -38,55 +38,85 @@ export interface GvaShellSettings {
     search: { visible: boolean };
     collapseButton: { visible: boolean };
     bg: string;
-    shadow: GvaShadow;
+    shadow: FnaShadow;
   };
   tab: {
     visible: boolean;
     bg: string;
-    shadow: GvaShadow;
-    mode: GvaTabMode;
+    shadow: FnaShadow;
+    mode: FnaTabMode;
     showIcon: boolean;
     /** 顶栏路由进度条，默认开启 */
     showProgress: boolean;
   };
   menu: {
-    theme: GvaMenuTheme;
-    collapseMode: GvaMenuCollapseMode;
+    theme: FnaMenuTheme;
+    collapseMode: FnaMenuCollapseMode;
     darkSider: boolean;
   };
   card: {
-    mode: GvaCardMode;
+    mode: FnaCardMode;
   };
   watermark: {
     visible: boolean;
   };
 }
 
-export interface GvaThemePreset {
+export interface FnaThemePreset {
   name: string;
   builtin?: boolean;
   minMainVersion?: string;
-  theme: Partial<GvaShellSettings> & {
-    otherColor?: Partial<GvaShellSettings['otherColor']>;
-    layout?: Partial<GvaShellSettings['layout']>;
-    page?: Partial<GvaShellSettings['page']>;
-    header?: Partial<GvaShellSettings['header']> & {
-      breadcrumb?: Partial<GvaShellSettings['header']['breadcrumb']>;
-      refresh?: Partial<GvaShellSettings['header']['refresh']>;
-      search?: Partial<GvaShellSettings['header']['search']>;
-      collapseButton?: Partial<GvaShellSettings['header']['collapseButton']>;
+  theme: Partial<FnaShellSettings> & {
+    otherColor?: Partial<FnaShellSettings['otherColor']>;
+    layout?: Partial<FnaShellSettings['layout']>;
+    page?: Partial<FnaShellSettings['page']>;
+    header?: Partial<FnaShellSettings['header']> & {
+      breadcrumb?: Partial<FnaShellSettings['header']['breadcrumb']>;
+      refresh?: Partial<FnaShellSettings['header']['refresh']>;
+      search?: Partial<FnaShellSettings['header']['search']>;
+      collapseButton?: Partial<FnaShellSettings['header']['collapseButton']>;
     };
-    tab?: Partial<GvaShellSettings['tab']>;
-    menu?: Partial<GvaShellSettings['menu']>;
-    card?: Partial<GvaShellSettings['card']>;
-    watermark?: Partial<GvaShellSettings['watermark']>;
+    tab?: Partial<FnaShellSettings['tab']>;
+    menu?: Partial<FnaShellSettings['menu']>;
+    card?: Partial<FnaShellSettings['card']>;
+    watermark?: Partial<FnaShellSettings['watermark']>;
   };
 }
 
-export const STORAGE_KEY = 'msfront:gva-shell-settings';
-export const PRESET_STORAGE_KEY = 'msfront:gva-theme-presets';
+export const STORAGE_KEY = 'msfront:fna-shell-settings';
+export const PRESET_STORAGE_KEY = 'msfront:fna-theme-presets';
 
-export const defaultGvaShellSettings: GvaShellSettings = {
+/** 旧版 ga / gva 存储键，水合时一次性迁移 */
+const LEGACY_STORAGE_KEYS = [
+  'msfront:ga-shell-settings',
+  'msfront:gva-shell-settings',
+] as const;
+const LEGACY_PRESET_STORAGE_KEYS = [
+  'msfront:ga-theme-presets',
+  'msfront:gva-theme-presets',
+] as const;
+
+function migrateLegacyLocalStorageValue(currentKey: string, legacyKeys: readonly string[]) {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const existing = window.localStorage.getItem(currentKey);
+  if (existing != null && existing !== '') {
+    return existing;
+  }
+  for (const legacyKey of legacyKeys) {
+    const legacy = window.localStorage.getItem(legacyKey);
+    if (legacy == null || legacy === '') {
+      continue;
+    }
+    window.localStorage.setItem(currentKey, legacy);
+    window.localStorage.removeItem(legacyKey);
+    return legacy;
+  }
+  return null;
+}
+
+export const defaultFnaShellSettings: FnaShellSettings = {
   themeScheme: 'auto',
   grayscale: false,
   colourWeakness: false,
@@ -159,9 +189,9 @@ export const SEMANTIC_SWATCHES = [
   '#38c0fc',
 ];
 
-export const BUILTIN_PRESETS: GvaThemePreset[] = [
+export const BUILTIN_PRESETS: FnaThemePreset[] = [
   {
-    name: 'GVA-科技蓝',
+    name: 'FNA-科技蓝',
     builtin: true,
     theme: {
       themeScheme: 'auto',
@@ -174,7 +204,7 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
     },
   },
   {
-    name: 'GVA 经典蓝',
+    name: 'FNA 经典蓝',
     builtin: true,
     theme: {
       themeScheme: 'auto',
@@ -233,28 +263,28 @@ export const BUILTIN_PRESETS: GvaThemePreset[] = [
   },
 ];
 
-const HEADER_SHADOWS_LIGHT: Record<GvaShadow, string> = {
+const HEADER_SHADOWS_LIGHT: Record<FnaShadow, string> = {
   none: 'none',
   sm: '0 1px 3px rgba(0, 0, 0, 0.04)',
   md: '0 4px 12px rgba(0, 0, 0, 0.08)',
   lg: '0 8px 24px rgba(0, 0, 0, 0.12)',
 };
 
-const HEADER_SHADOWS_DARK: Record<GvaShadow, string> = {
+const HEADER_SHADOWS_DARK: Record<FnaShadow, string> = {
   none: 'none',
   sm: '0 1px 0 rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.35)',
   md: '0 1px 0 rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.45)',
   lg: '0 1px 0 rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.55)',
 };
 
-const TAB_SHADOWS_LIGHT: Record<GvaShadow, string> = {
+const TAB_SHADOWS_LIGHT: Record<FnaShadow, string> = {
   none: 'none',
   sm: 'none',
   md: 'none',
   lg: 'none',
 };
 
-const TAB_SHADOWS_DARK: Record<GvaShadow, string> = {
+const TAB_SHADOWS_DARK: Record<FnaShadow, string> = {
   none: 'none',
   sm: '0 1px 3px rgba(0, 0, 0, 0.35)',
   md: '0 2px 8px rgba(0, 0, 0, 0.45)',
@@ -266,7 +296,7 @@ function isDocumentDark() {
 }
 
 /** 以 shell 设置的 themeScheme 为准，避免切主题时 class 尚未同步导致阴影/色阶写错 */
-function resolveShellIsDark(settings: GvaShellSettings): boolean {
+function resolveShellIsDark(settings: FnaShellSettings): boolean {
   if (settings.themeScheme === 'dark') {
     return true;
   }
@@ -296,12 +326,12 @@ function mergeDeep<T extends Record<string, unknown>>(base: T, patch: Record<str
   return next as T;
 }
 
-export function cloneGvaShellSettings(settings: GvaShellSettings = defaultGvaShellSettings): GvaShellSettings {
+export function cloneFnaShellSettings(settings: FnaShellSettings = defaultFnaShellSettings): FnaShellSettings {
   return structuredClone(settings);
 }
 
-export function normalizeGvaShellSettings(raw: unknown): GvaShellSettings {
-  const next = cloneGvaShellSettings();
+export function normalizeFnaShellSettings(raw: unknown): FnaShellSettings {
+  const next = cloneFnaShellSettings();
   if (!isRecord(raw)) {
     return next;
   }
@@ -319,12 +349,12 @@ export function normalizeGvaShellSettings(raw: unknown): GvaShellSettings {
     next.tab.showIcon = raw.showTabIcon;
   }
 
-  const merged = mergeDeep(next as unknown as Record<string, unknown>, raw) as unknown as GvaShellSettings;
-  if (merged.menu.theme === ('dark' as GvaMenuTheme)) {
+  const merged = mergeDeep(next as unknown as Record<string, unknown>, raw) as unknown as FnaShellSettings;
+  if (merged.menu.theme === ('dark' as FnaMenuTheme)) {
     merged.menu.theme = 'light';
     merged.menu.darkSider = true;
   }
-  const collapseModes: GvaMenuCollapseMode[] = ['current', 'all', 'custom'];
+  const collapseModes: FnaMenuCollapseMode[] = ['current', 'all', 'custom'];
   if (!collapseModes.includes(merged.menu.collapseMode)) {
     merged.menu.collapseMode = 'current';
   }
@@ -332,7 +362,7 @@ export function normalizeGvaShellSettings(raw: unknown): GvaShellSettings {
     merged.otherColor.info = merged.themeColor;
   }
 
-  const layoutModes: GvaLayoutMode[] = ['normal', 'head', 'combination', 'sidebar', 'vertical'];
+  const layoutModes: FnaLayoutMode[] = ['normal', 'head', 'combination', 'sidebar', 'vertical'];
   if (!layoutModes.includes(merged.layout.mode)) {
     merged.layout.mode = 'normal';
   }
@@ -356,9 +386,9 @@ export function normalizeGvaShellSettings(raw: unknown): GvaShellSettings {
   return merged;
 }
 
-export function applyPresetToSettings(preset: GvaThemePreset, current = defaultGvaShellSettings): GvaShellSettings {
-  return normalizeGvaShellSettings(
-    mergeDeep(cloneGvaShellSettings(current) as unknown as Record<string, unknown>, preset.theme as Record<string, unknown>),
+export function applyPresetToSettings(preset: FnaThemePreset, current = defaultFnaShellSettings): FnaShellSettings {
+  return normalizeFnaShellSettings(
+    mergeDeep(cloneFnaShellSettings(current) as unknown as Record<string, unknown>, preset.theme as Record<string, unknown>),
   );
 }
 
@@ -385,7 +415,7 @@ export function mixPrimarySoft(color: string, towardDark = false): string {
   const [r, g, b] = hexToRgbChannels(color)
     .split(',')
     .map((part) => Number.parseInt(part.trim(), 10));
-  // 浅色：向白混合（GVA primary-50）
+  // 浅色：向白混合（gin-vue-admin primary-50）
   // 暗色：与 slate-900 混合，主色占比要高，选中标签才有可见蓝底（参考截图 ≈ 56,101,186）
   if (towardDark) {
     const mix = (channel: number, base: number) => Math.round(base * 0.28 + channel * 0.72);
@@ -399,7 +429,7 @@ export function addOpacityToColor(color: string, opacity: number): string {
   return `rgba(${hexToRgbChannels(color)}, ${opacity})`;
 }
 
-/** 对齐 GVA theme/color.js autoDarkColor：自定义顶栏/标签栏背景在暗色下自动压暗 */
+/** 对齐 gin-vue-admin theme/color.js autoDarkColor：自定义顶栏/标签栏背景在暗色下自动压暗 */
 export function autoDarkColor(color: string): string {
   const channels = hexToRgbChannels(color)
     .split(',')
@@ -466,7 +496,7 @@ function mixHexToward(color: string, target: '#ffffff' | '#000000', amount: numb
   return `#${toHex(mix(r, tr))}${toHex(mix(g, tg))}${toHex(mix(b, tb))}`;
 }
 
-/** 对齐 GVA setElementPlusColor：明/暗模式下 light-* 与 dark-* 共用同一混合锚点 */
+/** 对齐 gin-vue-admin setElementPlusColor：明/暗模式下 light-* 与 dark-* 共用同一混合锚点 */
 function applyElementPlusPrimaryLadder(color: string, dark: boolean) {
   const root = document.documentElement.style;
   const mixTarget = dark ? '#000000' : '#ffffff';
@@ -482,103 +512,109 @@ function applyElementPlusPrimaryLadder(color: string, dark: boolean) {
   root.setProperty('--el-menu-hover-bg-color', addOpacityToColor(color, 0.2));
 }
 
-export function applyGvaShellCss(settings: GvaShellSettings) {
+export function applyFnaShellCss(settings: FnaShellSettings) {
   if (typeof document === 'undefined') {
     return;
   }
   const root = document.documentElement;
   const primary = hexToRgbChannels(settings.themeColor);
   const dark = resolveShellIsDark(settings);
-  root.style.setProperty('--gva-primary', primary);
+  root.style.setProperty('--fna-primary', primary);
   root.style.setProperty('--primary-color', primary);
-  root.style.setProperty('--gva-primary-50', mixPrimarySoft(settings.themeColor, dark));
+  root.style.setProperty('--fna-primary-50', mixPrimarySoft(settings.themeColor, dark));
   root.style.setProperty('--primary-50-color', mixPrimarySoft(settings.themeColor, dark));
   root.style.setProperty('--accent-primary', settings.themeColor);
-  root.style.setProperty('--gva-sidebar-active', settings.themeColor);
+  root.style.setProperty('--fna-sidebar-active', settings.themeColor);
   applyElementPlusPrimaryLadder(settings.themeColor, dark);
-  // 对齐 GVA applyElementPlusTheme：内容圆角 + Element 系控件圆角同源
+  // 对齐 gin-vue-admin applyElementPlusTheme：内容圆角 + Element 系控件圆角同源
   const radius = `${settings.themeRadius}rem`;
-  root.style.setProperty('--gva-radius', radius);
+  root.style.setProperty('--fna-radius', radius);
   root.style.setProperty('--el-border-radius-base', radius);
   root.style.setProperty('--el-card-border-radius', radius);
-  root.style.setProperty('--gva-side-width', `${settings.layout.sideWidth}px`);
-  root.style.setProperty('--gva-side-collapsed-width', `${settings.layout.sideCollapsedWidth}px`);
-  root.style.setProperty('--gva-side-item-height', `${settings.layout.sideItemHeight}px`);
+  root.style.setProperty('--fna-side-width', `${settings.layout.sideWidth}px`);
+  root.style.setProperty('--fna-side-collapsed-width', `${settings.layout.sideCollapsedWidth}px`);
+  root.style.setProperty('--fna-side-item-height', `${settings.layout.sideItemHeight}px`);
   const headerShadows = dark ? HEADER_SHADOWS_DARK : HEADER_SHADOWS_LIGHT;
   const tabShadows = dark ? TAB_SHADOWS_DARK : TAB_SHADOWS_LIGHT;
-  root.style.setProperty('--gva-header-shadow', headerShadows[settings.header.shadow]);
-  root.style.setProperty('--gva-tab-shadow', tabShadows[settings.tab.shadow]);
-  root.style.setProperty('--gva-tabs-shadow', tabShadows[settings.tab.shadow]);
+  root.style.setProperty('--fna-header-shadow', headerShadows[settings.header.shadow]);
+  root.style.setProperty('--fna-tab-shadow', tabShadows[settings.tab.shadow]);
+  root.style.setProperty('--fna-tabs-shadow', tabShadows[settings.tab.shadow]);
   root.style.setProperty('--tone-success', settings.otherColor.success);
   root.style.setProperty('--tone-warning', settings.otherColor.warning);
   root.style.setProperty('--tone-danger', settings.otherColor.error);
   root.style.setProperty('--tone-info', settings.isInfoFollowPrimary ? settings.themeColor : settings.otherColor.info);
-  // 对齐 GVA applyChromeTheme：暗色下对自定义顶栏/标签背景跑 autoDarkColor
+  // 对齐 gin-vue-admin applyChromeTheme：暗色下对自定义顶栏/标签背景跑 autoDarkColor
   if (settings.header.bg) {
     const headerBg = dark ? autoDarkColor(settings.header.bg) : settings.header.bg;
-    root.style.setProperty('--gva-header-bg', headerBg);
+    root.style.setProperty('--fna-header-bg', headerBg);
   } else {
-    root.style.removeProperty('--gva-header-bg');
+    root.style.removeProperty('--fna-header-bg');
   }
   if (settings.tab.bg) {
     const tabBg = dark ? autoDarkColor(settings.tab.bg) : settings.tab.bg;
-    root.style.setProperty('--gva-tab-bg', tabBg);
-    root.style.setProperty('--gva-tabs-bg', tabBg);
+    root.style.setProperty('--fna-tab-bg', tabBg);
+    root.style.setProperty('--fna-tabs-bg', tabBg);
   } else {
-    root.style.removeProperty('--gva-tab-bg');
-    root.style.removeProperty('--gva-tabs-bg');
+    root.style.removeProperty('--fna-tab-bg');
+    root.style.removeProperty('--fna-tabs-bg');
   }
-  root.classList.toggle('gva-grayscale', settings.grayscale);
-  root.classList.toggle('gva-colour-weakness', settings.colourWeakness);
-  root.dataset.gvaSize = settings.size;
-  root.dataset.gvaCard = settings.card.mode;
-  // 对齐 GVA applyStructureTheme：html.gva-card--border | gva-card--shadow
-  root.classList.remove('gva-card--border', 'gva-card--shadow');
-  root.classList.add(`gva-card--${settings.card.mode}`);
-  root.dataset.gvaLayout = settings.layout.mode;
+  root.classList.toggle('fna-grayscale', settings.grayscale);
+  root.classList.toggle('fna-colour-weakness', settings.colourWeakness);
+  root.dataset.fnaSize = settings.size;
+  root.dataset.fnaCard = settings.card.mode;
+  // 对齐 gin-vue-admin applyStructureTheme：html.fna-card--border | fna-card--shadow
+  root.classList.remove('fna-card--border', 'fna-card--shadow');
+  root.classList.add(`fna-card--${settings.card.mode}`);
+  root.dataset.fnaLayout = settings.layout.mode;
 }
 
-export function loadCustomPresets(): GvaThemePreset[] {
+export function loadCustomPresets(): FnaThemePreset[] {
   if (typeof window === 'undefined') {
     return [];
   }
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(PRESET_STORAGE_KEY) ?? '[]') as unknown;
+    const raw = migrateLegacyLocalStorageValue(PRESET_STORAGE_KEY, LEGACY_PRESET_STORAGE_KEYS);
+    const parsed = JSON.parse(raw ?? '[]') as unknown;
     return Array.isArray(parsed)
-      ? parsed.filter((item): item is GvaThemePreset => isRecord(item) && typeof item.name === 'string')
+      ? parsed.filter((item): item is FnaThemePreset => isRecord(item) && typeof item.name === 'string')
       : [];
   } catch {
     return [];
   }
 }
 
-function saveCustomPresets(list: GvaThemePreset[]) {
+function saveCustomPresets(list: FnaThemePreset[]) {
   window.localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(list));
 }
 
-export function addCustomPreset(preset: GvaThemePreset): GvaThemePreset[] {
+export function addCustomPreset(preset: FnaThemePreset): FnaThemePreset[] {
   const list = loadCustomPresets().filter((item) => item.name !== preset.name);
   list.push(preset);
   saveCustomPresets(list);
   return list;
 }
 
-export function removeCustomPreset(name: string): GvaThemePreset[] {
+export function removeCustomPreset(name: string): FnaThemePreset[] {
   const list = loadCustomPresets().filter((preset) => preset.name !== name);
   saveCustomPresets(list);
   return list;
 }
 
-export function exportCurrentPreset(settings: GvaShellSettings, name: string): GvaThemePreset {
+export function exportCurrentPreset(settings: FnaShellSettings, name: string): FnaThemePreset {
   return {
     name,
-    theme: cloneGvaShellSettings(settings),
+    theme: cloneFnaShellSettings(settings),
   };
 }
 
 const settingsListeners = new Set<() => void>();
 let cachedSettingsRaw: string | null | undefined;
-let cachedSettings: GvaShellSettings = defaultGvaShellSettings;
+/**
+ * SSR / 水合专用快照：引用永不变、内容不写入。
+ * getServerSnapshot 必须始终返回它，避免 localStorage 水合后与服务端 HTML 不一致。
+ */
+const SERVER_SETTINGS_SNAPSHOT: FnaShellSettings = defaultFnaShellSettings;
+let cachedSettings: FnaShellSettings = SERVER_SETTINGS_SNAPSHOT;
 /** 水合完成前禁止读 localStorage，保证与 getServerSnapshot 同一引用 */
 let settingsHydrated = false;
 
@@ -588,21 +624,21 @@ function emitSettings() {
   }
 }
 
-export function settingsEqual(a: GvaShellSettings, b: GvaShellSettings) {
+export function settingsEqual(a: FnaShellSettings, b: FnaShellSettings) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export function readGvaShellSettings(): GvaShellSettings {
+export function readFnaShellSettings(): FnaShellSettings {
   if (!settingsHydrated || typeof window === 'undefined') {
-    return cachedSettings;
+    return SERVER_SETTINGS_SNAPSHOT;
   }
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = migrateLegacyLocalStorageValue(STORAGE_KEY, LEGACY_STORAGE_KEYS);
     if (raw === cachedSettingsRaw) {
       return cachedSettings;
     }
     cachedSettingsRaw = raw;
-    const next = normalizeGvaShellSettings(raw ? JSON.parse(raw) : null);
+    const next = normalizeFnaShellSettings(raw ? JSON.parse(raw) : null);
     if (settingsEqual(next, cachedSettings)) {
       return cachedSettings;
     }
@@ -610,37 +646,34 @@ export function readGvaShellSettings(): GvaShellSettings {
     return cachedSettings;
   } catch {
     cachedSettingsRaw = null;
-    cachedSettings = defaultGvaShellSettings;
+    cachedSettings = cloneFnaShellSettings();
     return cachedSettings;
   }
 }
 
 /** 客户端挂载后调用：从 localStorage 拉取真实配置并通知订阅者 */
-export function hydrateGvaShellSettings() {
+export function hydrateFnaShellSettings() {
   if (typeof window === 'undefined' || settingsHydrated) {
     return;
   }
   settingsHydrated = true;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = migrateLegacyLocalStorageValue(STORAGE_KEY, LEGACY_STORAGE_KEYS);
     cachedSettingsRaw = raw;
-    const next = normalizeGvaShellSettings(raw ? JSON.parse(raw) : null);
-    if (!settingsEqual(next, cachedSettings)) {
-      cachedSettings = next;
-    }
+    cachedSettings = normalizeFnaShellSettings(raw ? JSON.parse(raw) : null);
   } catch {
     cachedSettingsRaw = null;
-    cachedSettings = defaultGvaShellSettings;
+    cachedSettings = cloneFnaShellSettings();
   }
   emitSettings();
 }
 
-export function writeGvaShellSettings(settings: GvaShellSettings) {
+export function writeFnaShellSettings(settings: FnaShellSettings) {
   if (typeof window === 'undefined') {
     return;
   }
   settingsHydrated = true;
-  const normalized = normalizeGvaShellSettings(settings);
+  const normalized = normalizeFnaShellSettings(settings);
   const payload = JSON.stringify(normalized);
   window.localStorage.setItem(STORAGE_KEY, payload);
   cachedSettingsRaw = payload;
@@ -648,7 +681,7 @@ export function writeGvaShellSettings(settings: GvaShellSettings) {
   emitSettings();
 }
 
-export function subscribeGvaShellSettings(listener: () => void) {
+export function subscribeFnaShellSettings(listener: () => void) {
   settingsListeners.add(listener);
   const onStorage = (event: StorageEvent) => {
     if (event.key === STORAGE_KEY || event.key === PRESET_STORAGE_KEY || event.key === null) {
@@ -666,12 +699,11 @@ export function subscribeGvaShellSettings(listener: () => void) {
   };
 }
 
-export function getGvaShellSettingsServerSnapshot() {
-  // 必须与水合前 readGvaShellSettings() 返回同一引用
-  return cachedSettings;
+export function getFnaShellSettingsServerSnapshot() {
+  return SERVER_SETTINGS_SNAPSHOT;
 }
 
-export function parseImportedPreset(text: string): GvaThemePreset | null {
+export function parseImportedPreset(text: string): FnaThemePreset | null {
   try {
     const parsed = JSON.parse(text) as unknown;
     if (!isRecord(parsed)) {
@@ -681,7 +713,7 @@ export function parseImportedPreset(text: string): GvaThemePreset | null {
     return {
       name: typeof parsed.name === 'string' ? parsed.name : 'imported',
       builtin: Boolean(parsed.builtin),
-      theme: theme as GvaThemePreset['theme'],
+      theme: theme as FnaThemePreset['theme'],
     };
   } catch {
     return null;

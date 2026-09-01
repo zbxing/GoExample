@@ -12,7 +12,7 @@
 | `health` | 并发依赖检查、单次后台刷新、缓存和 draining |
 | `httpclient` | 有界标准库出站 HTTP client、W3C trace 传播和低敏 `CLIENT` span |
 | `httpapi` | Fiber 初始化、中间件、统一响应、系统路由和项目路由扩展点 |
-| `observability` | `slog` 请求日志、HTTP/Go runtime metrics、OpenTelemetry span 与有界 OTLP/HTTP exporter |
+| `observability` | 具备日志级别快路径和固定属性缓冲的 `slog` 请求日志、HTTP/Go runtime metrics、OpenTelemetry span 与有界 OTLP/HTTP exporter |
 | `queueclient` | broker-neutral 有界 publish/process callback、consumer worker 生命周期、W3C 传播和低敏消息 span |
 | `queueclient/natsjetstream` | NATS JetStream 同步 publish ack、pull delivery、confirmed ack 与 publish-before-ack DLQ adapter |
 | `server` | Fiber/标准 `net/http` listener、连接与超时上限、固定状态观察、readiness 摘流和优雅停机 |
@@ -238,7 +238,9 @@ client, err := httpclient.New(httpclient.Config{TracerProvider: provider})
 
 `server.RunHTTP` 接受标准 `http.Handler`、监听地址、health checker、logger、accepted connection/read-header/read/write/idle/header 上限、可选 `HTTPConnectionObserver` 和 shutdown 预算。收到取消信号后先设置 draining，再等待可选传播延迟；标准 server shutdown 与可选 application shutdown hook 共享一个总预算，超时后强制关闭连接以保证返回。连接 observer 只接收容量和固定 `net/http` 状态，panic 被隔离。Example 默认使用该路径。原 `server.Run` Fiber listener API 保留兼容。
 
-`httpapi.NewHTTPHandler` 提供标准 `net/http.Handler` 组合边界。它用每请求随机 128-bit、一次性、仅进程内可解析的令牌跨越 Fiber 官方 adaptor；令牌在第一个 Framework middleware 中删除，原始 `http.Request.Context()` 本身不会序列化到 header、日志或响应。caller 的较短 deadline、取消和 middleware context value 会进入 application context，真实标准 TCP 客户端断开也会取消协作式 handler；原生 Fiber listener 不经过该桥，仍依赖有限 `RequestTimeout`。Example 另把原 `*fiber.App` 的 `ShutdownWithContext` 作为 `HTTPOptions.ApplicationShutdown` 注入，使 Framework pre-shutdown hook 与标准 server 关闭共享预算并取消所有正在运行的 application work。
+`httpapi.NewHTTPHandler` 提供标准 `net/http.Handler` 组合边界。它用每请求随机 128-bit、一次性、仅进程内可解析的令牌跨越 Fiber 官方 adaptor；令牌在第一个 Framework middleware 中删除，原始 `http.Request.Context()` 与 `http.ResponseController` 写期限能力本身不会序列化到 header、日志或响应。caller 的较短 deadline、取消和 middleware context value 会进入 application context，真实标准 TCP 客户端断开也会取消协作式 handler；原生 Fiber listener 不经过该桥，仍依赖有限 `RequestTimeout`。Example 另把原 `*fiber.App` 的 `ShutdownWithContext` 作为 `HTTPOptions.ApplicationShutdown` 注入，使 Framework pre-shutdown hook 与标准 server 关闭共享预算并取消所有正在运行的 application work。
+
+`SendServerSentEvents` 与 `SendServerSentEventsFromSource` 使用同一 request lifecycle。`ServerSentEventOptions.StreamTimeout` 为零时继续由普通 `RequestTimeout` 和标准服务器原写期限限制；正值必须大于心跳且不超过 24 小时，会在 body stream 被认领时切换到独立有限预算，因此不需要放大其它 API 的请求超时。标准 adapter 同时通过 `http.ResponseController` 把传输写期限切到有效 stream deadline 加固定 1 秒协议收尾预算，避免 `server.RunHTTP.WriteTimeout` 在更早的绝对时间截断合法长流；提前完成时剩余收尾预算会收紧到 1 秒，不支持标准期限控制的 writer 保持兼容，其它控制器错误在写响应前失败。标准 caller 的更短 deadline、客户端断连和应用停机仍会提前取消 producer。多行 data 会先计算完整 wire 大小，再直接通过有界 writer 分帧，不再按行数构造切片和聚合字符串；默认/最大事件字节限制保持不变。原生 Fiber listener 不经过该标准期限桥；该契约不提供持久化 replay store，也不代替目标 edge 的 buffering、断连、容量和长稳验证。
 
 ## 验证
 

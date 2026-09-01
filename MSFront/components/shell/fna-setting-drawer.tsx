@@ -14,13 +14,13 @@ import {
 import { AdminSelect } from '@/components/admin/admin-primitives';
 import { applyTheme, useTheme } from '@/providers/theme-provider';
 import type { ThemeMode } from '@/lib/types/management';
-import { showGvaMessage } from '@/lib/utils/ga-message';
+import { showFnaMessage } from '@/lib/utils/fna-message';
 import {
   addCustomPreset,
   addOpacityToColor,
   applyPresetToSettings,
   BUILTIN_PRESETS,
-  cloneGvaShellSettings,
+  cloneFnaShellSettings,
   exportCurrentPreset,
   hexToRgbChannels,
   loadCustomPresets,
@@ -28,27 +28,27 @@ import {
   removeCustomPreset,
   SEMANTIC_SWATCHES,
   THEME_PRESET_COLORS,
-  type GvaCardMode,
-  type GvaLayoutMode,
-  type GvaMenuCollapseMode,
-  type GvaMenuTheme,
-  type GvaPageTransition,
-  type GvaShadow,
-  type GvaShellSettings,
-  type GvaSize,
-  type GvaTabMode,
-  type GvaThemePreset,
-  type GvaThemeScheme,
-} from '@/lib/utils/ga-shell-settings';
+  type FnaCardMode,
+  type FnaLayoutMode,
+  type FnaMenuCollapseMode,
+  type FnaMenuTheme,
+  type FnaPageTransition,
+  type FnaShadow,
+  type FnaShellSettings,
+  type FnaSize,
+  type FnaTabMode,
+  type FnaThemePreset,
+  type FnaThemeScheme,
+} from '@/lib/utils/fna-shell-settings';
 
-export type { GvaShellSettings, GvaTabMode };
+export type { FnaShellSettings, FnaTabMode };
 export {
-  defaultGvaShellSettings,
-  getGvaShellSettingsServerSnapshot,
-  readGvaShellSettings,
-  subscribeGvaShellSettings,
-  writeGvaShellSettings,
-} from '@/lib/utils/ga-shell-settings';
+  defaultFnaShellSettings,
+  getFnaShellSettingsServerSnapshot,
+  readFnaShellSettings,
+  subscribeFnaShellSettings,
+  writeFnaShellSettings,
+} from '@/lib/utils/fna-shell-settings';
 
 const TABS = [
   { key: 'appearance', label: '外观' },
@@ -57,19 +57,19 @@ const TABS = [
   { key: 'general', label: '通用' },
 ] as const;
 
-interface GvaSettingDrawerProps {
+interface FnaSettingDrawerProps {
   open: boolean;
   onClose: () => void;
-  settings: GvaShellSettings;
-  onChange: (next: GvaShellSettings) => void;
+  settings: FnaShellSettings;
+  onChange: (next: FnaShellSettings) => void;
 }
 
-export function GvaSettingDrawer({
+export function FnaSettingDrawer({
   open,
   onClose,
   settings,
   onChange,
-}: GvaSettingDrawerProps) {
+}: FnaSettingDrawerProps) {
   const { setTheme } = useTheme();
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('appearance');
   const [confirm, setConfirm] = useState<{ title: string; message: string; onConfirm: () => void } | null>(
@@ -105,11 +105,11 @@ export function GvaSettingDrawer({
   function scheduleSaveToast() {
     window.clearTimeout(saveToastTimer.current);
     saveToastTimer.current = window.setTimeout(() => {
-      showGvaMessage.success('保存成功');
+      showFnaMessage.success('保存成功');
     }, 500);
   }
 
-  function patch(next: GvaShellSettings, options?: { silent?: boolean }) {
+  function patch(next: FnaShellSettings, options?: { silent?: boolean }) {
     onChange(next);
     syncThemeScheme(next.themeScheme, setTheme);
     if (!options?.silent) {
@@ -119,8 +119,8 @@ export function GvaSettingDrawer({
 
   function resetConfig() {
     window.clearTimeout(saveToastTimer.current);
-    patch(cloneGvaShellSettings(), { silent: true });
-    showGvaMessage.success('配置已重置');
+    patch(cloneFnaShellSettings(), { silent: true });
+    showFnaMessage.success('配置已重置');
   }
 
   if (!presented || typeof document === 'undefined') {
@@ -128,10 +128,10 @@ export function GvaSettingDrawer({
   }
 
   return createPortal(
-    <div className={`gvaDrawerRoot gvaThemeDrawer is-${drawerPhase}`}>
-      <button type="button" className="gvaDrawerMask" aria-label="关闭设置" onClick={onClose} />
+    <div className={`fnaDrawerRoot fnaThemeDrawer is-${drawerPhase}`}>
+      <button type="button" className="fnaDrawerMask" aria-label="关闭设置" onClick={onClose} />
       <aside
-        className="gvaDrawer"
+        className="fnaDrawer"
         role="dialog"
         aria-modal="true"
         aria-label="系统配置"
@@ -139,27 +139,27 @@ export function GvaSettingDrawer({
           if (
             event.target !== event.currentTarget ||
             open ||
-            event.animationName !== 'gva-rtl-drawer-out'
+            event.animationName !== 'fna-rtl-drawer-out'
           ) {
             return;
           }
           setPresented(false);
         }}
       >
-        <header className="gvaDrawerHeader">
+        <header className="fnaDrawerHeader">
           <span>系统配置</span>
-          <div className="gvaDrawerHeaderActions">
-            <button type="button" className="elButton elButtonPrimary gvaDrawerResetBtn" onClick={resetConfig}>
+          <div className="fnaDrawerHeaderActions">
+            <button type="button" className="elButton elButtonPrimary fnaDrawerResetBtn" onClick={resetConfig}>
               重置配置
             </button>
-            <button type="button" className="gvaDrawerCloseBtn" aria-label="关闭系统配置" onClick={onClose}>
+            <button type="button" className="fnaDrawerCloseBtn" aria-label="关闭系统配置" onClick={onClose}>
               <X size={14} strokeWidth={2.25} />
             </button>
           </div>
         </header>
 
-        <div className="gvaDrawerBody">
-          <div className="gvaDrawerTabs">
+        <div className="fnaDrawerBody">
+          <div className="fnaDrawerTabs">
             {TABS.map((item) => (
               <button
                 key={item.key}
@@ -173,7 +173,7 @@ export function GvaSettingDrawer({
             ))}
           </div>
 
-          <div className="gvaThemeSectionContent" key={tab}>
+          <div className="fnaThemeSectionContent" key={tab}>
             {tab === 'appearance' ? (
               <AppearancePane settings={settings} onChange={patch} />
             ) : null}
@@ -217,15 +217,15 @@ export function GvaSettingDrawer({
   );
 }
 
-function syncThemeScheme(scheme: GvaThemeScheme, setTheme: (theme: ThemeMode) => void) {
+function syncThemeScheme(scheme: FnaThemeScheme, setTheme: (theme: ThemeMode) => void) {
   if (scheme === 'dark') {
     applyTheme('graphite');
     setTheme('graphite');
     return;
   }
   if (scheme === 'light') {
-    applyTheme('gva');
-    setTheme('gva');
+    applyTheme('fna');
+    setTheme('fna');
     return;
   }
   setTheme('system');
@@ -235,13 +235,13 @@ function AppearancePane({
   settings,
   onChange,
 }: {
-  settings: GvaShellSettings;
-  onChange: (next: GvaShellSettings) => void;
+  settings: FnaShellSettings;
+  onChange: (next: FnaShellSettings) => void;
 }) {
   const showDarkSider = settings.themeScheme !== 'dark' && settings.layout.mode !== 'head';
 
   return (
-    <div className="gvaThemeFont">
+    <div className="fnaThemeFont">
       <Section title="主题模式">
         <ThemeModeSelector
           value={settings.themeScheme}
@@ -271,7 +271,7 @@ function AppearancePane({
           color={settings.themeColor}
           onChange={(theme) => onChange({ ...settings, menu: { ...settings.menu, theme } })}
         />
-        <div className="gvaThemeCardBg" style={{ marginTop: 12 }}>
+        <div className="fnaThemeCardBg" style={{ marginTop: 12 }}>
           <SettingItem label="侧边栏折叠">
             <ThemeSelect
               value={settings.menu.collapseMode}
@@ -283,7 +283,7 @@ function AppearancePane({
               onChange={(collapseMode) =>
                 onChange({
                   ...settings,
-                  menu: { ...settings.menu, collapseMode: collapseMode as GvaMenuCollapseMode },
+                  menu: { ...settings.menu, collapseMode: collapseMode as FnaMenuCollapseMode },
                 })
               }
             />
@@ -306,7 +306,7 @@ function AppearancePane({
           color={settings.themeColor}
           onChange={(mode) => onChange({ ...settings, tab: { ...settings.tab, mode } })}
         />
-        <div className="gvaThemeCardBg" style={{ marginTop: 12 }}>
+        <div className="fnaThemeCardBg" style={{ marginTop: 12 }}>
           <SettingItem label="展示图标">
             <ThemeSwitch
               checked={settings.tab.showIcon}
@@ -327,7 +327,7 @@ function AppearancePane({
       </Section>
 
       <Section title="外观细节">
-        <div className="gvaThemeCardBg">
+        <div className="fnaThemeCardBg">
           <SettingItem label="全局圆角">
             <RadiusSelector
               value={settings.themeRadius}
@@ -358,7 +358,7 @@ function AppearancePane({
             />
           </SettingItem>
           <SettingItem label="语义色">
-            <div className="gvaSemanticSwatches">
+            <div className="fnaSemanticSwatches">
               {(
                 [
                   ['success', '成功'],
@@ -388,7 +388,7 @@ function AppearancePane({
       </Section>
 
       <Section title="偏好">
-        <div className="gvaThemeCardBg">
+        <div className="fnaThemeCardBg">
           <SettingItem label="全局尺寸">
             <ThemeSelect
               value={settings.size}
@@ -397,7 +397,7 @@ function AppearancePane({
                 { label: '大', value: 'large' },
                 { label: '小', value: 'small' },
               ]}
-              onChange={(size) => onChange({ ...settings, size: size as GvaSize })}
+              onChange={(size) => onChange({ ...settings, size: size as FnaSize })}
             />
           </SettingItem>
           <SettingItem label="灰色模式">
@@ -431,11 +431,11 @@ function LayoutPane({
   settings,
   onChange,
 }: {
-  settings: GvaShellSettings;
-  onChange: (next: GvaShellSettings) => void;
+  settings: FnaShellSettings;
+  onChange: (next: FnaShellSettings) => void;
 }) {
   return (
-    <div className="gvaThemeFont">
+    <div className="fnaThemeFont">
       <Section title="布局模式">
         <LayoutModeCard
           value={settings.layout.mode}
@@ -445,7 +445,7 @@ function LayoutPane({
       </Section>
 
       <Section title="顶栏">
-        <div className="gvaThemeCardBg">
+        <div className="fnaThemeCardBg">
           <SettingItem label="显示面包屑">
             <ThemeSwitch
               checked={settings.header.breadcrumb.visible}
@@ -500,7 +500,7 @@ function LayoutPane({
           </SettingItem>
           <SettingItem
             label="顶栏背景"
-            suffix={<span className="gvaDrawerHintInline">留空跟随主题</span>}
+            suffix={<span className="fnaDrawerHintInline">留空跟随主题</span>}
           >
             <ColorSwatch
               value={settings.header.bg}
@@ -518,7 +518,7 @@ function LayoutPane({
               options={shadowOptions}
               placement="top"
               onChange={(shadow) =>
-                onChange({ ...settings, header: { ...settings.header, shadow: shadow as GvaShadow } })
+                onChange({ ...settings, header: { ...settings.header, shadow: shadow as FnaShadow } })
               }
             />
           </SettingItem>
@@ -539,11 +539,11 @@ function LayoutPane({
               options={shadowOptions}
               placement="top"
               onChange={(shadow) =>
-                onChange({ ...settings, tab: { ...settings.tab, shadow: shadow as GvaShadow } })
+                onChange({ ...settings, tab: { ...settings.tab, shadow: shadow as FnaShadow } })
               }
             />
           </SettingItem>
-          <div className="gvaDrawerHintRow">
+          <div className="fnaDrawerHintRow">
             <Info size={14} />
             <span>暗色模式下将基于以上配色自动推导深色版本，无需单独设置</span>
           </div>
@@ -551,7 +551,7 @@ function LayoutPane({
       </Section>
 
       <Section title="界面">
-        <div className="gvaThemeCardBg">
+        <div className="fnaThemeCardBg">
           <SettingItem label="显示标签页">
             <ThemeSwitch
               checked={settings.tab.visible}
@@ -570,7 +570,7 @@ function LayoutPane({
               ]}
               placement="top"
               onChange={(transition) =>
-                onChange({ ...settings, page: { transition: transition as GvaPageTransition } })
+                onChange({ ...settings, page: { transition: transition as FnaPageTransition } })
               }
             />
           </SettingItem>
@@ -578,7 +578,7 @@ function LayoutPane({
       </Section>
 
       <Section title="侧栏尺寸">
-        <div className="gvaThemeCardBg">
+        <div className="fnaThemeCardBg">
           <SettingItem label="展开宽度">
             <NumberField
               value={settings.layout.sideWidth}
@@ -619,30 +619,30 @@ function PresetsPane({
   onChange,
   onConfirm,
 }: {
-  settings: GvaShellSettings;
-  onChange: (next: GvaShellSettings) => void;
+  settings: FnaShellSettings;
+  onChange: (next: FnaShellSettings) => void;
   onConfirm: (value: { title: string; message: string; onConfirm: () => void }) => void;
 }) {
   const [customPresets, setCustomPresets] = useState(loadCustomPresets);
   const [promptOpen, setPromptOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  function applyPreset(preset: GvaThemePreset) {
+  function applyPreset(preset: FnaThemePreset) {
     onChange(applyPresetToSettings(preset, settings));
   }
 
   function handleExport() {
-    const data = JSON.stringify(exportCurrentPreset(settings, 'gin-vue-admin-theme'), null, 2);
+    const data = JSON.stringify(exportCurrentPreset(settings, 'fna-theme'), null, 2);
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `gin-vue-admin-theme-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `fna-theme-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    showGvaMessage.success('配置已导出');
+    showFnaMessage.success('配置已导出');
   }
 
   function handleImport(file: File | undefined) {
@@ -653,19 +653,19 @@ function PresetsPane({
     reader.onload = () => {
       const preset = parseImportedPreset(String(reader.result ?? ''));
       if (!preset?.theme) {
-        showGvaMessage.warning('配置文件不兼容或为空');
+        showFnaMessage.warning('配置文件不兼容或为空');
         return;
       }
       onChange(applyPresetToSettings(preset, settings));
-      showGvaMessage.success('配置已导入');
+      showFnaMessage.success('配置已导入');
     };
     reader.readAsText(file);
   }
 
   return (
-    <div className="gvaThemeFont">
+    <div className="fnaThemeFont">
       <Section title="内置预设">
-        <div className="gvaPresetGrid">
+        <div className="fnaPresetGrid">
           {BUILTIN_PRESETS.map((preset) => (
             <PresetCard key={preset.name} preset={preset} settings={settings} onApply={() => applyPreset(preset)} />
           ))}
@@ -674,7 +674,7 @@ function PresetsPane({
 
       <Section title="我的预设">
         {customPresets.length ? (
-          <div className="gvaPresetGrid" style={{ marginBottom: 16 }}>
+          <div className="fnaPresetGrid" style={{ marginBottom: 16 }}>
             {customPresets.map((preset) => (
               <PresetCard
                 key={preset.name}
@@ -687,7 +687,7 @@ function PresetsPane({
                     message: `确定删除预设「${preset.name}」吗？`,
                     onConfirm: () => {
                       setCustomPresets(removeCustomPreset(preset.name));
-                      showGvaMessage.success('预设已删除');
+                      showFnaMessage.success('预设已删除');
                     },
                   });
                 }}
@@ -695,11 +695,11 @@ function PresetsPane({
             ))}
           </div>
         ) : (
-          <div className="gvaThemeCardBg gvaPresetEmpty">暂无自定义预设，点击下方「保存当前为预设」</div>
+          <div className="fnaThemeCardBg fnaPresetEmpty">暂无自定义预设，点击下方「保存当前为预设」</div>
         )}
         <button
           type="button"
-          className="elButton elButtonPrimary gvaDrawerFullBtn"
+          className="elButton elButtonPrimary fnaDrawerFullBtn"
           onClick={() => setPromptOpen(true)}
         >
           保存当前为预设
@@ -712,18 +712,18 @@ function PresetsPane({
             onConfirm={(name) => {
               setCustomPresets(addCustomPreset(exportCurrentPreset(settings, name)));
               setPromptOpen(false);
-              showGvaMessage.success('预设已保存');
+              showFnaMessage.success('预设已保存');
             }}
           />
         ) : null}
       </Section>
 
       <Section title="导入导出">
-        <div className="gvaThemeCardBg gvaPresetImportRow">
-          <button type="button" className="elButton gvaDrawerFlexBtn" onClick={handleExport}>
+        <div className="fnaThemeCardBg fnaPresetImportRow">
+          <button type="button" className="elButton fnaDrawerFlexBtn" onClick={handleExport}>
             导出当前配置
           </button>
-          <button type="button" className="elButton gvaDrawerFlexBtn" onClick={() => fileRef.current?.click()}>
+          <button type="button" className="elButton fnaDrawerFlexBtn" onClick={() => fileRef.current?.click()}>
             导入配置
           </button>
           <input
@@ -737,7 +737,7 @@ function PresetsPane({
             }}
           />
         </div>
-        <p className="gvaDrawerHint" style={{ marginTop: 12 }}>
+        <p className="fnaDrawerHint" style={{ marginTop: 12 }}>
           导出当前完整配置（主题 / 布局 / 顶栏 / 界面），可跨账号迁移；
         </p>
       </Section>
@@ -749,7 +749,7 @@ function GeneralPane({
   settings,
   onReset,
 }: {
-  settings: GvaShellSettings;
+  settings: FnaShellSettings;
   onReset: () => void;
 }) {
   const env = useMemo(() => {
@@ -773,10 +773,10 @@ function GeneralPane({
   }, []);
 
   return (
-    <div className="gvaThemeFont">
+    <div className="fnaThemeFont">
       <Section title="系统信息">
-        <div className="gvaThemeCardBg">
-          <div className="gvaInfoGrid">
+        <div className="fnaThemeCardBg">
+          <div className="fnaInfoGrid">
             <InfoCell label="版本" value="v0.1.0" />
             <InfoCell label="前端框架" value="Next.js" />
             <InfoCell label="UI 组件库" value="React" />
@@ -788,10 +788,10 @@ function GeneralPane({
       </Section>
 
       <Section title="配置管理">
-        <div className="gvaThemeCardBg">
-          <div className="gvaThemeCardWhite gvaResetCard">
-            <div className="gvaResetCardCopy">
-              <div className="gvaResetIcon" aria-hidden="true">
+        <div className="fnaThemeCardBg">
+          <div className="fnaThemeCardWhite fnaResetCard">
+            <div className="fnaResetCardCopy">
+              <div className="fnaResetIcon" aria-hidden="true">
                 🔄
               </div>
               <div>
@@ -807,20 +807,20 @@ function GeneralPane({
       </Section>
 
       <Section title="关于项目">
-        <div className="gvaThemeCardBg">
-          <div className="gvaAboutRow">
+        <div className="fnaThemeCardBg">
+          <div className="fnaAboutRow">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/ga-logo.png" alt="" className="gvaAboutLogo" />
+            <img src="/fna-logo.png" alt="" className="fnaAboutLogo" />
             <div>
-              <h4>Go Admin</h4>
-              <p>基于 Vue3 + Gin 的全栈开发基础平台，提供完整的后台管理解决方案</p>
-              <div className="gvaAboutLinks">
+              <h4>FNA</h4>
+              <p>Fiber + Next + Admin 管理台（MSFront），提供权限、菜单、主题与运维能力。</p>
+              <div className="fnaAboutLinks">
                 <a href="https://github.com/flipped-aurora/gin-vue-admin" target="_blank" rel="noreferrer" style={{ color: settings.themeColor }}>
-                  GitHub 仓库
+                  参考仓库
                 </a>
                 <span>·</span>
                 <a href="https://www.gin-vue-admin.com/" target="_blank" rel="noreferrer" style={{ color: settings.themeColor }}>
-                  官方文档
+                  参考文档
                 </a>
               </div>
             </div>
@@ -833,9 +833,9 @@ function GeneralPane({
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="gvaThemeBlock">
-      <div className="gvaThemeSectionHeader">
-        <span className="gvaThemeSectionTitle">{title}</span>
+    <div className="fnaThemeBlock">
+      <div className="fnaThemeSectionHeader">
+        <span className="fnaThemeSectionTitle">{title}</span>
       </div>
       {children}
     </div>
@@ -852,12 +852,12 @@ function SettingItem({
   children: ReactNode;
 }) {
   return (
-    <div className="gvaThemeSettingItem">
-      <div className="gvaThemeSettingLabelWrap">
-        <span className="gvaThemeSettingLabel">{label}</span>
+    <div className="fnaThemeSettingItem">
+      <div className="fnaThemeSettingLabelWrap">
+        <span className="fnaThemeSettingLabel">{label}</span>
         {suffix}
       </div>
-      <div className="gvaThemeSettingControl">{children}</div>
+      <div className="fnaThemeSettingControl">{children}</div>
     </div>
   );
 }
@@ -876,13 +876,13 @@ function ThemeSwitch({
   return (
     <button
       type="button"
-      className={checked ? 'gvaSwitch is-on' : 'gvaSwitch'}
+      className={checked ? 'fnaSwitch is-on' : 'fnaSwitch'}
       aria-label={label}
       aria-pressed={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
     >
-      <span className="gvaSwitchCore" />
+      <span className="fnaSwitchCore" />
     </button>
   );
 }
@@ -926,7 +926,7 @@ function NumberField({
 }) {
   return (
     <input
-      className="gvaThemeNumber"
+      className="fnaThemeNumber"
       type="number"
       min={min}
       max={max}
@@ -1028,10 +1028,10 @@ function ColorSwatch({
         aria-label={ariaLabel || title || placeholder}
         aria-expanded={open}
         disabled={disabled}
-        className={`gvaColorSwatch${showValue ? ' is-value' : ''}${open ? ' is-open' : ''}`}
+        className={`fnaColorSwatch${showValue ? ' is-value' : ''}${open ? ' is-open' : ''}`}
         onClick={toggleOpen}
       >
-        <span className="gvaColorSwatchChip">
+        <span className="fnaColorSwatchChip">
           <span style={{ backgroundColor: value || 'transparent' }} />
         </span>
         {showValue ? <em>{value || placeholder}</em> : null}
@@ -1040,12 +1040,12 @@ function ColorSwatch({
         ? createPortal(
             <div
               ref={popoverRef}
-              className="gvaColorPopover"
+              className="fnaColorPopover"
               style={{ top: pos.top, left: pos.left }}
             >
               <button
                 type="button"
-                className="gvaColorPopoverPreview"
+                className="fnaColorPopoverPreview"
                 style={{ backgroundColor: value || '#ffffff' }}
                 aria-label="打开系统取色器"
                 onClick={() => nativeRef.current?.click()}
@@ -1053,19 +1053,19 @@ function ColorSwatch({
               <input
                 ref={nativeRef}
                 type="color"
-                className="gvaColorNative"
+                className="fnaColorNative"
                 value={hex || '#ffffff'}
                 onChange={(event) => onChange(event.target.value)}
               />
               <input
-                className="gvaColorPopoverHex"
+                className="fnaColorPopoverHex"
                 value={value}
                 placeholder={placeholder}
                 spellCheck={false}
                 onChange={(event) => onChange(event.target.value)}
               />
               {swatches.length > 0 ? (
-                <div className="gvaColorPopoverSwatches">
+                <div className="fnaColorPopoverSwatches">
                   {swatches.map((color) => {
                     const active = hex.toLowerCase() === color.toLowerCase();
                     return (
@@ -1082,7 +1082,7 @@ function ColorSwatch({
                 </div>
               ) : null}
               {clearable ? (
-                <button type="button" className="gvaColorPopoverClear" onClick={() => onChange('')}>
+                <button type="button" className="fnaColorPopoverClear" onClick={() => onChange('')}>
                   清空（{placeholder}）
                 </button>
               ) : null}
@@ -1099,9 +1099,9 @@ function ThemeModeSelector({
   color,
   onChange,
 }: {
-  value: GvaThemeScheme;
+  value: FnaThemeScheme;
   color: string;
-  onChange: (value: GvaThemeScheme) => void;
+  onChange: (value: FnaThemeScheme) => void;
 }) {
   const modes = [
     { value: 'light' as const, label: '浅色', icon: Sun },
@@ -1109,8 +1109,8 @@ function ThemeModeSelector({
     { value: 'auto' as const, label: '跟随系统', icon: Monitor },
   ];
   return (
-    <div className="gvaThemeModeSelectorWrap">
-      <div className="gvaThemeModeSelector">
+    <div className="fnaThemeModeSelectorWrap">
+      <div className="fnaThemeModeSelector">
         {modes.map((mode) => {
           const active = value === mode.value;
           const Icon = mode.icon;
@@ -1118,11 +1118,11 @@ function ThemeModeSelector({
             <button
               key={mode.value}
               type="button"
-              className={active ? 'gvaThemeModeItem is-active' : 'gvaThemeModeItem'}
-              style={active ? { backgroundColor: color, color: '#fff' } : undefined}
+              className={active ? 'fnaThemeModeItem is-active' : 'fnaThemeModeItem'}
+              style={active ? { backgroundColor: color } : undefined}
               onClick={() => onChange(mode.value)}
             >
-              <Icon size={18} />
+              <Icon size={16} strokeWidth={2} aria-hidden />
               <span>{mode.label}</span>
             </button>
           );
@@ -1140,7 +1140,7 @@ function ThemeColorPicker({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="gvaThemeCardBg gvaThemeColorRow">
+    <div className="fnaThemeCardBg fnaThemeColorRow">
       {THEME_PRESET_COLORS.map((item) => {
         const active = value.toLowerCase() === item.color.toLowerCase();
         return (
@@ -1148,7 +1148,7 @@ function ThemeColorPicker({
             key={item.color}
             type="button"
             title={item.name}
-            className={active ? 'gvaColorDot is-active' : 'gvaColorDot'}
+            className={active ? 'fnaColorDot is-active' : 'fnaColorDot'}
             style={{ backgroundColor: item.color, ['--tw-ring-color' as string]: item.color }}
             onClick={() => onChange(item.color)}
           >
@@ -1156,7 +1156,7 @@ function ThemeColorPicker({
           </button>
         );
       })}
-      <span className="gvaColorDivider" />
+      <span className="fnaColorDivider" />
       <ColorSwatch
         value={value}
         ariaLabel="自定义主题色"
@@ -1173,12 +1173,12 @@ function MenuThemeSelector({
   color,
   onChange,
 }: {
-  value: GvaMenuTheme;
+  value: FnaMenuTheme;
   color: string;
-  onChange: (value: GvaMenuTheme) => void;
+  onChange: (value: FnaMenuTheme) => void;
 }) {
   const items: Array<{
-    value: GvaMenuTheme;
+    value: FnaMenuTheme;
     previewSide: string;
     previewMain: string;
     previewActive: string;
@@ -1208,25 +1208,25 @@ function MenuThemeSelector({
   ];
 
   return (
-    <div className="gvaPreviewGrid">
+    <div className="fnaPreviewGrid">
       {items.map((item) => {
         const active = value === item.value;
         return (
           <button
             key={item.value}
             type="button"
-            className="gvaPreviewCard"
+            className="fnaPreviewCard"
             style={active ? { borderColor: color, boxShadow: `0 0 0 1px ${color}` } : undefined}
             onClick={() => onChange(item.value)}
           >
-            <div className="gvaMiniLayout">
-              <div className="gvaMiniSide" style={{ background: item.previewSide }}>
+            <div className="fnaMiniLayout">
+              <div className="fnaMiniSide" style={{ background: item.previewSide }}>
                 <span style={{ background: item.previewActive }} />
                 <span style={{ background: item.previewSideText, opacity: 0.4 }} />
               </div>
-              <div className="gvaMiniMain" style={{ background: item.previewMain }} />
+              <div className="fnaMiniMain" style={{ background: item.previewMain }} />
             </div>
-            {active ? <Check size={14} className="gvaPreviewCheck" style={{ color }} /> : null}
+            {active ? <Check size={14} className="fnaPreviewCheck" style={{ color }} /> : null}
           </button>
         );
       })}
@@ -1239,31 +1239,31 @@ function TabModeSelector({
   color,
   onChange,
 }: {
-  value: GvaTabMode;
+  value: FnaTabMode;
   color: string;
-  onChange: (value: GvaTabMode) => void;
+  onChange: (value: FnaTabMode) => void;
 }) {
   const primarySoft = `rgba(${hexToRgbChannels(color)}, 0.15)`;
-  const modes: Array<{ value: GvaTabMode; label: string }> = [
+  const modes: Array<{ value: FnaTabMode; label: string }> = [
     { value: 'button', label: '默认' },
     { value: 'chrome', label: 'Chrome' },
     { value: 'slider', label: '指示条' },
   ];
 
   return (
-    <div className="gvaPreviewGrid">
+    <div className="fnaPreviewGrid">
       {modes.map((item) => {
         const active = value === item.value;
         return (
           <button
             key={item.value}
             type="button"
-            className="gvaPreviewCard gvaTabPreviewCard"
+            className="fnaPreviewCard fnaTabPreviewCard"
             style={active ? { borderColor: color, boxShadow: `0 0 0 1px ${color}` } : undefined}
             onClick={() => onChange(item.value)}
           >
             {item.value === 'button' ? (
-              <div className="gvaTabPreview gvaTabPreviewButton">
+              <div className="fnaTabPreview fnaTabPreviewButton">
                 <span style={{ backgroundColor: primarySoft }} />
                 <i />
                 <span />
@@ -1272,14 +1272,14 @@ function TabModeSelector({
               </div>
             ) : null}
             {item.value === 'chrome' ? (
-              <div className="gvaTabPreview gvaTabPreviewChrome">
+              <div className="fnaTabPreview fnaTabPreviewChrome">
                 <span />
                 <span style={{ backgroundColor: primarySoft }} />
                 <span />
               </div>
             ) : null}
             {item.value === 'slider' ? (
-              <div className="gvaTabPreview gvaTabPreviewSlider">
+              <div className="fnaTabPreview fnaTabPreviewSlider">
                 <span>
                   <em />
                 </span>
@@ -1292,7 +1292,7 @@ function TabModeSelector({
               </div>
             ) : null}
             <em style={active ? { color } : undefined}>{item.label}</em>
-            {active ? <Check size={14} className="gvaPreviewCheck" style={{ color }} /> : null}
+            {active ? <Check size={14} className="fnaPreviewCheck" style={{ color }} /> : null}
           </button>
         );
       })}
@@ -1305,14 +1305,14 @@ function LayoutModeCard({
   color,
   onChange,
 }: {
-  value: GvaLayoutMode;
+  value: FnaLayoutMode;
   color: string;
-  onChange: (value: GvaLayoutMode) => void;
+  onChange: (value: FnaLayoutMode) => void;
 }) {
   const lighter = addOpacityToColor(color, 0.7);
   const lightest = addOpacityToColor(color, 0.4);
   const layouts: Array<{
-    value: GvaLayoutMode;
+    value: FnaLayoutMode;
     label: string;
     description: string;
     showSidebar: boolean;
@@ -1340,26 +1340,26 @@ function LayoutModeCard({
   }
 
   return (
-    <div className="gvaLayoutGrid">
+    <div className="fnaLayoutGrid">
       {layouts.map((layout) => {
         const active = value === layout.value;
         return (
           <button
             key={layout.value}
             type="button"
-            className="gvaLayoutCard"
+            className="fnaLayoutCard"
             style={active ? { borderColor: color, boxShadow: `0 0 0 1px ${color}` } : undefined}
             onClick={() => onChange(layout.value)}
           >
-            <div className={layout.column ? 'gvaLayoutMini is-column' : 'gvaLayoutMini'}>
+            <div className={layout.column ? 'fnaLayoutMini is-column' : 'fnaLayoutMini'}>
               {layout.showSidebar ? (
-                <div className="gvaLayoutMiniSide" style={tone('sidebar', layout)}>
+                <div className="fnaLayoutMiniSide" style={tone('sidebar', layout)}>
                   {layout.topLogo ? <i /> : null}
                 </div>
               ) : null}
-              <div className="gvaLayoutMiniBody">
-                {layout.showHeader ? <div className="gvaLayoutMiniHeader" style={tone('header', layout)} /> : null}
-                <div className="gvaLayoutMiniContent" style={{ backgroundColor: lightest, opacity: 0.5 }} />
+              <div className="fnaLayoutMiniBody">
+                {layout.showHeader ? <div className="fnaLayoutMiniHeader" style={tone('header', layout)} /> : null}
+                <div className="fnaLayoutMiniContent" style={{ backgroundColor: lightest, opacity: 0.5 }} />
               </div>
             </div>
             <strong style={active ? { color } : undefined}>{layout.label}</strong>
@@ -1386,15 +1386,15 @@ function RadiusSelector({
   ];
 
   return (
-    <div className="gvaRadiusSelector">
-      <div className="gvaSlider">
-        <div className="gvaSliderRow">
-          <div className="gvaSliderTrack">
-            <div className="gvaSliderRange" style={{ width: `${percent}%` }} />
+    <div className="fnaRadiusSelector">
+      <div className="fnaSlider">
+        <div className="fnaSliderRow">
+          <div className="fnaSliderTrack">
+            <div className="fnaSliderRange" style={{ width: `${percent}%` }} />
           </div>
           <input
             type="range"
-            className="gvaSliderInput"
+            className="fnaSliderInput"
             min={0}
             max={1}
             step={0.05}
@@ -1403,7 +1403,7 @@ function RadiusSelector({
             onChange={(event) => onChange(Number(event.target.value))}
           />
         </div>
-        <div className="gvaSliderMarks">
+        <div className="fnaSliderMarks">
           {marks.map((mark) => (
             <span key={mark.value} style={{ left: `${mark.value * 100}%` }}>
               {mark.label}
@@ -1421,12 +1421,12 @@ function CardModeSelector({
   color,
   onChange,
 }: {
-  value: GvaCardMode;
+  value: FnaCardMode;
   color: string;
-  onChange: (value: GvaCardMode) => void;
+  onChange: (value: FnaCardMode) => void;
 }) {
   return (
-    <div className="gvaCardModeSelector">
+    <div className="fnaCardModeSelector">
       {(
         [
           ['border', '边框'],
@@ -1456,8 +1456,8 @@ function PresetCard({
   onApply,
   onRemove,
 }: {
-  preset: GvaThemePreset;
-  settings: GvaShellSettings;
+  preset: FnaThemePreset;
+  settings: FnaShellSettings;
   onApply: () => void;
   onRemove?: () => void;
 }) {
@@ -1466,8 +1466,8 @@ function PresetCard({
   const mainBg = theme.themeScheme === 'dark' ? '#0f172a' : '#f5f6f8';
 
   return (
-    <button type="button" className="gvaPresetCard" onClick={onApply}>
-      <div className="gvaPresetPreview">
+    <button type="button" className="fnaPresetCard" onClick={onApply}>
+      <div className="fnaPresetPreview">
         <div style={{ background: sideBg }} />
         <div style={{ background: mainBg }}>
           <span style={{ background: theme.themeColor }} />
@@ -1479,13 +1479,13 @@ function PresetCard({
           </div>
         </div>
       </div>
-      <div className="gvaPresetMeta">
+      <div className="fnaPresetMeta">
         <span>{preset.name}</span>
         {preset.builtin ? <em>内置</em> : null}
       </div>
       {onRemove ? (
         <span
-          className="gvaPresetRemove"
+          className="fnaPresetRemove"
           role="button"
           tabIndex={0}
           aria-label="删除预设"
@@ -1510,7 +1510,7 @@ function PresetCard({
 
 function InfoCell({ label, value }: { label: string; value: string }) {
   return (
-    <div className="gvaInfoCell">
+    <div className="fnaInfoCell">
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
@@ -1530,12 +1530,12 @@ function ConfirmDialog({
 }) {
   return (
     <div className="adminDialogBackdrop" role="presentation" onClick={onCancel}>
-      <div className="adminDialog gvaDialog gvaConfirmDialog" role="alertdialog" onClick={(event) => event.stopPropagation()}>
+      <div className="adminDialog fnaDialog fnaConfirmDialog" role="alertdialog" onClick={(event) => event.stopPropagation()}>
         <div className="adminDialogHeader">
           <strong>{title}</strong>
         </div>
         <div className="adminDialogBody">
-          <p className="gvaConfirmMessage">{message}</p>
+          <p className="fnaConfirmMessage">{message}</p>
         </div>
         <div className="adminDialogFooter">
           <button type="button" className="elButton" onClick={onCancel}>
@@ -1564,13 +1564,13 @@ function PromptDialog({
   const [value, setValue] = useState('');
   return (
     <div className="adminDialogBackdrop" role="presentation" onClick={onCancel}>
-      <div className="adminDialog gvaDialog gvaConfirmDialog" role="dialog" onClick={(event) => event.stopPropagation()}>
+      <div className="adminDialog fnaDialog fnaConfirmDialog" role="dialog" onClick={(event) => event.stopPropagation()}>
         <div className="adminDialogHeader">
           <strong>{title}</strong>
         </div>
         <div className="adminDialogBody">
           <input
-            className="gvaThemeNumber"
+            className="fnaThemeNumber"
             style={{ width: '100%' }}
             autoFocus
             placeholder={placeholder}

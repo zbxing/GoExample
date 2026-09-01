@@ -6,7 +6,12 @@ import (
 	"github.com/gofiber/fiber/v3"
 )
 
-func registerRoutes(app *fiber.App, options Options, applicationContext context.Context) {
+func registerRoutes(
+	app *fiber.App,
+	options Options,
+	applicationContext context.Context,
+	requestCancellations *requestCancellationRegistry,
+) {
 	app.Get("/", func(c fiber.Ctx) error {
 		return success(c, fiber.Map{
 			"name":        options.Name,
@@ -21,7 +26,7 @@ func registerRoutes(app *fiber.App, options Options, applicationContext context.
 	api := app.Group("/api")
 	registerHealthRoutes(app, api, options)
 	registerSystemRoutes(api, options)
-	api.Use(requestDeadline(applicationContext, options.RequestTimeout))
+	api.Use(requestDeadline(applicationContext, requestCancellations, options.RequestTimeout))
 	api.Use(rateLimiter(
 		"api",
 		options.RateLimitMax,

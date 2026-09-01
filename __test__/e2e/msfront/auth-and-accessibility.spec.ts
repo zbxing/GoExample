@@ -38,7 +38,7 @@ async function login(page: Page) {
 }
 
 async function expectNoSeriousAccessibilityViolations(page: Page) {
-  const pageTransition = page.locator('.gvaPageTransition');
+  const pageTransition = page.locator('.fnaPageTransition');
   if (await pageTransition.count()) {
     await expect(pageTransition).not.toHaveClass(/\bis-enter\b/, { timeout: 5_000 });
   }

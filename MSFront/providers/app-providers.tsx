@@ -5,7 +5,7 @@ import { AuthProvider } from '@/providers/auth-provider';
 import { LocaleProvider } from '@/providers/locale-provider';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { ProjectProvider, ProjectProviderFallback } from '@/providers/project-provider';
-import { GvaMessageHost } from '@/components/shell/ga-message-host';
+import { FnaMessageHost } from '@/components/shell/fna-message-host';
 
 export function AppProviders({ children }: PropsWithChildren) {
   return (
@@ -15,7 +15,7 @@ export function AppProviders({ children }: PropsWithChildren) {
           <Suspense fallback={<ProjectProviderFallback>{children}</ProjectProviderFallback>}>
             <ProjectProvider>{children}</ProjectProvider>
           </Suspense>
-          <GvaMessageHost />
+          <FnaMessageHost />
         </AuthProvider>
       </LocaleProvider>
     </ThemeProvider>

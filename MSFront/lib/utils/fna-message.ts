@@ -7,10 +7,10 @@
  * - 关闭时立刻从堆叠中移除（对齐 EP instances.splice），下方同步上顶；离场条冻结原 top
  */
 
-export type GvaMessageType = 'success' | 'error' | 'warning' | 'info';
+export type FnaMessageType = 'success' | 'error' | 'warning' | 'info';
 
-export interface GvaMessageOptions {
-  type?: GvaMessageType;
+export interface FnaMessageOptions {
+  type?: FnaMessageType;
   message: string;
   duration?: number;
   plain?: boolean;
@@ -18,9 +18,9 @@ export interface GvaMessageOptions {
   offset?: number;
 }
 
-export interface GvaMessageItem {
+export interface FnaMessageItem {
   id: string;
-  type: GvaMessageType;
+  type: FnaMessageType;
   message: string;
   duration: number;
   plain: boolean;
@@ -39,8 +39,8 @@ const LEAVE_MS = 400;
 
 let seed = 1;
 /** SSR / 水合用稳定空列表，避免 useSyncExternalStore getServerSnapshot 每次新建 [] 死循环 */
-const EMPTY_MESSAGES: GvaMessageItem[] = [];
-let items: GvaMessageItem[] = EMPTY_MESSAGES;
+const EMPTY_MESSAGES: FnaMessageItem[] = [];
+let items: FnaMessageItem[] = EMPTY_MESSAGES;
 const listeners = new Set<Listener>();
 const closeTimers = new Map<string, number>();
 const leaveTimers = new Map<string, number>();
@@ -59,26 +59,26 @@ function clearTimer(map: Map<string, number>, id: string) {
   }
 }
 
-function replaceItems(next: GvaMessageItem[]) {
+function replaceItems(next: FnaMessageItem[]) {
   items = next.length === 0 ? EMPTY_MESSAGES : next;
 }
 
-export function getGvaMessages() {
+export function getFnaMessages() {
   return items;
 }
 
-export function getGvaMessagesServerSnapshot() {
+export function getFnaMessagesServerSnapshot() {
   return EMPTY_MESSAGES;
 }
 
-export function subscribeGvaMessages(listener: Listener) {
+export function subscribeFnaMessages(listener: Listener) {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
   };
 }
 
-export function setGvaMessageHeight(id: string, height: number) {
+export function setFnaMessageHeight(id: string, height: number) {
   const next = items.map((item) => (item.id === id ? { ...item, height } : item));
   if (next.some((item, index) => item.height !== items[index]?.height)) {
     replaceItems(next);
@@ -87,7 +87,7 @@ export function setGvaMessageHeight(id: string, height: number) {
 }
 
 /** 计算每条消息的 top（对齐 EP getLastOffset + getOffsetOrSpace） */
-export function getGvaMessageTops(list: GvaMessageItem[]) {
+export function getFnaMessageTops(list: FnaMessageItem[]) {
   const tops = new Map<string, number>();
   let lastBottom = 0;
   let stackIndex = 0;
@@ -109,14 +109,14 @@ export function getGvaMessageTops(list: GvaMessageItem[]) {
   return tops;
 }
 
-export function closeGvaMessage(id: string) {
+export function closeFnaMessage(id: string) {
   clearTimer(closeTimers, id);
   const target = items.find((item) => item.id === id);
   if (!target || target.closing) {
     return;
   }
 
-  const frozenTop = getGvaMessageTops(items).get(id) ?? target.offset;
+  const frozenTop = getFnaMessageTops(items).get(id) ?? target.offset;
   replaceItems(
     items.map((item) =>
       item.id === id ? { ...item, closing: true, frozenTop } : item,
@@ -135,16 +135,16 @@ export function closeGvaMessage(id: string) {
   );
 }
 
-export function showGvaMessage(options: GvaMessageOptions | string) {
+export function showFnaMessage(options: FnaMessageOptions | string) {
   if (typeof window === 'undefined') {
     return { close: () => undefined };
   }
 
-  const normalized: GvaMessageOptions =
+  const normalized: FnaMessageOptions =
     typeof options === 'string' ? { message: options } : options;
 
-  const id = `gva_msg_${seed++}`;
-  const item: GvaMessageItem = {
+  const id = `fna_msg_${seed++}`;
+  const item: FnaMessageItem = {
     id,
     type: normalized.type ?? 'info',
     message: normalized.message,
@@ -163,21 +163,21 @@ export function showGvaMessage(options: GvaMessageOptions | string) {
       id,
       window.setTimeout(() => {
         closeTimers.delete(id);
-        closeGvaMessage(id);
+        closeFnaMessage(id);
       }, item.duration),
     );
   }
 
   return {
-    close: () => closeGvaMessage(id),
+    close: () => closeFnaMessage(id),
   };
 }
 
-showGvaMessage.success = (message: string, duration?: number) =>
-  showGvaMessage({ type: 'success', message, duration });
-showGvaMessage.error = (message: string, duration?: number) =>
-  showGvaMessage({ type: 'error', message, duration });
-showGvaMessage.warning = (message: string, duration?: number) =>
-  showGvaMessage({ type: 'warning', message, duration });
-showGvaMessage.info = (message: string, duration?: number) =>
-  showGvaMessage({ type: 'info', message, duration });
+showFnaMessage.success = (message: string, duration?: number) =>
+  showFnaMessage({ type: 'success', message, duration });
+showFnaMessage.error = (message: string, duration?: number) =>
+  showFnaMessage({ type: 'error', message, duration });
+showFnaMessage.warning = (message: string, duration?: number) =>
+  showFnaMessage({ type: 'warning', message, duration });
+showFnaMessage.info = (message: string, duration?: number) =>
+  showFnaMessage({ type: 'info', message, duration });

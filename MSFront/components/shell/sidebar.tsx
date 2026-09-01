@@ -7,16 +7,17 @@ import { ChevronDown, ChevronsLeft, ChevronsRight, X } from 'lucide-react';
 import type { Route } from 'next';
 import { resolveMenuIcon } from '@/lib/utils/menu-icons';
 import { useAuth } from '@/providers/auth-provider';
-import type { GvaMenuCollapseMode, GvaMenuTheme } from '@/lib/utils/ga-shell-settings';
+import type { FnaMenuCollapseMode, FnaMenuTheme } from '@/lib/utils/fna-shell-settings';
 import type { SystemMenuTreeNode } from '@/lib/types/system';
+import { FnaScrollbar } from '@/components/shell/fna-scrollbar';
 
 interface SidebarProps {
   sidebarId: string;
   isCollapsed: boolean;
   isMobileOpen: boolean;
   darkSider: boolean;
-  menuTheme: GvaMenuTheme;
-  collapseMode: GvaMenuCollapseMode;
+  menuTheme: FnaMenuTheme;
+  collapseMode: FnaMenuCollapseMode;
   showCollapseButton: boolean;
   onClose: () => void;
   onToggleCollapse: () => void;
@@ -106,7 +107,7 @@ function collectActiveAncestorIds(menus: SystemMenuTreeNode[], pathname: string)
 function resolveOpenIds(
   menus: SystemMenuTreeNode[],
   pathname: string,
-  mode: GvaMenuCollapseMode,
+  mode: FnaMenuCollapseMode,
 ): Set<string> {
   if (mode === 'all') {
     return new Set(collectAllBranchIds(menus));
@@ -150,7 +151,7 @@ export function Sidebar({
   return (
     <aside
       id={sidebarId}
-      className="sidebar gvaSidebar"
+      className="sidebar fnaSidebar"
       data-collapsed={isCollapsed ? 'true' : 'false'}
       data-mobile-open={isMobileOpen ? 'true' : 'false'}
       data-dark={darkSider ? 'true' : 'false'}
@@ -158,7 +159,7 @@ export function Sidebar({
       aria-label="侧边导航"
     >
       <div className="sidebarMobileHeader">
-        <span className="serviceCategory">Go Admin</span>
+        <span className="serviceCategory">FNA</span>
         <button type="button" className="sidebarCloseButton" onClick={onClose} aria-label="关闭">
           <X size={16} />
           <span>关闭</span>
@@ -176,7 +177,7 @@ export function Sidebar({
       {showCollapseButton ? (
         <button
           type="button"
-          className="gvaCollapseBar"
+          className="fnaCollapseBar"
           aria-label={isCollapsed ? '展开侧边栏' : '收起侧边栏'}
           aria-expanded={!isCollapsed}
           onClick={onToggleCollapse}
@@ -196,7 +197,7 @@ function SidebarNav({
 }: {
   menus: SystemMenuTreeNode[];
   isCollapsed: boolean;
-  collapseMode: GvaMenuCollapseMode;
+  collapseMode: FnaMenuCollapseMode;
   onNavigate: () => void;
 }) {
   const pathname = usePathname();
@@ -262,25 +263,27 @@ function SidebarNav({
   }
 
   return (
-    <nav className="sidebarNav gvaNav">
-      {menus.length === 0 ? (
-        <div className="gvaMenuEmpty" role="status">
-          暂无菜单
-        </div>
-      ) : null}
-      {menus.map((menu) => (
-        <MenuNode
-          key={menu.id}
-          menu={menu}
-          pathname={pathname}
-          isCollapsed={isCollapsed}
-          expandedIds={expandedIds}
-          onToggleExpand={toggleExpand}
-          onNavigate={onNavigate}
-          level={0}
-        />
-      ))}
-    </nav>
+    <FnaScrollbar className="fnaSidebarScroll">
+      <nav className="sidebarNav fnaNav">
+        {menus.length === 0 ? (
+          <div className="fnaMenuEmpty" role="status">
+            暂无菜单
+          </div>
+        ) : null}
+        {menus.map((menu) => (
+          <MenuNode
+            key={menu.id}
+            menu={menu}
+            pathname={pathname}
+            isCollapsed={isCollapsed}
+            expandedIds={expandedIds}
+            onToggleExpand={toggleExpand}
+            onNavigate={onNavigate}
+            level={0}
+          />
+        ))}
+      </nav>
+    </FnaScrollbar>
   );
 }
 
@@ -313,33 +316,33 @@ function MenuNode({
       return (
         <button
           type="button"
-          className={branchActive ? 'gvaMenuItem is-branch-active' : 'gvaMenuItem'}
+          className={branchActive ? 'fnaMenuItem is-branch-active' : 'fnaMenuItem'}
           style={{ height: 48 }}
           title={menu.title}
           onClick={() => onToggleExpand(menu)}
         >
-          {createElement(Icon, { size: 18, className: 'gvaMenuIcon' })}
+          {createElement(Icon, { size: 18, className: 'fnaMenuIcon' })}
         </button>
       );
     }
 
     return (
-      <div className="gvaMenuBranch" data-open={expanded ? 'true' : 'false'}>
+      <div className="fnaMenuBranch" data-open={expanded ? 'true' : 'false'}>
         <button
           type="button"
-          className={branchActive ? 'gvaMenuItem is-branch-active' : 'gvaMenuItem'}
+          className={branchActive ? 'fnaMenuItem is-branch-active' : 'fnaMenuItem'}
           style={{ height: 48, paddingLeft: menuIndent(level) }}
           onClick={() => onToggleExpand(menu)}
         >
-          {createElement(Icon, { size: 18, className: 'gvaMenuIcon' })}
-          <span className="gvaMenuTitle">{menu.title}</span>
+          {createElement(Icon, { size: 18, className: 'fnaMenuIcon' })}
+          <span className="fnaMenuTitle">{menu.title}</span>
           <ChevronDown
             size={16}
-            className={expanded ? 'gvaMenuChevron is-open' : 'gvaMenuChevron'}
+            className={expanded ? 'fnaMenuChevron is-open' : 'fnaMenuChevron'}
           />
         </button>
-        <div className={expanded ? 'gvaMenuChildren is-open' : 'gvaMenuChildren'}>
-          <div className="gvaMenuChildrenInner">
+        <div className={expanded ? 'fnaMenuChildren is-open' : 'fnaMenuChildren'}>
+          <div className="fnaMenuChildrenInner">
             {menu.children.map((child) => (
               <MenuNode
                 key={child.id}
@@ -362,12 +365,12 @@ function MenuNode({
     return (
       <Link
         href={menu.path as Route}
-        className={leafActive ? 'gvaMenuItem is-active' : 'gvaMenuItem'}
+        className={leafActive ? 'fnaMenuItem is-active' : 'fnaMenuItem'}
         style={{ height: 48 }}
         title={menu.title}
         onClick={onNavigate}
       >
-        {createElement(Icon, { size: 18, className: 'gvaMenuIcon' })}
+        {createElement(Icon, { size: 18, className: 'fnaMenuIcon' })}
       </Link>
     );
   }
@@ -375,12 +378,12 @@ function MenuNode({
   return (
     <Link
       href={menu.path as Route}
-      className={leafActive ? 'gvaMenuItem is-active' : 'gvaMenuItem'}
+      className={leafActive ? 'fnaMenuItem is-active' : 'fnaMenuItem'}
       style={{ height: 48, paddingLeft: menuIndent(level) }}
       onClick={onNavigate}
     >
-      {createElement(Icon, { size: 18, className: 'gvaMenuIcon' })}
-      <span className="gvaMenuTitle">{menu.title}</span>
+      {createElement(Icon, { size: 18, className: 'fnaMenuIcon' })}
+      <span className="fnaMenuTitle">{menu.title}</span>
     </Link>
   );
 }

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { AdminPage, AdminCard, AdminTable, AdminToolbar, useAdminToast } from '@/components/admin/admin-primitives';
 import { apiFetch } from '@/lib/api/client';
-import { useGvaListLoad } from '@/lib/hooks/use-gva-list-load';
+import { useFnaListLoad } from '@/lib/hooks/use-fna-list-load';
 import { Can } from '@/providers/auth-provider';
 import type { CasbinPolicyRecord, HttpMethod, SystemApiRecord, SystemRoleRecord } from '@/lib/types/system';
 
@@ -17,7 +17,7 @@ export function SystemCasbinPage() {
   const [reloadToken, setReloadToken] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  useGvaListLoad(() => {
+  useFnaListLoad(() => {
     let cancelled = false;
 
     async function sync() {
@@ -98,7 +98,7 @@ export function SystemCasbinPage() {
       {ToastHost}
       <AdminCard>
       <AdminToolbar>
-        <label className="gvaField" style={{ minWidth: 240 }}>
+        <label className="fnaField" style={{ minWidth: 240 }}>
           <span>角色</span>
           <select value={roleId} onChange={(event) => setRoleId(event.target.value)}>
             {roles.map((role) => (

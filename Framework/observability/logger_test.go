@@ -3,10 +3,12 @@ package observability
 import (
 	"bytes"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/valyala/fasthttp"
@@ -15,6 +17,24 @@ import (
 type readTrackingReader struct {
 	read bool
 }
+
+type remoteAddressTrackingConn struct {
+	net.Conn
+	remoteAddressRead bool
+}
+
+func (connection *remoteAddressTrackingConn) LocalAddr() net.Addr {
+	return &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 8080}
+}
+
+func (connection *remoteAddressTrackingConn) RemoteAddr() net.Addr {
+	connection.remoteAddressRead = true
+	return &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 32000}
+}
+
+func (connection *remoteAddressTrackingConn) SetDeadline(time.Time) error      { return nil }
+func (connection *remoteAddressTrackingConn) SetReadDeadline(time.Time) error  { return nil }
+func (connection *remoteAddressTrackingConn) SetWriteDeadline(time.Time) error { return nil }
 
 func (reader *readTrackingReader) Read([]byte) (int, error) {
 	reader.read = true
@@ -45,6 +65,27 @@ func TestRequestLoggerSkipsConfiguredPaths(t *testing.T) {
 	response.Body.Close()
 	if !strings.Contains(output.String(), `"path":"/work"`) {
 		t.Fatalf("request log = %s", output.String())
+	}
+}
+
+func TestRequestLoggerSkipsAttributeExtractionWhenLevelIsDisabled(t *testing.T) {
+	logger := NewLogger("json", "error", io.Discard)
+	app := fiber.New()
+	app.Use(RequestLogger(logger))
+	app.Get("/work", func(c fiber.Ctx) error { return c.SendStatus(fiber.StatusNoContent) })
+
+	connection := &remoteAddressTrackingConn{}
+	requestContext := &fasthttp.RequestCtx{}
+	requestContext.Init2(connection, nil, true)
+	requestContext.Request.Header.SetMethod(fiber.MethodGet)
+	requestContext.Request.SetRequestURI("/work")
+	app.Handler()(requestContext)
+
+	if status := requestContext.Response.StatusCode(); status != fiber.StatusNoContent {
+		t.Fatalf("response status = %d, want %d", status, fiber.StatusNoContent)
+	}
+	if connection.remoteAddressRead {
+		t.Fatal("disabled request log extracted the client address")
 	}
 }
 

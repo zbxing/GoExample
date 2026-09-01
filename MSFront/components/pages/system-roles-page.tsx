@@ -18,7 +18,7 @@ import {
   useAdminToast,
 } from '@/components/admin/admin-primitives';
 import { apiFetch } from '@/lib/api/client';
-import { useGvaListLoad } from '@/lib/hooks/use-gva-list-load';
+import { useFnaListLoad } from '@/lib/hooks/use-fna-list-load';
 import { Can, useAuth } from '@/providers/auth-provider';
 import type {
   CasbinPolicyRecord,
@@ -129,7 +129,7 @@ export function SystemRolesPage() {
     [roles],
   );
 
-  useGvaListLoad(() => {
+  useFnaListLoad(() => {
     let cancelled = false;
 
     async function sync() {
@@ -429,12 +429,12 @@ export function SystemRolesPage() {
                   hasChildren: boolean;
                 };
                 return (
-                  <div className="gvaRoleIdCell" style={{ paddingLeft: role.depth * 18 }}>
+                  <div className="fnaRoleIdCell" style={{ paddingLeft: role.depth * 18 }}>
                     {role.hasChildren ? (
                       <button
                         type="button"
                         className={
-                          expanded.has(role.id) ? 'gvaTreeExpand is-expanded' : 'gvaTreeExpand'
+                          expanded.has(role.id) ? 'fnaTreeExpand is-expanded' : 'fnaTreeExpand'
                         }
                         aria-label={expanded.has(role.id) ? '折叠' : '展开'}
                         aria-expanded={expanded.has(role.id)}
@@ -443,7 +443,7 @@ export function SystemRolesPage() {
                         <IconArrowRight size={12} />
                       </button>
                     ) : (
-                      <span className="gvaTreeExpandSpacer" />
+                      <span className="fnaTreeExpandSpacer" />
                     )}
                     <span>{role.id}</span>
                   </div>
@@ -458,12 +458,12 @@ export function SystemRolesPage() {
               render: (row) => {
                 const role = row as unknown as SystemRoleRecord;
                 return (
-                  <details className="gvaDataScopeDrop">
-                    <summary className="gvaLinkButton">
+                  <details className="fnaDataScopeDrop">
+                    <summary className="fnaLinkButton">
                       {dataScopeLabel(role.dataScope ?? 1)}
                       <span aria-hidden="true"> ▾</span>
                     </summary>
-                    <div className="gvaDataScopeMenu">
+                    <div className="fnaDataScopeMenu">
                       {dataScopeOptions.map((item) => (
                         <button
                           key={item.value}
@@ -486,7 +486,7 @@ export function SystemRolesPage() {
               render: (row) => {
                 const role = row as unknown as SystemRoleRecord;
                 return (
-                  <div className="gvaRowActions">
+                  <div className="fnaRowActions">
                     <Can btn="role:bind">
                       <AdminLinkButton icon="setting" onClick={() => openPermission(role)}>
                         设置权限
@@ -537,7 +537,7 @@ export function SystemRolesPage() {
         onConfirm={() => void submitRoleForm()}
         busy={busy}
       >
-        <div className="adminForm gvaDialogForm">
+        <div className="adminForm fnaDialogForm">
           <AdminField label="父级角色">
             <select
               value={form.parentId}
@@ -578,8 +578,8 @@ export function SystemRolesPage() {
         busy={busy}
         confirmLabel="确 定"
       >
-        <div className="gvaBorderTabs">
-          <div className="gvaBorderTabNav">
+        <div className="fnaBorderTabs">
+          <div className="fnaBorderTabNav">
             <button
               type="button"
               className={permTab === 'menus' ? 'is-active' : ''}
@@ -595,9 +595,9 @@ export function SystemRolesPage() {
               角色api
             </button>
           </div>
-          <div className="gvaBorderTabBody">
+          <div className="fnaBorderTabBody">
             {permTab === 'menus' ? (
-              <div className="adminForm gvaDialogForm">
+              <div className="adminForm fnaDialogForm">
                 <AdminField label="菜单权限">
                   <AdminTree
                     nodes={menus}

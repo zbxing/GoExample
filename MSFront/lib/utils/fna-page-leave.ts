@@ -2,9 +2,9 @@
  * 命令式离场：导航前把当前页克隆到 body 播放。
  * 克隆必须挂 body，否则 React reconcile 会清掉。
  */
-import { readGvaShellSettings, type GvaPageTransition } from '@/lib/utils/ga-shell-settings';
+import { readFnaShellSettings, type FnaPageTransition } from '@/lib/utils/fna-shell-settings';
 
-export const GVA_LEAVE_DURATIONS: Record<Exclude<GvaPageTransition, 'none'>, number> = {
+export const FNA_LEAVE_DURATIONS: Record<Exclude<FnaPageTransition, 'none'>, number> = {
   fade: 300,
   slide: 300,
   zoom: 500,
@@ -19,26 +19,26 @@ let activeLeave: {
   timer: number;
 } | null = null;
 
-export function subscribeGvaPageLeaveEnd(listener: LeaveEndListener) {
+export function subscribeFnaPageLeaveEnd(listener: LeaveEndListener) {
   leaveEndListeners.add(listener);
   return () => {
     leaveEndListeners.delete(listener);
   };
 }
 
-export function isGvaPageLeaving() {
+export function isFnaPageLeaving() {
   return activeLeave !== null;
 }
 
-export function resetGvaPageLeave() {
+export function resetFnaPageLeave() {
   if (activeLeave) {
     window.clearTimeout(activeLeave.timer);
     activeLeave.clone.remove();
     restoreLive(activeLeave.live);
     activeLeave = null;
   }
-  document.querySelectorAll('.gvaPageLeaveClone, .gvaPageLeaveClip').forEach((node) => node.remove());
-  restoreLive(document.getElementById('gva-page-live'));
+  document.querySelectorAll('.fnaPageLeaveClone, .fnaPageLeaveClip').forEach((node) => node.remove());
+  restoreLive(document.getElementById('fna-page-live'));
 }
 
 function restoreLive(live: HTMLElement | null) {
@@ -69,25 +69,25 @@ function finishLeave() {
   notifyLeaveEnd();
 
   window.setTimeout(() => {
-    const live = document.getElementById('gva-page-live');
+    const live = document.getElementById('fna-page-live');
     if (live?.style.visibility === 'hidden') {
       restoreLive(live);
     }
   }, 100);
 }
 
-export function triggerGvaPageLeave() {
+export function triggerFnaPageLeave() {
   if (typeof document === 'undefined') {
     return false;
   }
 
-  const transition = readGvaShellSettings().page.transition;
+  const transition = readFnaShellSettings().page.transition;
   if (transition === 'none') {
     return false;
   }
 
-  const live = document.getElementById('gva-page-live');
-  if (!live?.closest('.gvaPageTransitionStage')) {
+  const live = document.getElementById('fna-page-live');
+  if (!live?.closest('.fnaPageTransitionStage')) {
     return false;
   }
 
@@ -104,13 +104,13 @@ export function triggerGvaPageLeave() {
   }
 
   const clipHost =
-    (live.closest('.gvaAppContent') as HTMLElement | null) ??
-    (live.closest('.gvaMainColumn') as HTMLElement | null) ??
-    (live.closest('#gva-base-load-dom') as HTMLElement | null);
+    (live.closest('.fnaAppContent') as HTMLElement | null) ??
+    (live.closest('.fnaMainColumn') as HTMLElement | null) ??
+    (live.closest('#fna-base-load-dom') as HTMLElement | null);
   const clipRect = clipHost?.getBoundingClientRect() ?? rect;
 
   const clip = document.createElement('div');
-  clip.className = 'gvaPageLeaveClip';
+  clip.className = 'fnaPageLeaveClip';
   clip.setAttribute('aria-hidden', 'true');
   clip.style.cssText = [
     'position:fixed',
@@ -125,7 +125,7 @@ export function triggerGvaPageLeave() {
 
   const clone = live.cloneNode(true) as HTMLElement;
   clone.removeAttribute('id');
-  clone.className = `gvaPageTransition gvaPageLeaveClone gvaPage-${transition} is-leave`;
+  clone.className = `fnaPageTransition fnaPageLeaveClone fnaPage-${transition} is-leave`;
   clone.style.cssText = [
     'position:absolute',
     `left:${rect.left - clipRect.left}px`,
@@ -145,7 +145,7 @@ export function triggerGvaPageLeave() {
 
   void clone.offsetWidth;
 
-  const duration = GVA_LEAVE_DURATIONS[transition];
+  const duration = FNA_LEAVE_DURATIONS[transition];
   const timer = window.setTimeout(finishLeave, duration + 48);
 
   activeLeave = { clone: clip, live, timer };

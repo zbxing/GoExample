@@ -190,7 +190,7 @@ export async function deleteSystemUser(userId: string) {
   return { id: userId };
 }
 
-/** 全量覆盖：指定角色绑定到哪些用户（对齐 GVA setRoleUsers） */
+/** 全量覆盖：指定角色绑定到哪些用户（对齐 gin-vue-admin setRoleUsers） */
 export async function setUsersForRole(roleId: string, userIds: string[]) {
   const users = await loadUsers();
   const selected = new Set(userIds);
@@ -205,7 +205,7 @@ export async function setUsersForRole(roleId: string, userIds: string[]) {
       roleIds = [...roleIds, roleId];
     } else {
       roleIds = roleIds.filter((id) => id !== roleId);
-      // 若用户仅剩此角色被移除，保留原主角色（GVA：主角色保持不变）
+      // 若用户仅剩此角色被移除，保留原主角色（gin-vue-admin：主角色保持不变）
       if (roleIds.length === 0) {
         roleIds = [roleId];
       }

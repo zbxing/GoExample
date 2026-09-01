@@ -57,6 +57,24 @@ func TestWriteServerSentEventRejectsUnsafeOrOversizedFields(t *testing.T) {
 	}
 }
 
+func TestWriteServerSentEventDoesNotAllocatePerDataLine(t *testing.T) {
+	event := ServerSentEvent{Data: strings.Repeat("\n", 8*1024-1)}
+	result := testing.Benchmark(func(benchmark *testing.B) {
+		writer := bufio.NewWriterSize(io.Discard, 4*1024)
+		benchmark.ReportAllocs()
+		benchmark.ResetTimer()
+		for range benchmark.N {
+			writer.Reset(io.Discard)
+			if err := writeServerSentEvent(writer, event, defaultMaximumServerSentEventBytes); err != nil {
+				benchmark.Fatal(err)
+			}
+		}
+	})
+	if allocated := result.AllocedBytesPerOp(); allocated > 1024 {
+		t.Fatalf("writeServerSentEvent() allocated %d bytes/op for line framing, want at most 1024", allocated)
+	}
+}
+
 func TestValidateServerSentEventLastEventID(t *testing.T) {
 	for _, value := range []string{"", "41", "tenant-1:project-42", "contains,comma"} {
 		if actual, err := validateServerSentEventLastEventID(value); err != nil || actual != value {
@@ -91,6 +109,19 @@ func TestSendServerSentEventsRejectsInvalidOptionsBeforeStreaming(t *testing.T) 
 		"heartbeat below bound": {Events: validEvents, HeartbeatInterval: 9 * time.Millisecond},
 		"heartbeat above bound": {Events: validEvents, HeartbeatInterval: 5*time.Minute + time.Nanosecond},
 		"negative byte limit":   {Events: validEvents, MaxEventBytes: -1},
+		"negative stream timeout": {
+			Events:        validEvents,
+			StreamTimeout: -time.Nanosecond,
+		},
+		"stream timeout above bound": {
+			Events:        validEvents,
+			StreamTimeout: maximumServerSentEventStreamTimeout + time.Nanosecond,
+		},
+		"stream timeout does not exceed heartbeat": {
+			Events:            validEvents,
+			HeartbeatInterval: 10 * time.Millisecond,
+			StreamTimeout:     10 * time.Millisecond,
+		},
 		"byte limit above bound": {
 			Events:        validEvents,
 			MaxEventBytes: maximumServerSentEventBytes + 1,
@@ -189,6 +220,290 @@ func TestSendServerSentEventsFromSourceFailsClosedBeforeStreaming(t *testing.T) 
 	}
 }
 
+func TestSendServerSentEventsFromSourceCleansUpClaimedLifetimeOnSourceFailure(t *testing.T) {
+	tests := map[string]ServerSentEventSource{
+		"source error": func(context.Context, string) (<-chan ServerSentEvent, error) {
+			return nil, errors.New("source unavailable")
+		},
+		"source without channel": func(context.Context, string) (<-chan ServerSentEvent, error) {
+			return nil, nil
+		},
+	}
+	for name, source := range tests {
+		t.Run(name, func(t *testing.T) {
+			sourceContext := make(chan context.Context, 1)
+			options := testOptions()
+			options.RequestTimeout = time.Minute
+			options.RegisterRoutes = func(router fiber.Router) {
+				router.Get("/events", func(c fiber.Ctx) error {
+					return SendServerSentEventsFromSource(
+						c,
+						func(ctx context.Context, lastEventID string) (<-chan ServerSentEvent, error) {
+							sourceContext <- ctx
+							return source(ctx, lastEventID)
+						},
+						ServerSentEventOptions{StreamTimeout: time.Hour},
+					)
+				})
+			}
+			response, err := New(options).Test(httptest.NewRequest(http.MethodGet, "/api/v1/events", http.NoBody))
+			if err != nil {
+				t.Fatalf("app.Test() error = %v", err)
+			}
+			defer response.Body.Close()
+			if response.StatusCode != http.StatusInternalServerError {
+				t.Fatalf("source failure status = %d, want %d", response.StatusCode, http.StatusInternalServerError)
+			}
+
+			select {
+			case ctx := <-sourceContext:
+				select {
+				case <-ctx.Done():
+					if !errors.Is(ctx.Err(), context.Canceled) {
+						t.Fatalf("source context error = %v, want canceled", ctx.Err())
+					}
+				case <-time.After(time.Second):
+					t.Fatal("source context remained active after source setup failed")
+				}
+			case <-time.After(time.Second):
+				t.Fatal("event source was not opened")
+			}
+		})
+	}
+}
+
+func TestRequestStreamLifetimeUsesTheShorterCallerWriteDeadline(t *testing.T) {
+	callerDeadline := time.Now().Add(time.Second)
+	callerContext, cancelCaller := context.WithDeadline(context.Background(), callerDeadline)
+	defer cancelCaller()
+	requestContext, cancelRequest := context.WithTimeout(callerContext, 25*time.Millisecond)
+	applicationContext, cancelApplication := context.WithCancel(context.Background())
+	defer cancelApplication()
+
+	writeDeadlines := make(chan time.Time, 1)
+	lifetime := newRequestStreamLifetime(
+		requestContext,
+		cancelRequest,
+		callerContext,
+		applicationContext,
+		newRequestCancellationRegistry(),
+		func(deadline time.Time) error {
+			writeDeadlines <- deadline
+			return nil
+		},
+	)
+	defer lifetime.complete()
+	if err := lifetime.claim(time.Hour); err != nil {
+		t.Fatalf("claim() error = %v", err)
+	}
+	if deadline := <-writeDeadlines; !deadline.Equal(callerDeadline.Add(serverSentEventWriteDeadlineCleanupGrace)) {
+		t.Fatalf(
+			"write deadline = %s, want shorter caller deadline plus cleanup grace %s",
+			deadline,
+			callerDeadline.Add(serverSentEventWriteDeadlineCleanupGrace),
+		)
+	}
+	streamDeadline, ok := lifetime.ctx.Deadline()
+	if !ok || !streamDeadline.Equal(callerDeadline) {
+		t.Fatalf("stream context deadline = %s/%t, want %s/true", streamDeadline, ok, callerDeadline)
+	}
+}
+
+func TestRequestStreamLifetimePreservesTheRequestContextContract(t *testing.T) {
+	type requestValueKey struct{}
+	type nestedValueKey struct{}
+
+	baseContext := context.WithValue(context.Background(), requestValueKey{}, "request-value")
+	requestContext, cancelRequest := context.WithTimeout(baseContext, time.Minute)
+	applicationContext, cancelApplication := context.WithCancel(context.Background())
+	defer cancelApplication()
+	lifetime := newRequestStreamLifetime(
+		requestContext,
+		cancelRequest,
+		baseContext,
+		applicationContext,
+		newRequestCancellationRegistry(),
+		nil,
+	)
+	defer lifetime.complete()
+
+	wrapped := context.WithValue(lifetime, nestedValueKey{}, "nested-value")
+	if got := wrapped.Value(requestStreamLifetimeContextKey{}); got != lifetime {
+		t.Fatalf("request lifetime = %T, want %T", got, lifetime)
+	}
+	if got := wrapped.Value(requestValueKey{}); got != "request-value" {
+		t.Fatalf("request context value = %v, want request-value", got)
+	}
+	if got := wrapped.Value(nestedValueKey{}); got != "nested-value" {
+		t.Fatalf("nested context value = %v, want nested-value", got)
+	}
+	wantDeadline, _ := requestContext.Deadline()
+	if deadline, ok := wrapped.Deadline(); !ok || !deadline.Equal(wantDeadline) {
+		t.Fatalf("request deadline = %s/%t, want %s/true", deadline, ok, wantDeadline)
+	}
+
+	cancelRequest()
+	select {
+	case <-wrapped.Done():
+		if !errors.Is(wrapped.Err(), context.Canceled) {
+			t.Fatalf("request context error = %v, want context.Canceled", wrapped.Err())
+		}
+	case <-time.After(time.Second):
+		t.Fatal("request context did not observe cancellation")
+	}
+}
+
+func TestRequestCancellationRegistryCancelsActiveClaimedAndLateRequests(t *testing.T) {
+	newLifetime := func(registry *requestCancellationRegistry) *requestStreamLifetime {
+		requestContext, cancelRequest := context.WithCancel(context.Background())
+		return newRequestStreamLifetime(
+			requestContext,
+			cancelRequest,
+			context.Background(),
+			context.Background(),
+			registry,
+			nil,
+		)
+	}
+	assertCanceled := func(name string, ctx context.Context) {
+		t.Helper()
+		select {
+		case <-ctx.Done():
+			if !errors.Is(ctx.Err(), context.Canceled) {
+				t.Fatalf("%s error = %v, want context.Canceled", name, ctx.Err())
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("%s remained active", name)
+		}
+	}
+
+	activeRegistry := newRequestCancellationRegistry()
+	active := newLifetime(activeRegistry)
+	activeRegistry.cancelAll()
+	assertCanceled("active request", active.ctx)
+	active.complete()
+
+	claimedRegistry := newRequestCancellationRegistry()
+	claimed := newLifetime(claimedRegistry)
+	if err := claimed.claim(time.Hour); err != nil {
+		t.Fatalf("claim() error = %v", err)
+	}
+	claimedRegistry.cancelAll()
+	assertCanceled("claimed stream", claimed.ctx)
+	claimed.complete()
+
+	late := newLifetime(claimedRegistry)
+	assertCanceled("late request", late.ctx)
+	late.complete()
+	claimedRegistry.cancelAll()
+}
+
+func TestRequestCancellationRegistryHandlesConcurrentStreamClaimAndShutdown(t *testing.T) {
+	for iteration := range 100 {
+		registry := newRequestCancellationRegistry()
+		requestContext, cancelRequest := context.WithCancel(context.Background())
+		lifetime := newRequestStreamLifetime(
+			requestContext,
+			cancelRequest,
+			context.Background(),
+			context.Background(),
+			registry,
+			nil,
+		)
+		started := make(chan struct{})
+		shutdownComplete := make(chan struct{})
+		go func() {
+			close(started)
+			registry.cancelAll()
+			close(shutdownComplete)
+		}()
+		<-started
+		claimErr := lifetime.claim(time.Hour)
+		<-shutdownComplete
+		if claimErr != nil && lifetime.ctx.Err() == nil {
+			t.Fatalf("iteration %d: claim() error = %v while context remained active", iteration, claimErr)
+		}
+		select {
+		case <-lifetime.ctx.Done():
+		case <-time.After(time.Second):
+			t.Fatalf("iteration %d: request remained active after shutdown", iteration)
+		}
+		lifetime.complete()
+	}
+}
+
+func TestRequestStreamLifetimeHandlesWriteDeadlineCapabilityErrors(t *testing.T) {
+	tests := map[string]struct {
+		setWriteDeadline standardResponseWriteDeadline
+		wantError        bool
+	}{
+		"unsupported writer remains compatible": {
+			setWriteDeadline: func(time.Time) error { return errors.ErrUnsupported },
+		},
+		"write deadline failure is rejected": {
+			setWriteDeadline: func(time.Time) error { return errors.New("private transport failure") },
+			wantError:        true,
+		},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			baseContext, cancelBase := context.WithCancel(context.Background())
+			defer cancelBase()
+			requestContext, cancelRequest := context.WithTimeout(baseContext, time.Minute)
+			applicationContext, cancelApplication := context.WithCancel(context.Background())
+			defer cancelApplication()
+			lifetime := newRequestStreamLifetime(
+				requestContext,
+				cancelRequest,
+				baseContext,
+				applicationContext,
+				newRequestCancellationRegistry(),
+				test.setWriteDeadline,
+			)
+			defer lifetime.complete()
+
+			err := lifetime.claim(time.Second)
+			if test.wantError {
+				if err == nil || lifetime.claimed || strings.Contains(err.Error(), "private transport failure") {
+					t.Fatalf("claim() = %v, claimed=%t, want fixed error and unclaimed lifetime", err, lifetime.claimed)
+				}
+				return
+			}
+			if err != nil || !lifetime.claimed {
+				t.Fatalf("claim() = %v, claimed=%t, want nil/true", err, lifetime.claimed)
+			}
+		})
+	}
+}
+
+func TestRequestStreamLifetimeZeroTimeoutPreservesTheServerWriteDeadline(t *testing.T) {
+	baseContext, cancelBase := context.WithCancel(context.Background())
+	defer cancelBase()
+	requestContext, cancelRequest := context.WithTimeout(baseContext, time.Minute)
+	applicationContext, cancelApplication := context.WithCancel(context.Background())
+	defer cancelApplication()
+	writeDeadlineCalled := false
+	lifetime := newRequestStreamLifetime(
+		requestContext,
+		cancelRequest,
+		baseContext,
+		applicationContext,
+		newRequestCancellationRegistry(),
+		func(time.Time) error {
+			writeDeadlineCalled = true
+			return errors.New("must not be called")
+		},
+	)
+	defer lifetime.complete()
+
+	if err := lifetime.claim(0); err != nil {
+		t.Fatalf("claim(0) error = %v", err)
+	}
+	if writeDeadlineCalled {
+		t.Fatal("claim(0) changed the standard server write deadline")
+	}
+}
+
 func TestNewHTTPHandlerServerSentEventsResumesFromLastEventID(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -281,6 +596,151 @@ func TestNewHTTPHandlerServerSentEventsResumesFromLastEventID(t *testing.T) {
 	}
 }
 
+func TestNewHTTPHandlerServerSentEventsCanOutliveTheRequestBudgetWithABoundedStreamTimeout(t *testing.T) {
+	const (
+		requestTimeout = 40 * time.Millisecond
+		streamTimeout  = 500 * time.Millisecond
+		eventDelay     = 120 * time.Millisecond
+	)
+	sourceContext := make(chan context.Context, 1)
+	options := testOptions()
+	options.RequestTimeout = requestTimeout
+	options.RegisterRoutes = func(router fiber.Router) {
+		router.Get("/events", func(c fiber.Ctx) error {
+			return SendServerSentEventsFromSource(
+				c,
+				func(ctx context.Context, _ string) (<-chan ServerSentEvent, error) {
+					events := make(chan ServerSentEvent, 1)
+					sourceContext <- ctx
+					go func() {
+						defer close(events)
+						timer := time.NewTimer(eventDelay)
+						defer timer.Stop()
+						select {
+						case <-ctx.Done():
+							return
+						case <-timer.C:
+							events <- ServerSentEvent{ID: "after-request-budget", Data: "still-streaming"}
+						}
+					}()
+					return events, nil
+				},
+				ServerSentEventOptions{
+					HeartbeatInterval: 10 * time.Millisecond,
+					StreamTimeout:     streamTimeout,
+				},
+			)
+		})
+	}
+	handler, err := NewHTTPHandler(New(options))
+	if err != nil {
+		t.Fatalf("NewHTTPHandler() error = %v", err)
+	}
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	client := &http.Client{Timeout: 2 * time.Second}
+
+	started := time.Now()
+	response, err := client.Get(server.URL + "/api/v1/events")
+	if err != nil {
+		t.Fatalf("GET bounded event stream: %v", err)
+	}
+	body, readErr := io.ReadAll(response.Body)
+	closeErr := response.Body.Close()
+	if readErr != nil {
+		t.Fatalf("read bounded event stream: %v", readErr)
+	}
+	if closeErr != nil {
+		t.Fatalf("close bounded event stream: %v", closeErr)
+	}
+	if elapsed := time.Since(started); elapsed < eventDelay {
+		t.Fatalf("event stream ended after %s, before delayed event at %s", elapsed, eventDelay)
+	}
+	if !bytes.Contains(body, []byte("id: after-request-budget\ndata: still-streaming\n\n")) {
+		t.Fatalf("event stream did not outlive the request budget: %q", body)
+	}
+
+	select {
+	case ctx := <-sourceContext:
+		deadline, ok := ctx.Deadline()
+		if !ok || deadline.Sub(started) < streamTimeout-requestTimeout {
+			t.Fatalf("stream context deadline = %s, want a distinct bounded stream budget", deadline)
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(time.Second):
+			t.Fatal("stream context remained active after the source closed")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("event source was not opened")
+	}
+}
+
+func TestNewHTTPHandlerServerSentEventsStopsAtTheConfiguredStreamTimeout(t *testing.T) {
+	const (
+		requestTimeout = 30 * time.Millisecond
+		streamTimeout  = 150 * time.Millisecond
+	)
+	sourceContext := make(chan context.Context, 1)
+	options := testOptions()
+	options.RequestTimeout = requestTimeout
+	options.RegisterRoutes = func(router fiber.Router) {
+		router.Get("/events", func(c fiber.Ctx) error {
+			return SendServerSentEventsFromSource(
+				c,
+				func(ctx context.Context, _ string) (<-chan ServerSentEvent, error) {
+					sourceContext <- ctx
+					return make(chan ServerSentEvent), nil
+				},
+				ServerSentEventOptions{
+					HeartbeatInterval: 10 * time.Millisecond,
+					StreamTimeout:     streamTimeout,
+				},
+			)
+		})
+	}
+	handler, err := NewHTTPHandler(New(options))
+	if err != nil {
+		t.Fatalf("NewHTTPHandler() error = %v", err)
+	}
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	client := &http.Client{Timeout: 2 * time.Second}
+
+	started := time.Now()
+	response, err := client.Get(server.URL + "/api/v1/events")
+	if err != nil {
+		t.Fatalf("GET expiring event stream: %v", err)
+	}
+	body, readErr := io.ReadAll(response.Body)
+	closeErr := response.Body.Close()
+	if readErr != nil {
+		t.Fatalf("read expiring event stream: %v", readErr)
+	}
+	if closeErr != nil {
+		t.Fatalf("close expiring event stream: %v", closeErr)
+	}
+	if !bytes.Contains(body, []byte(": heartbeat\n\n")) {
+		t.Fatalf("expiring event stream body = %q", body)
+	}
+	if elapsed := time.Since(started); elapsed < streamTimeout-requestTimeout || elapsed > time.Second {
+		t.Fatalf("expiring event stream elapsed = %s, want bounded by %s rather than request timeout %s", elapsed, streamTimeout, requestTimeout)
+	}
+
+	select {
+	case ctx := <-sourceContext:
+		deadline, ok := ctx.Deadline()
+		if !ok || deadline.Sub(started) < streamTimeout-requestTimeout {
+			t.Fatalf("stream context deadline = %s, want configured stream timeout", deadline)
+		}
+		if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			t.Fatalf("stream context error = %v, want deadline exceeded", ctx.Err())
+		}
+	case <-time.After(time.Second):
+		t.Fatal("event source was not opened")
+	}
+}
+
 func TestNewHTTPHandlerServerSentEventsFlushAndCleanUpOnDisconnect(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -322,6 +782,7 @@ func TestNewHTTPHandlerServerSentEventsFlushAndCleanUpOnDisconnect(t *testing.T)
 					return SendServerSentEvents(c, ServerSentEventOptions{
 						Events:            events,
 						HeartbeatInterval: 10 * time.Millisecond,
+						StreamTimeout:     time.Minute,
 					})
 				})
 			}
@@ -379,6 +840,7 @@ func TestRunHTTPStopsServerSentEventsDuringApplicationShutdown(t *testing.T) {
 			return SendServerSentEvents(c, ServerSentEventOptions{
 				Events:            events,
 				HeartbeatInterval: 10 * time.Millisecond,
+				StreamTimeout:     time.Hour,
 			})
 		})
 	}
@@ -430,6 +892,79 @@ func TestRunHTTPStopsServerSentEventsDuringApplicationShutdown(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("RunHTTP() did not stop the active event stream within its shutdown budget")
+	}
+}
+
+func TestRunHTTPServerSentEventsUseTheBoundedStreamWriteDeadline(t *testing.T) {
+	events := make(chan ServerSentEvent, 2)
+	events <- ServerSentEvent{ID: "1", Data: "first"}
+	go func() {
+		time.Sleep(150 * time.Millisecond)
+		events <- ServerSentEvent{ID: "2", Data: "after-server-write-timeout"}
+		close(events)
+	}()
+
+	options := testOptions()
+	options.RequestTimeout = 25 * time.Millisecond
+	options.RegisterRoutes = func(router fiber.Router) {
+		router.Get("/events", func(c fiber.Ctx) error {
+			return SendServerSentEvents(c, ServerSentEventOptions{
+				Events:            events,
+				HeartbeatInterval: 300 * time.Millisecond,
+				StreamTimeout:     500 * time.Millisecond,
+			})
+		})
+	}
+	app := New(options)
+	handler, err := NewHTTPHandler(app)
+	if err != nil {
+		t.Fatalf("NewHTTPHandler() error = %v", err)
+	}
+	address := reserveServerSentEventAddress(t)
+	serverContext, cancelServer := context.WithCancel(context.Background())
+	defer cancelServer()
+	serverResult := make(chan error, 1)
+	go func() {
+		serverResult <- frameworkserver.RunHTTP(serverContext, frameworkserver.HTTPOptions{
+			Handler:             handler,
+			Address:             address,
+			WriteTimeout:        50 * time.Millisecond,
+			ShutdownTimeout:     time.Second,
+			ApplicationShutdown: app.ShutdownWithContext,
+		})
+	}()
+
+	client := &http.Client{Timeout: 2 * time.Second}
+	var response *http.Response
+	deadline := time.Now().Add(time.Second)
+	for {
+		response, err = client.Get("http://" + address + "/api/v1/events")
+		if err == nil {
+			break
+		}
+		select {
+		case runErr := <-serverResult:
+			t.Fatalf("RunHTTP() returned before serving: %v", runErr)
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("connect to RunHTTP event stream: %v", err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	defer response.Body.Close()
+	reader := bufio.NewReader(response.Body)
+	assertServerSentEvent(t, reader, "id: 1\ndata: first\n\n")
+	assertServerSentEvent(t, reader, "id: 2\ndata: after-server-write-timeout\n\n")
+
+	cancelServer()
+	select {
+	case runErr := <-serverResult:
+		if runErr != nil {
+			t.Fatalf("RunHTTP() shutdown error = %v", runErr)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("RunHTTP() did not stop after the event stream completed")
 	}
 }
 

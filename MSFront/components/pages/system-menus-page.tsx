@@ -15,14 +15,14 @@ import {
   useAdminToast,
 } from '@/components/admin/admin-primitives';
 import { apiFetch } from '@/lib/api/client';
-import { useGvaListLoad } from '@/lib/hooks/use-gva-list-load';
+import { useFnaListLoad } from '@/lib/hooks/use-fna-list-load';
 import { Can, useAuth } from '@/providers/auth-provider';
 import {
   assignMenuLayerSequenceNos,
   buildMenuTreeFromFlat,
   flattenMenuTree,
   flattenVisibleMenuTree,
-  GVA_MENU_COL_WIDTH,
+  FNA_MENU_COL_WIDTH,
   type MenuVisibleRow,
 } from '@/lib/utils/menu-access';
 import type { SystemMenuTreeNode, SystemRoleRecord } from '@/lib/types/system';
@@ -105,7 +105,7 @@ export function SystemMenusPage() {
   const { showSuccess, showError, ToastHost } = useAdminToast();
   const [menus, setMenus] = useState<SystemMenuTreeNode[]>([]);
   const [roles, setRoles] = useState<SystemRoleRecord[]>([]);
-  /** GVA el-table tree starts collapsed; expand ids live here */
+  /** gin-vue-admin el-table tree starts collapsed; expand ids live here */
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
@@ -116,7 +116,7 @@ export function SystemMenusPage() {
   const [reloadToken, setReloadToken] = useState(0);
   const [form, setForm] = useState<MenuFormState>(emptyForm());
 
-  useGvaListLoad(() => {
+  useFnaListLoad(() => {
     let cancelled = false;
 
     async function sync() {
@@ -333,19 +333,19 @@ export function SystemMenusPage() {
             {
               key: 'id',
               title: 'ID',
-              width: GVA_MENU_COL_WIDTH.id,
+              width: FNA_MENU_COL_WIDTH.id,
               render: (row) => {
                 const menu = row as unknown as MenuVisibleRow;
                 return (
-                  <div className="gvaRoleIdCell">
+                  <div className="fnaRoleIdCell">
                     {menu.depth > 0 ? (
-                      <span className="gvaTreeIndent" style={{ width: menu.depth * 16 }} />
+                      <span className="fnaTreeIndent" style={{ width: menu.depth * 16 }} />
                     ) : null}
                     {menu.hasChildren ? (
                       <button
                         type="button"
                         className={
-                          expanded.has(menu.id) ? 'gvaTreeExpand is-expanded' : 'gvaTreeExpand'
+                          expanded.has(menu.id) ? 'fnaTreeExpand is-expanded' : 'fnaTreeExpand'
                         }
                         aria-label={expanded.has(menu.id) ? '折叠' : '展开'}
                         aria-expanded={expanded.has(menu.id)}
@@ -354,32 +354,32 @@ export function SystemMenusPage() {
                         <IconArrowRight size={12} />
                       </button>
                     ) : (
-                      <span className="gvaTreeExpandSpacer" />
+                      <span className="fnaTreeExpandSpacer" />
                     )}
                     <span>{menu.seqNo}</span>
                   </div>
                 );
               },
             },
-            { key: 'title', title: '展示名称', width: GVA_MENU_COL_WIDTH.title },
+            { key: 'title', title: '展示名称', width: FNA_MENU_COL_WIDTH.title },
             {
               key: 'icon',
               title: '图标',
-              width: GVA_MENU_COL_WIDTH.icon,
-              render: (row) => <span className="gvaMenuIconCell">{String(row.iconLabel ?? row.icon)}</span>,
+              width: FNA_MENU_COL_WIDTH.icon,
+              render: (row) => <span className="fnaMenuIconCell">{String(row.iconLabel ?? row.icon)}</span>,
             },
-            { key: 'name', title: '路由Name', width: GVA_MENU_COL_WIDTH.name },
-            { key: 'path', title: '路由Path', width: GVA_MENU_COL_WIDTH.path },
+            { key: 'name', title: '路由Name', width: FNA_MENU_COL_WIDTH.name },
+            { key: 'path', title: '路由Path', width: FNA_MENU_COL_WIDTH.path },
             {
               key: 'hidden',
               title: '是否隐藏',
-              width: GVA_MENU_COL_WIDTH.hidden,
+              width: FNA_MENU_COL_WIDTH.hidden,
               render: (row) => String(row.hiddenLabel),
             },
             {
               key: 'parentId',
               title: '父节点',
-              width: GVA_MENU_COL_WIDTH.parentId,
+              width: FNA_MENU_COL_WIDTH.parentId,
               render: (row) => {
                 const menu = row as unknown as MenuVisibleRow;
                 if (!menu.parentId || menu.parentId === '0') {
@@ -388,16 +388,16 @@ export function SystemMenusPage() {
                 return String(sequenceNos.get(String(menu.parentId)) ?? 0);
               },
             },
-            { key: 'sort', title: '排序', width: GVA_MENU_COL_WIDTH.sort },
-            { key: 'component', title: '文件路径', width: GVA_MENU_COL_WIDTH.component },
+            { key: 'sort', title: '排序', width: FNA_MENU_COL_WIDTH.sort },
+            { key: 'component', title: '文件路径', width: FNA_MENU_COL_WIDTH.component },
             {
               key: 'actions',
               title: '操作',
-              width: GVA_MENU_COL_WIDTH.actions,
+              width: FNA_MENU_COL_WIDTH.actions,
               render: (row) => {
                 const menu = row as unknown as SystemMenuTreeNode;
                 return (
-                  <div className="gvaMenuRowActions">
+                  <div className="fnaMenuRowActions">
                     <Can btn="menu:add">
                       <AdminLinkButton icon="plus" onClick={() => openCreate(menu.id)}>
                         添加子菜单
@@ -435,11 +435,11 @@ export function SystemMenusPage() {
         busy={busy}
       >
         <AdminWarningBar title="新增菜单，需要在角色管理内配置权限才可使用" />
-        <div className="gvaMenuForm">
-          <section className="gvaMenuFormSection">
+        <div className="fnaMenuForm">
+          <section className="fnaMenuFormSection">
             <h3>基础信息</h3>
-            <div className="gvaMenuFormGrid">
-              <label className="gvaMenuFormItem gvaMenuFormItemFull">
+            <div className="fnaMenuFormGrid">
+              <label className="fnaMenuFormItem fnaMenuFormItemFull">
                 <span className="is-required">文件路径</span>
                 <input
                   value={form.component}
@@ -448,11 +448,11 @@ export function SystemMenusPage() {
                     setForm((current) => ({ ...current, component: event.target.value }))
                   }
                 />
-                <p className="gvaMenuFormTip">
+                <p className="fnaMenuFormTip">
                   如果菜单包含子菜单，请创建 router-view 二级路由页面，或
                   <button
                     type="button"
-                    className="gvaLinkButton"
+                    className="fnaLinkButton"
                     onClick={() =>
                       setForm((current) => ({ ...current, component: 'view/routerHolder.vue' }))
                     }
@@ -461,7 +461,7 @@ export function SystemMenusPage() {
                   </button>
                 </p>
               </label>
-              <label className="gvaMenuFormItem">
+              <label className="fnaMenuFormItem">
                 <span className="is-required">展示名称</span>
                 <input
                   value={form.title}
@@ -471,7 +471,7 @@ export function SystemMenusPage() {
                   }
                 />
               </label>
-              <label className="gvaMenuFormItem">
+              <label className="fnaMenuFormItem">
                 <span className="is-required">路由Name</span>
                 <input
                   value={form.name}
@@ -484,10 +484,10 @@ export function SystemMenusPage() {
             </div>
           </section>
 
-          <section className="gvaMenuFormSection">
+          <section className="fnaMenuFormSection">
             <h3>路由配置</h3>
-            <div className="gvaMenuFormGrid">
-              <label className="gvaMenuFormItem">
+            <div className="fnaMenuFormGrid">
+              <label className="fnaMenuFormItem">
                 <span>父节点ID</span>
                 <select
                   value={form.parentId}
@@ -503,7 +503,7 @@ export function SystemMenusPage() {
                   ))}
                 </select>
               </label>
-              <label className="gvaMenuFormItem">
+              <label className="fnaMenuFormItem">
                 <span className="is-required">路由Path</span>
                 <input
                   value={form.path}
@@ -516,10 +516,10 @@ export function SystemMenusPage() {
             </div>
           </section>
 
-          <section className="gvaMenuFormSection">
+          <section className="fnaMenuFormSection">
             <h3>显示设置</h3>
-            <div className="gvaMenuFormGrid gvaMenuFormGrid3">
-              <label className="gvaMenuFormItem">
+            <div className="fnaMenuFormGrid fnaMenuFormGrid3">
+              <label className="fnaMenuFormItem">
                 <span>图标</span>
                 <input
                   value={form.icon}
@@ -529,7 +529,7 @@ export function SystemMenusPage() {
                   }
                 />
               </label>
-              <label className="gvaMenuFormItem">
+              <label className="fnaMenuFormItem">
                 <span>排序标记</span>
                 <input
                   type="number"
@@ -543,7 +543,7 @@ export function SystemMenusPage() {
                   }
                 />
               </label>
-              <label className="gvaMenuFormItem">
+              <label className="fnaMenuFormItem">
                 <span>是否隐藏</span>
                 <select
                   value={form.hidden ? '1' : '0'}
@@ -558,10 +558,10 @@ export function SystemMenusPage() {
             </div>
           </section>
 
-          <section className="gvaMenuFormSection">
+          <section className="fnaMenuFormSection">
             <h3>高级配置</h3>
-            <div className="gvaMenuFormGrid">
-              <label className="gvaMenuFormItem">
+            <div className="fnaMenuFormGrid">
+              <label className="fnaMenuFormItem">
                 <span>高亮菜单</span>
                 <input
                   value={form.activeName}
@@ -571,7 +571,7 @@ export function SystemMenusPage() {
                   }
                 />
               </label>
-              <label className="gvaMenuFormItem">
+              <label className="fnaMenuFormItem">
                 <span>KeepAlive</span>
                 <select
                   value={form.keepAlive ? '1' : '0'}
@@ -583,7 +583,7 @@ export function SystemMenusPage() {
                   <option value="1">是</option>
                 </select>
               </label>
-              <label className="gvaMenuFormItem">
+              <label className="fnaMenuFormItem">
                 <span>CloseTab</span>
                 <select
                   value={form.closeTab ? '1' : '0'}
@@ -595,7 +595,7 @@ export function SystemMenusPage() {
                   <option value="1">是</option>
                 </select>
               </label>
-              <label className="gvaMenuFormItem">
+              <label className="fnaMenuFormItem">
                 <span>是否为基础页面</span>
                 <select
                   value={form.defaultMenu ? '1' : '0'}
@@ -607,7 +607,7 @@ export function SystemMenusPage() {
                   <option value="1">是</option>
                 </select>
               </label>
-              <label className="gvaMenuFormItem">
+              <label className="fnaMenuFormItem">
                 <span>路由切换动画</span>
                 <select
                   value={form.transitionType}
@@ -625,8 +625,8 @@ export function SystemMenusPage() {
             </div>
           </section>
 
-          <section className="gvaMenuFormSection">
-            <div className="gvaMenuFormSectionHead">
+          <section className="fnaMenuFormSection">
+            <div className="fnaMenuFormSectionHead">
               <h3>菜单参数配置</h3>
               <button
                 type="button"
@@ -641,8 +641,8 @@ export function SystemMenusPage() {
                 新增菜单参数
               </button>
             </div>
-            <div className="gvaMenuBtnTableWrap">
-              <table className="gvaMenuBtnTable">
+            <div className="fnaMenuBtnTableWrap">
+              <table className="fnaMenuBtnTable">
                 <thead>
                   <tr>
                     <th style={{ width: 150 }}>参数类型</th>
@@ -654,7 +654,7 @@ export function SystemMenusPage() {
                 <tbody>
                   {form.parameters.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="gvaMenuBtnEmpty">
+                      <td colSpan={4} className="fnaMenuBtnEmpty">
                         暂无数据
                       </td>
                     </tr>
@@ -733,8 +733,8 @@ export function SystemMenusPage() {
             </div>
           </section>
 
-          <section className="gvaMenuFormSection">
-            <div className="gvaMenuFormSectionHead">
+          <section className="fnaMenuFormSection">
+            <div className="fnaMenuFormSectionHead">
               <h3>可控按钮配置</h3>
               <button
                 type="button"
@@ -749,8 +749,8 @@ export function SystemMenusPage() {
                 新增可控按钮
               </button>
             </div>
-            <div className="gvaMenuBtnTableWrap">
-              <table className="gvaMenuBtnTable">
+            <div className="fnaMenuBtnTableWrap">
+              <table className="fnaMenuBtnTable">
                 <thead>
                   <tr>
                     <th>按钮名称</th>
@@ -761,7 +761,7 @@ export function SystemMenusPage() {
                 <tbody>
                   {form.menuBtns.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="gvaMenuBtnEmpty">
+                      <td colSpan={3} className="fnaMenuBtnEmpty">
                         暂无数据
                       </td>
                     </tr>

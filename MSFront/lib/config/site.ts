@@ -6,11 +6,11 @@ export const siteConfig = {
   description:
     'A Next.js management console paired with the GoExample Fiber server template.',
   locales: ['zh-CN', 'en-US'] as const satisfies LocaleCode[],
-  themes: ['gva', 'system', 'aurora', 'graphite', 'ocean'] as const satisfies ThemeMode[],
+  themes: ['fna', 'system', 'aurora', 'graphite', 'ocean'] as const satisfies ThemeMode[],
   defaultLocale:
     (process.env.NEXT_PUBLIC_MSFRONT_DEFAULT_LOCALE as LocaleCode | undefined) ?? 'zh-CN',
   defaultTheme:
-    (process.env.NEXT_PUBLIC_MSFRONT_DEFAULT_THEME as ThemeMode | undefined) ?? 'gva',
+    (process.env.NEXT_PUBLIC_MSFRONT_DEFAULT_THEME as ThemeMode | undefined) ?? 'fna',
   apiBaseUrl: process.env.NEXT_PUBLIC_MSFRONT_API_BASE_URL ?? 'http://localhost:3001',
   enableLiveProbes:
     process.env.NEXT_PUBLIC_MSFRONT_ENABLE_LIVE_PROBES === 'true' ||

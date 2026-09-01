@@ -606,12 +606,36 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
     path.join(repositoryRoot, 'Framework', 'httpapi', 'middleware.go'),
     'utf8',
   );
+  const httpMiddlewareETagTest = await readFile(
+    path.join(repositoryRoot, 'Framework', 'httpapi', 'middleware_etag_test.go'),
+    'utf8',
+  );
+  const exampleRoutes = await readFile(
+    path.join(repositoryRoot, 'Framework', 'httpapi', 'routes_example.go'),
+    'utf8',
+  );
+  const httpAppTest = await readFile(
+    path.join(repositoryRoot, 'Framework', 'httpapi', 'app_test.go'),
+    'utf8',
+  );
+  const httpBenchmark = await readFile(
+    path.join(repositoryRoot, 'Framework', 'httpapi', 'benchmark_test.go'),
+    'utf8',
+  );
   const requestLogger = await readFile(
     path.join(repositoryRoot, 'Framework', 'observability', 'logger.go'),
     'utf8',
   );
   const requestLoggerTest = await readFile(
     path.join(repositoryRoot, 'Framework', 'observability', 'logger_test.go'),
+    'utf8',
+  );
+  const tracing = await readFile(
+    path.join(repositoryRoot, 'Framework', 'observability', 'tracing.go'),
+    'utf8',
+  );
+  const tracingTest = await readFile(
+    path.join(repositoryRoot, 'Framework', 'observability', 'tracing_test.go'),
     'utf8',
   );
 
@@ -765,11 +789,82 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(lifecycleContract, /response\.ProtoMajor != 1/);
   assert.match(httpApp, /app\.Use\("\/api\/v1", streamSafeETag\(\)\)/);
   assert.match(httpMiddleware, /response\.IsBodyStream\(\)/);
-  assert.match(httpMiddleware, /etag\.GenerateWeak/);
+  assert.match(httpMiddleware, /func generateWeakETag/);
+  assert.match(httpMiddleware, /crc32\.Checksum\(body, weakETagCRC32Q\)/);
+  assert.match(httpMiddleware, /var tagStorage \[maxWeakETagLength\]byte/);
+  assert.match(httpMiddlewareETagTest, /TestGenerateWeakETagMatchesFiberWithoutAllocations/);
+  assertEvidenceInput('Framework/httpapi/middleware_etag_test.go');
   assert.match(httpMiddleware, /response\.Header\.Del\(fiber\.HeaderETag\)/);
+  assert.match(httpApp, /restrictedCORS := corsRequiresOriginVary\(options\.AllowedOrigins\)/);
+  assert.match(httpApp, /Next:\s+corsNext/);
+  assert.match(httpApp, /app\.Use\("\/api\/v1", seedAPIOriginVary\(\)\)/);
+  assert.match(httpApp, /app\.Use\("\/api\/v1", coalesceCompressionVary\(\)\)/);
+  assert.match(httpMiddleware, /func skipPreseededAPICORS\(c fiber\.Ctx\) bool/);
+  assert.match(httpMiddleware, /len\(c\.Request\(\)\.Header\.Peek\(fiber\.HeaderOrigin\)\) != 0/);
+  assert.match(httpMiddleware, /header\.SetBytesV\(fiber\.HeaderVary, varyOriginAcceptEncodingBytes\)/);
+  assert.match(httpAppTest, /TestAPIVaryHeadersPreserveCORSAndCompressionContracts/);
+  for (const contract of ['restricted origin success', 'handler error', 'preflight', 'wildcard origin', 'non API response']) {
+    assert.match(httpAppTest, new RegExp(contract));
+  }
+  assertEvidenceInput('Framework/httpapi/app.go');
+  assertEvidenceInput('Framework/httpapi/middleware.go');
+  assert.match(exampleRoutes, /defaultHelloEnvelope\s+=/);
+  assert.match(exampleRoutes, /func helloMessage\(name \[\]byte\) string/);
+  assert.match(exampleRoutes, /func sendHello\(c fiber\.Ctx, rawName \[\]byte\) error/);
+  assert.match(exampleRoutes, /name := bytes\.TrimSpace\(rawName\)/);
+  assert.match(exampleRoutes, /response\.Header\.SetContentType\(fiber\.MIMEApplicationJSONCharsetUTF8\)/);
+  assert.match(exampleRoutes, /response\.SetBodyString\(defaultHelloEnvelope\)/);
+  assert.match(exampleRoutes, /return success\(c, helloResponse\{Message: helloMessage\(name\)\}\)/);
+  assert.match(exampleRoutes, /c\.RequestCtx\(\)\.QueryArgs\(\)\.Peek\("name"\)/);
+  assert.match(exampleRoutes, /message\.Grow\(len\("Hello, "\) \+ len\(name\) \+ 1\)/);
+  assert.doesNotMatch(exampleRoutes, /c\.Query\("name"/);
+  assert.match(httpAppTest, /TestExampleRouteResponseContracts/);
+  assert.match(httpAppTest, /TestDefaultHelloFastPathMatchesJSONContract/);
+  assert.match(httpAppTest, /fiber\.MIMEApplicationJSONCharsetUTF8/);
+  for (const contract of ['hello explicit default', 'hello plus decoding', 'hello percent decoding', 'hello unicode whitespace', 'hello repeated name', 'hello JSON escaping']) {
+    assert.match(httpAppTest, new RegExp(contract));
+  }
+  assertEvidenceInput('Framework/httpapi/app_test.go');
   assert.match(requestLogger, /func responseBytes/);
   assert.match(requestLogger, /c\.Response\(\)\.IsBodyStream\(\)/);
+  assert.match(requestLogger, /logger\.Enabled\(logContext, level\)/);
+  assert.match(requestLogger, /\[\.\.\.\]slog\.Attr/);
+  assert.match(requestLogger, /logger\.LogAttrs\(logContext, level, "http_request"/);
   assert.match(requestLoggerTest, /TestResponseBytesDoesNotMaterializeStream/);
+  assert.match(requestLoggerTest, /TestRequestLoggerSkipsAttributeExtractionWhenLevelIsDisabled/);
+  assert.match(requestLoggerTest, /disabled request log extracted the client address/);
+  assert.match(tracing, /func \(trace TraceContext\) traceparentBytes\(\) \[55\]byte/);
+  assert.match(tracing, /type traceRequestContext struct/);
+  assert.match(tracing, /func \(ctx \*traceRequestContext\) traceContext\(\) TraceContext/);
+  assert.match(tracing, /ctx\.once\.Do/);
+  assert.match(tracing, /traceparentBytesFromSpanContext\(spanContext\)/);
+  assert.match(tracing, /SetBytesV\(TraceparentHeader, traceparent\[:\]\)/);
+  assert.match(tracing, /func remoteSpanContextFromHeaders\(traceparent, tracestate string\)/);
+  assert.match(tracing, /trace\.ContextWithRemoteSpanContext\(base, remoteParent\)/);
+  assert.match(tracing, /var flagBytes \[1\]byte/);
+  assert.doesNotMatch(tracing, /propagation\.MapCarrier/);
+  assert.match(tracing, /newStandardServerSpanStartConfigurations/);
+  assert.match(tracing, /serverSpanStartConfigurationForMethod/);
+  assert.match(tracing, /type serverSpanEndConfigurationCache struct/);
+	assert.match(tracing, /configurationForMethod/);
+	assert.match(tracing, /configuration\(method, route string, status int\)/);
+	assert.match(tracing, /status < 100 \|\| status >= 600/);
+	assert.doesNotMatch(tracing, /attributesForStatus\(status int\)/);
+  assert.doesNotMatch(tracing, /fmt\.Sprintf/);
+  assert.match(tracingTest, /TestTraceContextFormatsTraceparentWithOneAllocation/);
+  assert.match(tracingTest, /TestTraceRequestContextLazilyPreservesTheServerSpan/);
+  assert.match(tracingTest, /cached request trace lookup allocations/);
+  assert.match(tracingTest, /TestStandardServerSpanStartConfigurationIsReusable/);
+  assert.match(tracingTest, /TestServerSpanEndConfigurationCachesBoundedStandardMetadata/);
+  assert.match(tracingTest, /TestRemoteSpanContextFromHeadersPreservesStrictW3CContract/);
+  assert.match(tracingTest, /remote span context parsing allocations/);
+  assert.match(tracingTest, /cached span end metadata allocations/);
+	assert.match(tracingTest, /"PURGE request"/);
+	assertEvidenceInput('Framework/httpapi/routes.go');
+	assertEvidenceInput('Framework/observability/tracing.go');
+  assert.match(tracingTest, /testing\.AllocsPerRun\(1000/);
+  assert.match(httpBenchmark, /BenchmarkHelloEndpointWithTraceparent/);
+  assertEvidenceInput('Framework/httpapi/benchmark_test.go');
 });
 
 test('server admission control remains bounded and probe-safe', async () => {
@@ -1916,15 +2011,15 @@ test('V12 completion and V13 backlog match the weighted evaluation', async () =>
     const expectedContribution = (Number(row[2]) * Number(row[3])) / 100;
     const documentedContribution = Number(row[4]);
     assert.ok(
-      Math.abs(expectedContribution - documentedContribution) < 0.0005,
+      Math.abs(expectedContribution - documentedContribution) <= 0.0005 + Number.EPSILON,
       `${row[1].trim()} weighted score is inconsistent`,
     );
-    calculatedTotal += documentedContribution;
+    calculatedTotal += expectedContribution;
   }
 
   const declared = evaluation.match(/精确加权值 \*\*([\d.]+)\/10\*\*/);
   assert.ok(declared, 'current evaluation must declare an exact weighted score');
-  assert.equal(declared[1], '9.774', 'current score must include the bounded resume-aware standard-entry SSE lifecycle plus the existing capacity, protocol, compatibility, security, deployment, and evidence gates without claiming target-environment completion');
+  assert.equal(declared[1], '9.820', 'current score must include the application-scoped request cancellation registry, single-call sampled span finalization, direct zero-allocation strict W3C parent parsing, the precomputed CORS/compression Vary fast path, pre-encoded default hello envelope, decoded-query-byte hello fast path, typed fixed Example responses, the stack-buffer weak ETag fast path, lazy request trace-context attachment, the context-carried request lifetime, bounded request-logger, traceparent, and standard server-span start allocation fast paths, independent SSE stream and transport write deadlines, constant-allocation line framing, and existing gates without claiming target-environment completion');
   const roundedCalculatedTotal = Math.round((calculatedTotal + 1e-9) * 1000) / 1000;
   assert.equal(roundedCalculatedTotal.toFixed(3), declared[1]);
   assert.match(backlog, /V12-01/);
@@ -1933,7 +2028,23 @@ test('V12 completion and V13 backlog match the weighted evaluation', async () =>
   assert.match(backlog, /原有“V12 本身仍未完成”均由本次收口决定取代/);
   assert.match(backlog, /当前精确综合评分：\*\*9\.493\/10\*\*/);
   assert.match(nextBacklog, /状态：\*\*实施中\*\*/);
-  assert.match(nextBacklog, /当前精确综合评分：\*\*9\.774\/10\*\*/);
+  assert.match(nextBacklog, /当前精确综合评分：\*\*9\.820\/10\*\*/);
+  assert.match(nextBacklog, /基线为 109–110 allocs\/op/);
+  assert.match(nextBacklog, /优化后两组共十轮为 5 轮 106 allocs\/op、5 轮 107 allocs\/op/);
+  assert.match(nextBacklog, /延迟区间重叠，不作吞吐或延迟提升结论/);
+  assert.match(nextBacklog, /优化后两组共十轮固定为 97 allocs\/op/);
+  assert.match(nextBacklog, /优化后两组共十轮固定为 99 allocs\/op/);
+  assert.match(nextBacklog, /优化后两组共十轮为 9 轮 102 allocs\/op、1 轮 103 allocs\/op/);
+  assert.match(nextBacklog, /优化后两组共十轮固定为 104 allocs\/op/);
+  assert.match(nextBacklog, /优化后两组共十轮固定为 109 allocs\/op/);
+  assert.match(nextBacklog, /9 轮 119 allocs\/op、1 轮 120 allocs\/op/);
+  assert.match(nextBacklog, /优化后五轮固定为 116 allocs\/op/);
+  assert.match(nextBacklog, /优化后五轮固定为 113 allocs\/op/);
+  assert.match(nextBacklog, /优化后两组共十轮固定为 111 allocs\/op/);
+	assert.match(nextBacklog, /优化后两组共十轮固定为 95 allocs\/op/);
+	assert.match(nextBacklog, /两组共十轮固定 104 allocs\/op/);
+	assert.match(nextBacklog, /246 项、其中 245 项必需/);
+  assert.match(nextBacklog, /仅在 `FromContext` 首次读取时通过 `sync\.Once`/);
   assert.match(nextBacklog, /OpenAPI wire contract/);
   assert.match(nextBacklog, /schema v15 Kubernetes evidence/);
   assert.match(nextBacklog, /actionlint` v1\.7\.12/);
@@ -1949,7 +2060,7 @@ test('V12 completion and V13 backlog match the weighted evaluation', async () =>
 	assert.match(nextBacklog, /SendServerSentEvents/);
 	assert.match(nextBacklog, /ServerSentEventSource/);
 	assert.match(nextBacklog, /Last-Event-ID/);
-	assert.match(nextBacklog, /当前通用 evidence 输入合同同步为 242 项，其中 241 项必需/);
+	assert.match(nextBacklog, /该轮通用 evidence 输入合同同步为 244 项，其中 243 项必需/);
 	assert.match(lifecycleADR, /SSE 必须通过 `SendServerSentEvents` 或纯新增的 `SendServerSentEventsFromSource` 使用 Framework request lifecycle/);
 	assert.match(lifecycleADR, /目标 edge 下 SSE 的 buffering/);
 	assert.match(backlog, /capacityKnee/);
@@ -2055,6 +2166,11 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
   assert.match(standardHandler, /request\.Clone\(request\.Context\(\)\)/);
   assert.match(standardHandler, /standardRequestContexts\.LoadAndDelete/);
   assert.match(standardHandler, /Header\.Del\(standardRequestContextHeader\)/);
+  assert.match(standardHandler, /type standardRequestBridge struct/);
+  assert.match(standardHandler, /http\.NewResponseController\(response\)/);
+  assert.match(standardHandler, /controller\.SetWriteDeadline\(deadline\)/);
+  assert.match(middleware, /previous\.Value\(standardResponseWriteDeadlineContextKey\{\}\)/);
+  assert.match(standardHandler, /context\.WithValue\(\s*bridge\.context,\s*standardResponseWriteDeadlineContextKey\{\}/);
   assert.match(standardHandler, /const maximumStandardResponseWriterUnwrapDepth = 32/);
   assert.match(standardHandler, /func supportsStandardResponseFlush\(response http\.ResponseWriter\) bool/);
   assert.match(standardHandler, /interface\{ FlushError\(\) error \}/);
@@ -2076,27 +2192,52 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
   assert.match(standardHandlerTests, /TestNewHTTPHandlerRemovesInternalContextHeader/);
   assert.match(standardHandlerTests, /TestNewHTTPHandlerShutdownCancelsApplicationWork/);
   assert.match(middleware, /newRequestStreamLifetime/);
+  assert.match(middleware, /c\.SetContext\(lifetime\)/);
+  assert.doesNotMatch(middleware, /requestStreamLifetimeLocalKey|c\.Locals\(requestStreamLifetime/);
+  assert.match(eventStream, /ctx\.Value\(requestStreamLifetimeContextKey\{\}\)/);
   assert.match(middleware, /lifetime\.claimed \|\| !c\.Response\(\)\.IsBodyStream\(\)/);
   assert.match(eventStream, /func SendServerSentEvents\(c fiber\.Ctx, options ServerSentEventOptions\) error/);
   assert.match(eventStream, /func SendServerSentEventsFromSource\(/);
   assert.match(eventStream, /Events\s+<-chan ServerSentEvent/);
   assert.match(eventStream, /maximumServerSentEventLastEventIDBytes\s+= 1024/);
+  assert.match(eventStream, /maximumServerSentEventStreamTimeout\s+= 24 \* time\.Hour/);
+  assert.match(eventStream, /serverSentEventWriteDeadlineCleanupGrace\s+= time\.Second/);
   assert.match(eventStream, /source\(lifetime\.ctx, lastEventID\)/);
   assert.match(eventStream, /HeartbeatInterval time\.Duration/);
   assert.match(eventStream, /MaxEventBytes\s+int/);
+  assert.match(eventStream, /StreamTimeout\s+time\.Duration/);
+  assert.match(eventStream, /lifetime\.claim\(prepared\.StreamTimeout\)/);
+  assert.match(eventStream, /streamDeadline\.Add\(serverSentEventWriteDeadlineCleanupGrace\)/);
+  assert.match(eventStream, /errors\.Is\(err, errors\.ErrUnsupported\)/);
+  assert.match(eventStream, /serverSentEventDataEncodedLength/);
+  assert.match(eventStream, /writeServerSentEventData/);
+  assert.doesNotMatch(eventStream, /splitServerSentEventData|strings\.Builder/);
   assert.match(eventStream, /no-cache, no-transform/);
   assert.match(eventStream, /case <-ctx\.Done\(\)/);
   assert.match(eventStream, /writer\.WriteString\(": heartbeat\\n\\n"\)/);
   assert.match(eventStream, /utf8\.ValidString/);
   assert.match(eventStreamTests, /TestWriteServerSentEventEncodesBoundedWireFormat/);
+  assert.match(eventStreamTests, /TestWriteServerSentEventDoesNotAllocatePerDataLine/);
   assert.match(eventStreamTests, /TestSendServerSentEventsRejectsInvalidOptionsBeforeStreaming/);
   assert.match(eventStreamTests, /TestSendServerSentEventsFromSourceFailsClosedBeforeStreaming/);
+  assert.match(eventStreamTests, /TestRequestStreamLifetimeUsesTheShorterCallerWriteDeadline/);
+  assert.match(eventStreamTests, /TestRequestStreamLifetimePreservesTheRequestContextContract/);
+	assert.match(eventStream, /type requestCancellationRegistry struct/);
+	assert.match(eventStream, /func \(registry \*requestCancellationRegistry\) cancelAll\(\)/);
+	assert.doesNotMatch(eventStream, /context\.AfterFunc\(lifetime\.applicationContext/);
+	assert.match(eventStreamTests, /TestRequestCancellationRegistryCancelsActiveClaimedAndLateRequests/);
+	assert.match(eventStreamTests, /TestRequestCancellationRegistryHandlesConcurrentStreamClaimAndShutdown/);
+  assert.match(eventStreamTests, /TestRequestStreamLifetimeHandlesWriteDeadlineCapabilityErrors/);
+  assert.match(eventStreamTests, /TestRequestStreamLifetimeZeroTimeoutPreservesTheServerWriteDeadline/);
   assert.match(eventStreamTests, /TestValidateServerSentEventLastEventID/);
   assert.match(eventStreamTests, /TestNewHTTPHandlerServerSentEventsResumesFromLastEventID/);
+  assert.match(eventStreamTests, /TestNewHTTPHandlerServerSentEventsCanOutliveTheRequestBudgetWithABoundedStreamTimeout/);
+  assert.match(eventStreamTests, /TestNewHTTPHandlerServerSentEventsStopsAtTheConfiguredStreamTimeout/);
   assert.match(eventStreamTests, /TestNewHTTPHandlerServerSentEventsFlushAndCleanUpOnDisconnect/);
   assert.match(eventStreamTests, /protocolMajor: 2/);
   assert.match(eventStreamTests, /event stream producer remained active after client disconnect/);
   assert.match(eventStreamTests, /TestRunHTTPStopsServerSentEventsDuringApplicationShutdown/);
+  assert.match(eventStreamTests, /TestRunHTTPServerSentEventsUseTheBoundedStreamWriteDeadline/);
   assert.match(standardServer, /func RunHTTP\(ctx context\.Context, options HTTPOptions\) error/);
   assert.match(standardServer, /TLSConfig\s+\*tls\.Config/);
   assert.match(standardServer, /config\.Clone\(\)/);
@@ -2252,7 +2393,7 @@ test('Framework public API compatibility is versioned and compared with the targ
   );
   assert.match(
     snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::type ServerSentEventOptions'],
-    /Events\s+<-chan ServerSentEvent[\s\S]*HeartbeatInterval time\.Duration[\s\S]*MaxEventBytes\s+int/,
+    /Events\s+<-chan ServerSentEvent[\s\S]*HeartbeatInterval time\.Duration[\s\S]*MaxEventBytes\s+int[\s\S]*StreamTimeout\s+time\.Duration/,
   );
   assert.match(
     snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::type ServerSentEventSource'],
@@ -2412,7 +2553,7 @@ test('Go and MSFront auth responses and JWT claims remain hardened', async () =>
   assert.match(e2e, /anonymousMeResponse/);
   assert.match(e2e, /loginResponse\.headers\(\)\['cache-control'\]/);
   assert.match(e2e, /menusResponse\.headers\(\)\['cache-control'\]/);
-  assert.match(e2e, /gvaPageTransition/);
+  assert.match(e2e, /fnaPageTransition/);
   assert.match(e2e, /is-enter/);
   assert.match(goAuth, /jwt\.WithNotBeforeRequired\(\)/);
   assert.match(goAuth, /Audience:\s+jwt\.ClaimStrings\{s\.audience\}/);

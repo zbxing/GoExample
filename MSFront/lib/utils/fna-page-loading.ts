@@ -1,6 +1,6 @@
-import { readGvaShellSettings } from '@/lib/utils/ga-shell-settings';
+import { readFnaShellSettings } from '@/lib/utils/fna-shell-settings';
 
-type GvaPageLoadingListener = () => void;
+type FnaPageLoadingListener = () => void;
 
 const CONTENT_LOADING_DELAY_MS = 400;
 const FORCE_CLOSE_MS = 30_000;
@@ -38,7 +38,7 @@ let finishHoldTimer: ReturnType<typeof setTimeout> | null = null;
 let showTimer: ReturnType<typeof setTimeout> | null = null;
 let forceCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
-const listeners = new Set<GvaPageLoadingListener>();
+const listeners = new Set<FnaPageLoadingListener>();
 const setQueue: Array<() => void> = [];
 let setQueueRunning = false;
 
@@ -205,63 +205,63 @@ function startTrickleLoop() {
   work();
 }
 
-export function subscribeGvaPageLoading(listener: GvaPageLoadingListener) {
+export function subscribeFnaPageLoading(listener: FnaPageLoadingListener) {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
   };
 }
 
-export function getGvaContentLoadingVisible() {
+export function getFnaContentLoadingVisible() {
   return contentVisible || listAwaiting;
 }
 
-export function getGvaRouteProgressVisible() {
+export function getFnaRouteProgressVisible() {
   return progressMounted;
 }
 
-export function getGvaRouteProgressStatus() {
+export function getFnaRouteProgressStatus() {
   if (!progressMounted) {
     return 0;
   }
   return progressDisplay;
 }
 
-export function getGvaRouteProgressOpacity() {
+export function getFnaRouteProgressOpacity() {
   return progressMounted ? progressOpacity : 0;
 }
 
-export function getGvaRouteProgressSnapHidden() {
+export function getFnaRouteProgressSnapHidden() {
   return progressSnapHidden;
 }
 
-export function getGvaRouteProgressSpeedMs() {
+export function getFnaRouteProgressSpeedMs() {
   return NP.speed;
 }
 
-export function getGvaRouteProgressEasing() {
+export function getFnaRouteProgressEasing() {
   return NP.easing;
 }
 
-export function getGvaRouteProgressBarTranslatePercent() {
+export function getFnaRouteProgressBarTranslatePercent() {
   if (progressSnapHidden) {
     return -100;
   }
-  return toBarTranslatePercent(getGvaRouteProgressStatus());
+  return toBarTranslatePercent(getFnaRouteProgressStatus());
 }
 
-export function getGvaActiveRequestCount() {
+export function getFnaActiveRequestCount() {
   return activeRequests;
 }
 
-export function beginGvaListAwaiting() {
+export function beginFnaListAwaiting() {
   if (!listAwaiting) {
     listAwaiting = true;
     emit();
   }
 }
 
-export function endGvaListAwaiting() {
+export function endFnaListAwaiting() {
   if (!listAwaiting) {
     return;
   }
@@ -269,7 +269,7 @@ export function endGvaListAwaiting() {
   emit();
 }
 
-export function beginGvaContentLoading(delayMs = CONTENT_LOADING_DELAY_MS) {
+export function beginFnaContentLoading(delayMs = CONTENT_LOADING_DELAY_MS) {
   activeRequests += 1;
   emit();
   clearContentTimers();
@@ -283,7 +283,7 @@ export function beginGvaContentLoading(delayMs = CONTENT_LOADING_DELAY_MS) {
   }, effectiveDelay);
 }
 
-export function endGvaContentLoading() {
+export function endFnaContentLoading() {
   activeRequests = Math.max(0, activeRequests - 1);
   if (activeRequests > 0) {
     if (forceCloseTimer) {
@@ -303,7 +303,7 @@ export function endGvaContentLoading() {
   }
 }
 
-export function resetGvaContentLoading() {
+export function resetFnaContentLoading() {
   activeRequests = 0;
   listAwaiting = false;
   clearContentTimers();
@@ -313,9 +313,9 @@ export function resetGvaContentLoading() {
   }
 }
 
-/** GVA beforeEach → NProgress.start() */
-export function beginGvaRouteProgress() {
-  if (!readGvaShellSettings().tab.showProgress) {
+/** gin-vue-admin beforeEach → NProgress.start() */
+export function beginFnaRouteProgress() {
+  if (!readFnaShellSettings().tab.showProgress) {
     return;
   }
   clearTrickle();
@@ -330,10 +330,10 @@ export function beginGvaRouteProgress() {
 }
 
 /**
- * GVA afterEach → NProgress.done()
+ * gin-vue-admin afterEach → NProgress.done()
  * 路由已完成后立刻收尾：丢掉 start 队列积压，马上 placebo 抬升 → 100% → 停留 speed → 直接移除。
  */
-export function endGvaRouteProgress(force = false) {
+export function endFnaRouteProgress(force = false) {
   if (!force && typeof progressStatus !== 'number') {
     return;
   }
@@ -393,12 +393,12 @@ export function endGvaRouteProgress(force = false) {
 }
 
 /** @deprecated */
-export function getGvaRouteProgressPercent() {
-  return getGvaRouteProgressStatus() * 100;
+export function getFnaRouteProgressPercent() {
+  return getFnaRouteProgressStatus() * 100;
 }
 
-export function getGvaRouteProgressFromStart() {
+export function getFnaRouteProgressFromStart() {
   return progressSnapHidden;
 }
 
-export const GVA_CONTENT_LOADING_DELAY_MS = CONTENT_LOADING_DELAY_MS;
+export const FNA_CONTENT_LOADING_DELAY_MS = CONTENT_LOADING_DELAY_MS;

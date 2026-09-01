@@ -3,18 +3,18 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import {
-  beginGvaRouteProgress,
-  endGvaRouteProgress,
-  getGvaContentLoadingVisible,
-  getGvaRouteProgressBarTranslatePercent,
-  getGvaRouteProgressEasing,
-  getGvaRouteProgressSnapHidden,
-  getGvaRouteProgressSpeedMs,
-  getGvaRouteProgressVisible,
-  subscribeGvaPageLoading,
-} from '@/lib/utils/ga-page-loading';
-import { readGvaShellSettings, subscribeGvaShellSettings } from '@/lib/utils/ga-shell-settings';
-import { triggerGvaPageLeave } from '@/lib/utils/ga-page-leave';
+  beginFnaRouteProgress,
+  endFnaRouteProgress,
+  getFnaContentLoadingVisible,
+  getFnaRouteProgressBarTranslatePercent,
+  getFnaRouteProgressEasing,
+  getFnaRouteProgressSnapHidden,
+  getFnaRouteProgressSpeedMs,
+  getFnaRouteProgressVisible,
+  subscribeFnaPageLoading,
+} from '@/lib/utils/fna-page-loading';
+import { readFnaShellSettings, subscribeFnaShellSettings } from '@/lib/utils/fna-shell-settings';
+import { triggerFnaPageLeave } from '@/lib/utils/fna-page-leave';
 
 function isInternalDashboardHref(href: string, currentPath: string) {
   if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) {
@@ -38,58 +38,58 @@ function isInternalDashboardHref(href: string, currentPath: string) {
 }
 
 /**
- * 对齐 GVA permission.js + nprogress@0.2.0：
+ * 对齐 gin-vue-admin permission.js + nprogress@0.2.0：
  * - beforeEach → NProgress.start()
  * - afterEach → NProgress.done()
  * - configure({ showSpinner: false, ease: 'ease', speed: 500 })
  */
-export function GvaRouteLoadingEffects() {
+export function FnaRouteLoadingEffects() {
   const pathname = usePathname();
   const contentVisible = useSyncExternalStore(
-    subscribeGvaPageLoading,
-    getGvaContentLoadingVisible,
+    subscribeFnaPageLoading,
+    getFnaContentLoadingVisible,
     () => false,
   );
   const progressVisible = useSyncExternalStore(
-    subscribeGvaPageLoading,
-    getGvaRouteProgressVisible,
+    subscribeFnaPageLoading,
+    getFnaRouteProgressVisible,
     () => false,
   );
   const barTranslate = useSyncExternalStore(
-    subscribeGvaPageLoading,
-    getGvaRouteProgressBarTranslatePercent,
+    subscribeFnaPageLoading,
+    getFnaRouteProgressBarTranslatePercent,
     () => -100,
   );
   const snapHidden = useSyncExternalStore(
-    subscribeGvaPageLoading,
-    getGvaRouteProgressSnapHidden,
+    subscribeFnaPageLoading,
+    getFnaRouteProgressSnapHidden,
     () => false,
   );
   const showProgress = useSyncExternalStore(
-    subscribeGvaShellSettings,
-    () => readGvaShellSettings().tab.showProgress,
+    subscribeFnaShellSettings,
+    () => readFnaShellSettings().tab.showProgress,
     () => true,
   );
   const speedMs = useSyncExternalStore(
-    subscribeGvaPageLoading,
-    getGvaRouteProgressSpeedMs,
+    subscribeFnaPageLoading,
+    getFnaRouteProgressSpeedMs,
     () => 500,
   );
   const easing = useSyncExternalStore(
-    subscribeGvaPageLoading,
-    getGvaRouteProgressEasing,
+    subscribeFnaPageLoading,
+    getFnaRouteProgressEasing,
     () => 'ease',
   );
 
   // afterEach → done()
   useEffect(() => {
-    endGvaRouteProgress();
+    endFnaRouteProgress();
   }, [pathname]);
 
   // 关闭「展示进度条」时立刻收起当前进度
   useEffect(() => {
     if (!showProgress) {
-      endGvaRouteProgress(true);
+      endFnaRouteProgress(true);
     }
   }, [showProgress]);
 
@@ -115,9 +115,9 @@ export function GvaRouteLoadingEffects() {
       if (!href || !isInternalDashboardHref(href, pathname)) {
         return;
       }
-      const leaving = triggerGvaPageLeave();
-      if (readGvaShellSettings().tab.showProgress) {
-        beginGvaRouteProgress();
+      const leaving = triggerFnaPageLeave();
+      if (readFnaShellSettings().tab.showProgress) {
+        beginFnaRouteProgress();
       }
       void leaving;
     }
@@ -131,21 +131,21 @@ export function GvaRouteLoadingEffects() {
   return (
     <>
       {progressVisible && showProgress ? (
-        <div className="gvaRouteProgress is-active" aria-hidden="true">
+        <div className="fnaRouteProgress is-active" aria-hidden="true">
           <div
-            className="gvaRouteProgressBar"
+            className="fnaRouteProgressBar"
             style={{
               transform: `translate3d(${barTranslate}%, 0, 0)`,
               transition: barTransition,
             }}
           >
-            <div className="gvaRouteProgressPeg" />
+            <div className="fnaRouteProgressPeg" />
           </div>
         </div>
       ) : null}
       {contentVisible ? (
-        <div className="gvaContentLoading" role="status" aria-live="polite" aria-busy="true">
-          <span className="gvaContentLoadingSpinner" aria-hidden="true" />
+        <div className="fnaContentLoading" role="status" aria-live="polite" aria-busy="true">
+          <span className="fnaContentLoadingSpinner" aria-hidden="true" />
           <span>加载中</span>
         </div>
       ) : null}

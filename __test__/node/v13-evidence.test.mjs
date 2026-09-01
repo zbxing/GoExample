@@ -45,6 +45,7 @@ test('V13 evidence verifier accepts complete immutable recorded evidence', async
     const generated = run(index);
     assert.equal(generated.status, 0, generated.stderr);
     const document = JSON.parse(await readFile(index, 'utf8'));
+    const afterDocumentGeneratedAt = new Date(Date.parse(document.generatedAt) + 1000).toISOString();
     const packageItem = document.workPackages[1];
     packageItem.status = 'recorded';
     packageItem.targetEnvironment = 'prod-redis-ha-01';
@@ -137,21 +138,21 @@ test('V13 evidence verifier accepts complete immutable recorded evidence', async
     await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
     assert.equal(run(index, true).status, 0);
 
-    packageItem.execution.finishedAt = '2026-09-01T00:00:01Z';
+    packageItem.execution.finishedAt = afterDocumentGeneratedAt;
     await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
     const futureExecution = run(index, true);
     assert.equal(futureExecution.status, 1);
     assert.match(futureExecution.stderr, /execution\.finishedAt must not be after document\.generatedAt/);
     packageItem.execution.finishedAt = '2026-08-27T00:00:01Z';
 
-    packageItem.provenance.verifiedAt = '2026-09-01T00:00:02Z';
+    packageItem.provenance.verifiedAt = afterDocumentGeneratedAt;
     await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
     const futureProvenance = run(index, true);
     assert.equal(futureProvenance.status, 1);
     assert.match(futureProvenance.stderr, /provenance\.verifiedAt must not be after document\.generatedAt/);
     packageItem.provenance.verifiedAt = '2026-08-27T00:00:02Z';
 
-    packageItem.completion.rpoApproval.approvedAt = '2026-09-01T00:00:03Z';
+    packageItem.completion.rpoApproval.approvedAt = afterDocumentGeneratedAt;
     await writeFile(index, `${JSON.stringify(document, null, 2)}\n`);
     const futureApproval = run(index, true);
     assert.equal(futureApproval.status, 1);

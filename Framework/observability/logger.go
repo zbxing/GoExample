@@ -33,43 +33,57 @@ func RequestLogger(logger *slog.Logger, skipPaths ...string) fiber.Handler {
 		}
 	}
 	return func(c fiber.Ctx) error {
-		if _, skip := skipped[c.Path()]; skip {
+		path := c.Path()
+		if _, skip := skipped[path]; skip {
 			return c.Next()
 		}
 		startedAt := time.Now()
 		err := c.Next()
 		status := responseStatus(c, err)
-		attributes := []any{
-			"request_id", requestid.FromContext(c),
-			"method", c.Method(),
-			"path", c.Path(),
-			"route", routePath(c),
-			"status", status,
-			"duration_ms", float64(time.Since(startedAt).Microseconds()) / 1000,
-			"response_bytes", responseBytes(c),
-			"client_ip", c.IP(),
+		var level slog.Level
+		switch {
+		case status >= fiber.StatusInternalServerError:
+			level = slog.LevelError
+		case status >= fiber.StatusBadRequest:
+			level = slog.LevelWarn
+		default:
+			level = slog.LevelInfo
 		}
+		logContext := requestContext(c)
+		if !logger.Enabled(logContext, level) {
+			return err
+		}
+		attributes := [...]slog.Attr{
+			slog.String("request_id", requestid.FromContext(c)),
+			slog.String("method", c.Method()),
+			slog.String("path", path),
+			slog.String("route", routePath(c)),
+			slog.Int("status", status),
+			slog.Float64("duration_ms", float64(time.Since(startedAt).Microseconds())/1000),
+			slog.Int("response_bytes", responseBytes(c)),
+			slog.String("client_ip", c.IP()),
+			{},
+			{},
+			{},
+			{},
+		}
+		attributeCount := 8
 		if trace, ok := FromContext(c.Context()); ok {
-			attributes = append(attributes,
-				"trace_id", trace.TraceID,
-				"span_id", trace.SpanID,
-			)
+			attributes[attributeCount] = slog.String("trace_id", trace.TraceID)
+			attributeCount++
+			attributes[attributeCount] = slog.String("span_id", trace.SpanID)
+			attributeCount++
 			if trace.ParentSpanID != "" {
-				attributes = append(attributes, "parent_span_id", trace.ParentSpanID)
+				attributes[attributeCount] = slog.String("parent_span_id", trace.ParentSpanID)
+				attributeCount++
 			}
 		}
 		if err != nil {
-			attributes = append(attributes, "error", err.Error())
+			attributes[attributeCount] = slog.String("error", err.Error())
+			attributeCount++
 		}
 
-		switch {
-		case status >= fiber.StatusInternalServerError:
-			logger.ErrorContext(requestContext(c), "http_request", attributes...)
-		case status >= fiber.StatusBadRequest:
-			logger.WarnContext(requestContext(c), "http_request", attributes...)
-		default:
-			logger.InfoContext(requestContext(c), "http_request", attributes...)
-		}
+		logger.LogAttrs(logContext, level, "http_request", attributes[:attributeCount]...)
 		return err
 	}
 }

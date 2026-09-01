@@ -20,7 +20,7 @@ export interface SystemMenuRecord {
   sort: number;
   keepAlive: boolean;
   menuBtns: string[];
-  /** 路由参数配置（对齐 GVA form.parameters） */
+  /** 路由参数配置（对齐 gin-vue-admin form.parameters） */
   parameters?: SystemMenuParameter[];
 }
 

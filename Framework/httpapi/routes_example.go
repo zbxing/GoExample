@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"strconv"
 	"strings"
@@ -15,6 +16,44 @@ type profileRequest struct {
 	Age   int    `json:"age" validate:"min=18,max=130"`
 }
 
+type helloResponse struct {
+	Message string `json:"message"`
+}
+
+const (
+	defaultHelloMessage  = "Hello, Fiber!"
+	defaultHelloEnvelope = `{"code":0,"data":{"message":"` + defaultHelloMessage + `"},"msg":"success"}`
+)
+
+type delayedResponse struct {
+	DelayedMilliseconds int `json:"delayedMs"`
+}
+
+type privateResponse struct {
+	Message string `json:"message"`
+	Subject string `json:"subject"`
+}
+
+func helloMessage(name []byte) string {
+	var message strings.Builder
+	message.Grow(len("Hello, ") + len(name) + 1)
+	message.WriteString("Hello, ")
+	message.Write(name)
+	message.WriteByte('!')
+	return message.String()
+}
+
+func sendHello(c fiber.Ctx, rawName []byte) error {
+	name := bytes.TrimSpace(rawName)
+	if len(name) == 0 || bytes.Equal(name, []byte("Fiber")) {
+		response := c.Response()
+		response.Header.SetContentType(fiber.MIMEApplicationJSONCharsetUTF8)
+		response.SetBodyString(defaultHelloEnvelope)
+		return nil
+	}
+	return success(c, helloResponse{Message: helloMessage(name)})
+}
+
 func registerExampleRoutes(v1 fiber.Router, options Options) {
 	example := v1.Group("/example")
 	registerMutation := func(path string, handler fiber.Handler) {
@@ -25,11 +64,7 @@ func registerExampleRoutes(v1 fiber.Router, options Options) {
 		example.Post(path, requireJSON, handler)
 	}
 	example.Get("/hello", func(c fiber.Ctx) error {
-		name := strings.TrimSpace(c.Query("name", "Fiber"))
-		if name == "" {
-			name = "Fiber"
-		}
-		return success(c, fiber.Map{"message": "Hello, " + name + "!"})
+		return sendHello(c, c.RequestCtx().QueryArgs().Peek("name"))
 	})
 	registerMutation("/echo", func(c fiber.Ctx) error {
 		body := make(map[string]any)
@@ -54,7 +89,7 @@ func registerExampleRoutes(v1 fiber.Router, options Options) {
 		defer timer.Stop()
 		select {
 		case <-timer.C:
-			return success(c, fiber.Map{"delayedMs": milliseconds})
+			return success(c, delayedResponse{DelayedMilliseconds: milliseconds})
 		case <-c.Context().Done():
 			return context.DeadlineExceeded
 		}
@@ -62,9 +97,9 @@ func registerExampleRoutes(v1 fiber.Router, options Options) {
 	if AuthenticationEnabled(options) {
 		example.Get("/private", requireAuth(options), func(c fiber.Ctx) error {
 			claims, _ := currentClaims(c)
-			return success(c, fiber.Map{
-				"message": "authenticated request succeeded",
-				"subject": claims.Subject,
+			return success(c, privateResponse{
+				Message: "authenticated request succeeded",
+				Subject: claims.Subject,
 			})
 		})
 	}

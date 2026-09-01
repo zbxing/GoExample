@@ -1,14 +1,16 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"hash/crc32"
+	"math"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/etag"
 	"github.com/gofiber/fiber/v3/middleware/idempotency"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 
@@ -17,7 +19,57 @@ import (
 	"github.com/zbxing/goexample/Framework/sharedstate"
 )
 
-const maxRequestIDLength = 128
+const (
+	maxRequestIDLength       = 128
+	maxWeakETagLength        = 25
+	weakETagCRC32QPolynomial = 0xD5828281
+)
+
+var weakETagCRC32Q = crc32.MakeTable(weakETagCRC32QPolynomial)
+
+var (
+	varyOriginBytes               = []byte(fiber.HeaderOrigin)
+	varyOriginAcceptEncodingBytes = []byte(fiber.HeaderOrigin + ", " + fiber.HeaderAcceptEncoding)
+)
+
+func corsRequiresOriginVary(allowedOrigins []string) bool {
+	for _, origin := range allowedOrigins {
+		if origin == "*" {
+			return false
+		}
+	}
+	return true
+}
+
+func seedAPIOriginVary() fiber.Handler {
+	return func(c fiber.Ctx) error {
+		if c.Method() != fiber.MethodOptions && len(c.Response().Header.Peek(fiber.HeaderVary)) == 0 {
+			c.Response().Header.SetBytesV(fiber.HeaderVary, varyOriginBytes)
+		}
+		return c.Next()
+	}
+}
+
+func skipPreseededAPICORS(c fiber.Ctx) bool {
+	if c.Method() == fiber.MethodOptions || len(c.Request().Header.Peek(fiber.HeaderOrigin)) != 0 {
+		return false
+	}
+	path := c.Path()
+	return path == "/api/v1" || strings.HasPrefix(path, "/api/v1/")
+}
+
+func coalesceCompressionVary() fiber.Handler {
+	return func(c fiber.Ctx) error {
+		if err := c.Next(); err != nil {
+			return err
+		}
+		header := &c.Response().Header
+		if bytes.Equal(header.Peek(fiber.HeaderVary), varyOriginBytes) {
+			header.SetBytesV(fiber.HeaderVary, varyOriginAcceptEncodingBytes)
+		}
+		return nil
+	}
+}
 
 func streamSafeETag() fiber.Handler {
 	return func(c fiber.Ctx) error {
@@ -41,17 +93,30 @@ func streamSafeETag() fiber.Handler {
 		if len(body) == 0 {
 			return nil
 		}
-		tag := etag.GenerateWeak(body)
+		var tagStorage [maxWeakETagLength]byte
+		tag := generateWeakETag(body, &tagStorage)
 		if len(tag) == 0 {
 			return nil
 		}
 		response.Header.SetBytesV(fiber.HeaderETag, tag)
-		if weakETagMatches(c.Get(fiber.HeaderIfNoneMatch), string(tag)) {
+		if header := c.Get(fiber.HeaderIfNoneMatch); header != "" && weakETagMatches(header, string(tag)) {
 			c.RequestCtx().ResetBody()
 			return c.SendStatus(fiber.StatusNotModified)
 		}
 		return nil
 	}
+}
+
+func generateWeakETag(body []byte, storage *[maxWeakETagLength]byte) []byte {
+	if uint64(len(body)) > uint64(math.MaxUint32) {
+		return nil
+	}
+	tag := storage[:0]
+	tag = append(tag, 'W', '/', '"')
+	tag = strconv.AppendUint(tag, uint64(len(body)), 10)
+	tag = append(tag, '-')
+	tag = strconv.AppendUint(tag, uint64(crc32.Checksum(body, weakETagCRC32Q)), 10)
+	return append(tag, '"')
 }
 
 func weakETagMatches(header, expected string) bool {
@@ -130,16 +195,27 @@ func boundedConcurrency(maxInFlight int, metrics *observability.Metrics) fiber.H
 	}
 }
 
-func requestDeadline(applicationContext context.Context, timeout time.Duration) fiber.Handler {
+func requestDeadline(
+	applicationContext context.Context,
+	requestCancellations *requestCancellationRegistry,
+	timeout time.Duration,
+) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		previous := c.Context()
 		if previous == nil {
 			previous = context.Background()
 		}
 		ctx, cancel := context.WithTimeout(previous, timeout)
-		lifetime := newRequestStreamLifetime(ctx, cancel, context.AfterFunc(applicationContext, cancel))
-		c.Locals(requestStreamLifetimeLocalKey, lifetime)
-		c.SetContext(ctx)
+		setWriteDeadline, _ := previous.Value(standardResponseWriteDeadlineContextKey{}).(standardResponseWriteDeadline)
+		lifetime := newRequestStreamLifetime(
+			ctx,
+			cancel,
+			previous,
+			applicationContext,
+			requestCancellations,
+			setWriteDeadline,
+		)
+		c.SetContext(lifetime)
 		defer func() {
 			if !lifetime.claimed || !c.Response().IsBodyStream() {
 				lifetime.complete()

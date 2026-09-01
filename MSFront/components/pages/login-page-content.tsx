@@ -1,22 +1,46 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Route } from 'next';
-import { Eye, EyeOff, UserRound } from 'lucide-react';
+import { Eye, EyeOff, Moon, Sun, UserRound } from 'lucide-react';
 import { apiFetch } from '@/lib/api/client';
 import type { AuthSessionUser } from '@/lib/types/system';
 import { BottomInfo } from '@/components/shell/bottom-info';
+import { applyTheme, useTheme } from '@/providers/theme-provider';
+import {
+  readFnaShellSettings,
+  writeFnaShellSettings,
+} from '@/lib/utils/fna-shell-settings';
 
 export function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { theme, setTheme } = useTheme();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  /** 仅客户端挂载后切换日月图标，避免 SSR/水合不一致 */
+  const [themeIconReady, setThemeIconReady] = useState(false);
+  const isDark = themeIconReady && theme === 'graphite';
+
+  useEffect(() => {
+    setThemeIconReady(true);
+  }, []);
+
+  function toggleTheme() {
+    const nextDark = !isDark;
+    const nextTheme = nextDark ? 'graphite' : 'fna';
+    applyTheme(nextTheme);
+    setTheme(nextTheme);
+    writeFnaShellSettings({
+      ...readFnaShellSettings(),
+      themeScheme: nextDark ? 'dark' : 'light',
+    });
+  }
 
   async function handleSubmit(event?: FormEvent) {
     event?.preventDefault();
@@ -49,31 +73,41 @@ export function LoginPageContent() {
   }
 
   return (
-    <div id="userLayout" className="gvaUserLayout">
-      <div className="gvaLoginBanner banner-oblique" aria-hidden="true">
+    <div id="userLayout" className="fnaUserLayout">
+      <button
+        type="button"
+        className="fnaLoginThemeToggle"
+        onClick={toggleTheme}
+        aria-label={isDark ? '切换为白天主题' : '切换为夜间主题'}
+        title={isDark ? '白天主题' : '夜间主题'}
+      >
+        {isDark ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
+
+      <div className="fnaLoginBanner banner-oblique" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="gvaLoginCoverImg" src="/ga-cover.svg" alt="" />
+        <img className="fnaLoginCoverImg" src="/fna-cover.svg" alt="" />
       </div>
 
-      <div className="gvaLoginLeft">
-        <div className="gvaLoginCard">
-          <div className="gvaEntryBrand">
+      <div className="fnaLoginLeft">
+        <div className="fnaLoginCard">
+          <div className="fnaEntryBrand">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/ga-logo.png" alt="" className="gvaEntryLogo" />
-            <p className="gvaEntryTitle">Go Admin</p>
+            <img src="/fna-logo.png" alt="" className="fnaEntryLogo" />
+            <p className="fnaEntryTitle">FNA</p>
           </div>
 
           <form
-            className="gvaLoginForm"
+            className="fnaLoginForm"
             onSubmit={(event) => {
               void handleSubmit(event);
             }}
           >
-            <div className="gvaLoginFormItem">
+            <div className="fnaLoginFormItem">
               <label className="srOnly" htmlFor="login-username">
                 用户名
               </label>
-              <div className="gvaElInput gvaElInputLarge">
+              <div className="fnaElInput fnaElInputLarge">
                 <input
                   id="login-username"
                   value={username}
@@ -81,17 +115,17 @@ export function LoginPageContent() {
                   autoComplete="username"
                   placeholder="请输入用户名"
                 />
-                <span className="gvaElInputSuffix">
+                <span className="fnaElInputSuffix">
                   <UserRound size={16} />
                 </span>
               </div>
             </div>
 
-            <div className="gvaLoginFormItem">
+            <div className="fnaLoginFormItem">
               <label className="srOnly" htmlFor="login-password">
                 密码
               </label>
-              <div className="gvaElInput gvaElInputLarge">
+              <div className="fnaElInput fnaElInputLarge">
                 <input
                   id="login-password"
                   type={showPassword ? 'text' : 'password'}
@@ -102,7 +136,7 @@ export function LoginPageContent() {
                 />
                 <button
                   type="button"
-                  className="gvaElInputSuffix gvaElInputSuffixBtn"
+                  className="fnaElInputSuffix fnaElInputSuffixBtn"
                   onClick={() => setShowPassword((value) => !value)}
                   aria-label={showPassword ? '隐藏密码' : '显示密码'}
                 >
@@ -111,23 +145,23 @@ export function LoginPageContent() {
               </div>
             </div>
 
-            {error ? <p className="gvaLoginError" role="alert">{error}</p> : null}
-            {info ? <p className="gvaLoginInfo" role="status">{info}</p> : null}
+            {error ? <p className="fnaLoginError" role="alert">{error}</p> : null}
+            {info ? <p className="fnaLoginInfo" role="status">{info}</p> : null}
 
-            <div className="gvaLoginFormItem">
+            <div className="fnaLoginFormItem">
               <button
                 type="submit"
-                className="gvaBtnPrimary gvaBtnLarge gvaBtnBlock"
+                className="fnaBtnPrimary fnaBtnLarge fnaBtnBlock"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? '登录中…' : '登 录'}
               </button>
             </div>
 
-            <div className="gvaLoginFormItem">
+            <div className="fnaLoginFormItem">
               <button
                 type="button"
-                className="gvaBtnHollow gvaBtnLarge gvaBtnBlock"
+                className="fnaBtnHollow fnaBtnLarge fnaBtnBlock"
                 onClick={() => setInfo('已配置数据库信息，无法初始化')}
               >
                 前往初始化
@@ -135,7 +169,7 @@ export function LoginPageContent() {
             </div>
           </form>
 
-          <BottomInfo className="login-footer gvaLoginFooter" />
+          <BottomInfo className="login-footer fnaLoginFooter" />
         </div>
       </div>
     </div>

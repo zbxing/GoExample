@@ -1,5 +1,5 @@
 import { siteConfig } from '@/lib/config/site';
-import { beginGvaContentLoading, endGvaContentLoading } from '@/lib/utils/ga-page-loading';
+import { beginFnaContentLoading, endFnaContentLoading } from '@/lib/utils/fna-page-loading';
 
 export function createApiClient(baseUrl?: string) {
   const resolvedBaseUrl = (baseUrl ?? siteConfig.apiBaseUrl).replace(/\/+$/, '');
@@ -17,7 +17,7 @@ export function createApiClient(baseUrl?: string) {
       }
 
       if (!donNotShowLoading && typeof window !== 'undefined') {
-        beginGvaContentLoading();
+        beginFnaContentLoading();
       }
       try {
         const response = await fetch(`${resolvedBaseUrl}/${path.replace(/^\/+/, '')}`, {
@@ -33,7 +33,7 @@ export function createApiClient(baseUrl?: string) {
         return payload;
       } finally {
         if (!donNotShowLoading && typeof window !== 'undefined') {
-          endGvaContentLoading();
+          endFnaContentLoading();
         }
       }
     },
@@ -52,7 +52,7 @@ export async function apiFetch<T>(
 ): Promise<ApiEnvelope<T>> {
   const { donNotShowLoading, ...requestInit } = init ?? {};
   if (!donNotShowLoading && typeof window !== 'undefined') {
-    beginGvaContentLoading();
+    beginFnaContentLoading();
   }
   try {
     const response = await fetch(input, {
@@ -72,7 +72,7 @@ export async function apiFetch<T>(
     return payload;
   } finally {
     if (!donNotShowLoading && typeof window !== 'undefined') {
-      endGvaContentLoading();
+      endFnaContentLoading();
     }
   }
 }

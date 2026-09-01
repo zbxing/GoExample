@@ -2,7 +2,7 @@
 
 import { AdminCard, AdminPage } from '@/components/admin/admin-primitives';
 
-export function GvaFeaturePlaceholderPage({
+export function FnaFeaturePlaceholderPage({
   title,
   description,
   bullets = [
@@ -18,10 +18,10 @@ export function GvaFeaturePlaceholderPage({
   return (
     <AdminPage>
       <AdminCard>
-        <div className="gvaFeaturePlaceholder">
-          <h2 className="gvaFeaturePlaceholderTitle">{title}</h2>
-          <p className="gvaFeaturePlaceholderDesc">{description}</p>
-          <ul className="gvaFeaturePlaceholderList">
+        <div className="fnaFeaturePlaceholder">
+          <h2 className="fnaFeaturePlaceholderTitle">{title}</h2>
+          <p className="fnaFeaturePlaceholderDesc">{description}</p>
+          <ul className="fnaFeaturePlaceholderList">
             {bullets.map((item) => (
               <li key={item}>{item}</li>
             ))}

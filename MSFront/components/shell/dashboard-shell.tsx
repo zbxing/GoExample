@@ -15,18 +15,18 @@ import { Sidebar } from '@/components/shell/sidebar';
 import { TagsView } from '@/components/shell/tags-view';
 import { Topbar } from '@/components/shell/topbar';
 import { BottomInfo } from '@/components/shell/bottom-info';
-import { GvaPageTransition } from '@/components/shell/ga-page-transition';
-import { GvaRouteLoadingEffects } from '@/components/shell/ga-page-loading';
-import { resetGvaPageLeave } from '@/lib/utils/ga-page-leave';
+import { FnaPageTransition } from '@/components/shell/fna-page-transition';
+import { FnaRouteLoadingEffects } from '@/components/shell/fna-page-loading';
+import { resetFnaPageLeave } from '@/lib/utils/fna-page-leave';
 import {
-  applyGvaShellCss,
-  getGvaShellSettingsServerSnapshot,
-  hydrateGvaShellSettings,
-  readGvaShellSettings,
-  subscribeGvaShellSettings,
-  writeGvaShellSettings,
-  type GvaShellSettings,
-} from '@/lib/utils/ga-shell-settings';
+  applyFnaShellCss,
+  getFnaShellSettingsServerSnapshot,
+  hydrateFnaShellSettings,
+  readFnaShellSettings,
+  subscribeFnaShellSettings,
+  writeFnaShellSettings,
+  type FnaShellSettings,
+} from '@/lib/utils/fna-shell-settings';
 import { useAuth } from '@/providers/auth-provider';
 import { useTheme } from '@/providers/theme-provider';
 import { collectLeafPaths } from '@/lib/utils/menu-access';
@@ -42,18 +42,18 @@ export function DashboardShell({ children }: PropsWithChildren) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const shellSettings = useSyncExternalStore(
-    subscribeGvaShellSettings,
-    readGvaShellSettings,
-    getGvaShellSettingsServerSnapshot,
+    subscribeFnaShellSettings,
+    readFnaShellSettings,
+    getFnaShellSettingsServerSnapshot,
   );
   const previousPathnameRef = useRef(pathname);
 
   useEffect(() => {
-    hydrateGvaShellSettings();
+    hydrateFnaShellSettings();
   }, []);
 
   useEffect(() => {
-    applyGvaShellCss(shellSettings);
+    applyFnaShellCss(shellSettings);
   }, [shellSettings, theme, themeReady]);
 
   // 「顶部导航」布局会隐藏侧栏；若本地误存成 head，自动恢复经典布局以露出侧栏
@@ -61,7 +61,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
     if (shellSettings.layout.mode !== 'head') {
       return;
     }
-    writeGvaShellSettings({
+    writeFnaShellSettings({
       ...shellSettings,
       layout: { ...shellSettings.layout, mode: 'normal' },
     });
@@ -69,8 +69,8 @@ export function DashboardShell({ children }: PropsWithChildren) {
 
   // 仅在壳层挂载/卸载时清理残留离场层；不要在 pathname 变化时清，否则会掐断离场动画
   useEffect(() => {
-    resetGvaPageLeave();
-    return () => resetGvaPageLeave();
+    resetFnaPageLeave();
+    return () => resetFnaPageLeave();
   }, []);
 
   function closeMobileSidebar() {
@@ -88,8 +88,8 @@ export function DashboardShell({ children }: PropsWithChildren) {
     setIsSidebarCollapsed((currentValue) => !currentValue);
   }
 
-  function handleShellSettingsChange(next: GvaShellSettings) {
-    writeGvaShellSettings(next);
+  function handleShellSettingsChange(next: FnaShellSettings) {
+    writeFnaShellSettings(next);
   }
 
   const handleEscapeKey = useEffectEvent((event: KeyboardEvent) => {
@@ -153,7 +153,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
 
   return (
     <div
-      className="appShell gvaAppShell"
+      className="appShell fnaAppShell"
       data-sidebar-collapsed={isSidebarCollapsed ? 'true' : 'false'}
       data-sidebar-open={isMobileSidebarOpen ? 'true' : 'false'}
       data-dark-sider={shellSettings.menu.darkSider ? 'true' : 'false'}
@@ -168,7 +168,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
         shellSettings={shellSettings}
         onShellSettingsChange={handleShellSettingsChange}
       />
-      <div className="gvaBody">
+      <div className="fnaBody">
         <Sidebar
           sidebarId={sidebarId}
           isCollapsed={isSidebarCollapsed}
@@ -180,7 +180,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
           onClose={closeMobileSidebar}
           onToggleCollapse={toggleSidebarCollapse}
         />
-        <div className="gvaMainColumn">
+        <div className="fnaMainColumn">
           {shellSettings.tab.visible ? (
             <TagsView
               tabMode={shellSettings.tab.mode}
@@ -190,30 +190,30 @@ export function DashboardShell({ children }: PropsWithChildren) {
           {isMobileSidebarOpen ? (
             <div className="sidebarBackdrop" role="presentation" onClick={closeMobileSidebar} />
           ) : null}
-          <div className="appContent gvaAppContent">
-            {/* 对齐 GVA：#gva-base-load-dom + .gva-body-h，页脚在其外，切换时不上跳 */}
-            <div id="gva-base-load-dom" className="gvaBodyH">
-              <GvaRouteLoadingEffects />
-              <main className="pageContent gvaPageContent">
+          <div className="appContent fnaAppContent">
+            {/* 对齐 gin-vue-admin：#fna-base-load-dom + .fna-body-h，页脚在其外，切换时不上跳 */}
+            <div id="fna-base-load-dom" className="fnaBodyH">
+              <FnaRouteLoadingEffects />
+              <main className="pageContent fnaPageContent">
                 {isLoading && !user ? (
                   <div className="adminLoading">加载中…</div>
                 ) : (
-                  <GvaPageTransition pageKey={pathname} name={shellSettings.page.transition}>
+                  <FnaPageTransition pageKey={pathname} name={shellSettings.page.transition}>
                     <Suspense fallback={<div className="adminLoading">加载中…</div>}>
                       {children}
                     </Suspense>
-                  </GvaPageTransition>
+                  </FnaPageTransition>
                 )}
               </main>
             </div>
-            <BottomInfo className="gvaLayoutFooter" />
+            <BottomInfo className="fnaLayoutFooter" />
           </div>
         </div>
       </div>
       {shellSettings.watermark.visible ? (
-        <div className="gvaWatermark" aria-hidden="true">
+        <div className="fnaWatermark" aria-hidden="true">
           {Array.from({ length: 24 }, (_, index) => (
-            <span key={index}>Go Admin</span>
+            <span key={index}>FNA</span>
           ))}
         </div>
       ) : null}

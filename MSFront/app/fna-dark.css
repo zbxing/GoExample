@@ -1,0 +1,1821 @@
+/**
+ * 夜间主题（对齐 gin-vue-admin html.dark + Element Plus dark/css-vars）
+ * 布局仍走 .theme-fna；暗色只叠加 html.dark。
+ */
+
+html.dark,
+html.theme-fna.dark {
+  color-scheme: dark;
+
+  /*
+   * 夜间配色：抽屉/弹层背景对齐参考项目 #141414
+   * （页面画布可略深；overlay 略亮一层）
+   */
+  --el-bg-color-page: rgb(30, 31, 33);
+  --el-bg-color: #141414;
+  --el-bg-color-overlay: #1d1d1d;
+  --el-text-color-primary: #e5eaf3;
+  --el-text-color-regular: #cfd3dc;
+  --el-text-color-secondary: #a3a6ad;
+  --el-text-color-placeholder: #8d9095;
+  --el-text-color-disabled: #6c6e72;
+  /*
+   * 边框阶梯对齐 Element Plus dark/css-vars（及 gin-vue-admin border-table-border → lighter）
+   * 原先整体偏暗一档，列表线 #2b2b2c 在深色底上几乎看不见。
+   */
+  --el-border-color-darker: #636466;
+  --el-border-color-dark: #58585b;
+  --el-border-color: #4c4d4f;
+  --el-border-color-light: #414243;
+  --el-border-color-lighter: #363637;
+  --el-border-color-extra-light: #2b2b2c;
+  --el-fill-color: #2a2a2b;
+  --el-fill-color-light: #262727;
+  --el-fill-color-lighter: #1d1d1d;
+  --el-fill-color-blank: transparent;
+  --el-table-bg-color: transparent;
+  --el-table-tr-bg-color: var(--fna-card-bg);
+  --el-table-header-bg-color: var(--fna-card-bg);
+  /* 对齐 gin-vue-admin：dark:text-gray-200 */
+  --el-table-header-text-color: #e5e7eb;
+  --el-table-text-color: var(--el-text-color-regular);
+  --el-table-row-hover-bg-color: #262727;
+  /* 列表内外框：与 EP/gin-vue-admin 一致，走 lighter */
+  --el-table-border-color: var(--el-border-color-lighter);
+  --el-table-current-row-bg-color: rgba(var(--fna-primary), 0.16);
+  --el-color-danger: #f56c6c;
+  --el-mask-color: rgba(0, 0, 0, 0.8);
+  --el-box-shadow-light: 0 0 12px rgba(0, 0, 0, 0.72);
+
+  --page-background: rgb(30, 31, 33);
+  --surface-primary: rgb(17, 18, 20);
+  --surface-secondary: rgb(30, 31, 33);
+  --surface-strong: rgb(17, 18, 20);
+  --border-subtle: var(--el-border-color-lighter);
+  --text-primary: #e5eaf3;
+  --text-secondary: #a3a6ad;
+  --fna-page-bg: rgb(30, 31, 33);
+  --fna-card-bg: rgb(17, 18, 20);
+  --fna-card-border: var(--el-border-color-lighter);
+  --fna-text-main: #e5eaf3;
+  --fna-text-sub: #a3a6ad;
+  /* 欢迎卡与内容卡同源，避免 slate 蓝底；边框用 light 档更清晰 */
+  --fna-welcome-bg: var(--fna-card-bg, rgb(17, 18, 20));
+  --fna-welcome-border: var(--el-border-color-light);
+  --fna-license-bg: #0f172a;
+  --reference-card-border: var(--el-border-color-light);
+  --fna-header-bg: rgb(15, 23, 42);
+  --fna-header-shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.35);
+  --fna-tab-bg: rgb(15, 23, 42);
+  --fna-tabs-bg: rgb(15, 23, 42);
+  --fna-tab-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --fna-tabs-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --fna-sidebar: rgb(17, 18, 20);
+  --fna-sidebar-text: #a3a6ad;
+  /* chrome 选中底：偏亮主色，避免发黑看不清（对齐参考 ≈ rgb(56,101,186)） */
+  --fna-primary-50: 48, 90, 180;
+  --primary-50-color: 48, 90, 180;
+
+  /*
+   * 暗色主色阶：向黑混合，但 light-3 只压约 15%（原先 30% 主按钮悬浮过黑）。
+   * ThemeProvider 写入的 inline 色阶仍会覆盖；主按钮另有专用悬浮规则。
+   */
+  --el-color-primary-dark-1: color-mix(in srgb, var(--el-color-primary, #2264f2) 90%, #000 10%);
+  --el-color-primary-dark-2: color-mix(in srgb, var(--el-color-primary, #2264f2) 80%, #000 20%);
+  --el-color-primary-light-1: color-mix(in srgb, var(--el-color-primary, #2264f2) 92%, #000 8%);
+  --el-color-primary-light-2: color-mix(in srgb, var(--el-color-primary, #2264f2) 88%, #000 12%);
+  --el-color-primary-light-3: color-mix(in srgb, var(--el-color-primary, #2264f2) 85%, #000 15%);
+  --el-color-primary-light-5: color-mix(in srgb, var(--el-color-primary, #2264f2) 50%, #000 50%);
+  --el-color-primary-light-7: color-mix(in srgb, var(--el-color-primary, #2264f2) 30%, #000 70%);
+  --el-color-primary-light-8: color-mix(in srgb, var(--el-color-primary, #2264f2) 20%, #000 80%);
+  --el-color-primary-light-9: color-mix(in srgb, var(--el-color-primary, #2264f2) 10%, #000 90%);
+}
+
+/* ---- Shell chrome ---- */
+html.dark .fnaAppShell,
+html.theme-fna.dark .fnaAppShell {
+  background: var(--el-bg-color-page) !important;
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaTopbar,
+html.theme-fna.dark .fnaTopbar,
+html.dark .topbar.fnaTopbar,
+html.theme-fna.dark .topbar.fnaTopbar {
+  background: var(--fna-header-bg, rgb(15, 23, 42)) !important;
+  color: var(--el-text-color-regular);
+  border-bottom: 0 !important;
+  box-shadow: var(--fna-header-shadow) !important;
+}
+
+html.dark .fnaTagsView,
+html.theme-fna.dark .fnaTagsView {
+  background: var(--fna-tab-bg, var(--fna-tabs-bg, rgb(15, 23, 42))) !important;
+  color: var(--el-text-color-regular);
+  box-shadow: var(--fna-tab-shadow, var(--fna-tabs-shadow));
+  border-bottom: 1px solid var(--el-border-color-extra-light, #1f1f1f);
+}
+
+html.dark .fnaMainColumn,
+html.theme-fna.dark .fnaMainColumn,
+html.dark .fnaAppContent,
+html.theme-fna.dark .fnaAppContent,
+html.dark .appContent,
+html.theme-fna.dark .appContent,
+html.dark .fnaBodyH,
+html.theme-fna.dark .fnaBodyH,
+html.dark .fnaPageContent,
+html.theme-fna.dark .fnaPageContent,
+html.dark .pageContent.fnaPageContent,
+html.theme-fna.dark .pageContent.fnaPageContent,
+html.dark .fnaLayoutFooter,
+html.theme-fna.dark .fnaLayoutFooter,
+html.dark .fnaBottomInfo,
+html.theme-fna.dark .fnaBottomInfo {
+  background: var(--fna-page-bg, var(--el-bg-color-page)) !important;
+  color: var(--el-text-color-regular);
+  box-shadow: none;
+}
+
+html.dark .fnaBreadcrumb,
+html.theme-fna.dark .fnaBreadcrumb,
+html.dark .fnaBreadcrumbItem,
+html.theme-fna.dark .fnaBreadcrumbItem,
+html.dark .fnaBreadcrumbSep,
+html.theme-fna.dark .fnaBreadcrumbSep {
+  color: var(--el-text-color-secondary) !important;
+}
+
+html.dark .fnaBreadcrumbCurrent,
+html.theme-fna.dark .fnaBreadcrumbCurrent {
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .fnaHeaderBrand,
+html.theme-fna.dark .fnaHeaderBrand,
+html.dark .fnaHeaderBrand strong,
+html.theme-fna.dark .fnaHeaderBrand strong,
+html.dark .fnaUserName,
+html.theme-fna.dark .fnaUserName {
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .fnaHeaderDivider,
+html.theme-fna.dark .fnaHeaderDivider {
+  background: var(--el-border-color-light);
+}
+
+html.dark .fnaMorphBtn,
+html.theme-fna.dark .fnaMorphBtn {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaMorphBtn:hover,
+html.theme-fna.dark .fnaMorphBtn:hover {
+  color: var(--el-text-color-primary);
+  background: var(--el-fill-color-light);
+}
+
+html.dark .fnaUserTrigger,
+html.theme-fna.dark .fnaUserTrigger {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaUserDropdown,
+html.theme-fna.dark .fnaUserDropdown {
+  background: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color-light) !important;
+  color: var(--el-text-color-regular);
+  box-shadow: var(--el-box-shadow-light);
+}
+
+html.dark .fnaUserDropdownMeta,
+html.theme-fna.dark .fnaUserDropdownMeta {
+  border-bottom-color: var(--el-border-color-lighter, #2b2b2c) !important;
+}
+
+html.dark .fnaUserDropdownMeta p,
+html.theme-fna.dark .fnaUserDropdownMeta p {
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+}
+
+html.dark .fnaUserDropdown button,
+html.theme-fna.dark .fnaUserDropdown button {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaUserDropdown button:hover,
+html.theme-fna.dark .fnaUserDropdown button:hover {
+  background: var(--el-fill-color-light);
+  color: var(--el-color-primary);
+}
+
+html.dark .fnaSidebar,
+html.theme-fna.dark .fnaSidebar,
+html.dark .fnaSidebar:not([data-dark='true']),
+html.theme-fna.dark .fnaSidebar:not([data-dark='true']),
+html.dark .sidebar.fnaSidebar,
+html.theme-fna.dark .sidebar.fnaSidebar {
+  background: var(--fna-sidebar, rgb(17, 18, 20)) !important;
+  color: var(--el-text-color-secondary) !important;
+  border: 0 !important;
+  border-right: 0 !important;
+  /* 暗色侧栏右缘：用极淡阴影代替浅色描边，避免白线 */
+  box-shadow: 1px 0 0 0 var(--el-border-color-extra-light, #2b2b2c);
+}
+
+html.dark .fnaCollapseBar,
+html.theme-fna.dark .fnaCollapseBar,
+html.dark .fnaSidebar .fnaCollapseBar,
+html.theme-fna.dark .fnaSidebar .fnaCollapseBar,
+html.dark .fnaSidebar[data-dark='true'] .fnaCollapseBar,
+html.theme-fna.dark .fnaSidebar[data-dark='true'] .fnaCollapseBar {
+  border-top-color: var(--el-border-color-lighter, #363637) !important;
+  color: var(--el-text-color-secondary) !important;
+}
+
+html.dark .fnaCollapseBar:hover,
+html.theme-fna.dark .fnaCollapseBar:hover {
+  background: var(--el-fill-color-light) !important;
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .fnaSidebar .fnaMenuItem,
+html.theme-fna.dark .fnaSidebar .fnaMenuItem,
+html.dark .fnaSidebar .navItem,
+html.theme-fna.dark .fnaSidebar .navItem {
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .fnaSidebar .fnaMenuItem:hover:not(.is-active):not(.is-branch-active),
+html.theme-fna.dark .fnaSidebar .fnaMenuItem:hover:not(.is-active):not(.is-branch-active) {
+  background: var(--el-fill-color-light) !important;
+  color: var(--el-text-color-primary) !important;
+}
+
+/* 选中叶子 / 展开父级：悬浮保持选中色，对齐 gin-vue-admin */
+html.dark .fnaSidebar .fnaMenuItem.is-active,
+html.theme-fna.dark .fnaSidebar .fnaMenuItem.is-active,
+html.dark .fnaSidebar .fnaMenuItem.is-active:hover,
+html.theme-fna.dark .fnaSidebar .fnaMenuItem.is-active:hover {
+  color: #fff !important;
+  background: rgb(var(--fna-primary, 34, 100, 242)) !important;
+}
+
+html.dark .fnaSidebar .fnaMenuItem.is-branch-active,
+html.theme-fna.dark .fnaSidebar .fnaMenuItem.is-branch-active,
+html.dark .fnaSidebar .fnaMenuItem.is-branch-active:hover,
+html.theme-fna.dark .fnaSidebar .fnaMenuItem.is-branch-active:hover {
+  color: var(--el-color-primary) !important;
+  background: transparent !important;
+}
+
+html.dark .fnaSidebar .fnaMenuItem.is-branch-active,
+html.theme-fna.dark .fnaSidebar .fnaMenuItem.is-branch-active {
+  color: var(--el-color-primary) !important;
+  background: transparent !important;
+}
+
+/* ---- Tags ---- */
+html.dark .fnaPageTab,
+html.theme-fna.dark .fnaPageTab {
+  color: #e5eaf3;
+}
+
+html.dark .fnaPageTab-button,
+html.theme-fna.dark .fnaPageTab-button,
+html.dark .fnaPageTab-slider,
+html.theme-fna.dark .fnaPageTab-slider {
+  color: #e5eaf3;
+  background: transparent;
+}
+
+html.dark .fnaPageTab-button:hover:not(.is-active),
+html.theme-fna.dark .fnaPageTab-button:hover:not(.is-active),
+html.dark .fnaPageTab-slider:hover:not(.is-active),
+html.theme-fna.dark .fnaPageTab-slider:hover:not(.is-active) {
+  color: rgb(var(--fna-primary));
+  /* --fna-primary 为 "r, g, b"，必须用 rgba(..., a)，不能用 rgb(var() / a) */
+  background: rgba(var(--fna-primary), 0.08);
+}
+
+/*
+ * 对齐 gin-vue-admin ButtonTab：
+ * hover: primary/0.08；active: primary/0.12 + text-active
+ */
+html.dark .fnaPageTab-button.is-active,
+html.theme-fna.dark .fnaPageTab-button.is-active {
+  color: rgb(var(--fna-primary)) !important;
+  background: rgba(var(--fna-primary), 0.12) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.dark .fnaPageTab-button.is-active:hover,
+html.theme-fna.dark .fnaPageTab-button.is-active:hover {
+  background: rgba(var(--fna-primary), 0.12) !important;
+}
+
+html.dark .fnaPageTab-slider.is-active,
+html.theme-fna.dark .fnaPageTab-slider.is-active {
+  color: rgb(var(--fna-primary)) !important;
+  background: rgba(var(--fna-primary), 0.12) !important;
+  border-bottom-color: rgb(var(--fna-primary)) !important;
+}
+
+/* 选中：仅文字 / 左侧图标跟主色；关闭钮颜色不变 */
+html.dark .fnaPageTab.is-active .fnaPageTabLabel,
+html.theme-fna.dark .fnaPageTab.is-active .fnaPageTabLabel,
+html.dark .fnaPageTab.is-active .fnaPageTabIcon,
+html.theme-fna.dark .fnaPageTab.is-active .fnaPageTabIcon {
+  color: rgb(var(--fna-primary)) !important;
+}
+
+html.dark .fnaPageTab-button.is-dragging,
+html.theme-fna.dark .fnaPageTab-button.is-dragging {
+  background: var(--el-bg-color-overlay) !important;
+}
+
+/* 关闭钮固定次要色，不随选中变主色 */
+html.dark .fnaPageTabClose,
+html.theme-fna.dark .fnaPageTabClose {
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+}
+
+html.dark .fnaPageTabClose:hover,
+html.theme-fna.dark .fnaPageTabClose:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+html.dark .fnaTagsContextMenu,
+html.theme-fna.dark .fnaTagsContextMenu {
+  background: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color-light) !important;
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaTagsContextMenu button,
+html.theme-fna.dark .fnaTagsContextMenu button {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaTagsContextMenu button:hover,
+html.theme-fna.dark .fnaTagsContextMenu button:hover {
+  background: var(--el-fill-color-light);
+}
+
+html.dark .fnaChromeHover,
+html.theme-fna.dark .fnaChromeHover {
+  background: rgba(var(--fna-primary), 0.08);
+}
+
+/* ---- Cards / search / tables ---- */
+html.dark .fnaSystemCard,
+html.theme-fna.dark .fnaSystemCard,
+html.dark .fnaSearchBox,
+html.theme-fna.dark .fnaSearchBox {
+  background: var(--fna-card-bg, rgb(17, 18, 20)) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .adminTableWrap.fnaTableBox,
+html.theme-fna.dark .adminTableWrap.fnaTableBox,
+html.dark .fnaTableBox,
+html.theme-fna.dark .fnaTableBox {
+  background: transparent !important;
+  color: var(--el-text-color-regular) !important;
+  border-color: var(--el-table-border-color, var(--el-border-color-lighter)) !important;
+  box-shadow: none !important;
+}
+
+html.dark .fnaWarningBar,
+html.theme-fna.dark .fnaWarningBar {
+  /* 对齐 gin-vue-admin warningBar：dark:bg-amber-700 dark:text-gray-200 */
+  background: #b45309 !important;
+  color: #e5e7eb !important;
+  border: 0 !important;
+  padding: 10px 8px !important;
+  margin-top: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  /* 勿清零 margin-bottom，需保留与下方标题的间距 */
+  line-height: 1.25 !important;
+}
+
+html.dark .fnaFormDrawerBody .fnaWarningBar,
+html.theme-fna.dark .fnaFormDrawerBody .fnaWarningBar,
+html.dark .adminDialogBody .fnaWarningBar,
+html.theme-fna.dark .adminDialogBody .fnaWarningBar {
+  margin-bottom: 12px !important;
+}
+
+html.dark .fnaFieldControl input,
+html.theme-fna.dark .fnaFieldControl input,
+html.dark .fnaFieldControl select,
+html.theme-fna.dark .fnaFieldControl select,
+html.dark .fnaDialogForm input,
+html.theme-fna.dark .fnaDialogForm input,
+html.dark .fnaDialogForm select,
+html.theme-fna.dark .fnaDialogForm select,
+html.dark .fnaDialogForm textarea,
+html.theme-fna.dark .fnaDialogForm textarea,
+html.dark .fnaSelectTrigger,
+html.theme-fna.dark .fnaSelectTrigger,
+html.dark .fnaElInput,
+html.theme-fna.dark .fnaElInput,
+html.dark .fnaPaginationJumpInput,
+html.theme-fna.dark .fnaPaginationJumpInput {
+  background: var(--el-fill-color-blank, transparent) !important;
+  background-color: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .fnaPaginationJump,
+html.theme-fna.dark .fnaPaginationJump {
+  color: var(--el-text-color-regular) !important;
+}
+
+/*
+ * 夜间：输入框 / 下拉触发器 悬浮·聚焦边框统一为下拉框悬浮色（主色）
+ * 需 !important，否则会被上方默认 border-color !important 盖住
+ */
+html.dark .fnaFieldControl input:hover,
+html.theme-fna.dark .fnaFieldControl input:hover,
+html.dark .fnaFieldControl select:hover,
+html.theme-fna.dark .fnaFieldControl select:hover,
+html.dark .fnaDialogForm input:hover,
+html.theme-fna.dark .fnaDialogForm input:hover,
+html.dark .fnaDialogForm select:hover,
+html.theme-fna.dark .fnaDialogForm select:hover,
+html.dark .fnaDialogForm textarea:hover,
+html.theme-fna.dark .fnaDialogForm textarea:hover,
+html.dark .fnaSelectTrigger:hover,
+html.theme-fna.dark .fnaSelectTrigger:hover,
+html.dark .fnaSelect.is-open .fnaSelectTrigger,
+html.theme-fna.dark .fnaSelect.is-open .fnaSelectTrigger,
+html.dark .fnaElInput:hover,
+html.theme-fna.dark .fnaElInput:hover,
+html.dark .fnaElInput:focus-within,
+html.theme-fna.dark .fnaElInput:focus-within,
+html.dark .fnaPaginationJumpInput:hover,
+html.theme-fna.dark .fnaPaginationJumpInput:hover,
+html.dark .fnaPaginationJumpInput:focus,
+html.theme-fna.dark .fnaPaginationJumpInput:focus,
+html.dark .fnaFieldControl input:focus,
+html.theme-fna.dark .fnaFieldControl input:focus,
+html.dark .fnaFieldControl select:focus,
+html.theme-fna.dark .fnaFieldControl select:focus,
+html.dark .fnaDialogForm input:focus,
+html.theme-fna.dark .fnaDialogForm input:focus,
+html.dark .fnaDialogForm select:focus,
+html.theme-fna.dark .fnaDialogForm select:focus,
+html.dark .fnaDialogForm textarea:focus,
+html.theme-fna.dark .fnaDialogForm textarea:focus {
+  border-color: var(--el-color-primary) !important;
+}
+
+html.dark .fnaSelectValue.is-placeholder,
+html.theme-fna.dark .fnaSelectValue.is-placeholder {
+  color: var(--el-text-color-placeholder) !important;
+}
+
+html.dark .fnaSelectDropdown,
+html.theme-fna.dark .fnaSelectDropdown {
+  background: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color-light) !important;
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaSelectOption,
+html.theme-fna.dark .fnaSelectOption {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaSelectOption:hover,
+html.theme-fna.dark .fnaSelectOption:hover {
+  background: var(--el-fill-color-light);
+}
+
+html.dark .fnaSelectOption.is-selected,
+html.theme-fna.dark .fnaSelectOption.is-selected {
+  color: var(--el-color-primary);
+  background: rgba(64, 158, 255, 0.12);
+}
+
+html.dark .theme-fna .elButton,
+html.theme-fna.dark .elButton,
+html.dark .elButton {
+  background: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+/*
+ * 默认按钮（抽屉「取消」等）：对齐 EP hover=light-9 / border=light-7。
+ * 暗色：底偏暗蓝（主色占比低），边框略亮于底，避免参考 light-9 近黑或过亮蓝。
+ */
+html.dark .theme-fna .elButton:hover:not(:disabled):not(.elButtonPrimary),
+html.theme-fna.dark .elButton:hover:not(:disabled):not(.elButtonPrimary),
+html.dark .elButton:hover:not(:disabled):not(.elButtonPrimary) {
+  color: var(--el-color-primary) !important;
+  background: color-mix(
+    in srgb,
+    var(--el-color-primary, #2264f2) 12%,
+    var(--el-bg-color, #141414) 88%
+  ) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--el-color-primary, #2264f2) 48%,
+    var(--el-border-color-lighter, #363637) 52%
+  ) !important;
+}
+
+html.dark .theme-fna .elButton:active:not(:disabled):not(.elButtonPrimary),
+html.theme-fna.dark .elButton:active:not(:disabled):not(.elButtonPrimary),
+html.dark .elButton:active:not(:disabled):not(.elButtonPrimary) {
+  color: var(--el-color-primary) !important;
+  background: color-mix(
+    in srgb,
+    var(--el-color-primary, #2264f2) 16%,
+    var(--el-bg-color, #141414) 84%
+  ) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--el-color-primary, #2264f2) 55%,
+    var(--el-border-color-lighter, #363637) 45%
+  ) !important;
+}
+
+html.dark .theme-fna .elButton.elButtonPrimary,
+html.theme-fna.dark .elButton.elButtonPrimary,
+html.dark .elButton.elButtonPrimary {
+  background: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+  color: #fff !important;
+}
+
+html.dark .theme-fna .elButton.elButtonPrimary:hover:not(:disabled),
+html.theme-fna.dark .elButton.elButtonPrimary:hover:not(:disabled),
+html.dark .elButton.elButtonPrimary:hover:not(:disabled) {
+  background: var(--el-color-primary-light-3) !important;
+  border-color: var(--el-color-primary-light-3) !important;
+  color: #fff !important;
+}
+
+html.dark .theme-fna .elButton.elButtonPrimary:active:not(:disabled),
+html.theme-fna.dark .elButton.elButtonPrimary:active:not(:disabled),
+html.dark .elButton.elButtonPrimary:active:not(:disabled) {
+  background: var(--el-color-primary-dark-2) !important;
+  border-color: var(--el-color-primary-dark-2) !important;
+  color: #fff !important;
+}
+
+html.dark .fnaElTable,
+html.theme-fna.dark .fnaElTable,
+html.dark .adminTable,
+html.theme-fna.dark .adminTable,
+html.dark .adminTable.fnaElTable,
+html.theme-fna.dark .adminTable.fnaElTable {
+  background: var(--el-table-bg-color, transparent) !important;
+  color: var(--el-table-text-color, var(--el-text-color-regular)) !important;
+}
+
+html.dark .fnaElTable th,
+html.theme-fna.dark .fnaElTable th,
+html.dark .fnaElTable td,
+html.theme-fna.dark .fnaElTable td,
+html.dark .adminTable th,
+html.theme-fna.dark .adminTable th,
+html.dark .adminTable td,
+html.theme-fna.dark .adminTable td,
+html.dark .adminTable.fnaElTable th,
+html.theme-fna.dark .adminTable.fnaElTable th,
+html.dark .adminTable.fnaElTable td,
+html.theme-fna.dark .adminTable.fnaElTable td {
+  background: var(--el-table-tr-bg-color, var(--el-bg-color)) !important;
+  background-color: var(--el-table-tr-bg-color, var(--el-bg-color)) !important;
+  border-bottom-color: var(--el-table-border-color, var(--el-border-color-lighter)) !important;
+  color: var(--el-table-text-color, var(--el-text-color-regular)) !important;
+}
+
+html.dark .fnaElTable thead th,
+html.theme-fna.dark .fnaElTable thead th,
+html.dark .adminTable thead th,
+html.theme-fna.dark .adminTable thead th,
+html.dark .adminTable.fnaElTable thead th,
+html.theme-fna.dark .adminTable.fnaElTable thead th,
+html.dark .fnaElTable thead > tr > th,
+html.theme-fna.dark .fnaElTable thead > tr > th {
+  background: var(--el-table-header-bg-color, var(--el-bg-color)) !important;
+  background-color: var(--el-table-header-bg-color, var(--el-bg-color)) !important;
+  color: var(--el-table-header-text-color, #e5e7eb) !important;
+}
+
+html.dark .fnaElTable th .fnaElTableCell,
+html.theme-fna.dark .fnaElTable th .fnaElTableCell,
+html.dark .adminTable th .fnaElTableCell,
+html.theme-fna.dark .adminTable th .fnaElTableCell {
+  color: var(--el-table-header-text-color, #e5e7eb) !important;
+}
+
+html.dark .fnaElTable td .fnaElTableCell,
+html.theme-fna.dark .fnaElTable td .fnaElTableCell,
+html.dark .adminTable td .fnaElTableCell,
+html.theme-fna.dark .adminTable td .fnaElTableCell,
+html.dark .fnaElTable .fnaElTableCell,
+html.theme-fna.dark .fnaElTable .fnaElTableCell {
+  color: var(--el-table-text-color, var(--el-text-color-regular)) !important;
+}
+
+html.dark .fnaElTable tbody tr:hover > td,
+html.theme-fna.dark .fnaElTable tbody tr:hover > td,
+html.dark .adminTable tbody tr:hover > td,
+html.theme-fna.dark .adminTable tbody tr:hover > td {
+  background: var(--el-table-row-hover-bg-color, var(--el-fill-color-light)) !important;
+  background-color: var(--el-table-row-hover-bg-color, var(--el-fill-color-light)) !important;
+}
+
+html.dark .adminTableWrap.fnaTableBox,
+html.theme-fna.dark .adminTableWrap.fnaTableBox,
+html.dark .fnaTableBox,
+html.theme-fna.dark .fnaTableBox {
+  border-color: var(--el-table-border-color, var(--el-border-color-lighter)) !important;
+  background: transparent !important;
+}
+
+html.dark .adminEmpty,
+html.theme-fna.dark .adminEmpty,
+html.dark .fnaTableEmpty,
+html.theme-fna.dark .fnaTableEmpty {
+  color: var(--el-text-color-secondary);
+}
+
+html.dark .fnaPagination,
+html.theme-fna.dark .fnaPagination,
+html.dark .fnaPaginationTotal,
+html.theme-fna.dark .fnaPaginationTotal {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaPaginationBtn,
+html.theme-fna.dark .fnaPaginationBtn {
+  background: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .fnaPaginationBtn.is-active,
+html.theme-fna.dark .fnaPaginationBtn.is-active {
+  background: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+  color: #fff !important;
+}
+
+html.dark .fnaContentLoading,
+html.theme-fna.dark .fnaContentLoading {
+  background: rgba(10, 10, 10, 0.55);
+  color: var(--el-text-color-regular);
+}
+
+/* ---- Dialogs / drawers / messages ---- */
+html.dark .adminDialog,
+html.theme-fna.dark .adminDialog,
+html.dark .fnaDialog,
+html.theme-fna.dark .fnaDialog,
+html.dark .fnaDrawer,
+html.theme-fna.dark .fnaDrawer,
+html.dark .fnaFormDrawer,
+html.theme-fna.dark .fnaFormDrawer,
+html.dark .fnaThemeDrawer .fnaDrawer,
+html.theme-fna.dark .fnaThemeDrawer .fnaDrawer {
+  /* 对齐参考项目右侧抽屉：#141414 */
+  background: #141414 !important;
+  color: var(--el-text-color-regular) !important;
+  border-color: var(--el-border-color-light);
+}
+
+html.dark .adminDialogHeader,
+html.theme-fna.dark .adminDialogHeader,
+html.dark .adminDialogFooter,
+html.theme-fna.dark .adminDialogFooter,
+html.dark .fnaDrawerHeader,
+html.theme-fna.dark .fnaDrawerHeader {
+  border-color: var(--el-border-color-lighter) !important;
+  color: var(--el-text-color-primary);
+}
+
+html.dark .fnaFormDrawerBody .fnaField > span:first-child,
+html.theme-fna.dark .fnaFormDrawerBody .fnaField > span:first-child,
+html.dark .fnaDialogForm .fnaField > span:first-child,
+html.theme-fna.dark .fnaDialogForm .fnaField > span:first-child {
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .fnaFormDrawerBody .fnaField input,
+html.theme-fna.dark .fnaFormDrawerBody .fnaField input,
+html.dark .fnaFormDrawerBody .fnaField select,
+html.theme-fna.dark .fnaFormDrawerBody .fnaField select,
+html.dark .fnaFormDrawerBody .fnaField textarea,
+html.theme-fna.dark .fnaFormDrawerBody .fnaField textarea {
+  background: var(--el-fill-color-blank, transparent) !important;
+  background-color: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .fnaFormDrawerHeader,
+html.theme-fna.dark .fnaFormDrawerHeader {
+  border-bottom-color: var(--el-border-color, #4c4d4f) !important;
+  color: var(--el-text-color-primary);
+}
+
+html.dark .fnaMessage.is-plain,
+html.theme-fna.dark .fnaMessage.is-plain {
+  background: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-bg-color-overlay) !important;
+  box-shadow: var(--el-box-shadow-light);
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaCommandPanel.commandPalettePanel,
+html.theme-fna.dark .fnaCommandPanel.commandPalettePanel {
+  background: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color-light) !important;
+  color: var(--el-text-color-regular);
+}
+
+/* ---- Dashboard / reference page（对齐 gin-vue-admin dashboard）---- */
+html.dark,
+html.theme-fna.dark {
+  --reference-chart-axis: rgba(255, 255, 255, 0.7);
+  --reference-chart-grid: rgba(255, 255, 255, 0.12);
+  --reference-table-stripe: rgba(255, 255, 255, 0.03);
+  /* 内容块边框对齐 GVA dark:border-slate-700 / el-border-color-light，避免 lighter 几乎看不见 */
+  --reference-card-border: var(--el-border-color-light);
+  --fna-welcome-bg: var(--fna-card-bg, rgb(17, 18, 20));
+  --fna-welcome-border: var(--reference-card-border);
+}
+
+html.dark .referenceWelcome,
+html.theme-fna.dark .referenceWelcome,
+html.dark .theme-fna .referenceWelcome,
+html.theme-fna.dark .theme-fna .referenceWelcome,
+html.dark .referencePanel,
+html.theme-fna.dark .referencePanel,
+html.dark .referenceMetricCard,
+html.theme-fna.dark .referenceMetricCard,
+html.dark .theme-fna .referencePanel,
+html.theme-fna.dark .theme-fna .referencePanel,
+html.dark .theme-fna .referenceMetricCard,
+html.theme-fna.dark .theme-fna .referenceMetricCard {
+  background: var(--fna-card-bg, rgb(17, 18, 20)) !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .referenceWelcome h1,
+html.theme-fna.dark .referenceWelcome h1,
+html.dark .referenceMetricValue,
+html.theme-fna.dark .referenceMetricValue,
+html.dark .referencePanelTitle h2,
+html.theme-fna.dark .referencePanelTitle h2,
+html.dark .referenceMetricCard strong,
+html.theme-fna.dark .referenceMetricCard strong,
+html.dark .referenceTable td strong,
+html.theme-fna.dark .referenceTable td strong,
+html.dark .referenceNotice p,
+html.theme-fna.dark .referenceNotice p,
+html.dark .referenceDocLink,
+html.theme-fna.dark .referenceDocLink,
+html.dark .referenceQuickLink,
+html.theme-fna.dark .referenceQuickLink,
+html.dark .referenceExternalLink,
+html.theme-fna.dark .referenceExternalLink {
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .referenceWelcome p,
+html.theme-fna.dark .referenceWelcome p,
+html.dark .referenceEyebrow,
+html.theme-fna.dark .referenceEyebrow,
+html.dark .referenceRailLabel,
+html.theme-fna.dark .referenceRailLabel,
+html.dark .referenceMetricDelta,
+html.theme-fna.dark .referenceMetricDelta,
+html.dark .referenceNotice time,
+html.theme-fna.dark .referenceNotice time,
+html.dark .referenceExternalLink small,
+html.theme-fna.dark .referenceExternalLink small,
+html.dark .referencePanelTitle a,
+html.theme-fna.dark .referencePanelTitle a,
+html.dark .referencePanelAction,
+html.theme-fna.dark .referencePanelAction,
+html.dark .referenceChartLabels,
+html.theme-fna.dark .referenceChartLabels,
+html.dark .referenceChartYAxis,
+html.theme-fna.dark .referenceChartYAxis,
+html.dark .referenceChartGrid span,
+html.theme-fna.dark .referenceChartGrid span {
+  color: var(--reference-chart-axis, rgba(255, 255, 255, 0.7)) !important;
+}
+
+html.dark .referenceWelcome .secondaryButton,
+html.theme-fna.dark .referenceWelcome .secondaryButton {
+  background: var(--el-fill-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .referenceTable,
+html.theme-fna.dark .referenceTable {
+  color: var(--el-table-text-color, var(--el-text-color-regular));
+}
+
+html.dark .referenceTable th,
+html.theme-fna.dark .referenceTable th,
+html.dark .referenceTable td,
+html.theme-fna.dark .referenceTable td {
+  border-color: var(--el-table-border-color, var(--el-border-color-lighter)) !important;
+  color: var(--el-table-text-color, var(--el-text-color-regular)) !important;
+  background: transparent !important;
+}
+
+html.dark .referenceTable thead th,
+html.theme-fna.dark .referenceTable thead th {
+  background: transparent !important;
+  color: var(--el-table-header-text-color, #e5e7eb) !important;
+}
+
+html.dark .referenceTableStriped tbody tr:nth-child(even),
+html.theme-fna.dark .referenceTableStriped tbody tr:nth-child(even) {
+  background: var(--reference-table-stripe, rgba(255, 255, 255, 0.03)) !important;
+}
+
+html.dark .referenceTableStriped tbody tr:hover,
+html.theme-fna.dark .referenceTableStriped tbody tr:hover {
+  background: var(--el-table-row-hover-bg-color, #262727) !important;
+}
+
+html.dark .referenceQuickLink,
+html.theme-fna.dark .referenceQuickLink,
+html.dark .referenceExternalLink,
+html.theme-fna.dark .referenceExternalLink,
+html.dark .referenceNotice,
+html.theme-fna.dark .referenceNotice {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+}
+
+html.dark .referenceQuickIcon,
+html.theme-fna.dark .referenceQuickIcon {
+  background: var(--el-fill-color, #2a2a2b) !important;
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .referenceQuickLink:hover,
+html.theme-fna.dark .referenceQuickLink:hover,
+html.dark .referenceExternalLink:hover,
+html.theme-fna.dark .referenceExternalLink:hover {
+  border-color: var(--el-color-primary) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .referenceQuickLink:hover .referenceQuickIcon,
+html.theme-fna.dark .referenceQuickLink:hover .referenceQuickIcon {
+  background: var(--el-color-primary) !important;
+  color: #fff !important;
+}
+
+html.dark .referenceNotice:hover,
+html.theme-fna.dark .referenceNotice:hover {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+html.dark .referenceNoticeTag.tone-cyan,
+html.theme-fna.dark .referenceNoticeTag.tone-cyan {
+  background: rgba(8, 145, 178, 0.4) !important;
+  color: #a5f3fc !important;
+}
+
+html.dark .referenceNoticeTag.tone-emerald,
+html.theme-fna.dark .referenceNoticeTag.tone-emerald {
+  background: rgba(6, 95, 70, 0.4) !important;
+  color: #a7f3d0 !important;
+}
+
+html.dark .referenceNoticeTag.tone-amber,
+html.theme-fna.dark .referenceNoticeTag.tone-amber {
+  background: rgba(146, 64, 14, 0.4) !important;
+  color: #fde68a !important;
+}
+
+html.dark .referenceNoticeTag.tone-violet,
+html.theme-fna.dark .referenceNoticeTag.tone-violet {
+  background: rgba(91, 33, 182, 0.4) !important;
+  color: #ddd6fe !important;
+}
+
+html.dark .referenceDocLink:hover,
+html.theme-fna.dark .referenceDocLink:hover {
+  color: var(--el-color-primary) !important;
+}
+
+html.dark .referenceContentChart,
+html.theme-fna.dark .referenceContentChart {
+  background: transparent !important;
+  /* 与亮色一致：允许 tooltip 在贴边时完整显示（勿裁切） */
+  overflow: visible !important;
+}
+
+html.dark .referenceChartCanvas,
+html.theme-fna.dark .referenceChartCanvas,
+html.dark .referenceChartPlot,
+html.theme-fna.dark .referenceChartPlot {
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+/* 暗色下 tooltip 仍用浅色浮层（对齐参考截图白底），保证对比度 */
+html.dark .echarts-tooltip-diy.referenceChartTooltip,
+html.theme-fna.dark .echarts-tooltip-diy.referenceChartTooltip {
+  background: #fff !important;
+  border: none !important;
+  color: #1d2129 !important;
+  box-shadow: rgba(0, 0, 0, 0.35) 1px 2px 12px !important;
+}
+
+html.dark .echarts-tooltip-diy .tooltip-title,
+html.theme-fna.dark .echarts-tooltip-diy .tooltip-title {
+  color: #4e5969 !important;
+}
+
+html.dark .echarts-tooltip-diy .content-panel,
+html.theme-fna.dark .echarts-tooltip-diy .content-panel {
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #86909c !important;
+}
+
+html.dark .echarts-tooltip-diy .content-panel > span:first-child,
+html.theme-fna.dark .echarts-tooltip-diy .content-panel > span:first-child {
+  color: #86909c !important;
+}
+
+html.dark .echarts-tooltip-diy .tooltip-value,
+html.theme-fna.dark .echarts-tooltip-diy .tooltip-value {
+  color: #1d2129 !important;
+}
+
+html.dark .referenceChartPointer,
+html.theme-fna.dark .referenceChartPointer {
+  border-left-color: var(--el-color-primary) !important;
+}
+
+html.dark .referenceChartDot,
+html.theme-fna.dark .referenceChartDot {
+  background: #fff !important;
+  border-color: var(--el-color-primary) !important;
+}
+
+html.dark .referenceTable td:last-child,
+html.theme-fna.dark .referenceTable td:last-child {
+  color: var(--el-text-color-primary) !important;
+}
+
+/* 授权卡：GVA 始终 slate-900，暗色下仅微调边框 */
+html.dark .referenceLicenseCard,
+html.theme-fna.dark .referenceLicenseCard,
+html.dark .theme-fna .referenceLicenseCard,
+html.theme-fna.dark .theme-fna .referenceLicenseCard {
+  background: #0f172a !important;
+  border-color: rgb(51, 65, 85) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+html.dark .referenceLicenseCard h3,
+html.theme-fna.dark .referenceLicenseCard h3,
+html.dark .referenceLicenseBadge,
+html.theme-fna.dark .referenceLicenseBadge {
+  color: #fff !important;
+}
+
+html.dark .referenceLicenseCard p,
+html.theme-fna.dark .referenceLicenseCard p,
+html.dark .referenceLicensePills span,
+html.theme-fna.dark .referenceLicensePills span {
+  color: rgba(226, 232, 240, 0.9) !important;
+}
+
+html.dark .referenceLicenseLink,
+html.theme-fna.dark .referenceLicenseLink {
+  color: #67e8f9 !important;
+}
+
+html.dark .fnaSystemPage,
+html.theme-fna.dark .fnaSystemPage {
+  background: transparent !important;
+  color: var(--el-text-color-regular);
+}
+
+html.dark body,
+html.theme-fna.dark body {
+  background: var(--el-bg-color-page) !important;
+  color: var(--el-text-color-regular);
+}
+html.dark .fnaThemeCardBg,
+html.theme-fna.dark .fnaThemeCardBg,
+html.dark .fnaThemeCardWhite,
+html.theme-fna.dark .fnaThemeCardWhite,
+html.dark .fnaPresetCard,
+html.theme-fna.dark .fnaPresetCard,
+html.dark .fnaLayoutCard,
+html.theme-fna.dark .fnaLayoutCard,
+html.dark .fnaPreviewCard,
+html.theme-fna.dark .fnaPreviewCard {
+  background: var(--el-fill-color-light) !important;
+  border-color: var(--el-border-color-light) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .fnaThemeSettingLabel,
+html.theme-fna.dark .fnaThemeSettingLabel,
+html.dark .fnaThemeSectionTitle,
+html.theme-fna.dark .fnaThemeSectionTitle,
+html.dark .fnaThemeTextMain,
+html.theme-fna.dark .fnaThemeTextMain {
+  color: var(--el-text-color-primary) !important;
+}
+
+html.dark .fnaThemeTextSub,
+html.theme-fna.dark .fnaThemeTextSub,
+html.dark .fnaPresetEmpty,
+html.theme-fna.dark .fnaPresetEmpty {
+  color: var(--el-text-color-secondary) !important;
+}
+
+html.dark .fnaThemeSettingItem,
+html.theme-fna.dark .fnaThemeSettingItem {
+  border-color: var(--el-border-color-lighter) !important;
+}
+
+html.dark .fnaTagsView,
+html.theme-fna.dark .fnaTagsView {
+  --fna-base-text: 226, 232, 240;
+  --fna-border: 51, 65, 85;
+  background: var(--fna-tab-bg, var(--fna-tabs-bg, rgb(15, 23, 42))) !important;
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaPageTab-chrome,
+html.theme-fna.dark .fnaPageTab-chrome {
+  color: rgb(var(--fna-base-text));
+}
+
+html.dark .fnaPageTab-chrome.is-active,
+html.theme-fna.dark .fnaPageTab-chrome.is-active {
+  color: rgb(var(--fna-primary)) !important;
+}
+
+html.dark .fnaPageTab-chrome.is-active .fnaPageTabLabel,
+html.theme-fna.dark .fnaPageTab-chrome.is-active .fnaPageTabLabel,
+html.dark .fnaPageTab-chrome.is-active .fnaPageTabIcon,
+html.theme-fna.dark .fnaPageTab-chrome.is-active .fnaPageTabIcon {
+  color: rgb(var(--fna-primary)) !important;
+}
+
+html.dark .fnaPageTab-button.is-active,
+html.theme-fna.dark .fnaPageTab-button.is-active {
+  color: rgb(var(--fna-primary)) !important;
+  background: rgba(var(--fna-primary), 0.12) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+html.dark .fnaPageTab-slider.is-active,
+html.theme-fna.dark .fnaPageTab-slider.is-active {
+  color: rgb(var(--fna-primary)) !important;
+  background: rgba(var(--fna-primary), 0.12) !important;
+  border-bottom-color: rgb(var(--fna-primary)) !important;
+}
+
+html.dark .fnaPageTab-button,
+html.theme-fna.dark .fnaPageTab-button {
+  /* 对齐 gin-vue-admin html.fna-card--border .fna-tab-btn：暗色下几乎不可见 */
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html.dark .bottomInfo,
+html.theme-fna.dark .bottomInfo,
+html.dark .fnaBottomInfo,
+html.theme-fna.dark .fnaBottomInfo {
+  background: var(--el-bg-color-page) !important;
+  color: var(--el-text-color-secondary) !important;
+  border-color: var(--el-border-color-lighter) !important;
+}
+
+
+/* ---- dark extras (auto) ---- */
+html.dark .primaryButton,
+html.theme-fna.dark .primaryButton {
+  color: #fff !important;
+}
+
+html.dark .secondaryButton,
+html.theme-fna.dark .secondaryButton,
+html.dark .fnaSystemCard,
+html.theme-fna.dark .fnaSystemCard,
+html.dark .fnaSearchBox,
+html.theme-fna.dark .fnaSearchBox {
+  background: var(--fna-card-bg, var(--el-bg-color-overlay)) !important;
+  color: var(--fna-text-main, var(--el-text-color-regular)) !important;
+}
+
+/* 边框仅由内容块自身默认（无描边）控制，暗色层不强制描边 */
+html.dark.fna-card--border .fnaSystemCard,
+html.theme-fna.dark.fna-card--border .fnaSystemCard,
+html.dark.fna-card--border .fnaSearchBox,
+html.theme-fna.dark.fna-card--border .fnaSearchBox,
+html.dark[data-fna-card='border'] .fnaSystemCard,
+html.theme-fna.dark[data-fna-card='border'] .fnaSystemCard,
+html.dark[data-fna-card='border'] .fnaSearchBox,
+html.theme-fna.dark[data-fna-card='border'] .fnaSearchBox {
+  border: 0 !important;
+}
+
+html.dark .secondaryButton,
+html.theme-fna.dark .secondaryButton {
+  background: var(--el-fill-color) !important;
+}
+
+html.dark .theme-fna .elButton:disabled,
+html.theme-fna.dark .elButton:disabled {
+  background: var(--el-fill-color-light) !important;
+  border-color: var(--el-border-color-lighter) !important;
+  color: var(--el-text-color-placeholder) !important;
+}
+
+html.dark .fnaMobileMenuBtn,
+html.theme-fna.dark .fnaMobileMenuBtn {
+  color: var(--el-text-color-regular) !important;
+}
+
+
+/* ---- content-page dark parity ---- */
+/* 必须为 hover/active 单独写 !important，否则基色 !important 会盖住悬浮变色 */
+html.dark .fnaLinkButton,
+html.theme-fna.dark .fnaLinkButton {
+  color: var(--el-color-primary) !important;
+  transition: color 0.1s, background-color 0.1s, border-color 0.1s, outline 0.1s;
+}
+
+/*
+ * 文字链（添加子菜单等）：暗色悬浮仍压暗，但不用 light-5（约 50% 黑，过暗看不清）。
+ * 约 15% 压暗即可；危险色同理。
+ */
+html.dark .fnaLinkButton:hover:not(:disabled),
+html.theme-fna.dark .fnaLinkButton:hover:not(:disabled) {
+  color: color-mix(in srgb, var(--el-color-primary, #2264f2) 85%, #000 15%) !important;
+  background: transparent !important;
+}
+
+html.dark .fnaLinkButton:active:not(:disabled),
+html.theme-fna.dark .fnaLinkButton:active:not(:disabled) {
+  color: color-mix(in srgb, var(--el-color-primary, #2264f2) 75%, #000 25%) !important;
+}
+
+html.dark .fnaLinkButton.danger,
+html.theme-fna.dark .fnaLinkButton.danger {
+  color: var(--el-color-danger, #f56c6c) !important;
+}
+
+html.dark .fnaLinkButton.danger:hover:not(:disabled),
+html.theme-fna.dark .fnaLinkButton.danger:hover:not(:disabled) {
+  color: color-mix(in srgb, var(--el-color-danger, #f56c6c) 85%, #000 15%) !important;
+  background: transparent !important;
+}
+
+html.dark .fnaLinkButton.danger:active:not(:disabled),
+html.theme-fna.dark .fnaLinkButton.danger:active:not(:disabled) {
+  color: color-mix(in srgb, var(--el-color-danger, #f56c6c) 75%, #000 25%) !important;
+}
+
+html.dark .fnaTableToolbar,
+html.theme-fna.dark .fnaTableToolbar,
+html.dark .fnaSearchBox .fnaFieldLabel,
+html.theme-fna.dark .fnaSearchBox .fnaFieldLabel,
+html.dark .fnaFieldLabel,
+html.theme-fna.dark .fnaFieldLabel {
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .fnaPagination,
+html.theme-fna.dark .fnaPagination,
+html.dark .fnaPaginationTotal,
+html.theme-fna.dark .fnaPaginationTotal,
+html.dark .adminPagination,
+html.theme-fna.dark .adminPagination {
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .fnaSortCaret::before,
+html.theme-fna.dark .fnaSortCaret::before {
+  border-bottom-color: var(--el-text-color-placeholder) !important;
+}
+
+html.dark .fnaSortCaret::after,
+html.theme-fna.dark .fnaSortCaret::after {
+  border-top-color: var(--el-text-color-placeholder) !important;
+}
+
+/* 对齐 gin-vue-admin html.dark：抽屉/弹层背景统一为 --el-bg-color（slate），见上方 Dialogs / drawers 区块 */
+html.dark .fnaDialogForm label,
+html.theme-fna.dark .fnaDialogForm label,
+html.dark .adminDialog label,
+html.theme-fna.dark .adminDialog label {
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .fnaTableEmpty,
+html.theme-fna.dark .fnaTableEmpty,
+html.dark .adminEmpty,
+html.theme-fna.dark .adminEmpty {
+  color: var(--el-text-color-secondary) !important;
+  background: transparent !important;
+}
+
+/* 夜间复选框：对齐 Element Plus dark checkbox（非白色底） */
+html.dark .adminTreeItem,
+html.theme-fna.dark .adminTreeItem,
+html.dark .adminTreeItemLabel,
+html.theme-fna.dark .adminTreeItemLabel {
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaTableCheckCol input[type='checkbox'],
+html.theme-fna.dark .fnaTableCheckCol input[type='checkbox'],
+html.dark .adminTreeItem input[type='checkbox'],
+html.theme-fna.dark .adminTreeItem input[type='checkbox'],
+html.dark .adminCheckboxGrid input[type='checkbox'],
+html.theme-fna.dark .adminCheckboxGrid input[type='checkbox'] {
+  background: var(--el-fill-color-blank, #1d1e1f) !important;
+  border-color: var(--el-border-color, #4c4d4f) !important;
+}
+
+html.dark .fnaTableCheckCol input[type='checkbox']:hover,
+html.theme-fna.dark .fnaTableCheckCol input[type='checkbox']:hover,
+html.dark .adminTreeItem input[type='checkbox']:hover,
+html.theme-fna.dark .adminTreeItem input[type='checkbox']:hover,
+html.dark .adminCheckboxGrid input[type='checkbox']:hover,
+html.theme-fna.dark .adminCheckboxGrid input[type='checkbox']:hover {
+  border-color: var(--el-color-primary) !important;
+}
+
+html.dark .fnaTableCheckCol input[type='checkbox']:checked,
+html.theme-fna.dark .fnaTableCheckCol input[type='checkbox']:checked,
+html.dark .fnaTableCheckCol input[type='checkbox']:indeterminate,
+html.theme-fna.dark .fnaTableCheckCol input[type='checkbox']:indeterminate,
+html.dark .adminTreeItem input[type='checkbox']:checked,
+html.theme-fna.dark .adminTreeItem input[type='checkbox']:checked,
+html.dark .adminCheckboxGrid input[type='checkbox']:checked,
+html.theme-fna.dark .adminCheckboxGrid input[type='checkbox']:checked {
+  background-color: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+}
+
+/* 夜间禁用复选框：对齐 Element Plus disabled（灰底灰勾；文字不置灰） */
+html.dark .adminTreeItem input[type='checkbox']:disabled,
+html.theme-fna.dark .adminTreeItem input[type='checkbox']:disabled,
+html.dark .adminCheckboxGrid input[type='checkbox']:disabled,
+html.theme-fna.dark .adminCheckboxGrid input[type='checkbox']:disabled {
+  background-color: var(--el-fill-color-light, #262727) !important;
+  border-color: var(--el-border-color, #4c4d4f) !important;
+  cursor: not-allowed !important;
+}
+
+html.dark .adminTreeItem input[type='checkbox']:disabled:hover,
+html.theme-fna.dark .adminTreeItem input[type='checkbox']:disabled:hover,
+html.dark .adminCheckboxGrid input[type='checkbox']:disabled:hover,
+html.theme-fna.dark .adminCheckboxGrid input[type='checkbox']:disabled:hover {
+  border-color: var(--el-border-color, #4c4d4f) !important;
+}
+
+html.dark .adminTreeItem input[type='checkbox']:disabled:checked,
+html.theme-fna.dark .adminTreeItem input[type='checkbox']:disabled:checked,
+html.dark .adminCheckboxGrid input[type='checkbox']:disabled:checked,
+html.theme-fna.dark .adminCheckboxGrid input[type='checkbox']:disabled:checked {
+  background-color: var(--el-fill-color-dark, #39393a) !important;
+  border-color: var(--el-border-color, #4c4d4f) !important;
+}
+
+html.dark .adminTreeItem input[type='checkbox']:disabled:checked::after,
+html.theme-fna.dark .adminTreeItem input[type='checkbox']:disabled:checked::after,
+html.dark .adminCheckboxGrid input[type='checkbox']:disabled:checked::after,
+html.theme-fna.dark .adminCheckboxGrid input[type='checkbox']:disabled:checked::after {
+  border-color: var(--el-text-color-placeholder, #8d9095) !important;
+}
+
+html.dark .adminCheckboxGrid,
+html.theme-fna.dark .adminCheckboxGrid {
+  border-color: var(--el-border-color-lighter, #2b2b2c) !important;
+  background: transparent !important;
+}
+
+html.dark .fnaTreeExpand,
+html.theme-fna.dark .fnaTreeExpand {
+  color: var(--el-text-color-regular, #cfd3dc) !important;
+}
+
+html.dark .fnaMenuFormSection,
+html.theme-fna.dark .fnaMenuFormSection {
+  border-bottom-color: var(--el-border-color-lighter) !important;
+}
+
+html.dark .fnaMenuFormSection h3,
+html.theme-fna.dark .fnaMenuFormSection h3 {
+  /* 分区标题偏亮，与表单标签拉开层次 */
+  color: #e5e7eb !important;
+}
+
+html.dark .fnaMenuFormItem > span,
+html.theme-fna.dark .fnaMenuFormItem > span {
+  /* 表单项标签略暗于标题 */
+  color: #a3a6ad !important;
+}
+
+html.dark .fnaMenuFormItem input,
+html.theme-fna.dark .fnaMenuFormItem input,
+html.dark .fnaMenuFormItem select,
+html.theme-fna.dark .fnaMenuFormItem select,
+html.dark .fnaMenuBtnTable input,
+html.theme-fna.dark .fnaMenuBtnTable input,
+html.dark .fnaMenuBtnTable select,
+html.theme-fna.dark .fnaMenuBtnTable select {
+  background: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-regular) !important;
+}
+
+html.dark .fnaMenuFormItem input:hover,
+html.theme-fna.dark .fnaMenuFormItem input:hover,
+html.dark .fnaMenuFormItem select:hover,
+html.theme-fna.dark .fnaMenuFormItem select:hover,
+html.dark .fnaMenuBtnTable input:hover,
+html.theme-fna.dark .fnaMenuBtnTable input:hover,
+html.dark .fnaMenuBtnTable select:hover,
+html.theme-fna.dark .fnaMenuBtnTable select:hover {
+  border-color: var(--el-color-primary) !important;
+}
+
+html.dark .fnaMenuFormItem input:focus,
+html.theme-fna.dark .fnaMenuFormItem input:focus,
+html.dark .fnaMenuFormItem select:focus,
+html.theme-fna.dark .fnaMenuFormItem select:focus,
+html.dark .fnaMenuBtnTable input:focus,
+html.theme-fna.dark .fnaMenuBtnTable input:focus,
+html.dark .fnaMenuBtnTable select:focus,
+html.theme-fna.dark .fnaMenuBtnTable select:focus {
+  border-color: var(--el-color-primary) !important;
+}
+
+html.dark .fnaMenuBtnTableWrap,
+html.theme-fna.dark .fnaMenuBtnTableWrap {
+  border-color: var(--el-border-color, #4c4d4f) !important;
+}
+
+html.dark .fnaMenuBtnTable th,
+html.theme-fna.dark .fnaMenuBtnTable th {
+  background: var(--el-fill-color-light) !important;
+  color: var(--el-table-header-text-color, #e5e7eb) !important;
+}
+
+html.dark .fnaMenuBtnTable th,
+html.theme-fna.dark .fnaMenuBtnTable th,
+html.dark .fnaMenuBtnTable td,
+html.theme-fna.dark .fnaMenuBtnTable td {
+  border-bottom-color: var(--el-border-color-light, #414243) !important;
+}
+
+/* ---- Login（对齐 gin-vue-admin bg-white dark:bg-slate-900）---- */
+html.dark .fnaUserLayout,
+html.theme-fna.dark .fnaUserLayout,
+html.dark .authLayout,
+html.theme-fna.dark .authLayout {
+  background: #0f172a !important;
+  color: var(--el-text-color-regular);
+}
+
+html.dark .fnaEntryTitle,
+html.theme-fna.dark .fnaEntryTitle {
+  color: #e5eaf3;
+}
+
+html.dark .fnaElInputSuffix,
+html.theme-fna.dark .fnaElInputSuffix {
+  color: var(--el-text-color-placeholder, #8d9095);
+}
+
+html.dark .fnaBtnHollow:hover:not(:disabled),
+html.theme-fna.dark .fnaBtnHollow:hover:not(:disabled) {
+  background: rgba(var(--fna-primary), 0.16);
+}
+
+/*
+ * 暗色主按钮悬浮：略压暗即可（约 12%），不要跟 ladder light-3 的 30% 黑一样沉。
+ * 使用 color-mix 而非 var(--el-color-primary-light-3)，避免被 inline 色阶拉得过黑。
+ */
+html.dark .fnaBtnPrimary:hover:not(:disabled),
+html.theme-fna.dark .fnaBtnPrimary:hover:not(:disabled),
+html.dark .elButton.elButtonPrimary:hover:not(:disabled),
+html.theme-fna.dark .elButton.elButtonPrimary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--el-color-primary, #2264f2) 88%, #000 12%) !important;
+  border-color: color-mix(in srgb, var(--el-color-primary, #2264f2) 88%, #000 12%) !important;
+  color: #fff !important;
+}
+
+html.dark .fnaBtnPrimary:active:not(:disabled),
+html.theme-fna.dark .fnaBtnPrimary:active:not(:disabled),
+html.dark .elButton.elButtonPrimary:active:not(:disabled),
+html.theme-fna.dark .elButton.elButtonPrimary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--el-color-primary, #2264f2) 78%, #000 22%) !important;
+  border-color: color-mix(in srgb, var(--el-color-primary, #2264f2) 78%, #000 22%) !important;
+  color: #fff !important;
+}
+
+html.dark .fnaLoginFooter.login-footer,
+html.theme-fna.dark .fnaLoginFooter.login-footer,
+html.dark .fnaLoginFooter.fnaBottomInfo,
+html.theme-fna.dark .fnaLoginFooter.fnaBottomInfo {
+  background: transparent !important;
+  border: none !important;
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+}
+
+html.dark .fnaLoginFooter .fnaBottomPowered,
+html.theme-fna.dark .fnaLoginFooter .fnaBottomPowered {
+  color: var(--el-text-color-secondary, #a3a6ad);
+}
+
+html.dark .fnaLoginThemeToggle,
+html.theme-fna.dark .fnaLoginThemeToggle {
+  color: var(--el-text-color-regular, #cfd3dc);
+}
+
+html.dark .fnaLoginThemeToggle:hover,
+html.theme-fna.dark .fnaLoginThemeToggle:hover {
+  color: var(--el-text-color-primary, #e5eaf3);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/*
+ * 设置抽屉 · 颜色调整（对齐 gin-vue-admin）
+ * - 预设色点选中：ring-offset-muted（暗色用卡片弱底，而非写死白边）
+ * - g-color-picker 触发器 / 浮层：border-border + bg-container + text-base-text
+ * - 透明棋盘格：border token，不再硬编码浅灰
+ */
+html.dark,
+html.theme-fna.dark {
+  --fna-color-ring-offset: var(--el-fill-color-light, #262727);
+  --fna-color-checker: var(--el-border-color-light, #414243);
+  --fna-color-control-border: var(--el-border-color, #4c4d4f);
+  --fna-color-control-bg: var(--el-bg-color, #141414);
+  --fna-color-control-text: var(--el-text-color-regular, #cfd3dc);
+  --fna-color-control-muted: var(--el-text-color-secondary, #a3a6ad);
+}
+
+html.dark .fnaThemeModeSelector,
+html.theme-fna.dark .fnaThemeModeSelector {
+  border-color: var(--el-border-color, #4c4d4f) !important;
+  background: var(--el-fill-color-lighter, #1d1d1d) !important;
+}
+
+html.dark .fnaThemeModeItem:not(.is-active),
+html.theme-fna.dark .fnaThemeModeItem:not(.is-active) {
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+}
+
+html.dark .fnaThemeModeItem:hover:not(.is-active),
+html.theme-fna.dark .fnaThemeModeItem:hover:not(.is-active) {
+  color: var(--el-text-color-primary, #e5eaf3) !important;
+  background: var(--el-fill-color, #2a2a2b) !important;
+}
+
+/* 选中态：对齐 gin-vue-admin text-white，勿被暗色次要文字色盖住 */
+html.dark .fnaThemeModeItem.is-active,
+html.theme-fna.dark .fnaThemeModeItem.is-active,
+html.dark .fnaThemeModeItem.is-active svg,
+html.theme-fna.dark .fnaThemeModeItem.is-active svg,
+html.dark .fnaThemeModeItem.is-active span,
+html.theme-fna.dark .fnaThemeModeItem.is-active span {
+  color: #fff !important;
+}
+
+/* 开关：关态走 control-track（暗色灰轨），旋钮保持纯白 */
+html.dark,
+html.theme-fna.dark {
+  /* 对齐 gin-vue-admin control-track：暗色下为中性灰轨，非浅灰 */
+  --fna-switch-track: var(--el-border-color, #4c4d4f);
+}
+
+html.dark .fnaSwitchCore::after,
+html.theme-fna.dark .fnaSwitchCore::after {
+  background: #fff !important;
+}
+
+html.dark .fnaSwitch.is-on .fnaSwitchCore,
+html.theme-fna.dark .fnaSwitch.is-on .fnaSwitchCore {
+  background: var(--el-color-primary, #2264f2) !important;
+}
+
+html.dark .fnaColorDot,
+html.theme-fna.dark .fnaColorDot {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .fnaColorDivider,
+html.theme-fna.dark .fnaColorDivider {
+  background: var(--el-border-color, #4c4d4f) !important;
+}
+
+html.dark .fnaThemeColorRow code,
+html.theme-fna.dark .fnaThemeColorRow code,
+html.dark .fnaColorSwatch em,
+html.theme-fna.dark .fnaColorSwatch em {
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+}
+
+html.dark .fnaColorSwatch,
+html.theme-fna.dark .fnaColorSwatch {
+  border-color: var(--fna-color-control-border) !important;
+  background: var(--fna-color-control-bg) !important;
+  color: var(--fna-color-control-text) !important;
+}
+
+html.dark .fnaColorSwatch:hover,
+html.theme-fna.dark .fnaColorSwatch:hover,
+html.dark .fnaColorSwatch.is-open,
+html.theme-fna.dark .fnaColorSwatch.is-open {
+  border-color: var(--el-color-primary, #2264f2) !important;
+}
+
+html.dark .fnaColorSwatchChip,
+html.theme-fna.dark .fnaColorSwatchChip {
+  border-color: var(--fna-color-control-border) !important;
+}
+
+html.dark .fnaColorPopover,
+html.theme-fna.dark .fnaColorPopover {
+  --fna-color-ring-offset: var(--el-bg-color-overlay, #1d1d1d);
+  border-color: var(--el-border-color, #4c4d4f) !important;
+  background: var(--el-bg-color-overlay, #1d1d1d) !important;
+  color: var(--el-text-color-regular, #cfd3dc) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45) !important;
+}
+
+html.dark .fnaColorPopoverPreview,
+html.theme-fna.dark .fnaColorPopoverPreview,
+html.dark .fnaColorPopoverSwatches button,
+html.theme-fna.dark .fnaColorPopoverSwatches button {
+  border-color: var(--el-border-color, #4c4d4f) !important;
+}
+
+html.dark .fnaColorPopoverHex,
+html.theme-fna.dark .fnaColorPopoverHex {
+  border-color: var(--el-border-color, #4c4d4f) !important;
+  background: var(--el-bg-color, #141414) !important;
+  color: var(--el-text-color-regular, #cfd3dc) !important;
+}
+
+html.dark .fnaColorPopoverHex::placeholder,
+html.theme-fna.dark .fnaColorPopoverHex::placeholder {
+  color: var(--el-text-color-placeholder, #8d9095);
+}
+
+html.dark .fnaColorPopoverClear,
+html.theme-fna.dark .fnaColorPopoverClear {
+  border-color: var(--el-border-color, #4c4d4f) !important;
+  background: var(--el-bg-color, #141414) !important;
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+}
+
+html.dark .fnaColorPopoverClear:hover,
+html.theme-fna.dark .fnaColorPopoverClear:hover {
+  border-color: var(--el-color-primary, #2264f2) !important;
+  color: var(--el-color-primary, #2264f2) !important;
+}
+
+html.dark .fnaThemeSelect,
+html.theme-fna.dark .fnaThemeSelect,
+html.dark .fnaThemeNumber,
+html.theme-fna.dark .fnaThemeNumber {
+  border-color: var(--el-border-color, #4c4d4f) !important;
+  background: var(--el-bg-color, #141414) !important;
+  color: var(--el-text-color-regular, #cfd3dc) !important;
+}
+
+html.dark .fnaColorClear,
+html.theme-fna.dark .fnaColorClear {
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+}
+
+html.dark .fnaDrawerHintInline,
+html.theme-fna.dark .fnaDrawerHintInline,
+html.dark .fnaDrawerHintRow,
+html.theme-fna.dark .fnaDrawerHintRow {
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+}
+
+/*
+ * 设置抽屉剩余白块（对齐 gin-vue-admin）
+ * - 顶部分段：bg-muted
+ * - 预览卡：bg-container；标签预览 dark:bg-gray-800 / 700 / 600
+ * - 卡片样式分段：bg-muted
+ * - 滑轨：bg-control-track；滑块：bg-container
+ */
+html.dark .fnaDrawerTabs,
+html.theme-fna.dark .fnaDrawerTabs,
+html.dark .fnaCardModeSelector,
+html.theme-fna.dark .fnaCardModeSelector {
+  background: var(--el-fill-color, #2a2a2b) !important;
+}
+
+html.dark .fnaDrawerTabs button:not(.active),
+html.theme-fna.dark .fnaDrawerTabs button:not(.active),
+html.dark .fnaCardModeSelector button:not(.is-active),
+html.theme-fna.dark .fnaCardModeSelector button:not(.is-active) {
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+  background: transparent !important;
+}
+
+html.dark .fnaDrawerTabs button:hover:not(.active),
+html.theme-fna.dark .fnaDrawerTabs button:hover:not(.active),
+html.dark .fnaCardModeSelector button:hover:not(.is-active),
+html.theme-fna.dark .fnaCardModeSelector button:hover:not(.is-active) {
+  color: var(--el-text-color-primary, #e5eaf3) !important;
+  background: var(--el-fill-color-light, #262727) !important;
+}
+
+html.dark .fnaDrawerTabs button.active,
+html.theme-fna.dark .fnaDrawerTabs button.active,
+html.dark .fnaCardModeSelector button.is-active,
+html.theme-fna.dark .fnaCardModeSelector button.is-active {
+  color: #fff !important;
+}
+
+html.dark .fnaDrawerChipGroup button,
+html.theme-fna.dark .fnaDrawerChipGroup button {
+  border-color: var(--el-border-color, #4c4d4f) !important;
+  background: var(--el-bg-color, #141414) !important;
+  color: var(--el-text-color-regular, #cfd3dc) !important;
+}
+
+html.dark .fnaDrawerChipGroup button.active,
+html.theme-fna.dark .fnaDrawerChipGroup button.active {
+  border-color: var(--el-color-primary, #2264f2) !important;
+  color: var(--el-color-primary, #2264f2) !important;
+  background: color-mix(in srgb, var(--el-color-primary, #2264f2) 16%, transparent) !important;
+}
+
+html.dark .fnaPreviewCard,
+html.theme-fna.dark .fnaPreviewCard,
+html.dark .fnaTabPreviewCard,
+html.theme-fna.dark .fnaTabPreviewCard,
+html.dark .fnaLayoutCard,
+html.theme-fna.dark .fnaLayoutCard {
+  background: var(--el-bg-color, #141414) !important;
+  border-color: var(--el-border-color, #4c4d4f) !important;
+  color: var(--el-text-color-regular, #cfd3dc) !important;
+}
+
+html.dark .fnaTabPreviewCard > em,
+html.theme-fna.dark .fnaTabPreviewCard > em,
+html.dark .fnaLayoutCard strong,
+html.theme-fna.dark .fnaLayoutCard strong,
+html.dark .fnaLayoutCard span,
+html.theme-fna.dark .fnaLayoutCard span,
+html.dark .fnaRadiusSelector > span,
+html.theme-fna.dark .fnaRadiusSelector > span {
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+}
+
+/* 菜单风格缩略图：暗色下改为深色纸面（覆盖组件内联浅色） */
+html.dark .fnaMiniLayout,
+html.theme-fna.dark .fnaMiniLayout {
+  border-color: var(--el-border-color, #4c4d4f) !important;
+}
+
+html.dark .fnaMiniSide,
+html.theme-fna.dark .fnaMiniSide {
+  background: #1a1b1d !important;
+}
+
+html.dark .fnaMiniMain,
+html.theme-fna.dark .fnaMiniMain {
+  background: #262727 !important;
+}
+
+/* 标签栏风格缩略图：对齐 GVA dark:bg-gray-800 / 700 / 600 */
+html.dark .fnaTabPreviewButton,
+html.theme-fna.dark .fnaTabPreviewButton,
+html.dark .fnaTabPreviewChrome,
+html.theme-fna.dark .fnaTabPreviewChrome,
+html.dark .fnaTabPreviewSlider,
+html.theme-fna.dark .fnaTabPreviewSlider {
+  background: #1f2937 !important; /* gray-800 */
+}
+
+html.dark .fnaTabPreviewButton span:not([style*='background']),
+html.theme-fna.dark .fnaTabPreviewButton span:not([style*='background']) {
+  background: #374151 !important; /* gray-700 */
+}
+
+html.dark .fnaTabPreviewButton i,
+html.theme-fna.dark .fnaTabPreviewButton i {
+  background: #4b5563 !important; /* gray-600 */
+}
+
+html.dark .fnaTabPreviewChrome span:not([style*='background']),
+html.theme-fna.dark .fnaTabPreviewChrome span:not([style*='background']) {
+  background: #374151 !important;
+}
+
+html.dark .fnaTabPreviewSlider > span:not([style*='background']),
+html.theme-fna.dark .fnaTabPreviewSlider > span:not([style*='background']) {
+  background: #374151 !important;
+}
+
+html.dark .fnaTabPreviewSlider em:not([style*='background']),
+html.theme-fna.dark .fnaTabPreviewSlider em:not([style*='background']) {
+  background: #4b5563 !important;
+}
+
+/* 布局模式迷你预览 */
+html.dark .fnaLayoutMini,
+html.theme-fna.dark .fnaLayoutMini {
+  background: #1f2937 !important;
+  border-color: var(--el-border-color, #4c4d4f) !important;
+}
+
+html.dark .fnaLayoutMiniSide,
+html.theme-fna.dark .fnaLayoutMiniSide {
+  background: #111827 !important;
+}
+
+html.dark .fnaLayoutMiniHeader,
+html.theme-fna.dark .fnaLayoutMiniHeader,
+html.dark .fnaLayoutMiniContent,
+html.theme-fna.dark .fnaLayoutMiniContent {
+  background: #374151 !important;
+}
+
+/* 圆角滑轨：control-track；滑块：container */
+html.dark .fnaSliderTrack,
+html.theme-fna.dark .fnaSliderTrack {
+  background: var(--el-border-color-dark, #58585b) !important;
+}
+
+html.dark .fnaSliderInput::-webkit-slider-thumb,
+html.theme-fna.dark .fnaSliderInput::-webkit-slider-thumb {
+  background: var(--el-bg-color, #141414) !important;
+  border-color: var(--el-color-primary, #2264f2) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45) !important;
+}
+
+html.dark .fnaSliderInput::-moz-range-thumb,
+html.theme-fna.dark .fnaSliderInput::-moz-range-thumb {
+  background: var(--el-bg-color, #141414) !important;
+  border-color: var(--el-color-primary, #2264f2) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45) !important;
+}
+
+html.dark .fnaSliderMarks span,
+html.theme-fna.dark .fnaSliderMarks span {
+  color: var(--el-text-color-secondary, #a3a6ad) !important;
+}
+
+/* 预设卡片缩略 */
+html.dark .fnaPresetPreview,
+html.theme-fna.dark .fnaPresetPreview {
+  background: #1f2937 !important;
+  border-color: var(--el-border-color, #4c4d4f) !important;
+}
+
+html.dark .fnaPresetPreview > div:first-child,
+html.theme-fna.dark .fnaPresetPreview > div:first-child {
+  background: #111827 !important;
+}
+
+html.dark .fnaPresetPreview > div:last-child,
+html.theme-fna.dark .fnaPresetPreview > div:last-child {
+  background: #262727 !important;
+}
+
+html.dark .fnaThemeCardWhite,
+html.theme-fna.dark .fnaThemeCardWhite {
+  background: var(--el-bg-color, #141414) !important;
+}

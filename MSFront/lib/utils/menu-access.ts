@@ -108,8 +108,8 @@ export function flattenMenuTree(menus: SystemMenuTreeNode[]): SystemMenuTreeNode
   return result;
 }
 
-/** GVA menu.vue min-width shares (sum 1540) → percent of table */
-export const GVA_MENU_COL_WIDTH = {
+/** gin-vue-admin menu.vue min-width shares (sum 1540) → percent of table */
+export const FNA_MENU_COL_WIDTH = {
   id: '6.5%',
   title: '7.8%',
   icon: '9.1%',

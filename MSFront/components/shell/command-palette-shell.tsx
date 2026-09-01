@@ -74,14 +74,14 @@ export function CommandPaletteShell({
 
       {isOpen ? (
         <div
-          className="commandPaletteOverlay gvaCommandOverlay"
+          className="commandPaletteOverlay fnaCommandOverlay"
           role="presentation"
           onClick={() => closePalette()}
         >
           <section
             id={dialogId}
             ref={panelRef}
-            className="commandPalettePanel gvaCommandPanel"
+            className="commandPalettePanel fnaCommandPanel"
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
@@ -89,10 +89,10 @@ export function CommandPaletteShell({
             onClick={(event) => event.stopPropagation()}
             onKeyDown={handlePanelKeyDown}
           >
-            <div className="gvaCommandHeader">
+            <div className="fnaCommandHeader">
               <input
                 ref={searchInputRef}
-                className="gvaQuickInput"
+                className="fnaQuickInput"
                 type="search"
                 value={query}
                 onChange={(event) => handleSearchChange(event.target.value)}
@@ -172,7 +172,7 @@ export function CommandPaletteShell({
                 ))
               )}
             </div>
-            <div className="gvaCommandFooter">
+            <div className="fnaCommandFooter">
               <button type="button" className="elButton" onClick={() => closePalette()}>
                 关闭
               </button>

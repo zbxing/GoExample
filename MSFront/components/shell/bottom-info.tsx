@@ -2,9 +2,9 @@
 
 export function BottomInfo({ className }: { className?: string }) {
   return (
-    <div className={className ? `gvaBottomInfo ${className}` : 'gvaBottomInfo'}>
-      <p className="text-center gvaBottomPowered">
-        POWERED BY <span className="gvaBottomBrand">EXAMPLE</span>
+    <div className={className ? `fnaBottomInfo ${className}` : 'fnaBottomInfo'}>
+      <p className="text-center fnaBottomPowered">
+        POWERED BY <span className="fnaBottomBrand">FNA</span>
       </p>
     </div>
   );

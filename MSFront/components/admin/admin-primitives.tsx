@@ -26,26 +26,26 @@ import {
   IconWarningFilled,
 } from '@/components/admin/admin-icons';
 import {
-  getGvaActiveRequestCount,
-  getGvaContentLoadingVisible,
-  subscribeGvaPageLoading,
-} from '@/lib/utils/ga-page-loading';
-import { showGvaMessage } from '@/lib/utils/ga-message';
+  getFnaActiveRequestCount,
+  getFnaContentLoadingVisible,
+  subscribeFnaPageLoading,
+} from '@/lib/utils/fna-page-loading';
+import { showFnaMessage } from '@/lib/utils/fna-message';
 
 export function AdminPage({
   children,
 }: PropsWithChildren<{ title?: string; actions?: ReactNode; extra?: ReactNode }>) {
-  return <div className="gvaSystemPage">{children}</div>;
+  return <div className="fnaSystemPage">{children}</div>;
 }
 
 export function AdminCard({ children }: PropsWithChildren) {
-  // 对齐 GVA gva-table-box：仅表面容器，不要叠加 gvaTableBox（会把圆角盖成 4px）
-  return <div className="gvaSystemCard">{children}</div>;
+  // 对齐 gin-vue-admin fna-table-box：仅表面容器，不要叠加 fnaTableBox（会把圆角盖成 4px）
+  return <div className="fnaSystemCard">{children}</div>;
 }
 
 export function AdminWarningBar({ title }: { title: string }) {
   return (
-    <div className="gvaWarningBar" role="note">
+    <div className="fnaWarningBar" role="note">
       <IconWarningFilled size={14} />
       <span>{title}</span>
     </div>
@@ -58,16 +58,16 @@ export function AdminSearchForm({
   onReset,
 }: PropsWithChildren<{ onSearch: () => void; onReset: () => void }>) {
   return (
-    <div className="gvaSearchBox">
+    <div className="fnaSearchBox">
       <form
-        className="gvaSearchForm gvaSearchFormInline"
+        className="fnaSearchForm fnaSearchFormInline"
         onSubmit={(event) => {
           event.preventDefault();
           onSearch();
         }}
       >
-        <div className="gvaSearchFields">{children}</div>
-        <div className="gvaSearchActions">
+        <div className="fnaSearchFields">{children}</div>
+        <div className="fnaSearchActions">
           <button type="submit" className="elButton elButtonPrimary">
             <span className="elButtonIcon" aria-hidden="true">
               <IconSearch size={14} />
@@ -91,18 +91,18 @@ export function AdminField({
   children,
 }: PropsWithChildren<{ label: string }>) {
   return (
-    <label className="gvaField gvaFieldInline">
-      <span className="gvaFieldLabel">{label}</span>
-      <span className="gvaFieldControl">{children}</span>
+    <label className="fnaField fnaFieldInline">
+      <span className="fnaFieldLabel">{label}</span>
+      <span className="fnaFieldControl">{children}</span>
     </label>
   );
 }
 
 export function AdminToolbar({ children }: PropsWithChildren) {
-  return <div className="gvaTableToolbar">{children}</div>;
+  return <div className="fnaTableToolbar">{children}</div>;
 }
 
-/** @deprecated Prefer AdminSearchForm for GVA parity */
+/** @deprecated Prefer AdminSearchForm for gin-vue-admin parity */
 export function AdminSearchBar({
   value,
   onChange,
@@ -178,13 +178,13 @@ export function AdminTable({
   onSortChange?: (key: string) => void;
 }) {
   const contentLoading = useSyncExternalStore(
-    subscribeGvaPageLoading,
-    getGvaContentLoadingVisible,
+    subscribeFnaPageLoading,
+    getFnaContentLoadingVisible,
     () => false,
   );
   const activeRequests = useSyncExternalStore(
-    subscribeGvaPageLoading,
-    getGvaActiveRequestCount,
+    subscribeFnaPageLoading,
+    getFnaActiveRequestCount,
     () => 0,
   );
   const showEmptyPlaceholder = loading || contentLoading || activeRequests > 0;
@@ -210,20 +210,20 @@ export function AdminTable({
   }
 
   return (
-    <div className={border ? 'adminTableWrap gvaTableBox' : 'adminTableWrap'}>
+    <div className={border ? 'adminTableWrap fnaTableBox' : 'adminTableWrap'}>
       {rows.length === 0 ? (
         showEmptyPlaceholder ? (
-          <div className="adminEmpty gvaTableEmpty gvaTableEmptyPending" aria-hidden="true" />
+          <div className="adminEmpty fnaTableEmpty fnaTableEmptyPending" aria-hidden="true" />
         ) : (
-          <div className="adminEmpty gvaTableEmpty">{emptyText}</div>
+          <div className="adminEmpty fnaTableEmpty">{emptyText}</div>
         )
       ) : (
         <table
           className={[
             'adminTable',
-            'gvaElTable',
-            stripe ? 'gvaElTableStripe' : '',
-            layout === 'fixed' ? 'gvaElTableFixed' : '',
+            'fnaElTable',
+            stripe ? 'fnaElTableStripe' : '',
+            layout === 'fixed' ? 'fnaElTableFixed' : '',
           ]
             .filter(Boolean)
             .join(' ')}
@@ -231,8 +231,8 @@ export function AdminTable({
           <thead>
             <tr>
               {selectable ? (
-                <th className="gvaTableCheckCol" style={{ width: 55 }}>
-                  <div className="gvaElTableCell">
+                <th className="fnaTableCheckCol" style={{ width: 55 }}>
+                  <div className="fnaElTableCell">
                     <input
                       type="checkbox"
                       checked={allSelected}
@@ -251,21 +251,21 @@ export function AdminTable({
                 <th
                   key={column.key}
                   style={adminTableColumnStyle(column)}
-                  className={column.sortable ? 'gvaTableSortable' : undefined}
+                  className={column.sortable ? 'fnaTableSortable' : undefined}
                   onClick={
                     column.sortable && onSortChange
                       ? () => onSortChange(column.key)
                       : undefined
                   }
                 >
-                  <div className="gvaElTableCell gvaTableHeadCell">
-                    <span className="gvaTableHeadLabel">{column.title}</span>
+                  <div className="fnaElTableCell fnaTableHeadCell">
+                    <span className="fnaTableHeadLabel">{column.title}</span>
                     {column.sortable ? (
                       <span
                         className={
                           sortKey === column.key && sortOrder
-                            ? `gvaSortCaret is-${sortOrder}`
-                            : 'gvaSortCaret'
+                            ? `fnaSortCaret is-${sortOrder}`
+                            : 'fnaSortCaret'
                         }
                         aria-hidden="true"
                       />
@@ -284,8 +284,8 @@ export function AdminTable({
                   className={stripe && index % 2 === 1 ? 'is-striped' : undefined}
                 >
                   {selectable ? (
-                    <td className="gvaTableCheckCol">
-                      <div className="gvaElTableCell">
+                    <td className="fnaTableCheckCol">
+                      <div className="fnaElTableCell">
                         <input
                           type="checkbox"
                           checked={selected.includes(id)}
@@ -297,7 +297,7 @@ export function AdminTable({
                   ) : null}
                   {columns.map((column) => (
                     <td key={column.key} style={adminTableColumnStyle(column)}>
-                      <div className="gvaElTableCell">
+                      <div className="fnaElTableCell">
                         {column.render ? column.render(row) : String(row[column.key] ?? '')}
                       </div>
                     </td>
@@ -425,28 +425,28 @@ export function AdminSelect({
       ref={rootRef}
       className={
         open
-          ? `gvaSelect is-open is-placement-${placement}`
-          : `gvaSelect is-placement-${placement}`
+          ? `fnaSelect is-open is-placement-${placement}`
+          : `fnaSelect is-placement-${placement}`
       }
       style={{ width: minWidth, minWidth, maxWidth: minWidth }}
     >
       <button
         type="button"
-        className="gvaSelectTrigger"
+        className="fnaSelectTrigger"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel || placeholder}
         onClick={() => setOpen((current) => !current)}
       >
-        <span className={selected ? 'gvaSelectValue' : 'gvaSelectValue is-placeholder'}>
+        <span className={selected ? 'fnaSelectValue' : 'fnaSelectValue is-placeholder'}>
           {selected?.label || placeholder}
         </span>
-        <IconArrowDown className="gvaSelectCaret" />
+        <IconArrowDown className="fnaSelectCaret" />
       </button>
       {mounted ? (
         <div
           className={[
-            'gvaSelectDropdown',
+            'fnaSelectDropdown',
             placement === 'bottom' ? 'is-bottom' : 'is-top',
             visible ? 'is-visible' : '',
           ]
@@ -455,9 +455,9 @@ export function AdminSelect({
           role="listbox"
           aria-label={ariaLabel || placeholder}
         >
-          <div className="gvaSelectDropdownArrow" aria-hidden="true" />
-          <div className="gvaSelectOptionsWrap">
-            <ul ref={listRef} className="gvaSelectOptions" onScroll={syncScrollThumb}>
+          <div className="fnaSelectDropdownArrow" aria-hidden="true" />
+          <div className="fnaSelectOptionsWrap">
+            <ul ref={listRef} className="fnaSelectOptions" onScroll={syncScrollThumb}>
               {options.map((option) => {
                 const isSelected = option.value === value;
                 return (
@@ -466,7 +466,7 @@ export function AdminSelect({
                       type="button"
                       role="option"
                       aria-selected={isSelected}
-                      className={isSelected ? 'gvaSelectOption is-selected' : 'gvaSelectOption'}
+                      className={isSelected ? 'fnaSelectOption is-selected' : 'fnaSelectOption'}
                       onClick={() => {
                         onChange(option.value);
                         setOpen(false);
@@ -479,9 +479,9 @@ export function AdminSelect({
               })}
             </ul>
             {scrollThumb.visible ? (
-              <div className="gvaSelectScrollRail" aria-hidden="true">
+              <div className="fnaSelectScrollRail" aria-hidden="true">
                 <div
-                  className="gvaSelectScrollThumb"
+                  className="fnaSelectScrollThumb"
                   style={{ top: scrollThumb.top, height: scrollThumb.height }}
                 />
               </div>
@@ -554,26 +554,26 @@ export function AdminPagination({
   }
 
   return (
-    <div className="adminPagination gvaPagination" role="navigation" aria-label="分页">
-      <span className="gvaPaginationTotal">共 {total} 条</span>
+    <div className="adminPagination fnaPagination" role="navigation" aria-label="分页">
+      <span className="fnaPaginationTotal">共 {total} 条</span>
       {onPageSizeChange ? (
         <AdminPageSizeSelect value={pageSize} onChange={onPageSizeChange} />
       ) : null}
       <button
         type="button"
-        className="gvaPaginationBtn gvaPaginationNav"
+        className="fnaPaginationBtn fnaPaginationNav"
         disabled={current <= 1}
         aria-label="上一页"
         onClick={() => goTo(current - 1)}
       >
         <IconArrowLeft />
       </button>
-      <ul className="gvaPaginationPager">
+      <ul className="fnaPaginationPager">
         {pages.map((item, index) =>
           item === 'ellipsis' ? (
-            <li key={`e-${index}`} className="gvaPaginationEllipsis" aria-hidden="true">
-              <span className="gvaPaginationBtn is-ellipsis">
-                <span className="gvaPaginationEllipsisDots">···</span>
+            <li key={`e-${index}`} className="fnaPaginationEllipsis" aria-hidden="true">
+              <span className="fnaPaginationBtn is-ellipsis">
+                <span className="fnaPaginationEllipsisDots">···</span>
               </span>
             </li>
           ) : (
@@ -581,7 +581,7 @@ export function AdminPagination({
               <button
                 type="button"
                 className={
-                  item === current ? 'gvaPaginationBtn is-active' : 'gvaPaginationBtn'
+                  item === current ? 'fnaPaginationBtn is-active' : 'fnaPaginationBtn'
                 }
                 aria-current={item === current ? 'page' : undefined}
                 onClick={() => goTo(item)}
@@ -594,17 +594,17 @@ export function AdminPagination({
       </ul>
       <button
         type="button"
-        className="gvaPaginationBtn gvaPaginationNav"
+        className="fnaPaginationBtn fnaPaginationNav"
         disabled={current >= pageCount}
         aria-label="下一页"
         onClick={() => goTo(current + 1)}
       >
         <IconArrowRight />
       </button>
-      <span className="gvaPaginationJump">
+      <span className="fnaPaginationJump">
         前往
         <input
-          className="gvaPaginationJumpInput"
+          className="fnaPaginationJumpInput"
           value={jumpValue}
           inputMode="numeric"
           aria-label="页码"
@@ -679,7 +679,7 @@ export function AdminDialog({
   confirmLabel?: string;
   cancelLabel?: string;
   busy?: boolean;
-  /** 对齐 GVA appStore.drawerSize：桌面 800px，移动端请传 '100%' */
+  /** 对齐 gin-vue-admin appStore.drawerSize：桌面 800px，移动端请传 '100%' */
   width?: number | string;
   variant?: 'drawer' | 'dialog';
 }>) {
@@ -712,7 +712,7 @@ export function AdminDialog({
     return (
       <div className="adminDialogBackdrop" role="presentation" onClick={onClose}>
         <div
-          className="adminDialog gvaDialog"
+          className="adminDialog fnaDialog"
           role="dialog"
           aria-modal="true"
           aria-label={title}
@@ -721,7 +721,7 @@ export function AdminDialog({
         >
           <div className="adminDialogHeader">
             <strong>{title}</strong>
-            <button type="button" className="gvaIconButton" onClick={onClose} aria-label="关闭">
+            <button type="button" className="fnaIconButton" onClick={onClose} aria-label="关闭">
               ×
             </button>
           </div>
@@ -751,10 +751,10 @@ export function AdminDialog({
   }
 
   return (
-    <div className={`gvaFormDrawerRoot is-${phase}`}>
-      <button type="button" className="gvaFormDrawerMask" aria-label="关闭" onClick={onClose} />
+    <div className={`fnaFormDrawerRoot is-${phase}`}>
+      <button type="button" className="fnaFormDrawerMask" aria-label="关闭" onClick={onClose} />
       <aside
-        className="gvaFormDrawer"
+        className="fnaFormDrawer"
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -766,16 +766,16 @@ export function AdminDialog({
           if (
             event.target !== event.currentTarget ||
             open ||
-            event.animationName !== 'gva-rtl-drawer-out'
+            event.animationName !== 'fna-rtl-drawer-out'
           ) {
             return;
           }
           setPresented(false);
         }}
       >
-        <header className="gvaFormDrawerHeader">
+        <header className="fnaFormDrawerHeader">
           <span>{title}</span>
-          <div className="gvaFormDrawerActions">
+          <div className="fnaFormDrawerActions">
             <button type="button" className="elButton" onClick={onClose} disabled={busy}>
               {cancelLabel}
             </button>
@@ -791,7 +791,7 @@ export function AdminDialog({
             ) : null}
           </div>
         </header>
-        <div className="gvaFormDrawerBody">{children}</div>
+        <div className="fnaFormDrawerBody">{children}</div>
       </aside>
     </div>
   );
@@ -813,7 +813,7 @@ export function AdminTree({
   onToggle: (id: string) => void;
   /** 不可勾选/取消的节点（如角色首页菜单对应角色） */
   disabledIds?: string[];
-  /** 对齐 GVA el-tree default-expand-all */
+  /** 对齐 gin-vue-admin el-tree default-expand-all */
   defaultExpandAll?: boolean;
 }) {
   const disabled = useMemo(() => new Set(disabledIds), [disabledIds]);
@@ -896,7 +896,7 @@ function renderNodes(
           {hasChildren ? (
             <button
               type="button"
-              className={expanded ? 'gvaTreeExpand is-expanded' : 'gvaTreeExpand'}
+              className={expanded ? 'fnaTreeExpand is-expanded' : 'fnaTreeExpand'}
               aria-label={expanded ? '折叠' : '展开'}
               aria-expanded={expanded}
               onClick={() => onToggleExpand(node.id)}
@@ -904,7 +904,7 @@ function renderNodes(
               <IconCaretRight size={12} />
             </button>
           ) : (
-            <span className="gvaTreeExpandSpacer" aria-hidden="true" />
+            <span className="fnaTreeExpandSpacer" aria-hidden="true" />
           )}
           <label className="adminTreeItemLabel">
             <input
@@ -972,12 +972,12 @@ export function AdminLinkButton({
   return (
     <button
       type="button"
-      className={danger ? 'gvaLinkButton danger' : 'gvaLinkButton'}
+      className={danger ? 'fnaLinkButton danger' : 'fnaLinkButton'}
       onClick={onClick}
       disabled={disabled}
     >
       {iconNode ? (
-        <span className="gvaLinkButtonIcon" aria-hidden="true">
+        <span className="fnaLinkButtonIcon" aria-hidden="true">
           {iconNode}
         </span>
       ) : null}
@@ -1040,7 +1040,7 @@ export function AdminConfirmDialog({
   return (
     <div
       className={[
-        'gvaMsgboxOverlay',
+        'fnaMsgboxOverlay',
         open && visible ? 'is-enter' : '',
         !open ? 'is-leave' : '',
       ]
@@ -1049,26 +1049,26 @@ export function AdminConfirmDialog({
       role="presentation"
       onClick={onCancel}
     >
-      <div className="gvaMsgboxWrap">
+      <div className="fnaMsgboxWrap">
         <div
-          className="adminDialog gvaDialog gvaConfirmDialog gvaMsgbox"
+          className="adminDialog fnaDialog fnaConfirmDialog fnaMsgbox"
           role="alertdialog"
           aria-modal="true"
           aria-label={title}
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="adminDialogHeader gvaMsgboxHeader">
+          <div className="adminDialogHeader fnaMsgboxHeader">
             <strong>{title}</strong>
           </div>
-          <div className="adminDialogBody gvaMsgboxBody">
-            <div className="gvaMsgboxContent">
-              <span className={`gvaMsgboxStatus is-${type}`} aria-hidden="true">
+          <div className="adminDialogBody fnaMsgboxBody">
+            <div className="fnaMsgboxContent">
+              <span className={`fnaMsgboxStatus is-${type}`} aria-hidden="true">
                 <IconWarningFilled size={24} />
               </span>
-              <p className="gvaConfirmMessage">{message}</p>
+              <p className="fnaConfirmMessage">{message}</p>
             </div>
           </div>
-          <div className="adminDialogFooter gvaMsgboxFooter">
+          <div className="adminDialogFooter fnaMsgboxFooter">
             <button type="button" className="elButton" onClick={onCancel}>
               取 消
             </button>
@@ -1084,20 +1084,20 @@ export function AdminConfirmDialog({
 
 export function useAdminToast() {
   const showSuccess = (message: string) => {
-    showGvaMessage.success(message);
+    showFnaMessage.success(message);
   };
   const showError = (message: string) => {
-    showGvaMessage.error(message);
+    showFnaMessage.error(message);
   };
   const showWarning = (message: string) => {
-    showGvaMessage.warning(message);
+    showFnaMessage.warning(message);
   };
 
   return {
     showSuccess,
     showError,
     showWarning,
-    /** @deprecated 已改用全局 GvaMessageHost，保留空节点以兼容现有页面写法 */
+    /** @deprecated 已改用全局 FnaMessageHost，保留空节点以兼容现有页面写法 */
     ToastHost: null as ReactNode,
   };
 }
@@ -1116,12 +1116,12 @@ export function AdminSwitch({
   return (
     <button
       type="button"
-      className={checked ? 'gvaSwitch is-on' : 'gvaSwitch'}
+      className={checked ? 'fnaSwitch is-on' : 'fnaSwitch'}
       onClick={() => onChange(!checked)}
       aria-pressed={checked}
     >
-      <span className="gvaSwitchCore" />
-      <span className="gvaSwitchLabel">{checked ? activeText : inactiveText}</span>
+      <span className="fnaSwitchCore" />
+      <span className="fnaSwitchLabel">{checked ? activeText : inactiveText}</span>
     </button>
   );
 }

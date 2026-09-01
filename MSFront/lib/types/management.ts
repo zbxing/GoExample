@@ -1,6 +1,6 @@
 export type LocaleCode = 'zh-CN' | 'en-US';
 
-export type ThemeMode = 'system' | 'aurora' | 'graphite' | 'ocean' | 'gva';
+export type ThemeMode = 'system' | 'aurora' | 'graphite' | 'ocean' | 'fna';
 
 export type ProjectStorageDriver = 'auto' | 'database' | 'file';
 

@@ -16,19 +16,19 @@ import {
 import { useAuth } from '@/providers/auth-provider';
 import { applyTheme, useTheme } from '@/providers/theme-provider';
 import { CommandPalette } from '@/components/shell/command-palette';
-import { GvaMorphButton } from '@/components/shell/ga-morph-button';
+import { FnaMorphButton } from '@/components/shell/fna-morph-button';
 import {
-  GvaSettingDrawer,
-  type GvaShellSettings,
-} from '@/components/shell/ga-setting-drawer';
+  FnaSettingDrawer,
+  type FnaShellSettings,
+} from '@/components/shell/fna-setting-drawer';
 import type { SystemMenuTreeNode } from '@/lib/types/system';
 
 interface TopbarProps {
   sidebarId: string;
   isMobileSidebarOpen: boolean;
   onOpenSidebar: () => void;
-  shellSettings: GvaShellSettings;
-  onShellSettingsChange: (next: GvaShellSettings) => void;
+  shellSettings: FnaShellSettings;
+  onShellSettingsChange: (next: FnaShellSettings) => void;
 }
 
 export function Topbar({
@@ -104,8 +104,8 @@ export function Topbar({
 
   function toggleTheme() {
     const nextDark = !isDark;
-    const nextTheme = nextDark ? 'graphite' : 'gva';
-    // 先同步 html class，再写 shell 设置，避免 applyGvaShellCss 读到旧的 dark 状态
+    const nextTheme = nextDark ? 'graphite' : 'fna';
+    // 先同步 html class，再写 shell 设置，避免 applyFnaShellCss 读到旧的 dark 状态
     applyTheme(nextTheme);
     setTheme(nextTheme);
     onShellSettingsChange({
@@ -132,12 +132,12 @@ export function Topbar({
 
   return (
     <>
-      <header className="topbar gvaTopbar">
-        <div className="gvaTopbarMain">
-          <div className="gvaTopbarLeft">
+      <header className="topbar fnaTopbar">
+        <div className="fnaTopbarMain">
+          <div className="fnaTopbarLeft">
             <button
               type="button"
-              className="gvaMobileMenuBtn"
+              className="fnaMobileMenuBtn"
               aria-controls={sidebarId}
               aria-expanded={isMobileSidebarOpen}
               onClick={onOpenSidebar}
@@ -153,17 +153,17 @@ export function Topbar({
               </svg>
             </button>
 
-            <Link href="/dashboard" className="gvaHeaderBrand">
+            <Link href="/dashboard" className="fnaHeaderBrand">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/ga-logo.png" alt="" className="gvaHeaderLogo" />
-              <strong>Go Admin</strong>
+              <img src="/fna-logo.png" alt="" className="fnaHeaderLogo" />
+              <strong>FNA</strong>
             </Link>
 
-            <nav className="gvaBreadcrumb" aria-label="面包屑" hidden={!shellSettings.header.breadcrumb.visible}>
+            <nav className="fnaBreadcrumb" aria-label="面包屑" hidden={!shellSettings.header.breadcrumb.visible}>
               {crumbs.map((crumb, index) => (
-                <span key={`${crumb}-${index}`} className="gvaBreadcrumbItem">
-                  {index > 0 ? <span className="gvaBreadcrumbSep">/</span> : null}
-                  <span className={index === crumbs.length - 1 ? 'gvaBreadcrumbCurrent' : undefined}>
+                <span key={`${crumb}-${index}`} className="fnaBreadcrumbItem">
+                  {index > 0 ? <span className="fnaBreadcrumbSep">/</span> : null}
+                  <span className={index === crumbs.length - 1 ? 'fnaBreadcrumbCurrent' : undefined}>
                     {crumb}
                   </span>
                 </span>
@@ -171,49 +171,49 @@ export function Topbar({
             </nav>
           </div>
 
-          <div className="gvaTopbarActions">
-            <div className="gvaHeaderTools">
+          <div className="fnaTopbarActions">
+            <div className="fnaHeaderTools">
               {shellSettings.header.search.visible ? (
-                <GvaMorphButton
+                <FnaMorphButton
                   icon={<Search size={18} />}
                   label="搜索"
                   onClick={() => setCommandOpenSignal((value) => value + 1)}
                 />
               ) : null}
-              <GvaMorphButton
+              <FnaMorphButton
                 icon={<Settings size={18} />}
                 label="设置"
                 onClick={() => setSettingsOpen(true)}
               />
               {shellSettings.header.refresh.visible ? (
-                <GvaMorphButton
+                <FnaMorphButton
                   icon={<RefreshCw size={18} />}
                   label="刷新"
                   spinning={refreshSpin}
                   onClick={handleRefresh}
                 />
               ) : null}
-              <GvaMorphButton
+              <FnaMorphButton
                 icon={isDark ? <Sun size={18} /> : <Moon size={18} />}
                 label="主题"
                 onClick={toggleTheme}
               />
-              <div className="gvaToolSlot gvaToolSlotHidden">
+              <div className="fnaToolSlot fnaToolSlotHidden">
                 <CommandPalette openSignal={commandOpenSignal} />
               </div>
             </div>
 
-            <div className="gvaHeaderDivider" role="separator" />
+            <div className="fnaHeaderDivider" role="separator" />
 
             <div
-              className="gvaUserMenu"
+              className="fnaUserMenu"
               ref={menuRef}
               onMouseEnter={openMenu}
               onMouseLeave={scheduleCloseMenu}
             >
               <button
                 type="button"
-                className="gvaUserTrigger"
+                className="fnaUserTrigger"
                 onClick={() => {
                   if (menuPinned) {
                     closeMenu();
@@ -223,19 +223,19 @@ export function Topbar({
                   setMenuOpen(true);
                 }}
               >
-                <span className="gvaUserAvatar">
+                <span className="fnaUserAvatar">
                   <UserRound size={14} />
                 </span>
-                <span className="gvaUserName">{user?.displayName ?? '用户'}</span>
+                <span className="fnaUserName">{user?.displayName ?? '用户'}</span>
                 <ChevronDown
                   size={16}
-                  className="gvaUserCaret"
+                  className="fnaUserCaret"
                   style={{ transform: `rotate(${arrowDeg}deg)` }}
                 />
               </button>
               {menuOpen ? (
-                <div className="gvaUserDropdown" role="menu">
-                  <div className="gvaUserDropdownMeta">
+                <div className="fnaUserDropdown" role="menu">
+                  <div className="fnaUserDropdownMeta">
                     <strong>{user?.displayName ?? '用户'}</strong>
                     <p>当前角色：{user?.roleNames?.[0] ?? '未分配'}</p>
                   </div>
@@ -274,7 +274,7 @@ export function Topbar({
         </div>
       </header>
 
-      <GvaSettingDrawer
+      <FnaSettingDrawer
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         settings={shellSettings}

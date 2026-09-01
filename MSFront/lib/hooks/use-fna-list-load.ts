@@ -1,17 +1,17 @@
 'use client';
 
 import { useEffect, type DependencyList } from 'react';
-import { beginGvaListAwaiting, endGvaListAwaiting } from '@/lib/utils/ga-page-loading';
-import { isGvaPageLeaving, subscribeGvaPageLeaveEnd } from '@/lib/utils/ga-page-leave';
+import { beginFnaListAwaiting, endFnaListAwaiting } from '@/lib/utils/fna-page-loading';
+import { isFnaPageLeaving, subscribeFnaPageLeaveEnd } from '@/lib/utils/fna-page-leave';
 
 /**
- * 对齐 GVA `transition mode="out-in"`：
+ * 对齐 gin-vue-admin `transition mode="out-in"`：
  * 列表数据在旧页离场结束后再请求（相当于新页 setup 里调 getTableData）。
  * 同页刷新（搜索/分页/CRUD）时不在离场中，会立即执行。
  *
- * 开始等待时立刻 beginGvaListAwaiting，避免表格先闪「暂无数据」。
+ * 开始等待时立刻 beginFnaListAwaiting，避免表格先闪「暂无数据」。
  */
-export function useGvaListLoad(
+export function useFnaListLoad(
   load: () => void | (() => void),
   deps: DependencyList,
 ) {
@@ -24,12 +24,12 @@ export function useGvaListLoad(
       if (cancelled) {
         return;
       }
-      beginGvaListAwaiting();
+      beginFnaListAwaiting();
       cleanup = load();
     }
 
-    if (isGvaPageLeaving()) {
-      unsubscribeLeave = subscribeGvaPageLeaveEnd(() => {
+    if (isFnaPageLeaving()) {
+      unsubscribeLeave = subscribeFnaPageLeaveEnd(() => {
         unsubscribeLeave?.();
         unsubscribeLeave = undefined;
         run();
@@ -41,7 +41,7 @@ export function useGvaListLoad(
     return () => {
       cancelled = true;
       unsubscribeLeave?.();
-      endGvaListAwaiting();
+      endFnaListAwaiting();
       cleanup?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- caller owns deps

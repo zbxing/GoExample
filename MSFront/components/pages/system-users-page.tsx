@@ -18,7 +18,7 @@ import {
   useAdminToast,
 } from '@/components/admin/admin-primitives';
 import { apiFetch } from '@/lib/api/client';
-import { useGvaListLoad } from '@/lib/hooks/use-gva-list-load';
+import { useFnaListLoad } from '@/lib/hooks/use-fna-list-load';
 import { Can, useAuth } from '@/providers/auth-provider';
 import type { SystemRoleRecord, SystemUserPublic } from '@/lib/types/system';
 
@@ -75,7 +75,7 @@ export function SystemUsersPage({ embedded = false }: { embedded?: boolean } = {
   const [deleteTarget, setDeleteTarget] = useState<SystemUserPublic | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  useGvaListLoad(() => {
+  useFnaListLoad(() => {
     let cancelled = false;
 
     async function sync() {
@@ -364,7 +364,7 @@ export function SystemUsersPage({ embedded = false }: { embedded?: boolean } = {
             render: (row) => {
               const user = row as unknown as SystemUserPublic;
               return (
-                <div className="gvaRowActions">
+                <div className="fnaRowActions">
                   <Can btn="user:edit">
                     <AdminLinkButton icon="edit" onClick={() => openEdit(user)}>
                       编辑
@@ -414,7 +414,7 @@ export function SystemUsersPage({ embedded = false }: { embedded?: boolean } = {
         onConfirm={() => void saveUser()}
         busy={busy}
       >
-        <div className="adminForm gvaDialogForm">
+        <div className="adminForm fnaDialogForm">
           {!form.id ? (
             <AdminField label="用户名">
               <input
@@ -506,12 +506,12 @@ export function SystemUsersPage({ embedded = false }: { embedded?: boolean } = {
         onConfirm={() => void confirmResetPassword()}
         busy={busy}
       >
-        <div className="adminForm gvaDialogForm">
+        <div className="adminForm fnaDialogForm">
           <AdminField label="用户">
             <input value={resetTarget?.username ?? ''} disabled />
           </AdminField>
           <AdminField label="新密码">
-            <div className="gvaInlineActions">
+            <div className="fnaInlineActions">
               <input
                 value={resetPassword}
                 placeholder="请输入或生成密码"
@@ -536,7 +536,7 @@ export function SystemUsersPage({ embedded = false }: { embedded?: boolean } = {
 
   if (embedded) {
     return (
-      <div id="system-users" className="gvaMergedUsersSection">
+      <div id="system-users" className="fnaMergedUsersSection">
         {ToastHost}
         {content}
       </div>

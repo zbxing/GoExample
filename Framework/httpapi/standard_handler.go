@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/adaptor"
@@ -19,14 +20,25 @@ const maximumStandardResponseWriterUnwrapDepth = 32
 
 var standardRequestContexts sync.Map
 
+type standardResponseWriteDeadlineContextKey struct{}
+
+type standardResponseWriteDeadline func(time.Time) error
+
+type standardRequestBridge struct {
+	context          context.Context
+	setWriteDeadline standardResponseWriteDeadline
+}
+
 // NewHTTPHandler exposes an existing Framework app through the standard
 // net/http Handler contract. This lets an edge or middleware stack compose the
 // server without converting application handlers back to Fiber types.
 //
 // Request cancellation, deadlines and context values are bridged into Fiber
-// without serializing them into request headers. A standard server owner must
-// still call app.ShutdownWithContext during shutdown so the Framework
-// pre-shutdown hook cancels all in-flight application work.
+// without serializing them into request headers. Standard response write
+// deadline control is bridged through http.ResponseController for bounded
+// streams. A standard server owner must still call app.ShutdownWithContext
+// during shutdown so the Framework pre-shutdown hook cancels all in-flight
+// application work.
 func NewHTTPHandler(app *fiber.App) (http.Handler, error) {
 	if app == nil {
 		return nil, errors.New("httpapi app is required")
@@ -38,7 +50,13 @@ func NewHTTPHandler(app *fiber.App) (http.Handler, error) {
 			http.Error(response, "request context unavailable", http.StatusInternalServerError)
 			return
 		}
-		standardRequestContexts.Store(token, request.Context())
+		controller := http.NewResponseController(response)
+		standardRequestContexts.Store(token, standardRequestBridge{
+			context: request.Context(),
+			setWriteDeadline: func(deadline time.Time) error {
+				return controller.SetWriteDeadline(deadline)
+			},
+		})
 		defer standardRequestContexts.Delete(token)
 
 		bridgedRequest := request.Clone(request.Context())
@@ -114,13 +132,17 @@ func standardRequestContextBridge() fiber.Handler {
 		if !ok {
 			return c.Next()
 		}
-		requestContext, ok := value.(context.Context)
-		if !ok || requestContext == nil {
+		bridge, ok := value.(standardRequestBridge)
+		if !ok || bridge.context == nil {
 			return c.Next()
 		}
 
 		previous := c.Context()
-		c.SetContext(requestContext)
+		c.SetContext(context.WithValue(
+			bridge.context,
+			standardResponseWriteDeadlineContextKey{},
+			bridge.setWriteDeadline,
+		))
 		defer c.SetContext(previous)
 		return c.Next()
 	}

@@ -2,18 +2,18 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
-import type { GvaPageTransition as TransitionName } from '@/lib/utils/ga-shell-settings';
+import type { FnaPageTransition as TransitionName } from '@/lib/utils/fna-shell-settings';
 import {
-  GVA_LEAVE_DURATIONS,
-  isGvaPageLeaving,
-  subscribeGvaPageLeaveEnd,
-} from '@/lib/utils/ga-page-leave';
+  FNA_LEAVE_DURATIONS,
+  isFnaPageLeaving,
+  subscribeFnaPageLeaveEnd,
+} from '@/lib/utils/fna-page-leave';
 
 /**
  * 进场 class 必须由 React className 驱动。
  * 之前用 classList.add('is-enter') 会被后续 render 的 className 覆盖掉，看起来就像没动画。
  */
-export function GvaPageTransition({
+export function FnaPageTransition({
   name,
   pageKey,
   children,
@@ -35,7 +35,7 @@ export function GvaPageTransition({
     if (transition === 'none') {
       return;
     }
-    const live = liveRef.current ?? document.getElementById('gva-page-live');
+    const live = liveRef.current ?? document.getElementById('fna-page-live');
     if (live) {
       live.style.visibility = '';
       live.style.pointerEvents = '';
@@ -53,7 +53,7 @@ export function GvaPageTransition({
     if (name === 'none') {
       return;
     }
-    return subscribeGvaPageLeaveEnd(() => {
+    return subscribeFnaPageLeaveEnd(() => {
       window.requestAnimationFrame(() => {
         startEnter();
       });
@@ -67,7 +67,7 @@ export function GvaPageTransition({
     }
     pageKeyRef.current = pageKey;
 
-    if (name === 'none' || isGvaPageLeaving()) {
+    if (name === 'none' || isFnaPageLeaving()) {
       return;
     }
 
@@ -80,14 +80,14 @@ export function GvaPageTransition({
     if (!entering || name === 'none') {
       return;
     }
-    const timer = window.setTimeout(() => setEntering(false), GVA_LEAVE_DURATIONS[name] + 32);
+    const timer = window.setTimeout(() => setEntering(false), FNA_LEAVE_DURATIONS[name] + 32);
     return () => window.clearTimeout(timer);
   }, [entering, enterToken, name]);
 
   if (name === 'none') {
     return (
-      <div className="gvaPageTransitionStage">
-        <div id="gva-page-live" ref={liveRef}>
+      <div className="fnaPageTransitionStage">
+        <div id="fna-page-live" ref={liveRef}>
           {children}
         </div>
       </div>
@@ -95,13 +95,13 @@ export function GvaPageTransition({
   }
 
   return (
-    <div className="gvaPageTransitionStage">
-      <div id="gva-page-live" ref={liveRef}>
+    <div className="fnaPageTransitionStage">
+      <div id="fna-page-live" ref={liveRef}>
         <div
           key={enterToken}
           className={[
-            'gvaPageTransition',
-            `gvaPage-${name}`,
+            'fnaPageTransition',
+            `fnaPage-${name}`,
             entering ? 'is-enter' : '',
           ]
             .filter(Boolean)

@@ -69,6 +69,200 @@ func TestParseTraceparentStrictlyValidatesVersionIDsAndFlags(t *testing.T) {
 	}
 }
 
+func TestRemoteSpanContextFromHeadersPreservesStrictW3CContract(t *testing.T) {
+	const traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-03"
+	parent, ok := remoteSpanContextFromHeaders(traceparent, "vendor=value")
+	if !ok || !parent.IsRemote() || parent.TraceID().String() != "4bf92f3577b34da6a3ce929d0e0e4736" ||
+		parent.SpanID().String() != "00f067aa0ba902b7" || parent.TraceFlags() != trace.FlagsSampled|trace.FlagsRandom ||
+		parent.TraceState().String() != "vendor=value" {
+		t.Fatalf("remote parent = %#v/%t", parent, ok)
+	}
+
+	if parent, ok = remoteSpanContextFromHeaders(
+		"00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-04",
+		"vendor=value",
+	); ok || parent.IsValid() {
+		t.Fatalf("reserved trace flags accepted: %#v/%t", parent, ok)
+	}
+
+	parent, ok = remoteSpanContextFromHeaders(traceparent, "invalid tracestate")
+	if !ok || parent.TraceState().String() != "" {
+		t.Fatalf("invalid tracestate changed traceparent acceptance: %#v/%t", parent, ok)
+	}
+
+	allocations := testing.AllocsPerRun(1000, func() {
+		remoteSpanResult, _ = remoteSpanContextFromHeaders(traceparent, "")
+	})
+	if allocations != 0 {
+		t.Fatalf("remote span context parsing allocations = %.1f, want 0", allocations)
+	}
+}
+
+var (
+	traceparentResult     string
+	traceContextResult    TraceContext
+	requestContextResult  context.Context
+	serverSpanStartResult serverSpanStartConfiguration
+	serverSpanEndResult   serverSpanEndConfiguration
+	remoteSpanResult      trace.SpanContext
+)
+
+func TestTraceContextFormatsTraceparentWithOneAllocation(t *testing.T) {
+	current := TraceContext{
+		TraceID: "4bf92f3577b34da6a3ce929d0e0e4736",
+		SpanID:  "00f067aa0ba902b7",
+		Flags:   0xab,
+	}
+	const want = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-ab"
+	if got := current.Traceparent(); got != want {
+		t.Fatalf("Traceparent() = %q, want %q", got, want)
+	}
+	allocations := testing.AllocsPerRun(1000, func() {
+		traceparentResult = current.Traceparent()
+	})
+	if allocations > 1 {
+		t.Fatalf("Traceparent() allocations = %.1f, want at most 1", allocations)
+	}
+}
+
+func TestTraceRequestContextLazilyPreservesTheServerSpan(t *testing.T) {
+	type contextKey struct{}
+	traceID, err := trace.TraceIDFromHex("4bf92f3577b34da6a3ce929d0e0e4736")
+	if err != nil {
+		t.Fatalf("parse trace ID: %v", err)
+	}
+	spanID, err := trace.SpanIDFromHex("00f067aa0ba902b7")
+	if err != nil {
+		t.Fatalf("parse span ID: %v", err)
+	}
+	parentSpanID, err := trace.SpanIDFromHex("b7ad6b7169203331")
+	if err != nil {
+		t.Fatalf("parse parent span ID: %v", err)
+	}
+	current := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+	})
+	parent := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     parentSpanID,
+		TraceFlags: trace.FlagsSampled,
+		Remote:     true,
+	})
+	base := context.WithValue(context.Background(), contextKey{}, "preserved")
+	requestContext := newTraceRequestContext(base, current, parent)
+	childSpanID, err := trace.SpanIDFromHex("7a085853722dc6d2")
+	if err != nil {
+		t.Fatalf("parse child span ID: %v", err)
+	}
+	child := trace.ContextWithSpanContext(requestContext, trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID: traceID,
+		SpanID:  childSpanID,
+	}))
+
+	observed, ok := FromContext(child)
+	if !ok || observed.TraceID != traceID.String() || observed.SpanID != spanID.String() ||
+		observed.ParentSpanID != parentSpanID.String() || !observed.RemoteParent || observed.Flags != byte(trace.FlagsSampled) {
+		t.Fatalf("request trace = %#v/%t", observed, ok)
+	}
+	if value := child.Value(contextKey{}); value != "preserved" {
+		t.Fatalf("preserved context value = %#v", value)
+	}
+	rawTraceparent := traceparentBytesFromSpanContext(current)
+	if got := string(rawTraceparent[:]); got != observed.Traceparent() {
+		t.Fatalf("raw traceparent = %q, want %q", got, observed.Traceparent())
+	}
+
+	allocations := testing.AllocsPerRun(1000, func() {
+		requestContextResult = newTraceRequestContext(base, current, parent)
+	})
+	if allocations > 1 {
+		t.Fatalf("request trace attachment allocations = %.1f, want at most 1", allocations)
+	}
+	allocations = testing.AllocsPerRun(1000, func() {
+		traceContextResult, _ = FromContext(requestContext)
+	})
+	if allocations != 0 {
+		t.Fatalf("cached request trace lookup allocations = %.1f, want 0", allocations)
+	}
+}
+
+func TestStandardServerSpanStartConfigurationIsReusable(t *testing.T) {
+	serverSpanKind := trace.WithSpanKind(trace.SpanKindServer)
+	standard := newStandardServerSpanStartConfigurations(serverSpanKind)
+	configuration := serverSpanStartConfigurationForMethod(standard, fiber.MethodGet, serverSpanKind)
+	if configuration.name != "GET request" {
+		t.Fatalf("span start name = %q", configuration.name)
+	}
+	spanConfig := trace.NewSpanStartConfig(configuration.options...)
+	if spanConfig.SpanKind() != trace.SpanKindServer {
+		t.Fatalf("span start kind = %s", spanConfig.SpanKind())
+	}
+	attributes := spanConfig.Attributes()
+	if len(attributes) != 1 || attributes[0].Key != "http.request.method" || attributes[0].Value.AsString() != fiber.MethodGet {
+		t.Fatalf("span start attributes = %#v", attributes)
+	}
+
+	allocations := testing.AllocsPerRun(1000, func() {
+		serverSpanStartResult = serverSpanStartConfigurationForMethod(standard, fiber.MethodGet, serverSpanKind)
+	})
+	if allocations != 0 {
+		t.Fatalf("cached span start configuration allocations = %.1f, want 0", allocations)
+	}
+
+	custom := serverSpanStartConfigurationForMethod(standard, "PURGE", serverSpanKind)
+	customSpanConfig := trace.NewSpanStartConfig(custom.options...)
+	customAttributes := customSpanConfig.Attributes()
+	if custom.name != "PURGE request" || len(customAttributes) != 1 || customAttributes[0].Value.AsString() != "PURGE" {
+		t.Fatalf("custom span start configuration = %q/%#v", custom.name, customAttributes)
+	}
+}
+
+func TestServerSpanEndConfigurationCachesBoundedStandardMetadata(t *testing.T) {
+	cache := newServerSpanEndConfigurationCache()
+	configuration := cache.configuration(fiber.MethodGet, "/work/:id", fiber.StatusNoContent)
+	if configuration.name != "GET /work/:id" || len(configuration.attributes) != 2 ||
+		configuration.attributes[0].Key != "http.route" || configuration.attributes[0].Value.AsString() != "/work/:id" ||
+		configuration.attributes[1].Key != "http.response.status_code" || configuration.attributes[1].Value.AsInt64() != fiber.StatusNoContent {
+		t.Fatalf("route configuration = %#v", configuration)
+	}
+	configurationCount := len(cache.configurations)
+	custom := cache.configurationForMethod("PURGE", "unmatched", fiber.StatusNoContent, false)
+	if custom.name != "PURGE unmatched" || len(custom.attributes) != 2 ||
+		custom.attributes[0].Value.AsString() != "unmatched" ||
+		custom.attributes[1].Value.AsInt64() != fiber.StatusNoContent || len(cache.configurations) != configurationCount {
+		t.Fatalf("custom route configuration = %#v, cached configurations = %d", custom, len(cache.configurations))
+	}
+	outOfRange := cache.configurationForMethod(fiber.MethodGet, "/work/:id", 99, true)
+	if len(outOfRange.attributes) != 2 || outOfRange.attributes[1].Value.AsInt64() != 99 ||
+		len(cache.configurations) != configurationCount {
+		t.Fatalf("out-of-range status configuration = %#v, cached configurations = %d", outOfRange, len(cache.configurations))
+	}
+
+	allocations := testing.AllocsPerRun(1000, func() {
+		serverSpanEndResult = cache.configuration(fiber.MethodGet, "/work/:id", fiber.StatusNoContent)
+	})
+	if allocations != 0 {
+		t.Fatalf("cached span end metadata allocations = %.1f, want 0", allocations)
+	}
+
+	var group sync.WaitGroup
+	for _, status := range []int{fiber.StatusOK, fiber.StatusNoContent, fiber.StatusInternalServerError} {
+		for range 8 {
+			group.Add(1)
+			go func() {
+				defer group.Done()
+				_ = cache.configuration(fiber.MethodGet, "/work/:id", status)
+			}()
+		}
+	}
+	group.Wait()
+	if got := len(cache.configurations); got != 3 {
+		t.Fatalf("cached configurations after concurrent access = %d, want 3", got)
+	}
+}
+
 func TestTraceMiddlewareRecordsOpenTelemetryServerSpan(t *testing.T) {
 	recorder := tracetest.NewSpanRecorder()
 	provider := sdktrace.NewTracerProvider(
@@ -82,6 +276,7 @@ func TestTraceMiddlewareRecordsOpenTelemetryServerSpan(t *testing.T) {
 
 	request := httptest.NewRequest(http.MethodGet, "/work/42", http.NoBody)
 	request.Header.Set(TraceparentHeader, "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+	request.Header.Set(TracestateHeader, "vendor=value")
 	response, err := app.Test(request)
 	if err != nil {
 		t.Fatalf("trace request error = %v", err)
@@ -96,21 +291,21 @@ func TestTraceMiddlewareRecordsOpenTelemetryServerSpan(t *testing.T) {
 	if span.Name() != "GET /work/:id" || span.SpanKind() != trace.SpanKindServer {
 		t.Fatalf("span name/kind = %q/%s", span.Name(), span.SpanKind())
 	}
-	if !span.Parent().IsRemote() || span.Parent().SpanID().String() != "00f067aa0ba902b7" {
+	if !span.Parent().IsRemote() || span.Parent().SpanID().String() != "00f067aa0ba902b7" ||
+		span.Parent().TraceState().String() != "vendor=value" {
 		t.Fatalf("span parent = %s remote=%t", span.Parent().SpanID(), span.Parent().IsRemote())
 	}
 	attributes := make(map[string]attribute.Value)
 	for _, item := range span.Attributes() {
 		attributes[string(item.Key)] = item.Value
 	}
-	if attributes["http.route"].AsString() != "/work/:id" || attributes["http.response.status_code"].AsInt64() != fiber.StatusNoContent {
+	if attributes["http.request.method"].AsString() != fiber.MethodGet || attributes["http.route"].AsString() != "/work/:id" || attributes["http.response.status_code"].AsInt64() != fiber.StatusNoContent {
 		t.Fatalf("span HTTP attributes = %#v", attributes)
 	}
 	if _, exists := attributes["url.full"]; exists {
 		t.Fatalf("span records raw URL: %#v", attributes)
 	}
 }
-
 func TestOTLPHTTPBatchExporterDoesNotBlockRequestAndFlushesOnShutdown(t *testing.T) {
 	collectorStarted := make(chan struct{})
 	releaseCollector := make(chan struct{})

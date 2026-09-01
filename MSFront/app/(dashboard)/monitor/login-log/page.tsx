@@ -1,8 +1,8 @@
-﻿import { GvaFeaturePlaceholderPage } from '@/components/pages/gva-feature-placeholder-page';
+﻿import { FnaFeaturePlaceholderPage } from '@/components/pages/fna-feature-placeholder-page';
 
 export default function Page() {
   return (
-    <GvaFeaturePlaceholderPage
+    <FnaFeaturePlaceholderPage
       title="登录日志"
       description="查看用户登录成功与失败记录。"
     />

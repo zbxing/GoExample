@@ -66,7 +66,7 @@ yarn dev:server
 
 服务默认对 `/api/v1` 启用有界并发和 draining 保护（`HTTP_MAX_IN_FLIGHT=256`），并将标准 listener 接受的连接并发限制为 `HTTP_MAX_CONNECTIONS=4096`、请求头读取预算限制为 `HTTP_READ_BUFFER_SIZE=16384`。达到在途请求上限或实例开始停机摘流时返回 `503` 和 `Retry-After: 1`；连接容量耗尽时 listener 暂停 `Accept` 直至槽位释放，调用方必须设置连接 timeout，edge 应提供更早的容量拒绝；连接容量、当前打开数和固定状态事件进入 `/metrics`，持续 90% 饱和有告警规则。超出请求头预算返回 `431`，已有业务请求继续完成，探针不占用应用 admission slot。
 
-选定写接口的 `X-Idempotency-Key` 会绑定 method、target、subject、media type 和 body 指纹；相同请求可重放，不同请求复用 key 返回 `409`。Redis 适配器以 Lua 提供跨实例原子限流和 owner-token 幂等锁，并使用与服务一致的 OpenTelemetry provider 创建只含固定命令/结果类别的低敏 `CLIENT` span；两个独立 client/Fiber app 的本地行为契约已覆盖。真实 TCP 契约覆盖 keep-alive、idle timeout、半关闭、慢读写和 shutdown 连接收敛。目标 edge、真实 Redis HA/故障切换和多副本部署仍需在实际环境验证。
+选定写接口的 `X-Idempotency-Key` 会绑定 method、target、subject、media type 和 body 指纹；相同请求可重放，不同请求复用 key 返回 `409`。Redis 适配器以 Lua 提供跨实例原子限流和 owner-token 幂等锁，并使用与服务一致的 OpenTelemetry provider 创建只含固定命令/结果类别的低敏 `CLIENT` span；两个独立 client/Fiber app 的本地行为契约已覆盖。真实 TCP 契约覆盖 keep-alive、idle timeout、半关闭、慢读写和 shutdown 连接收敛。标准 HTTP/1.1/HTTP2 SSE 支持有界事件、心跳、`Last-Event-ID` 恢复 source，以及最长 24 小时且仍服从 caller/断连/停机取消的独立 stream timeout；标准 adapter 会把外层服务器写期限切换到有效流期限加固定 1 秒协议收尾预算，避免默认 `WriteTimeout` 提前截断，零值保持原服务器预算。换行密集事件直接编码而不建立按行切片或完整 payload 副本。目标 edge、真实 Redis HA/故障切换和多副本部署仍需在实际环境验证。
 
 Go 服务使用官方 OpenTelemetry SDK 创建 HTTP server、`project.get` application child 和低敏 Redis client span。OTLP/HTTP exporter 默认关闭，可通过 `Solutions/Example/.env.example` 中的 `OTEL_*` 变量启用有界 batch、采样、导出 timeout 和 shutdown flush；HTTP attempt timeout 与 retry 退避均包含在总导出预算内，逐次 attempt 和最终 batch/span 只记录固定成功/失败结果。仓库已验证本地 wire contract、503 retry 恢复和持续故障上限，真实 collector、trace backend 和告警链路仍需目标环境证据。
 
