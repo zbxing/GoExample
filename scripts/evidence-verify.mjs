@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
 import { closeSync, existsSync, lstatSync, openSync, readFileSync, readdirSync, readSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -35,6 +34,7 @@ import {
   evidenceInputPaths,
   optionalEvidenceInputPaths,
 } from './lib/evidence-manifest-contract.mjs';
+import { runBoundedCommand, summarizeGitStatus } from './lib/bounded-command.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -723,33 +723,7 @@ function verifyBoundaries(boundaries, evidencePaths) {
 }
 
 function runCommand(command, args, { raw = false } = {}) {
-  const candidates = process.platform === 'win32' ? [command, `${command}.cmd`, `${command}.exe`] : [command];
-  for (const candidate of candidates) {
-    const result = spawnSync(candidate, args, {
-      cwd: repositoryRoot,
-      encoding: 'utf8',
-      shell: false,
-      windowsHide: true,
-    });
-    if (result.status === 0) {
-      const output = `${result.stdout ?? ''}`;
-      return raw ? output : output.trim() || null;
-    }
-  }
-  if (process.platform === 'win32' && !path.isAbsolute(command)) {
-    const commandShell = process.env.ComSpec ?? 'cmd.exe';
-    const result = spawnSync(commandShell, ['/d', '/s', '/c', [command, ...args].join(' ')], {
-      cwd: repositoryRoot,
-      encoding: 'utf8',
-      shell: false,
-      windowsHide: true,
-    });
-    if (result.status === 0) {
-      const output = `${result.stdout ?? ''}`;
-      return raw ? output : output.trim() || null;
-    }
-  }
-  return null;
+  return runBoundedCommand(command, args, { cwd: repositoryRoot, raw });
 }
 
 function runGit(args, options) {
@@ -790,13 +764,14 @@ function verifyRepository(repository) {
   if (currentCommit !== value.gitCommit) {
     fail('repository Git commit must match the current repository commit');
   }
-  const statusSha256 = createHash('sha256').update(currentStatus).digest('hex');
-  if (statusSha256 !== value.statusSha256) {
+  const currentStatusSummary = summarizeGitStatus(currentStatus);
+  if (currentStatusSummary.statusSha256 !== value.statusSha256) {
     fail('repository Git status hash no longer matches the manifest');
   }
-  const dirty = currentStatus.length > 0;
-  const changedFileCount = dirty ? currentStatus.split('\n').filter(Boolean).length : 0;
-  if (dirty !== value.dirty || changedFileCount !== value.changedFileCount) {
+  if (
+    currentStatusSummary.dirty !== value.dirty ||
+    currentStatusSummary.changedFileCount !== value.changedFileCount
+  ) {
     fail('repository dirty state no longer matches the manifest');
   }
 }

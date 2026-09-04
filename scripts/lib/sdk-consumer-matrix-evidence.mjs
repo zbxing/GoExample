@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { readBoundedGitCommit } from './bounded-command.mjs';
 import { readSDKConsumerMatrix, verifySDKConsumerMatrix } from './sdk-consumer-matrix.mjs';
 
 export const sdkConsumerMatrixEvidenceSchemaVersion = 1;
@@ -116,14 +116,8 @@ function verifyFileRecord(record, filePath, expectedPath, name) {
 }
 
 function currentGitCommit(repositoryRoot) {
-  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
-  });
-  const value = `${result.stdout ?? ''}`.trim();
-  if (result.status !== 0 || !gitCommitPattern.test(value)) {
+  const value = readBoundedGitCommit({ cwd: repositoryRoot });
+  if (value === null) {
     reject('cannot resolve the current Git commit');
   }
   return value;
@@ -144,6 +138,7 @@ function sourcePaths() {
     billingReleaseManifest: 'SDK/Billing/release-manifest.json',
     evidenceRunner: 'scripts/sdk-consumer-matrix-evidence.mjs',
     evidenceVerifier: 'scripts/lib/sdk-consumer-matrix-evidence.mjs',
+    boundedCommand: 'scripts/lib/bounded-command.mjs',
     evidenceTests: '__test__/node/sdk-consumer-matrix-evidence.test.mjs',
     aggregateGenerator: 'scripts/evidence-manifest.mjs',
     aggregateVerifier: 'scripts/evidence-verify.mjs',

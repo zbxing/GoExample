@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +8,10 @@ import {
   serverRecoveryLimitations,
   serverRecoveryScenarios,
 } from './lib/server-recovery-evidence.mjs';
+import {
+  isolatedGoToolchainEnvironment,
+  selectRepositoryToolCommand,
+} from './lib/go-toolchain-environment.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -52,12 +56,15 @@ if (!isWithin(recoveryRoot, outputRoot)) {
   fail('output directory must stay inside .temp/recovery');
 }
 
-const goCandidates = [
-  process.env.GO_BINARY?.trim(),
-  path.join(tempRoot, 'toolchain', `go${toolchainMatch[1]}`, 'go', 'bin', process.platform === 'win32' ? 'go.exe' : 'go'),
-  path.join(tempRoot, 'toolchain', 'go', 'bin', process.platform === 'win32' ? 'go.exe' : 'go'),
-].filter(Boolean);
-const goCommand = goCandidates.find((candidate) => existsSync(candidate)) ?? 'go';
+const goExecutableName = process.platform === 'win32' ? 'go.exe' : 'go';
+const goCommand = selectRepositoryToolCommand({
+  configuredCommand: process.env.GO_BINARY,
+  repositoryCandidates: [
+    path.join(tempRoot, 'toolchain', `go${toolchainMatch[1]}`, 'go', 'bin', goExecutableName),
+    path.join(tempRoot, 'toolchain', 'go', 'bin', goExecutableName),
+  ],
+  fallbackCommand: 'go',
+}).command;
 const goTemporaryRoot = path.join(tempRoot, 'go-tmp');
 const goCacheRoot = path.join(tempRoot, 'gocache');
 mkdirSync(recoveryRoot, { recursive: true });
@@ -66,14 +73,13 @@ mkdirSync(outputRoot, { recursive: true });
 mkdirSync(goTemporaryRoot, { recursive: true });
 mkdirSync(goCacheRoot, { recursive: true });
 
-const environment = {
-  ...process.env,
+const environment = isolatedGoToolchainEnvironment(process.env, {
   GOCACHE: goCacheRoot,
   GOTMPDIR: goTemporaryRoot,
   GOFLAGS: '',
   GOWORK: path.join(repositoryRoot, 'go.work'),
   REDIS_TEST_URL: '',
-};
+});
 const gitCommitResult = spawnSync('git', ['rev-parse', 'HEAD'], {
   cwd: repositoryRoot,
   encoding: 'utf8',

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { readBoundedGitCommit } from './bounded-command.mjs';
 
 export const serverRecoveryEvidenceSchemaVersion = 1;
 export const serverRecoverySummarySchemaVersion = 1;
@@ -195,16 +195,11 @@ function goArchitecture(nodeArchitecture) {
 }
 
 function currentGitCommit(repositoryRoot) {
-  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
-  });
-  if (result.status !== 0 || !gitCommitPattern.test(`${result.stdout ?? ''}`.trim())) {
+  const value = readBoundedGitCommit({ cwd: repositoryRoot });
+  if (value === null) {
     reject('cannot resolve the current Git commit');
   }
-  return result.stdout.trim();
+  return value;
 }
 
 function collectSource(repositoryRoot) {
@@ -220,6 +215,7 @@ function collectSource(repositoryRoot) {
     drillRunner: 'scripts/server-recovery-drill.mjs',
     evidenceRunner: 'scripts/server-recovery-evidence.mjs',
     evidenceVerifier: 'scripts/lib/server-recovery-evidence.mjs',
+    boundedCommand: 'scripts/lib/bounded-command.mjs',
     evidenceTests: '__test__/node/server-recovery-evidence.test.mjs',
     runbook: 'docs/recovery/server-failure-matrix.md',
     workflow: '.github/workflows/go-quality.yml',

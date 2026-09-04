@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -261,6 +262,136 @@ func TestAdapterDeadLetterIsPublishBeforeAckAndDedupeStable(t *testing.T) {
 	}
 }
 
+func TestAdapterQuarantinesInvalidMessageBeforeReceivingMoreWork(t *testing.T) {
+	publisher := &fakePublisher{}
+	invalid := &fakeMessage{
+		data: []byte("invalid-body"),
+		headers: nats.Header{
+			"Tenant":                       []string{"one", "two"},
+			"Correlation":                  []string{"safe"},
+			jetstream.ExpectedStreamHeader: []string{"private-stream"},
+		},
+		metadata: &jetstream.MsgMetadata{Stream: "EVENTS", Consumer: "WORKER", Sequence: jetstream.SequencePair{Stream: 8}},
+	}
+	valid := &fakeMessage{
+		data:     []byte("valid-body"),
+		headers:  nats.Header{"Tenant": []string{"tenant-a"}},
+		metadata: &jetstream.MsgMetadata{Stream: "EVENTS", Consumer: "WORKER", Sequence: jetstream.SequencePair{Stream: 9}},
+	}
+	adapter, err := New(publisher, &fakeConsumer{messages: []jetstream.Msg{invalid, valid}}, Config{
+		Subject:           "events.primary",
+		DeadLetterSubject: "events.dlq",
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	delivery, err := adapter.ReceiveDelivery(context.Background())
+	if err != nil {
+		t.Fatalf("ReceiveDelivery() error = %v", err)
+	}
+	if string(delivery.Message.Body) != "valid-body" || delivery.Message.Headers["Tenant"] != "tenant-a" {
+		t.Fatalf("delivery message = %#v", delivery.Message)
+	}
+	if invalid.doubleAckCalls != 1 {
+		t.Fatalf("invalid source DoubleAck() calls = %d", invalid.doubleAckCalls)
+	}
+	published := publisher.snapshot()
+	if len(published) != 1 {
+		t.Fatalf("quarantine publishes = %d", len(published))
+	}
+	quarantined := published[0]
+	if quarantined.Subject != "events.dlq" || string(quarantined.Data) != "invalid-body" {
+		t.Fatalf("quarantined message = %#v", quarantined)
+	}
+	if quarantined.Header.Get("Tenant") != "" || quarantined.Header.Get("Correlation") != "safe" {
+		t.Fatalf("quarantined application headers = %#v", quarantined.Header)
+	}
+	if quarantined.Header.Get(jetstream.ExpectedStreamHeader) != "" || quarantined.Header.Get(jetstream.MsgIDHeader) == "" {
+		t.Fatalf("quarantined control headers = %#v", quarantined.Header)
+	}
+}
+
+func TestAdapterInvalidMessageQuarantineFailsClosed(t *testing.T) {
+	newInvalid := func() *fakeMessage {
+		return &fakeMessage{
+			data:     []byte("invalid"),
+			headers:  nats.Header{"Tenant": []string{"one", "two"}},
+			metadata: &jetstream.MsgMetadata{Stream: "EVENTS", Consumer: "WORKER", Sequence: jetstream.SequencePair{Stream: 10}},
+		}
+	}
+
+	t.Run("publish failure leaves source pending", func(t *testing.T) {
+		message := newInvalid()
+		adapter, err := New(&fakePublisher{publishErr: errors.New("private publish failure")}, &fakeConsumer{messages: []jetstream.Msg{message}}, Config{Subject: "events.primary", DeadLetterSubject: "events.dlq"})
+		if err != nil {
+			t.Fatalf("New() error = %v", err)
+		}
+		if _, err := adapter.ReceiveDelivery(context.Background()); !errors.Is(err, ErrDeadLetter) {
+			t.Fatalf("ReceiveDelivery() error = %v", err)
+		}
+		if message.doubleAckCalls != 0 {
+			t.Fatalf("source was acked after failed quarantine publish: %d", message.doubleAckCalls)
+		}
+	})
+
+	t.Run("ack failure reports settlement failure", func(t *testing.T) {
+		message := newInvalid()
+		message.doubleAckErr = errors.New("private ack failure")
+		publisher := &fakePublisher{}
+		adapter, err := New(publisher, &fakeConsumer{messages: []jetstream.Msg{message}}, Config{Subject: "events.primary", DeadLetterSubject: "events.dlq"})
+		if err != nil {
+			t.Fatalf("New() error = %v", err)
+		}
+		if _, err := adapter.ReceiveDelivery(context.Background()); !errors.Is(err, ErrDeadLetter) {
+			t.Fatalf("ReceiveDelivery() error = %v", err)
+		}
+		if len(publisher.snapshot()) != 1 || message.doubleAckCalls != 1 {
+			t.Fatalf("quarantine settlement = publishes:%d acks:%d", len(publisher.snapshot()), message.doubleAckCalls)
+		}
+	})
+
+	t.Run("missing metadata remains invalid", func(t *testing.T) {
+		message := newInvalid()
+		message.metadata = nil
+		publisher := &fakePublisher{}
+		adapter, err := New(publisher, &fakeConsumer{messages: []jetstream.Msg{message}}, Config{Subject: "events.primary", DeadLetterSubject: "events.dlq"})
+		if err != nil {
+			t.Fatalf("New() error = %v", err)
+		}
+		if _, err := adapter.ReceiveDelivery(context.Background()); !errors.Is(err, ErrInvalidMessage) {
+			t.Fatalf("ReceiveDelivery() error = %v", err)
+		}
+		if len(publisher.snapshot()) != 0 || message.doubleAckCalls != 0 {
+			t.Fatalf("invalid metadata settlement = publishes:%d acks:%d", len(publisher.snapshot()), message.doubleAckCalls)
+		}
+	})
+}
+
+func TestDeadLetterIDUsesStableDigestInput(t *testing.T) {
+	metadata := &jetstream.MsgMetadata{
+		Stream:   "EVENTS",
+		Consumer: "WORKER",
+		Sequence: jetstream.SequencePair{Stream: 123},
+	}
+	const want = "goexample-dlq-efaeedf7a35aa078f331962fa190dd261e787466138989d52873ee20cd59d78b"
+	if got := deadLetterID(metadata); got != want {
+		t.Fatalf("deadLetterID() = %q, want %q", got, want)
+	}
+}
+
+func BenchmarkDeadLetterID(b *testing.B) {
+	metadata := &jetstream.MsgMetadata{
+		Stream:   "EVENTS",
+		Consumer: "WORKER",
+		Sequence: jetstream.SequencePair{Stream: 123},
+	}
+	b.ReportAllocs()
+	for range b.N {
+		_ = deadLetterID(metadata)
+	}
+}
+
 func TestAdapterErrorsAreFixedAndInvalidHeadersFailClosed(t *testing.T) {
 	publisher := &fakePublisher{publishErr: errors.New("credential-secret")}
 	adapter, err := New(publisher, &fakeConsumer{}, Config{Subject: "events.primary", DeadLetterSubject: "events.dlq"})
@@ -305,6 +436,148 @@ func TestAdapterErrorsAreFixedAndInvalidHeadersFailClosed(t *testing.T) {
 	if err := delivery.ExtendLease(nil); !errors.Is(err, ErrInvalidContext) {
 		t.Fatalf("ExtendLease(nil) error = %v", err)
 	}
+}
+
+func TestCopyApplicationHeadersReusesDestinationAndFiltersControlHeaders(t *testing.T) {
+	destination := nats.Header{"Existing": []string{"keep"}}
+	copyApplicationHeaders(destination, map[string]string{
+		"Tenant":                       "tenant-a",
+		jetstream.MsgIDHeader:          "caller-controlled",
+		jetstream.ExpectedStreamHeader: "private-stream",
+	})
+	if destination.Get("Existing") != "keep" || destination.Get("Tenant") != "tenant-a" {
+		t.Fatalf("destination headers = %#v", destination)
+	}
+	if destination.Get(jetstream.MsgIDHeader) != "" || destination.Get(jetstream.ExpectedStreamHeader) != "" {
+		t.Fatalf("control headers were copied: %#v", destination)
+	}
+}
+
+func TestJetStreamControlHeaderAcceptsCanonicalAndMixedCaseNames(t *testing.T) {
+	for _, control := range jetStreamControlHeaders {
+		if !jetStreamControlHeader(control) {
+			t.Fatalf("canonical control header %q was not recognized", control)
+		}
+		mixedCase := strings.ToUpper(control[:1]) + strings.ToLower(control[1:])
+		if !jetStreamControlHeader(mixedCase) {
+			t.Fatalf("mixed-case control header %q was not recognized", mixedCase)
+		}
+	}
+	for _, application := range []string{"Tenant", "Nats-Msg", "Nats-Expected"} {
+		if jetStreamControlHeader(application) {
+			t.Fatalf("application header %q was incorrectly classified as control", application)
+		}
+	}
+}
+
+func BenchmarkCopyApplicationHeaders(b *testing.B) {
+	cases := map[string]map[string]string{
+		"empty":    nil,
+		"single":   {"Tenant": "tenant-a"},
+		"multiple": {"Tenant": "tenant-a", "Region": "region-a"},
+	}
+	for name, headers := range cases {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				destination := nats.Header{}
+				copyApplicationHeaders(destination, headers)
+			}
+		})
+		b.Run(name+"-legacy", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				_ = legacyApplicationHeaders(headers)
+			}
+		})
+	}
+}
+
+func BenchmarkJetStreamControlHeader(b *testing.B) {
+	cases := map[string]string{
+		"canonical":   jetstream.MsgIDHeader,
+		"mixed-case":  strings.ToUpper(jetstream.ExpectedLastSeqHeader[:1]) + strings.ToLower(jetstream.ExpectedLastSeqHeader[1:]),
+		"application": "X-Tenant",
+	}
+	for name, header := range cases {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if jetStreamControlHeader(header) && name == "application" {
+					b.Fatal("application header classified as control")
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkFromJetStreamMessage(b *testing.B) {
+	cases := map[string]nats.Header{
+		"empty":     nil,
+		"single":    {"Tenant": []string{"tenant-a"}},
+		"multiple":  {"Tenant": []string{"tenant-a"}, "Region": []string{"region-a"}},
+		"sixteen":   benchmarkHeaders(16),
+		"sixtyfour": benchmarkHeaders(64),
+	}
+	for name, headers := range cases {
+		message := &fakeMessage{data: []byte("payload"), headers: headers}
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if _, err := fromJetStreamMessage(message); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+		b.Run(name+"-legacy", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if _, err := legacyFromJetStreamMessage(message); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func benchmarkHeaders(count int) nats.Header {
+	headers := make(nats.Header, count)
+	for index := 0; index < count; index++ {
+		headers["X-Header-"+strconv.Itoa(index)] = []string{"value"}
+	}
+	return headers
+}
+
+func legacyFromJetStreamMessage(message jetstream.Msg) (queueclient.Message, error) {
+	if message == nil {
+		return queueclient.Message{}, ErrInvalidMessage
+	}
+	result := queueclient.Message{
+		Body:    bytes.Clone(message.Data()),
+		Headers: make(map[string]string),
+	}
+	for name, values := range message.Headers() {
+		if jetStreamControlHeader(name) {
+			continue
+		}
+		if len(values) != 1 {
+			return queueclient.Message{}, ErrInvalidMessage
+		}
+		result.Headers[name] = values[0]
+	}
+	return result, nil
+}
+
+// legacyApplicationHeaders mirrors the replaced implementation so the
+// allocation benchmark retains a directly comparable before/after baseline.
+func legacyApplicationHeaders(headers map[string]string) nats.Header {
+	result := nats.Header{}
+	for name, value := range headers {
+		if !jetStreamControlHeader(name) {
+			result.Set(name, value)
+		}
+	}
+	return result
 }
 
 func TestAdapterReceiveHonorsCancellationBetweenBoundedPulls(t *testing.T) {

@@ -4,9 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -87,6 +90,64 @@ func TestClientCreatesLowSensitivitySpanAndPropagatesW3CContext(t *testing.T) {
 	}
 }
 
+func TestCloneRequestForPropagationOnlyIsolatesMutableHeaders(t *testing.T) {
+	request := httptest.NewRequest(http.MethodPost, "https://example.test/items?tenant=one", strings.NewReader("payload"))
+	request.Header["X-Values"] = []string{"one", "two"}
+	request.Trailer = http.Header{"X-Trailer": []string{"value"}}
+	request.TransferEncoding = []string{"chunked"}
+	request.Form = url.Values{"filter": []string{"active"}}
+	request.PostForm = url.Values{"name": []string{"Ada"}}
+
+	ctx := context.WithValue(request.Context(), struct{}{}, "outbound")
+	outbound := cloneRequestForPropagation(request, ctx)
+	outbound.Header.Set("X-Values", "changed")
+	outbound.Header.Set("traceparent", "injected")
+
+	if outbound == request || outbound.Context() != ctx {
+		t.Fatal("outbound request did not receive an isolated request value and replacement context")
+	}
+	if outbound.URL != request.URL || &outbound.TransferEncoding[0] != &request.TransferEncoding[0] {
+		t.Fatal("outbound request deep-copied read-only URL or transfer-encoding state")
+	}
+	if request.Header.Get("X-Values") != "one" || request.Header.Get("traceparent") != "" {
+		t.Fatalf("caller headers were mutated: %#v", request.Header)
+	}
+	if request.URL.RawQuery != "tenant=one" || request.Trailer.Get("X-Trailer") != "value" ||
+		request.Form.Get("filter") != "active" || request.PostForm.Get("name") != "Ada" {
+		t.Fatal("caller read-only request state changed")
+	}
+}
+
+var benchmarkOutboundRequest *http.Request
+
+func BenchmarkCloneRequestForPropagation(b *testing.B) {
+	request := httptest.NewRequest(http.MethodPost, "https://example.test/items?tenant=one", strings.NewReader("payload"))
+	request.Header["X-Values"] = []string{"one", "two"}
+	request.Trailer = http.Header{"X-Trailer": []string{"value"}}
+	request.TransferEncoding = []string{"chunked"}
+	request.Form = url.Values{"filter": []string{"active"}}
+	request.PostForm = url.Values{"name": []string{"Ada"}}
+	ctx := context.WithValue(request.Context(), struct{}{}, "outbound")
+
+	b.Run("optimized", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			benchmarkOutboundRequest = cloneRequestForPropagation(request, ctx)
+		}
+	})
+	b.Run("legacy-deep-clone", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			outbound := request.Clone(ctx)
+			outbound.Header = request.Header.Clone()
+			if outbound.Header == nil {
+				outbound.Header = make(http.Header)
+			}
+			benchmarkOutboundRequest = outbound
+		}
+	})
+}
+
 func TestNewAppliesFiniteTransportBudgetsAndTLSBaseline(t *testing.T) {
 	customTLS := &tls.Config{MinVersion: tls.VersionTLS13}
 	client, err := New(Config{TLSConfig: customTLS})
@@ -133,6 +194,61 @@ func TestClientEnforcesResponseHeaderLimit(t *testing.T) {
 	}
 	if err == nil {
 		t.Fatal("client accepted response headers above its configured limit")
+	}
+}
+
+func TestClientComposesRetryBreakerAndResponseBodyLimit(t *testing.T) {
+	recorder, provider := testTracerProvider(t)
+	var attempts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, _ *http.Request) {
+		attempt := attempts.Add(1)
+		if attempt == 1 {
+			response.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		if attempt == 2 {
+			response.Header().Set("Content-Length", "6")
+			_, _ = io.WriteString(response, "secret")
+			return
+		}
+		_, _ = io.WriteString(response, "ok")
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := New(Config{
+		TracerProvider:       provider,
+		MaxResponseBodyBytes: 3,
+		Retry:                RetryConfig{MaxAttempts: 2, InitialBackoff: time.Millisecond, MaxBackoff: time.Millisecond},
+		CircuitBreaker:       CircuitBreakerConfig{FailureThreshold: 1, OpenTimeout: time.Second},
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	response, err := client.Get(server.URL)
+	if response != nil {
+		response.Body.Close()
+	}
+	if !errors.Is(err, ErrResponseBodyTooLarge) {
+		t.Fatalf("Get() error = %v, want ErrResponseBodyTooLarge", err)
+	}
+	if attempts.Load() != 2 {
+		t.Fatalf("attempts after retry/body limit = %d, want 2", attempts.Load())
+	}
+	if span := onlyEndedSpan(t, recorder); spanAttributes(span)["error.type"].AsString() != "response_body_too_large" {
+		t.Fatalf("oversized response span attributes = %#v", spanAttributes(span))
+	}
+
+	// The response-body owner reports the terminal read boundary; a successful
+	// logical HTTP response must not trip the client-level circuit breaker.
+	response, err = client.Get(server.URL)
+	if err != nil {
+		t.Fatalf("second logical request error = %v, breaker incorrectly opened", err)
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil || string(body) != "ok" {
+		t.Fatalf("second logical response = %q/%v, want ok", body, err)
 	}
 }
 
@@ -280,6 +396,7 @@ func TestNewRejectsUnboundedOrInconsistentConfiguration(t *testing.T) {
 		{ConnectTimeout: -time.Second},
 		{MaxConnectionsPerHost: -1},
 		{MaxResponseHeaderBytes: -1},
+		{MaxResponseBodyBytes: -1},
 		{TLSConfig: &tls.Config{MinVersion: tls.VersionTLS11}},
 		{TLSConfig: &tls.Config{MaxVersion: tls.VersionTLS11}},
 		{MaxIdleConnections: 2, MaxIdleConnectionsPerHost: 3},

@@ -571,6 +571,51 @@ func TestRetryTransactionBackoffSharesTransactionDeadline(t *testing.T) {
 	}
 }
 
+func TestTransactionDoesNotEnterCallbackAfterBeginCancellation(t *testing.T) {
+	db, state := openScriptedDatabase(t)
+	client, err := New(db, Config{OperationTimeout: 500 * time.Millisecond, TransactionTimeout: time.Second})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	state.beginCancel = cancel
+	called := false
+	err = client.Transaction(ctx, nil, func(context.Context, *Tx) error {
+		called = true
+		return nil
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Transaction() error = %v, want context canceled", err)
+	}
+	if called {
+		t.Fatal("transaction callback ran after cancellation")
+	}
+	if state.rollbacks.Load() != 1 || state.commits.Load() != 0 {
+		t.Fatalf("rollbacks/commits = %d/%d, want 1/0", state.rollbacks.Load(), state.commits.Load())
+	}
+}
+
+func TestTransactionRollsBackWhenCanceledBeforeCommit(t *testing.T) {
+	db, state := openScriptedDatabase(t)
+	client, err := New(db, Config{OperationTimeout: 500 * time.Millisecond, TransactionTimeout: time.Second})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	defer client.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	err = client.Transaction(ctx, nil, func(context.Context, *Tx) error {
+		cancel()
+		return nil
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Transaction() error = %v, want context canceled", err)
+	}
+	if state.rollbacks.Load() != 1 || state.commits.Load() != 0 {
+		t.Fatalf("rollbacks/commits = %d/%d, want 1/0", state.rollbacks.Load(), state.commits.Load())
+	}
+}
+
 func TestNilReceiversAndContextsFailWithoutPanic(t *testing.T) {
 	var client *Client
 	if err := client.Check(context.Background()); !errors.Is(err, errNilClient) {
@@ -690,6 +735,7 @@ type scriptedState struct {
 	commitFailures   atomic.Int64
 	rollbackFailures atomic.Int64
 	commitSQLState   string
+	beginCancel      context.CancelFunc
 }
 
 type scriptedConnection struct {
@@ -712,6 +758,10 @@ func (connection *scriptedConnection) Begin() (driver.Tx, error) {
 func (connection *scriptedConnection) BeginTx(_ context.Context, options driver.TxOptions) (driver.Tx, error) {
 	connection.state.serializable.Store(options.Isolation == driver.IsolationLevel(sql.LevelSerializable))
 	connection.state.readOnly.Store(options.ReadOnly)
+	if connection.state.beginCancel != nil {
+		connection.state.beginCancel()
+		connection.state.beginCancel = nil
+	}
 	return &scriptedTransaction{state: connection.state}, nil
 }
 

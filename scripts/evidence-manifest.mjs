@@ -10,7 +10,6 @@ import {
   readSync,
   writeFileSync,
 } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -45,6 +44,7 @@ import {
   evidenceInputPaths,
   optionalEvidenceInputPaths,
 } from './lib/evidence-manifest-contract.mjs';
+import { runBoundedCommand, summarizeGitStatus } from './lib/bounded-command.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -103,33 +103,7 @@ function resolveOutputPath() {
 }
 
 function run(command, args, { raw = false } = {}) {
-  const candidates = process.platform === 'win32' ? [command, `${command}.cmd`, `${command}.exe`] : [command];
-  for (const candidate of candidates) {
-    const result = spawnSync(candidate, args, {
-      cwd: repositoryRoot,
-      encoding: 'utf8',
-      shell: false,
-      windowsHide: true,
-    });
-    if (result.status === 0) {
-      const output = `${result.stdout ?? ''}`;
-      return raw ? output : output.trim() || null;
-    }
-  }
-  if (process.platform === 'win32' && !path.isAbsolute(command)) {
-    const commandShell = process.env.ComSpec ?? 'cmd.exe';
-    const result = spawnSync(commandShell, ['/d', '/s', '/c', [command, ...args].join(' ')], {
-      cwd: repositoryRoot,
-      encoding: 'utf8',
-      shell: false,
-      windowsHide: true,
-    });
-    if (result.status === 0) {
-      const output = `${result.stdout ?? ''}`;
-      return raw ? output : output.trim() || null;
-    }
-  }
-  return null;
+  return runBoundedCommand(command, args, { cwd: repositoryRoot, raw });
 }
 
 function hashFile(filePath) {
@@ -562,6 +536,7 @@ if (typeof gitCommit !== 'string' || !/^[a-f0-9]{40}$/.test(gitCommit)) {
 if (gitStatus === null) {
   fail('current repository Git status is unavailable');
 }
+const gitStatusSummary = summarizeGitStatus(gitStatus);
 const evidence = collectEvidence(outputPath);
 const benchmarkFiles = [...(evidence.benchmark ?? []), ...(evidence.profiles ?? [])];
 const runningInGitHubActions = process.env.GITHUB_ACTIONS === 'true';
@@ -917,9 +892,7 @@ const manifest = {
   repository: {
     root: '.',
     gitCommit,
-    dirty: gitStatus.length > 0,
-    changedFileCount: gitStatus ? gitStatus.split('\n').filter(Boolean).length : 0,
-    statusSha256: createHash('sha256').update(gitStatus).digest('hex'),
+    ...gitStatusSummary,
   },
   toolchain: {
     node: process.version,

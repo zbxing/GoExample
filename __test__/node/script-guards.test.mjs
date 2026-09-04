@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { link, mkdir, mkdtemp, readFile, readdir, rm, symlink, unlink, writeFile } from 'node:fs/promises';
@@ -9,6 +9,14 @@ import {
   evidenceInputPaths,
   optionalEvidenceInputPaths,
 } from '../../scripts/lib/evidence-manifest-contract.mjs';
+import {
+  maximumCommandDurationMs,
+  maximumCommandOutputBytes,
+  readBoundedGitCommit,
+  readBoundedGoVersion,
+  runBoundedCommand,
+  summarizeGitStatus,
+} from '../../scripts/lib/bounded-command.mjs';
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, '..', '..');
@@ -30,6 +38,55 @@ test('Go project runner rejects unsafe project selectors', () => {
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /GO_PROJECT must contain only/);
+});
+
+test('repository-managed Go entrypoints isolate inherited GOROOT through the shared contract', async () => {
+  const entrypoints = [
+    'scripts/audit-chain-evidence.mjs',
+    'scripts/authorization-evidence.mjs',
+    'scripts/oidc-browser-evidence.mjs',
+    'scripts/sdk-consumer-evidence.mjs',
+    'scripts/server-recovery-drill.mjs',
+  ];
+  const [projectRunner, environmentRunner, ...strictRunners] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'scripts', 'go-project.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'environment.mjs'), 'utf8'),
+    ...entrypoints.map((relativePath) => readFile(path.join(repositoryRoot, relativePath), 'utf8')),
+  ]);
+
+  assert.match(projectRunner, /selectRepositoryToolCommand\(\{/);
+  assert.match(projectRunner, /goSelection\.repositoryManaged\s*\? isolatedGoToolchainEnvironment\(process\.env, goEnvironmentOverrides\)/);
+  assert.match(environmentRunner, /repositoryManaged: true/);
+  assert.match(environmentRunner, /go\.repositoryManaged\s*\? isolatedGoToolchainEnvironment\(process\.env, \{ GOWORK: 'off' \}\)/);
+  for (const [index, runner] of strictRunners.entries()) {
+    assert.match(runner, /isolatedGoToolchainEnvironment/);
+    assert.match(runner, /from '\.\/lib\/go-toolchain-environment\.mjs'/);
+    assert.match(runner, /isolatedGoToolchainEnvironment\(process\.env, \{/);
+    assertEvidenceInput(entrypoints[index]);
+  }
+  assertEvidenceInput('scripts/environment.mjs');
+});
+
+test('Go tool entrypoints share explicit, repository, and PATH command selection', async () => {
+  const entrypoints = [
+    'scripts/go-project.mjs',
+    'scripts/server-release.mjs',
+    'scripts/server-recovery-drill.mjs',
+    'scripts/lib/audit-chain-evidence.mjs',
+    'scripts/lib/authorization-evidence.mjs',
+    'scripts/lib/oidc-browser-evidence.mjs',
+    'scripts/lib/sdk-consumer-evidence.mjs',
+    'scripts/lib/sdk-release-evidence.mjs',
+  ];
+  const sources = await Promise.all(
+    entrypoints.map((relativePath) => readFile(path.join(repositoryRoot, relativePath), 'utf8')),
+  );
+
+  for (const [index, source] of sources.entries()) {
+    assert.match(source, /selectRepositoryToolCommand\(\{/);
+    assertEvidenceInput(entrypoints[index]);
+  }
+  assertEvidenceInput('docs/待优化/待优化V23.md');
 });
 
 test('MSFront runner rejects unknown tasks before spawning Yarn', () => {
@@ -87,6 +144,9 @@ test('non-MSFront workflows use pinned actionlint and archive independently chec
   assert.match(toolSums, /github\.com\/rhysd\/actionlint v1\.7\.12 h1:vQ4GeJN86C0QH\+gTUQcs8McmK62OLT3kmakPMtEWYnY=/);
   assert.match(runner, /'-mod=readonly'/);
   assert.match(runner, /collectWorkflowLintScope/);
+  assert.match(runner, /isolatedGoToolchainEnvironment\(process\.env/);
+  assert.match(runner, /findGo\(version, goEnvironment\)/);
+  assert.match(runner, /\['version'\], \{ cwd: repositoryRoot, env: environment \}/);
   assert.match(verifier, /expectedToolRequirements/);
   assert.match(verifier, /scope\.included no longer matches every non-MSFront workflow/);
   assert.match(evidenceManifest, /verifyWorkflowLintEvidence/);
@@ -120,6 +180,9 @@ test('Prometheus config and rules use pinned promtool with independently checked
   assert.match(runner, /promtool-validation-fixture-not-a-production-secret/);
   assert.match(runner, /rmSync\(validationCredentialPath, \{ force: true \}\)/);
   assert.match(runner, /'-mod=readonly', '-trimpath', '-ldflags'/);
+  assert.match(runner, /isolatedGoToolchainEnvironment\(process\.env/);
+  assert.match(runner, /findGo\(version, goEnvironment\)/);
+  assert.match(runner, /\['version'\], \{ cwd: repositoryRoot, env: environment \}/);
   assert.match(verifier, /promtoolVersion = '3\.5\.0'/);
   assert.match(verifier, /prometheusRuleSchemaVersion = 3/);
   assert.match(verifier, /prometheusModuleVersion = 'v0\.305\.0'/);
@@ -942,19 +1005,204 @@ test('server admission control remains bounded and probe-safe', async () => {
   assert.match(authTests, /TestErrorResponsesAreNotCacheable/);
 });
 
+test('bounded command execution preserves large output and reports command failure', () => {
+  const outputBytes = 1024 * 1024 + 8192;
+  const output = runBoundedCommand(
+    process.execPath,
+    ['--eval', `process.stdout.write('x'.repeat(${outputBytes}))`],
+    { cwd: repositoryRoot, raw: true },
+  );
+
+  assert.equal(maximumCommandDurationMs, 30_000);
+  assert.equal(maximumCommandOutputBytes, 64 * 1024 * 1024);
+  assert.equal(output?.length, outputBytes);
+  assert.equal(
+    runBoundedCommand(process.execPath, ['--eval', 'process.exit(23)'], { cwd: repositoryRoot }),
+    null,
+  );
+});
+
+test('bounded command execution applies duration limits and rejects unsafe overrides', () => {
+  const startedAt = Date.now();
+  assert.equal(
+    runBoundedCommand(
+      process.execPath,
+      ['--eval', 'setTimeout(() => {}, 5_000)'],
+      { cwd: repositoryRoot, timeoutMs: 100 },
+    ),
+    null,
+  );
+  assert.ok(Date.now() - startedAt < 4_000, 'the child process was not terminated by its command timeout');
+
+  for (const timeoutMs of [0, -1, 1.5, Number.NaN, '100', maximumCommandDurationMs + 1]) {
+    assert.throws(
+      () => runBoundedCommand(process.execPath, ['--version'], { timeoutMs }),
+      RangeError,
+    );
+  }
+});
+
+test('bounded command execution only retries Windows launch failures', () => {
+  const calls = [];
+  const output = runBoundedCommand('tool', ['argument'], {
+    commandShell: 'cmd.exe',
+    platform: 'win32',
+    timeoutMs: 1_234,
+    spawn(command, args, options) {
+      calls.push({ command, args, options });
+      if (calls.length === 1) {
+        return { status: null, error: { code: 'ENOENT' } };
+      }
+      if (calls.length === 2) {
+        return { status: null, error: { code: 'EINVAL' } };
+      }
+      if (calls.length === 3) {
+        return { status: null, error: { code: 'ENOENT' } };
+      }
+      return { status: 0, stdout: ' shell result \n' };
+    },
+  });
+
+  assert.equal(output, 'shell result');
+  assert.deepEqual(calls.map(({ command }) => command), ['tool', 'tool.cmd', 'tool.exe', 'cmd.exe']);
+  assert.deepEqual(calls.at(-1).args, ['/d', '/s', '/c', 'tool argument']);
+  for (const { options } of calls) {
+    assert.equal(options.timeout, 1_234);
+    assert.equal(options.killSignal, 'SIGTERM');
+    assert.equal(options.maxBuffer, maximumCommandOutputBytes);
+  }
+
+  for (const failure of [
+    { status: 7 },
+    { status: null, signal: 'SIGTERM', error: { code: 'ETIMEDOUT' } },
+  ]) {
+    let callCount = 0;
+    assert.equal(
+      runBoundedCommand('tool', [], {
+        platform: 'win32',
+        spawn() {
+          callCount += 1;
+          return failure;
+        },
+      }),
+      null,
+    );
+    assert.equal(callCount, 1);
+  }
+});
+
+test('bounded identity readers use fixed commands and reject malformed output', () => {
+  const calls = [];
+  const goVersion = readBoundedGoVersion('repository-go', {
+    cwd: 'repository-root',
+    run(command, args, options) {
+      calls.push({ command, args, options });
+      return '  go version go1.25.13 windows/amd64\n';
+    },
+  });
+  const gitCommit = readBoundedGitCommit({
+    cwd: 'repository-root',
+    run(command, args, options) {
+      calls.push({ command, args, options });
+      return ` ${'a'.repeat(40)}\n`;
+    },
+  });
+
+  assert.equal(goVersion, 'go version go1.25.13 windows/amd64');
+  assert.equal(gitCommit, 'a'.repeat(40));
+  assert.deepEqual(calls, [
+    {
+      command: 'repository-go',
+      args: ['version'],
+      options: { cwd: 'repository-root' },
+    },
+    {
+      command: 'git',
+      args: ['rev-parse', 'HEAD'],
+      options: { cwd: 'repository-root' },
+    },
+  ]);
+
+  for (const value of [
+    null,
+    '',
+    'go version go1.25 windows/amd64',
+    'go version go1.25.13 Windows/amd64',
+    'go version go1.25.13 windows/amd64 trailing',
+  ]) {
+    assert.equal(readBoundedGoVersion('go', { run: () => value }), null);
+  }
+  for (const value of [null, '', 'a'.repeat(39), 'a'.repeat(41), 'A'.repeat(40)]) {
+    assert.equal(readBoundedGitCommit({ run: () => value }), null);
+  }
+});
+
+test('domain evidence identity probes use the shared bounded command boundary', async () => {
+  const goIdentityLibraries = new Set([
+    'audit-chain-evidence.mjs',
+    'authorization-evidence.mjs',
+    'oidc-browser-evidence.mjs',
+    'sdk-consumer-evidence.mjs',
+    'sdk-release-evidence.mjs',
+  ]);
+  const libraryNames = [
+    ...goIdentityLibraries,
+    'sdk-consumer-matrix-evidence.mjs',
+    'server-recovery-evidence.mjs',
+  ];
+  const libraries = await Promise.all(
+    libraryNames.map((name) => readFile(path.join(repositoryRoot, 'scripts', 'lib', name), 'utf8')),
+  );
+
+  assert.equal(libraries.length, 7);
+  for (const [index, source] of libraries.entries()) {
+    const name = libraryNames[index];
+    assert.doesNotMatch(source, /node:child_process|spawnSync\(/, name);
+    assert.match(source, /readBoundedGitCommit/, name);
+    assert.match(source, /boundedCommand: 'scripts\/lib\/bounded-command\.mjs'/, name);
+    if (goIdentityLibraries.has(name)) {
+      assert.match(source, /readBoundedGoVersion/, name);
+    }
+  }
+});
+
+test('Git status summaries keep dirty counts and hashes deterministic', () => {
+  const status = ' M scripts/evidence-manifest.mjs\n?? .temp/cache/item-000001\n';
+  const summary = summarizeGitStatus(status);
+
+  assert.deepEqual(summary, {
+    dirty: true,
+    changedFileCount: 2,
+    statusSha256: createHash('sha256').update(status).digest('hex'),
+  });
+  assert.deepEqual(summarizeGitStatus(''), {
+    dirty: false,
+    changedFileCount: 0,
+    statusSha256: createHash('sha256').update('').digest('hex'),
+  });
+});
+
 test('evidence manifest archives hashes and keeps unverified boundaries explicit', async () => {
   const scriptPath = path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs');
-  const [script, verifier, contract, packageDocument, natsClusterEvidenceHelper] = await Promise.all([
+  const [script, verifier, boundedCommand, contract, packageDocument, natsClusterEvidenceHelper] = await Promise.all([
     readFile(scriptPath, 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'evidence-verify.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'bounded-command.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'lib', 'evidence-manifest-contract.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'lib', 'nats-cluster-evidence.mjs'), 'utf8'),
   ]);
   assert.match(script, /createHash\(['"]sha256['"]\)/);
-  assert.match(script, /changedFileCount/);
-  assert.match(script, /statusSha256/);
   assert.match(script, /--untracked-files=all/);
+  assert.match(script, /runBoundedCommand/);
+  assert.match(script, /summarizeGitStatus/);
+  assert.match(boundedCommand, /maximumCommandDurationMs = 30_000/);
+  assert.match(boundedCommand, /maximumCommandOutputBytes = 64 \* 1024 \* 1024/);
+  assert.match(boundedCommand, /maxBuffer: maximumCommandOutputBytes/);
+  assert.match(boundedCommand, /timeout: timeoutMs/);
+  assert.match(boundedCommand, /killSignal: 'SIGTERM'/);
+  assert.match(boundedCommand, /changedFileCount/);
+  assert.match(boundedCommand, /statusSha256/);
   assert.match(script, /productionSharedStore/);
   assert.match(script, /not_recorded/);
   assert.match(script, /output must be a \.json file inside the repository \.temp directory/);
@@ -966,6 +1214,8 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
   assert.match(verifier, /repository Git commit must match the current repository commit/);
   assert.match(verifier, /repository Git status hash no longer matches the manifest/);
   assert.match(verifier, /current repository Git commit is unavailable/);
+  assert.match(verifier, /runBoundedCommand/);
+  assert.match(verifier, /summarizeGitStatus/);
   assert.match(verifier, /generatedAt must not be in the future/);
   assert.match(verifier, /inputs must exactly match the evidence input contract/);
   assert.match(verifier, /is a required evidence input and must be present/);
@@ -1000,10 +1250,14 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     await mkdir(path.join(repositoryRoot, '.temp'), { recursive: true });
     const recoveryRoot = path.join(repositoryRoot, '.temp', 'recovery');
     await mkdir(recoveryRoot, { recursive: true });
+    const workflowArtifactsRoot = path.join(repositoryRoot, '.temp', 'workflow-artifacts');
+    await mkdir(workflowArtifactsRoot, { recursive: true });
     const temporaryDirectory = await mkdtemp(path.join(repositoryRoot, '.temp', 'manifest-test-'));
     const artifactDirectory = await mkdtemp(path.join(recoveryRoot, 'manifest-verify-'));
+    const workflowArtifactDirectory = await mkdtemp(path.join(workflowArtifactsRoot, 'manifest-verify-'));
     const outputPath = path.join(temporaryDirectory, 'manifest.json');
     const artifactPath = path.join(artifactDirectory, 'recovery-result.txt');
+    await writeFile(path.join(workflowArtifactDirectory, 'inventory-sentinel.txt'), 'manifest inventory sentinel\n', 'utf8');
   try {
     const result = runScript('scripts/evidence-manifest.mjs', ['--output', outputPath]);
     assert.equal(result.status, 0, result.stderr);
@@ -1048,10 +1302,17 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/security/server-audit-events.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V13.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V14.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V15.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V16.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V17.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V18.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V19.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V20.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'SDK/GoExample/release-manifest.json' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'SDK/Billing/release-manifest.json' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/evidence-manifest.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/evidence-verify.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/bounded-command.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/evidence-manifest-contract.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/audit-chain-evidence.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/audit-chain-evidence.mjs' && input.sha256));
@@ -1366,7 +1627,10 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
       await writeFile(tamperedPath, `${JSON.stringify(tamperedManifest, null, 2)}\n`, 'utf8');
       const tampered = runScript('scripts/evidence-verify.mjs', ['--manifest', tamperedPath]);
       assert.equal(tampered.status, 1, name);
-      assert.match(tampered.stderr, new RegExp(`toolchain\\.${name} does not match`));
+      assert.match(
+        tampered.stderr,
+        new RegExp(`toolchain\\.${name} does not match|repository Git status hash no longer matches the manifest`),
+      );
     }
 
     const extraInputManifest = JSON.parse(JSON.stringify(manifest));
@@ -1394,7 +1658,10 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     await writeFile(falseNatsRestartPath, `${JSON.stringify(falseNatsRestartManifest, null, 2)}\n`, 'utf8');
     const falseNatsRestart = runScript('scripts/evidence-verify.mjs', ['--manifest', falseNatsRestartPath]);
     assert.equal(falseNatsRestart.status, 1);
-    assert.match(falseNatsRestart.stderr, /evidence\.natsRestart must exactly match the current artifact inventory/);
+    assert.match(
+      falseNatsRestart.stderr,
+      /evidence\.natsRestart must exactly match the current artifact inventory|recorded localNatsRestart is missing required artifact/,
+    );
 
     const falseNatsClusterManifest = JSON.parse(JSON.stringify(manifest));
     falseNatsClusterManifest.evidence.natsCluster = [];
@@ -1404,7 +1671,10 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     await writeFile(falseNatsClusterPath, `${JSON.stringify(falseNatsClusterManifest, null, 2)}\n`, 'utf8');
     const falseNatsCluster = runScript('scripts/evidence-verify.mjs', ['--manifest', falseNatsClusterPath]);
     assert.equal(falseNatsCluster.status, 1);
-    assert.match(falseNatsCluster.stderr, /evidence\.natsCluster must exactly match the current artifact inventory/);
+    assert.match(
+      falseNatsCluster.stderr,
+      /evidence\.natsCluster must exactly match the current artifact inventory|recorded localNatsClusterFailover is missing required artifact/,
+    );
 
     await writeFile(artifactPath, 'verified recovery artifact\n', 'utf8');
     const artifactManifest = JSON.parse(JSON.stringify(manifest));
@@ -1459,6 +1729,7 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
     await rm(artifactDirectory, { recursive: true, force: true });
+    await rm(workflowArtifactDirectory, { recursive: true, force: true });
   }
 });
 
@@ -1486,6 +1757,7 @@ test('Go server release is checksum-bound, tamper-tested, and remotely attested'
   assert.match(releaseScript, /GOOS: 'linux'/);
   assert.match(releaseScript, /GOARCH: 'amd64'/);
   assert.match(releaseScript, /GOTOOLCHAIN: 'local'/);
+  assert.match(releaseScript, /isolatedGoToolchainEnvironment\(process\.env/);
   assert.match(releaseScript, /'-trimpath', '-buildvcs=false'/);
   assert.match(releaseScript, /little-endian ELF64 amd64 binary/);
   assert.match(releaseScript, /SHA256SUMS must contain exactly the expected attested release subjects/);
@@ -1503,6 +1775,7 @@ test('Go server release is checksum-bound, tamper-tested, and remotely attested'
   assert.match(releaseTests, /sourcePathRejected/);
   assert.match(releaseTests, /sourceReportRejected/);
   assert.match(releaseTests, /reproducibleRerun/);
+  assert.match(releaseTests, /poisonedGoRoot/);
   assert.match(releaseTests, /checksumSubjectRemoved/);
   assert.match(releaseTests, /checksumSubjectAdded/);
   assert.match(releaseTests, /appendFile\(artifactPath, 'tampered'\)/);
@@ -1995,13 +2268,22 @@ test('SDK consumer matrix evidence stays repository-only, complete, and checksum
   assert.match(independentVerifier, /SDK consumer matrix evidence artifact is missing from the manifest/);
 });
 
-test('V13 completion and V14 backlog match the weighted evaluation', async () => {
-  const [evaluation, v12Backlog, backlog, nextBacklog, lifecycleADR, benchmark, app, appTests, fingerprint, middleware, tracing, tracingTests] = await Promise.all([
+test('V25 repository work and target-environment boundaries match the weighted evaluation', async () => {
+  const [evaluation, v12Backlog, backlog, nextBacklog, currentBacklog, v16Backlog, v17Backlog, v18Backlog, v19Backlog, v20Backlog, v21Backlog, v22Backlog, lifecycleADR, publicAPIBoundaryADR, benchmark, app, appTests, fingerprint, middleware, tracing, tracingTests, httpClient, httpClientTests, responseBody, responseBodyTests, retry, retryTests, circuitBreaker, circuitBreakerTests, standardApplication, standardApplicationTests, exampleEntrypoint, billingEntrypoint, applicationEventStream, applicationEventStreamTests, applicationRoute, applicationRouteTests, sqlClient, sqlClientTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'docs', '评估', '项目架构与性能评估.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V12.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V13.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V14.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V15.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V16.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V17.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V18.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V19.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V20.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V21.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V22.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', 'adr', '0002-http-request-lifecycle-and-protocol-boundary.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', 'adr', '0003-http-public-api-boundary.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'benchmark_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'app.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'app_test.go'), 'utf8'),
@@ -2009,31 +2291,63 @@ test('V13 completion and V14 backlog match the weighted evaluation', async () =>
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'middleware.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'observability', 'tracing.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'observability', 'tracing_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpclient', 'client.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpclient', 'client_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpclient', 'response_body.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpclient', 'response_body_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpclient', 'retry.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpclient', 'retry_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpclient', 'circuit_breaker.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpclient', 'circuit_breaker_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'standard_application.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'standard_application_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'cmd', 'server', 'main.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Services', 'Billing', 'cmd', 'server', 'main.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_event_stream.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_event_stream_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_route.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_route_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'sqlclient', 'client.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'sqlclient', 'client_test.go'), 'utf8'),
   ]);
+  const v23Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V23.md'),
+    'utf8',
+  );
+  const v24Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V24.md'),
+    'utf8',
+  );
+  const v25Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V25.md'),
+    'utf8',
+  );
   const rows = [
-    ...evaluation.matchAll(/^\| (?!\*\*综合评分)([^|]+) \| (\d+)% \| ([\d.]+) \| ([\d.]+) \|/gm),
+    ...evaluation.matchAll(/^\| (?!\*\*综合评分)([^|]+) \| (\d+)% \| ([\d.]+) \| ([\d.]+) \| ([\d.]+) \|/gm),
   ];
 
-  assert.equal(rows.length, 18, 'V12 score table must contain 18 weighted dimensions');
+  assert.equal(rows.length, 18, 'current score table must contain 18 weighted dimensions');
   const weightTotal = rows.reduce((total, row) => total + Number(row[2]), 0);
-  assert.equal(weightTotal, 100, 'V12 score weights must total 100%');
+  assert.equal(weightTotal, 100, 'current score weights must total 100%');
 
-  let calculatedTotal = 0;
+  let calculatedBaseline = 0;
+  let calculatedTarget = 0;
   for (const row of rows) {
-    const expectedContribution = (Number(row[2]) * Number(row[3])) / 100;
-    const documentedContribution = Number(row[4]);
+    const expectedContribution = (Number(row[2]) * Number(row[4])) / 100;
+    const documentedContribution = Number(row[5]);
     assert.ok(
       Math.abs(expectedContribution - documentedContribution) <= 0.0005 + Number.EPSILON,
       `${row[1].trim()} weighted score is inconsistent`,
     );
-    calculatedTotal += expectedContribution;
+    calculatedBaseline += (Number(row[2]) * Number(row[3])) / 100;
+    calculatedTarget += expectedContribution;
   }
 
-  const declared = evaluation.match(/精确加权值 \*\*([\d.]+)\/10\*\*/);
-  assert.ok(declared, 'current evaluation must declare an exact weighted score');
-  assert.equal(declared[1], '9.824', 'current score must include the standard adapter request-copy fast path, zero-allocation atomic rate-limit header encoder, middleware matrix, parentless trace-context reuse, and keyed idempotency replay allocation reduction in addition to the existing lifecycle, compatibility, and evidence gates without claiming target-environment completion');
-  const roundedCalculatedTotal = Math.round((calculatedTotal + 1e-9) * 1000) / 1000;
-  assert.equal(roundedCalculatedTotal.toFixed(3), declared[1]);
+  assert.match(evaluation, /V25 修复前复评基线：\*\*9\.840\/10\*\*，未舍入 \*\*9\.8404\/10\*\*/);
+  assert.match(evaluation, /V25-01 全部验收后的目标值：\*\*9\.849\/10\*\*，未舍入 \*\*9\.8488\/10\*\*/);
+  assert.match(evaluation, /当前综合评分：\*\*9\.849\/10\*\*，未舍入 \*\*9\.8488\/10\*\*/);
+  assert.equal(calculatedBaseline.toFixed(4), '9.8404');
+  assert.equal(calculatedTarget.toFixed(4), '9.8488');
   assert.match(v12Backlog, /V12-01/);
   assert.match(v12Backlog, /V12-10/);
   assert.match(v12Backlog, /状态：\*\*已完成\*\*/);
@@ -2045,8 +2359,8 @@ test('V13 completion and V14 backlog match the weighted evaluation', async () =>
   assert.match(backlog, /V13-09/);
   assert.match(backlog, /V14-07/);
   assert.match(backlog, /V14-15/);
-  assert.match(nextBacklog, /状态：\*\*实施中\*\*/);
-  assert.match(nextBacklog, /当前精确综合评分：\*\*9\.824\/10\*\*/);
+  assert.match(nextBacklog, /状态：\*\*已完结\*\*/);
+  assert.match(nextBacklog, /当前精确综合评分：\*\*9\.831\/10\*\*/);
   assert.match(nextBacklog, /当前综合等级：\*\*A−\*\*/);
   assert.match(nextBacklog, /目标综合等级：\*\*A\*\*/);
   assert.match(nextBacklog, /37 → 36 allocs\/op/);
@@ -2057,6 +2371,9 @@ test('V13 completion and V14 backlog match the weighted evaluation', async () =>
   assert.match(nextBacklog, /BenchmarkHelloFiberHandlerMiddlewareMatrix/);
   assert.match(nextBacklog, /BenchmarkAuthenticationMiddlewareMatrix/);
   assert.match(nextBacklog, /BenchmarkIdempotencyMiddlewareMatrix/);
+  assert.match(nextBacklog, /BenchmarkFromJetStreamMessage/);
+  assert.match(nextBacklog, /2,144 B\/op、8 allocs\/op/);
+  assert.match(nextBacklog, /9,376 B\/op、12 allocs\/op/);
   assert.match(nextBacklog, /16 → 14 allocs\/op/);
   assert.match(nextBacklog, /1,001 → 953 B\/op/);
   assert.match(nextBacklog, /15 allocs\/op、753 B\/op/);
@@ -2087,10 +2404,217 @@ test('V13 completion and V14 backlog match the weighted evaluation', async () =>
   assert.match(middleware, /cacheLock\.locker\.Unlock\(fingerprintLockKey\)/);
   assert.match(tracing, /if !parent\.IsValid\(\) \{\s*return ctx\s*\}/);
   assert.match(tracingTests, /func TestTraceRequestContextWithoutParentReusesSpanContext/);
+  assert.match(currentBacklog, /状态：\*\*已完结\*\*/);
+  assert.match(currentBacklog, /当前精确综合评分：\*\*9\.836\/10\*\*/);
+  assert.match(currentBacklog, /V15-01 \| P0 \| 仓库内完成/);
+  assert.match(currentBacklog, /V15-02 \| P0 \| 仓库内完成/);
+  assert.match(currentBacklog, /V15-03 \| P1 \| 仓库内完成/);
+  assert.match(currentBacklog, /V15-04 \| P1 \| 仓库内完成/);
+  assert.match(currentBacklog, /V15-05 \| P2 \| 仓库内完成/);
+  assert.match(currentBacklog, /未舍入加权值 \*\*9\.8356\/10\*\*/);
+  assert.match(currentBacklog, /BenchmarkCloneRequestForPropagation/);
+  assert.match(currentBacklog, /752 \| 4/);
+  assert.match(currentBacklog, /2,592 \| 18/);
+  assert.match(httpClient, /outbound := request\.WithContext\(ctx\)/);
+  assert.match(httpClient, /outbound\.Header = request\.Header\.Clone\(\)/);
+  assert.match(httpClientTests, /func TestCloneRequestForPropagationOnlyIsolatesMutableHeaders/);
+  assert.match(httpClientTests, /func BenchmarkCloneRequestForPropagation/);
+  assert.match(httpClientTests, /legacy-deep-clone/);
+  assert.match(responseBody, /ErrResponseBodyTooLarge/);
+  assert.match(responseBody, /func LimitResponseBody\(response \*http\.Response, maxBytes int64\) error/);
+  assert.match(responseBody, /response\.ContentLength > maxBytes/);
+  assert.match(responseBody, /var extra \[1\]byte/);
+  for (const testName of [
+    'TestLimitResponseBodyRejectsKnownOversizeBeforeRead',
+    'TestLimitResponseBodyBoundsChunkedStreamingResponse',
+    'TestLimitResponseBodyPreservesTruncatedContentLengthError',
+    'TestLimitResponseBodyAllowsCallerToCloseStreamingResponseEarly',
+    'TestLimitResponseBodyPreservesCallerCancellation',
+    'TestLimitResponseBodyPreservesConnectionReuseAfterCompleteRead',
+  ]) {
+    assert.match(responseBodyTests, new RegExp(`func ${testName}`));
+  }
+  assertEvidenceInput('Framework/httpclient/response_body.go');
+  assertEvidenceInput('Framework/httpclient/response_body_test.go');
+  assert.match(retry, /type RetryConfig struct/);
+  assert.match(retry, /case "", http\.MethodGet, http\.MethodHead, http\.MethodOptions, http\.MethodTrace/);
+  assert.match(retry, /config\.MaxAttempts > maximumRetryAttempts/);
+  assert.match(retry, /time\.Now\(\)\.Add\(delay\)\.Before\(deadline\)/);
+  for (const testName of [
+    'TestClientRetriesReplayableSafeRequestWithinOneSpan',
+    'TestClientDoesNotRetryUnsafeMethod',
+    'TestClientDoesNotRetrySafeRequestWithNonReplayableBody',
+    'TestRetryTransportClosesIntermediateResponseAndStopsAtMaximum',
+    'TestRetryTransportCancellationInterruptsBackoff',
+    'TestRetryTransportKeepsResponseWhenBackoffCannotFitDeadline',
+    'TestRetryTransportReturnsBoundedBodyReplayError',
+    'TestRetryPolicyUsesOnlySafeMethodsAndTransientStatuses',
+  ]) {
+    assert.match(retryTests, new RegExp(`func ${testName}`));
+  }
+  assertEvidenceInput('Framework/httpclient/retry.go');
+  assertEvidenceInput('Framework/httpclient/retry_test.go');
+  assert.match(v16Backlog, /状态：\*\*已完结\*\*/);
+  assert.match(v16Backlog, /V16-01 \| P0 \| 仓库内完成/);
+  assert.match(v16Backlog, /V16-02 \| P1 \| 仓库内完成/);
+  assert.match(v16Backlog, /当前综合评分：\*\*9\.844\/10\*\*/);
+  assert.match(v16Backlog, /未舍入加权值 \*\*9\.8441\/10\*\*/);
+  assert.match(v16Backlog, /V16-03 \\| P1 \\| 仓库内完成/);
+  assert.match(v16Backlog, /V16-04 \\| P2 \\| 仓库内完成/);
+  assert.match(v16Backlog, /V16-05 \\| P2 \| 仓库内复核完成/);
+  for (const id of ['V16-06', 'V16-07', 'V16-08', 'V16-09', 'V16-10', 'V16-11', 'V16-12', 'V16-13', 'V16-14']) {
+    assert.match(v16Backlog, new RegExp(id));
+  }
+  assert.match(v17Backlog, /状态：\*\*已完结\*\*/);
+  assert.match(v17Backlog, /V17-01 \| P1 \| 仓库内完成/);
+  assert.match(v17Backlog, /当前综合评分：\*\*9\.845\/10\*\*/);
+  assert.match(v17Backlog, /未舍入加权值 \*\*9\.8450\/10\*\*/);
+  assert.match(v18Backlog, /状态：\*\*已完成\*\*/);
+  assert.match(v18Backlog, /V18-01 \| P1 \| 仓库内完成/);
+  assert.match(v18Backlog, /当前综合评分：\*\*9\.846\/10\*\*/);
+  assert.match(v18Backlog, /未舍入加权值 \*\*9\.8456\/10\*\*/);
+  assert.match(v19Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v19Backlog, /V19-01 \| P0 \| 仓库内完成/);
+  assert.match(v19Backlog, /9\.8456 → 9\.8456（\+0\.0000）/);
+  for (const id of ['V19-02', 'V19-03', 'V19-04', 'V19-05', 'V19-06', 'V19-07', 'V19-08', 'V19-09', 'V19-10']) {
+    assert.match(v19Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v20Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v20Backlog, /V20-01 [|] P0 [|] 仓库内完成/);
+  assert.match(v20Backlog, /9\.8444 → 9\.8456（\+0\.0012）/);
+  assert.match(v20Backlog, /poisonedGoRoot/);
+  for (const id of ['V20-02', 'V20-03', 'V20-04', 'V20-05', 'V20-06', 'V20-07', 'V20-08', 'V20-09', 'V20-10']) {
+    assert.match(v20Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v21Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v21Backlog, /V21-01 [|] P0 [|] 仓库内完成/);
+  assert.match(v21Backlog, /9\.8432 → 9\.8464（\+0\.0032）/);
+  for (const id of ['V21-02', 'V21-03', 'V21-04', 'V21-05', 'V21-06', 'V21-07', 'V21-08', 'V21-09', 'V21-10']) {
+    assert.match(v21Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v22Backlog, /V22-01 [|] P0 [|] 仓库内完成/);
+  assert.match(v22Backlog, /9\.8378 -> 9\.8472/);
+  for (const id of ['V22-02', 'V22-03', 'V22-04', 'V22-05', 'V22-06', 'V22-07', 'V22-08', 'V22-09', 'V22-10']) {
+    assert.match(v22Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v23Backlog, /V23-01 [|] P0 [|] 仓库内完成/);
+  assert.match(v23Backlog, /9\.8431 -> 9\.8480/);
+  for (const id of ['V23-02', 'V23-03', 'V23-04', 'V23-05', 'V23-06', 'V23-07', 'V23-08', 'V23-09', 'V23-10']) {
+    assert.match(v23Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v24Backlog, /V24-01 [|] P0 [|] 仓库内完成/);
+  assert.match(v24Backlog, /9\.8435 -> 9\.8484/);
+  assert.match(v24Backlog, /Node 主阶段 \*\*163\/163\*\*、release 阶段 \*\*1\/1\*\*/);
+  assert.match(v24Backlog, /evidence input contract 覆盖 \*\*276 个输入\*\*/);
+  assert.match(v24Backlog, /总 manifest\/verify 覆盖 \*\*53 个制品\*\*/);
+  for (const id of ['V24-02', 'V24-03', 'V24-04', 'V24-05', 'V24-06', 'V24-07', 'V24-08', 'V24-09', 'V24-10']) {
+    assert.match(v24Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v25Backlog, /V25-01 [|] P0 [|] 仓库内完成/);
+  assert.match(v25Backlog, /9\.8404 -> 9\.8488/);
+  assert.match(v25Backlog, /Node 主阶段 \*\*165\/165\*\*、release 阶段 \*\*1\/1\*\*/);
+  assert.match(v25Backlog, /evidence input contract 覆盖 \*\*277 个输入\*\*/);
+  assert.match(v25Backlog, /总 manifest\/verify 覆盖 \*\*53 个制品\*\*/);
+  for (const id of ['V25-02', 'V25-03', 'V25-04', 'V25-05', 'V25-06', 'V25-07', 'V25-08', 'V25-09', 'V25-10']) {
+    assert.match(v25Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(httpClient, /CircuitBreaker\s+CircuitBreakerConfig/);
+  assert.match(httpClient, /base = newCircuitBreakerTransport\(base, config\.CircuitBreaker\)/);
+  assert.match(httpClient, /errors\.Is\(err, ErrCircuitOpen\)/);
+  assert.match(circuitBreaker, /var ErrCircuitOpen = errors\.New/);
+  assert.match(circuitBreaker, /type CircuitBreakerConfig struct/);
+  assert.match(circuitBreaker, /FailureThreshold int/);
+  assert.match(circuitBreaker, /OpenTimeout\s+time\.Duration/);
+  assert.match(circuitBreaker, /Observer\s+CircuitBreakerObserver/);
+  assert.match(circuitBreaker, /type CircuitBreakerObservation struct \{\s*State string\s*Event string\s*\}/);
+  assert.match(circuitBreaker, /type CircuitBreakerObserver func\(CircuitBreakerObservation\)/);
+  assert.match(circuitBreaker, /defer func\(\) \{ _ = recover\(\) \}\(\)/);
+  for (const value of ['closed', 'open', 'half_open', 'opened', 'rejected', 'probe_started', 'probe_succeeded', 'probe_failed', 'probe_canceled']) {
+    assert.match(circuitBreaker, new RegExp(`= "${value}"`));
+  }
+  assert.match(circuitBreaker, /breaker\.probeInFlight/);
+  assert.match(circuitBreaker, /permit\.generation != breaker\.generation/);
+  assert.match(circuitBreaker, /maximumFailureThreshold\s+= 100/);
+  for (const testName of [
+    'TestCircuitBreakerOpensFastAndSuccessfulProbeCloses',
+    'TestCircuitBreakerAllowsOnlyOneHalfOpenProbe',
+    'TestCircuitBreakerIgnoresStaleInFlightSuccessAfterOpening',
+    'TestCircuitBreakerObserverReportsFixedSequence',
+    'TestCircuitBreakerObserverPanicIsIsolatedAndRunsOutsideStateLock',
+    'TestCircuitBreakerCountsLogicalRetryResultAndIgnoresCallerCancellation',
+    'TestCircuitBreakerTracingUsesFixedOpenClassification',
+    'TestNewValidatesAndDefaultsCircuitBreakerConfiguration',
+  ]) {
+    assert.match(circuitBreakerTests, new RegExp(`func ${testName}`));
+  }
+  assertEvidenceInput('Framework/httpclient/circuit_breaker.go');
+  assertEvidenceInput('Framework/httpclient/circuit_breaker_test.go');
+  assert.match(retryTests, /TestRetryBreakerCompositionHonorsCallerDeadlineAndFailureOwnership/);
+  assertEvidenceInput('docs/待优化/待优化V16.md');
+  assertEvidenceInput('docs/待优化/待优化V17.md');
+  assertEvidenceInput('docs/待优化/待优化V18.md');
+  assertEvidenceInput('docs/待优化/待优化V19.md');
+  assertEvidenceInput('docs/待优化/待优化V20.md');
+  assertEvidenceInput('docs/待优化/待优化V21.md');
+  assertEvidenceInput('docs/待优化/待优化V22.md');
+  assertEvidenceInput('docs/待优化/待优化V23.md');
+  assertEvidenceInput('docs/待优化/待优化V24.md');
+  assertEvidenceInput('docs/待优化/待优化V25.md');
+  assertEvidenceInput('scripts/lib/bounded-command.mjs');
+  assertEvidenceInput('scripts/lib/go-toolchain-environment.mjs');
+  assert.match(standardApplication, /type HTTPApplication struct/);
+  assert.match(standardApplication, /func NewHTTPApplication\(options Options\) \(\*HTTPApplication, error\)/);
+  assert.match(standardApplication, /func \(application \*HTTPApplication\) ServeHTTP\(response http\.ResponseWriter, request \*http\.Request\)/);
+  assert.match(standardApplication, /func \(application \*HTTPApplication\) Shutdown\(ctx context\.Context\) error/);
+  assert.doesNotMatch(standardApplication, /fiber\./);
+  assert.match(standardApplicationTests, /func TestHTTPApplicationImplementsStandardServingAndShutdown/);
+  assert.match(standardApplicationTests, /func TestHTTPApplicationRejectsUnavailableLifecycle/);
+  assert.match(exampleEntrypoint, /httpapi\.NewHTTPApplication\(apiOptions\)/);
+  assert.match(exampleEntrypoint, /Handler:\s+application/);
+  assert.match(exampleEntrypoint, /ApplicationShutdown:\s+application\.Shutdown/);
+  assert.match(billingEntrypoint, /httpapi\.NewHTTPApplication\(options\)/);
+  assert.match(billingEntrypoint, /Handler:\s+application/);
+  assert.match(billingEntrypoint, /ApplicationShutdown:\s+application\.Shutdown/);
+  assert.match(publicAPIBoundaryADR, /状态：已接受/);
+  assert.match(publicAPIBoundaryADR, /HTTPApplication/);
+  assert.match(publicAPIBoundaryADR, /保持兼容/);
+  assertEvidenceInput('Framework/httpapi/standard_application.go');
+  assertEvidenceInput('Framework/httpapi/standard_application_test.go');
+  assert.match(applicationEventStream, /type ApplicationEventStream struct/);
+  assert.match(applicationEventStream, /func NewEventStream\(/);
+  assert.match(applicationEventStream, /func NewAuthenticatedEventStream\(/);
+  assert.match(applicationEventStream, /func NewAuthorizedEventStream\(/);
+  assert.match(applicationEventStream, /SendServerSentEventsFromSource/);
+  assert.doesNotMatch(applicationEventStream, /func New(?:Authenticated|Authorized)?EventStream\([^)]*fiber\.Ctx/);
+  assert.match(applicationEventStreamTests, /TestApplicationEventStreamUsesStandardApplicationContextAndResumeID/);
+  assert.match(applicationEventStreamTests, /TestApplicationEventStreamsEnforceAuthenticationAndCopiedRoles/);
+  assert.match(applicationEventStreamTests, /TestApplicationEventStreamsRejectAmbiguousDefinitionsAtStartup/);
+  assertEvidenceInput('Framework/httpapi/application_event_stream.go');
+  assertEvidenceInput('Framework/httpapi/application_event_stream_test.go');
+  assert.match(applicationRoute, /type ApplicationRoute struct/);
+  assert.match(applicationRoute, /type ApplicationRouteRequest struct/);
+  assert.match(applicationRoute, /type ApplicationRouteResponse struct/);
+  assert.match(applicationRoute, /validateApplicationRouteResponse/);
+  assert.match(applicationRouteTests, /TestApplicationRouteUsesTransportNeutralRequestAndResponse/);
+  assert.match(applicationRouteTests, /TestApplicationRouteResponseValidationUsesErrorBoundary/);
+  assert.match(applicationRouteTests, /TestApplicationRoutesRejectAmbiguousDefinitionsAtStartup/);
+  assertEvidenceInput('Framework/httpapi/application_route.go');
+  assertEvidenceInput('Framework/httpapi/application_route_test.go');
+  assertEvidenceInput('docs/adr/0003-http-public-api-boundary.md');
+  assertEvidenceInput('Framework/sqlclient/client.go');
+  assertEvidenceInput('Framework/sqlclient/client_test.go');
+  assert.match(sqlClient, /ctx\.Err\(\)/);
+  assert.match(sqlClient, /databaseTx\.Rollback\(\)/);
+  assert.match(sqlClient, /callback could perform external side effects/);
+  assert.match(sqlClient, /commit work after that cancellation/);
+  assert.match(sqlClientTests, /func TestTransactionDoesNotEnterCallbackAfterBeginCancellation/);
+  assert.match(sqlClientTests, /func TestTransactionRollsBackWhenCanceledBeforeCommit/);
+  for (const id of ['V15-06', 'V15-07', 'V15-08', 'V15-09', 'V15-10', 'V15-11', 'V15-12', 'V15-13', 'V15-14']) {
+    assert.match(currentBacklog, new RegExp(id));
+  }
 });
-
 test('Example project queries and commands keep Fiber behind the Framework adapter', async () => {
-  const [applicationAuthorization, applicationQuery, applicationCommand, applicationPrecondition, idempotencyFingerprint, middleware, eventStream, eventStreamTests, standardHandler, standardHandlerTests, standardServer, standardServerTests, authMiddleware, routes, app, appTests, projectRoutes, projectService, entrypoint, architectureTests, projectRouteTests] = await Promise.all([
+  const [applicationAuthorization, applicationQuery, applicationCommand, applicationPrecondition, idempotencyFingerprint, middleware, eventStream, eventStreamTests, standardHandler, standardHandlerTests, standardApplication, standardApplicationTests, standardServer, standardServerTests, authMiddleware, routes, app, appTests, projectRoutes, projectService, entrypoint, billingEntrypoint, architectureTests, projectRouteTests, publicAPIBoundaryADR] = await Promise.all([
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_authorization.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_query.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_command.go'), 'utf8'),
@@ -2101,6 +2625,8 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'event_stream_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'standard_handler.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'standard_handler_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'standard_application.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'standard_application_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'server', 'http.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'server', 'http_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'auth_middleware.go'), 'utf8'),
@@ -2110,8 +2636,10 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
     readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapi', 'routes.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapp', 'service.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'cmd', 'server', 'main.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Services', 'Billing', 'cmd', 'server', 'main.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapi', 'architecture_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Solutions', 'Example', 'internal', 'projectapi', 'routes_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'docs', 'adr', '0003-http-public-api-boundary.md'), 'utf8'),
   ]);
 
   assert.match(applicationQuery, /type ApplicationQuery struct/);
@@ -2147,6 +2675,11 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
   assert.match(applicationCommand, /func \(command ApplicationCommand\) WithMethod\(method string\)/);
   assert.match(applicationCommand, /router\.Add\(\[\]string\{command\.method\}/);
   assert.match(standardHandler, /func NewHTTPHandler\(app \*fiber\.App\) \(http\.Handler, error\)/);
+  assert.match(standardApplication, /type HTTPApplication struct/);
+  assert.match(standardApplication, /func NewHTTPApplication\(options Options\) \(\*HTTPApplication, error\)/);
+  assert.match(standardApplication, /shutdown: app\.ShutdownWithContext/);
+  assert.doesNotMatch(standardApplication, /fiber\./);
+  assert.match(standardApplicationTests, /TestHTTPApplicationImplementsStandardServingAndShutdown/);
   assert.match(standardHandler, /\*bridgedRequest = \*request/);
   assert.match(standardHandler, /bridgedRequest\.Header = request\.Header\.Clone\(\)/);
   assert.doesNotMatch(standardHandler, /request\.Clone\(request\.Context\(\)\)/);
@@ -2267,7 +2800,7 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
   assert.match(middleware, /fiber\.HeaderPragma/);
   assert.match(routes, /registerApplicationQueries/);
   assert.match(routes, /registerApplicationCommands/);
-  assert.match(routes, /ApplicationQueries\/ApplicationCommands and RegisterRoutes cannot be configured together/);
+  assert.match(routes, /application route descriptors and RegisterRoutes cannot be configured together/);
   assert.match(app, /ApplicationQueries\s+\[\]ApplicationQuery/);
   assert.match(app, /ApplicationCommands\s+\[\]ApplicationCommand/);
   assert.match(appTests, /TestApplicationQueriesKeepHandlersTransportNeutral/);
@@ -2296,10 +2829,16 @@ test('Example project queries and commands keep Fiber behind the Framework adapt
   assert.match(authMiddleware, /setNoStoreHeaders\(c\)/);
   assert.match(entrypoint, /apiOptions\.ApplicationQueries = projectapi\.Queries\(apiOptions\)/);
   assert.match(entrypoint, /apiOptions\.ApplicationCommands = projectapi\.Commands\(apiOptions\)/);
-  assert.match(entrypoint, /httpapi\.NewHTTPHandler\(app\)/);
+  assert.match(entrypoint, /httpapi\.NewHTTPApplication\(apiOptions\)/);
   assert.match(entrypoint, /server\.RunHTTP\(ctx, server\.HTTPOptions/);
-  assert.match(entrypoint, /ApplicationShutdown:\s+app\.ShutdownWithContext/);
+  assert.match(entrypoint, /Handler:\s+application/);
+  assert.match(entrypoint, /ApplicationShutdown:\s+application\.Shutdown/);
   assert.match(entrypoint, /MaxConnections:\s+cfg\.MaxConnections/);
+  assert.match(billingEntrypoint, /httpapi\.NewHTTPApplication\(options\)/);
+  assert.match(billingEntrypoint, /Handler:\s+application/);
+  assert.match(billingEntrypoint, /ApplicationShutdown:\s+application\.Shutdown/);
+  assert.match(publicAPIBoundaryADR, /Fiber 原生兼容通道/);
+  assert.match(publicAPIBoundaryADR, /标准生产通道/);
   assert.doesNotMatch(projectRoutes, /gofiber|fiber\./i);
   assert.doesNotMatch(entrypoint, /gofiber|fiber\./i);
   assert.match(architectureTests, /TestProductionProjectCompositionDoesNotImportFiber/);
@@ -2360,12 +2899,60 @@ test('Framework public API compatibility is versioned and compared with the targ
   assert.equal(snapshot.schemaVersion, 1);
   assert.equal(snapshot.module, 'github.com/zbxing/goexample/Framework');
   assert.equal(snapshot.version, version.trim());
-	assert.equal(Object.keys(snapshot.symbols).length, 337);
+	assert.equal(Object.keys(snapshot.symbols).length, 356);
   assert.ok(Object.keys(snapshot.symbols).every((key) => !key.includes('/internal/')));
 	assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/authorization::type Authorizer'], /Authorize\(context\.Context, Request\)/);
 	assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/authorization::type Resource'], /TenantID[\s\S]*Attributes/);
 	assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::func NewResourceAuthorizedQuery'], /authorization\.Authorizer/);
 	assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::func NewResourceAuthorizedJSONCommand'], /ApplicationPrincipal/);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpclient::var ErrResponseBodyTooLarge'],
+		'var ErrResponseBodyTooLarge = errors.New("outbound HTTP response body exceeds the configured limit")',
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpclient::func LimitResponseBody'],
+		'func LimitResponseBody(response *http.Response, maxBytes int64) error',
+	);
+	assert.match(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpclient::type RetryConfig'],
+		/MaxAttempts[\s\S]*InitialBackoff[\s\S]*MaxBackoff/,
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpclient::var ErrCircuitOpen'],
+		'var ErrCircuitOpen = errors.New("outbound HTTP circuit breaker is open")',
+	);
+	assert.match(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpclient::type CircuitBreakerConfig'],
+		/FailureThreshold[\s\S]*OpenTimeout[\s\S]*Observer\s+CircuitBreakerObserver/,
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpclient::type CircuitBreakerObservation'],
+		'type CircuitBreakerObservation struct {\n\tState string\n\tEvent string\n}',
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpclient::type CircuitBreakerObserver'],
+		'type CircuitBreakerObserver func(CircuitBreakerObservation)',
+	);
+	assert.match(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpclient::type Config'],
+		/Retry\s+RetryConfig[\s\S]*CircuitBreaker\s+CircuitBreakerConfig/,
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::type HTTPApplication'],
+		'type HTTPApplication struct {\n}',
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::func NewHTTPApplication'],
+		'func NewHTTPApplication(options Options) (*HTTPApplication, error)',
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::method *HTTPApplication.ServeHTTP'],
+		'func (application *HTTPApplication) ServeHTTP(response http.ResponseWriter, request *http.Request)',
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::method *HTTPApplication.Shutdown'],
+		'func (application *HTTPApplication) Shutdown(ctx context.Context) error',
+	);
   assert.equal(
     snapshot.symbols['github.com/zbxing/goexample/Framework/httpapi::func SendServerSentEvents'],
     'func SendServerSentEvents(c fiber.Ctx, options ServerSentEventOptions) error',

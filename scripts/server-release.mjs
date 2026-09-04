@@ -13,6 +13,10 @@ import {
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  isolatedGoToolchainEnvironment,
+  selectRepositoryToolCommand,
+} from './lib/go-toolchain-environment.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -516,13 +520,14 @@ const sourceManifestPath = path.join(releaseRoot, sourceManifestName);
 const reproducibilityReportPath = path.join(releaseRoot, 'reproducibility-report.json');
 const reproducibilityWorkRoot = path.join(tempRoot, 'server-release-reproducibility');
 const executableName = process.platform === 'win32' ? 'go.exe' : 'go';
-const goCandidates = [
-  process.env.GO_BINARY?.trim(),
-  path.join(tempRoot, 'toolchain', `go${toolchainVersion}`, 'go', 'bin', executableName),
-  path.join(tempRoot, 'toolchain', 'go', 'bin', executableName),
-  executableName,
-].filter(Boolean);
-const goCommand = goCandidates.find((candidate) => !path.isAbsolute(candidate) || existsSync(candidate));
+const goCommand = selectRepositoryToolCommand({
+  configuredCommand: process.env.GO_BINARY,
+  repositoryCandidates: [
+    path.join(tempRoot, 'toolchain', `go${toolchainVersion}`, 'go', 'bin', executableName),
+    path.join(tempRoot, 'toolchain', 'go', 'bin', executableName),
+  ],
+  fallbackCommand: executableName,
+}).command;
 if (!goCommand) {
   fail('Go was not found; run yarn env or set GO_BINARY');
 }
@@ -555,15 +560,14 @@ function goEnvironment() {
   const goTemporaryRoot = process.env.GOTMPDIR?.trim() || path.join(tempRoot, 'go-tmp');
   mkdirSync(goCacheRoot, { recursive: true });
   mkdirSync(goTemporaryRoot, { recursive: true });
-  const environment = {
-    ...process.env,
+  const environment = isolatedGoToolchainEnvironment(process.env, {
     CGO_ENABLED: '0',
     GOOS: 'linux',
     GOARCH: 'amd64',
     GOTOOLCHAIN: 'local',
     GOCACHE: goCacheRoot,
     GOTMPDIR: goTemporaryRoot,
-  };
+  });
   const pathKey = Object.keys(environment).find((name) => name.toLowerCase() === 'path') ?? 'PATH';
   if (path.isAbsolute(goCommand)) {
     environment[pathKey] = `${path.dirname(goCommand)}${path.delimiter}${environment[pathKey] ?? ''}`;

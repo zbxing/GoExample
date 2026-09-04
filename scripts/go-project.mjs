@@ -2,6 +2,10 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  isolatedGoToolchainEnvironment,
+  selectRepositoryToolCommand,
+} from './lib/go-toolchain-environment.mjs';
 import { readProjectManifest, selectProject } from './lib/project-contracts.mjs';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -235,10 +239,16 @@ const goTemporaryRoot = process.env.GOTMPDIR?.trim() || path.join(outputRoot, 'g
 const goCacheRoot = process.env.GOCACHE?.trim() || path.join(outputRoot, 'gocache');
 mkdirSync(goTemporaryRoot, { recursive: true });
 mkdirSync(goCacheRoot, { recursive: true });
-const goEnvironment = { ...process.env, GOCACHE: goCacheRoot, GOTMPDIR: goTemporaryRoot };
-
-const goCommand =
-  process.env.GO_BINARY?.trim() || localGoCandidates.find((candidate) => existsSync(candidate)) || 'go';
+const goSelection = selectRepositoryToolCommand({
+  configuredCommand: process.env.GO_BINARY,
+  repositoryCandidates: localGoCandidates,
+  fallbackCommand: 'go',
+});
+const goCommand = goSelection.command;
+const goEnvironmentOverrides = { GOCACHE: goCacheRoot, GOTMPDIR: goTemporaryRoot };
+const goEnvironment = goSelection.repositoryManaged
+  ? isolatedGoToolchainEnvironment(process.env, goEnvironmentOverrides)
+  : { ...process.env, ...goEnvironmentOverrides };
 const govulncheckCommand = [
   process.env.GOVULNCHECK_BINARY?.trim(),
   path.join(outputRoot, 'bin', process.platform === 'win32' ? 'govulncheck.exe' : 'govulncheck'),

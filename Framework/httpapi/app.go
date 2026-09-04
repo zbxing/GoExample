@@ -94,6 +94,8 @@ type Options struct {
 	Endpoints                    []string
 	ApplicationQueries           []ApplicationQuery
 	ApplicationCommands          []ApplicationCommand
+	ApplicationEventStreams      []ApplicationEventStream
+	ApplicationRoutes            []ApplicationRoute
 	RegisterRoutes               RouteRegistrar
 }
 

@@ -137,6 +137,159 @@ func TestProcessExtractsRemoteTraceContextAndClonesMessage(t *testing.T) {
 	assertSpanExcludes(t, processSpan, "process-body-secret", "tenant-secret", "bag-secret", "tenant", remoteTraceID, remoteSpanID)
 }
 
+func TestTraceCarrierLazilyAllocatesOnlyForTraceHeaders(t *testing.T) {
+	withoutTraceHeaders := map[string]string{"Tenant": "tenant"}
+	withoutTrace := testing.AllocsPerRun(1000, func() {
+		_ = traceCarrier(withoutTraceHeaders)
+	})
+	if withoutTrace != 0 {
+		t.Fatalf("traceCarrier without trace headers allocations = %.1f, want 0", withoutTrace)
+	}
+
+	carrier := traceCarrier(map[string]string{
+		"TraceParent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		"TraceState":  "vendor=value",
+		"Tenant":      "tenant",
+	})
+	if carrier["traceparent"] == "" || carrier["tracestate"] != "vendor=value" {
+		t.Fatalf("traceCarrier = %#v", carrier)
+	}
+	mixedCase := map[string]string{
+		"TraceParent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		"TraceState":  "vendor=value",
+	}
+	allocations := testing.AllocsPerRun(1000, func() {
+		carrier := traceCarrier(mixedCase)
+		if carrier[traceparentHeader] == "" || carrier[tracestateHeader] == "" {
+			t.Fatal("mixed-case trace headers were not canonicalized")
+		}
+	})
+	if allocations != 2 {
+		t.Fatalf("traceCarrier mixed-case allocations = %.1f, want map-only 2", allocations)
+	}
+}
+
+func TestValidateHeadersLazilyAllocatesDuplicateSet(t *testing.T) {
+	withoutHeaders := testing.AllocsPerRun(1000, func() {
+		if err := validateHeaders(nil, defaultMaxHeaders, defaultMaxHeaderBytes); err != nil {
+			t.Fatalf("validateHeaders(nil) error = %v", err)
+		}
+	})
+	if withoutHeaders != 0 {
+		t.Fatalf("validateHeaders without headers allocations = %.1f, want 0", withoutHeaders)
+	}
+
+	singleHeader := map[string]string{"Tenant": "tenant"}
+	withSingleHeader := testing.AllocsPerRun(1000, func() {
+		if err := validateHeaders(singleHeader, defaultMaxHeaders, defaultMaxHeaderBytes); err != nil {
+			t.Fatalf("validateHeaders(single header) error = %v", err)
+		}
+	})
+	if withSingleHeader != 0 {
+		t.Fatalf("validateHeaders with one header allocations = %.1f, want 0", withSingleHeader)
+	}
+
+	multipleHeaders := map[string]string{"Tenant": "tenant", "Region": "region"}
+	withMultipleHeaders := testing.AllocsPerRun(1000, func() {
+		if err := validateHeaders(multipleHeaders, defaultMaxHeaders, defaultMaxHeaderBytes); err != nil {
+			t.Fatalf("validateHeaders(multiple headers) error = %v", err)
+		}
+	})
+	if withMultipleHeaders != 0 {
+		t.Fatalf("validateHeaders with two headers allocations = %.1f, want 0", withMultipleHeaders)
+	}
+
+	largeHeaderSet := map[string]string{"Tenant": "tenant", "Region": "region", "Zone": "zone"}
+	withLargeHeaderSet := testing.AllocsPerRun(1000, func() {
+		if err := validateHeaders(largeHeaderSet, defaultMaxHeaders, defaultMaxHeaderBytes); err != nil {
+			t.Fatalf("validateHeaders(large header set) error = %v", err)
+		}
+	})
+	if withLargeHeaderSet != 0 {
+		t.Fatalf("validateHeaders with three headers allocations = %.1f, want 0", withLargeHeaderSet)
+	}
+	fourHeaders := map[string]string{"Tenant": "tenant", "Region": "region", "Zone": "zone", "Shard": "shard"}
+	if allocations := testing.AllocsPerRun(1000, func() {
+		if err := validateHeaders(fourHeaders, defaultMaxHeaders, defaultMaxHeaderBytes); err != nil {
+			t.Fatalf("validateHeaders(four headers) error = %v", err)
+		}
+	}); allocations != 0 {
+		t.Fatalf("validateHeaders with four headers allocations = %.1f, want 0", allocations)
+	}
+
+	duplicateCandidates := map[string]string{"Tenant": "tenant", "tenant": "tenant"}
+	if err := validateHeaders(duplicateCandidates, defaultMaxHeaders, defaultMaxHeaderBytes); !errors.Is(err, ErrInvalidHeader) {
+		t.Fatalf("validateHeaders duplicate names error = %v, want ErrInvalidHeader", err)
+	}
+	for name, headers := range map[string]map[string]string{
+		"control":   {"Tenant\n": "tenant"},
+		"non-ascii": {"T\xC3\xA9nant": "tenant"},
+	} {
+		if err := validateHeaders(headers, defaultMaxHeaders, defaultMaxHeaderBytes); !errors.Is(err, ErrInvalidHeader) {
+			t.Fatalf("validateHeaders %s name error = %v, want ErrInvalidHeader", name, err)
+		}
+	}
+}
+
+func BenchmarkValidateHeaders(b *testing.B) {
+	b.ReportAllocs()
+	cases := map[string]map[string]string{
+		"empty":  nil,
+		"single": {"Tenant": "tenant"},
+		"multiple": {
+			"Tenant": "tenant",
+			"Region": "region",
+		},
+		"large": {
+			"Tenant": "tenant",
+			"Region": "region",
+			"Zone":   "zone",
+		},
+	}
+	for name, headers := range cases {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if err := validateHeaders(headers, defaultMaxHeaders, defaultMaxHeaderBytes); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkTraceCarrier(b *testing.B) {
+	withoutTrace := map[string]string{"Tenant": "tenant"}
+	withTrace := map[string]string{
+		"traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		"tracestate":  "vendor=value",
+		"Tenant":      "tenant",
+	}
+	mixedCaseTrace := map[string]string{
+		"TraceParent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		"TraceState":  "vendor=value",
+		"Tenant":      "tenant",
+	}
+	b.Run("without-trace", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			_ = traceCarrier(withoutTrace)
+		}
+	})
+	b.Run("with-trace", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			_ = traceCarrier(withTrace)
+		}
+	})
+	b.Run("with-mixed-case-trace", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			_ = traceCarrier(mixedCaseTrace)
+		}
+	})
+}
+
 func TestFailuresTimeoutsAndCancellationUseFixedPrivateResults(t *testing.T) {
 	client, recorder, provider := newTracedClient(t, Config{
 		System:         SystemRabbitMQ,

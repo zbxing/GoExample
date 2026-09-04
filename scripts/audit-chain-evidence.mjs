@@ -17,6 +17,7 @@ import {
   verifyAuditChainEvidence,
   writeAuditChainEvidenceChecksums,
 } from './lib/audit-chain-evidence.mjs';
+import { isolatedGoToolchainEnvironment } from './lib/go-toolchain-environment.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -61,13 +62,12 @@ function run() {
   const startedAt = new Date().toISOString();
   const result = spawnSync(goCommand, auditChainGoArguments, {
     cwd: path.join(repositoryRoot, 'Framework'),
-    env: {
-      ...process.env,
+    env: isolatedGoToolchainEnvironment(process.env, {
       GOCACHE: goCacheRoot,
       GOTMPDIR: goTemporaryRoot,
       GOWORK: path.join(repositoryRoot, 'go.work'),
       GOFLAGS: '',
-    },
+    }),
     encoding: 'utf8',
     shell: false,
     timeout: 120_000,

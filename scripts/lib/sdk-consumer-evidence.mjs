@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { readBoundedGitCommit, readBoundedGoVersion } from './bounded-command.mjs';
+import { selectRepositoryToolCommand } from './go-toolchain-environment.mjs';
 
 export const sdkConsumerEvidenceSchemaVersion = 1;
 export const sdkConsumerTests = Object.freeze([
@@ -151,45 +152,36 @@ function requiredGoVersion(repositoryRoot) {
     ?? reject('go.work must declare an exact Go patch toolchain');
 }
 
-function toolCandidates(repositoryRoot, executableName, environmentValue) {
+function repositoryToolCandidates(repositoryRoot, executableName) {
   const version = requiredGoVersion(repositoryRoot);
   return [
-    environmentValue?.trim(),
     path.join(repositoryRoot, '.temp', 'toolchain', `go${version}`, 'go', 'bin', executableName),
     path.join(repositoryRoot, '.temp', 'toolchain', 'go', 'bin', executableName),
-    executableName,
-  ].filter(Boolean);
+  ];
 }
 
 export function resolveSDKConsumerGoCommand(repositoryRoot) {
   const executableName = process.platform === 'win32' ? 'go.exe' : 'go';
-  return toolCandidates(repositoryRoot, executableName, process.env.GO_BINARY)
-    .find((candidate) => !path.isAbsolute(candidate) || existsSync(candidate));
+  return selectRepositoryToolCommand({
+    configuredCommand: process.env.GO_BINARY,
+    repositoryCandidates: repositoryToolCandidates(repositoryRoot, executableName),
+    fallbackCommand: executableName,
+  }).command;
 }
 
 function currentGoVersion(repositoryRoot) {
-  const result = spawnSync(resolveSDKConsumerGoCommand(repositoryRoot), ['version'], {
+  const value = readBoundedGoVersion(resolveSDKConsumerGoCommand(repositoryRoot), {
     cwd: repositoryRoot,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
   });
-  const value = `${result.stdout ?? ''}`.trim();
-  if (result.status !== 0 || !/^go version go\d+\.\d+\.\d+ [a-z0-9]+\/[a-z0-9]+$/.test(value)) {
+  if (value === null) {
     reject('cannot resolve the Go toolchain identity');
   }
   return value;
 }
 
 function currentGitCommit(repositoryRoot) {
-  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
-  });
-  const value = `${result.stdout ?? ''}`.trim();
-  if (result.status !== 0 || !gitCommitPattern.test(value)) {
+  const value = readBoundedGitCommit({ cwd: repositoryRoot });
+  if (value === null) {
     reject('cannot resolve the current Git commit');
   }
   return value;
@@ -223,6 +215,7 @@ function sourcePaths() {
     sdkReleaseVerifier: 'scripts/lib/sdk-release.mjs',
     evidenceRunner: 'scripts/sdk-consumer-evidence.mjs',
     evidenceVerifier: 'scripts/lib/sdk-consumer-evidence.mjs',
+    boundedCommand: 'scripts/lib/bounded-command.mjs',
     evidenceTests: '__test__/node/sdk-consumer-evidence.test.mjs',
     aggregateGenerator: 'scripts/evidence-manifest.mjs',
     aggregateVerifier: 'scripts/evidence-verify.mjs',

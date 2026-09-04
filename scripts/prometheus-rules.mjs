@@ -11,6 +11,7 @@ import {
   promtoolModule,
   verifyPrometheusRuleEvidence,
 } from './lib/prometheus-rules.mjs';
+import { isolatedGoToolchainEnvironment } from './lib/go-toolchain-environment.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -80,16 +81,16 @@ function commandResult(command, args, options) {
   };
 }
 
-function findGo(version) {
+function findGo(version, environment) {
   const executable = process.platform === 'win32' ? 'go.exe' : 'go';
   const candidates = [
-    process.env.GO_BINARY?.trim(),
+    environment.GO_BINARY?.trim(),
     path.join(tempRoot, 'toolchain', `go${version}`, 'go', 'bin', executable),
     path.join(tempRoot, 'toolchain', 'go', 'bin', executable),
     'go',
   ].filter(Boolean);
   for (const candidate of candidates) {
-    const result = commandResult(candidate, ['version'], { cwd: repositoryRoot, env: process.env });
+    const result = commandResult(candidate, ['version'], { cwd: repositoryRoot, env: environment });
     if (result.status === 0 && result.stdout.includes(`go version go${version} `)) {
       return candidate;
     }
@@ -107,15 +108,14 @@ function writeOutput(filePath, result) {
 
 function runRules(evidenceRoot) {
   const version = requiredGoVersion();
-  const goCommand = findGo(version);
   const goCache = path.join(tempRoot, 'gocache-promtool');
   const goTemporaryRoot = path.join(tempRoot, 'go-tmp-promtool');
-  const goEnvironment = {
-    ...process.env,
+  const goEnvironment = isolatedGoToolchainEnvironment(process.env, {
     GOWORK: 'off',
     GOCACHE: goCache,
     GOTMPDIR: goTemporaryRoot,
-  };
+  });
+  const goCommand = findGo(version, goEnvironment);
   for (const directory of [goCache, goTemporaryRoot]) {
     mkdirSync(directory, { recursive: true });
   }

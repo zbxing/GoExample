@@ -242,6 +242,17 @@ func (client *Client) transactionAttempt(ctx context.Context, options *sql.TxOpt
 		operationTimeout: client.operationTimeout,
 		tracer:           client.tracer,
 	}
+	// A driver may successfully begin a transaction while the caller is
+	// canceled concurrently. Do not enter user code in that state: the
+	// callback could perform external side effects before its first SQL call.
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		rollbackErr := databaseTx.Rollback()
+		if rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
+			ctxErr = errors.Join(ctxErr, rollbackErr)
+		}
+		finishSpan(ctx, span, ctxErr)
+		return ctxErr, rollbackErr == nil || errors.Is(rollbackErr, sql.ErrTxDone)
+	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			rollbackErr := databaseTx.Rollback()
@@ -263,6 +274,17 @@ func (client *Client) transactionAttempt(ctx context.Context, options *sql.TxOpt
 		}
 		finishSpan(ctx, span, err)
 		return err, retrySafe
+	}
+	// A callback may finish successfully just as the caller is canceled. Do not
+	// commit work after that cancellation: some drivers can still accept
+	// Commit even though the transaction context is already done.
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		rollbackErr := databaseTx.Rollback()
+		if rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
+			ctxErr = errors.Join(ctxErr, rollbackErr)
+		}
+		finishSpan(ctx, span, ctxErr)
+		return ctxErr, rollbackErr == nil || errors.Is(rollbackErr, sql.ErrTxDone)
 	}
 	if err = databaseTx.Commit(); err != nil {
 		rollbackErr := databaseTx.Rollback()

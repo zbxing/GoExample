@@ -39,9 +39,14 @@ type Config struct {
 	MaxIdleConnectionsPerHost int
 	MaxConnectionsPerHost     int
 	MaxResponseHeaderBytes    int64
-	TLSConfig                 *tls.Config
-	Proxy                     func(*http.Request) (*url.URL, error)
-	TracerProvider            trace.TracerProvider
+	// MaxResponseBodyBytes applies an opt-in streaming limit to every
+	// response body returned by this client. Zero leaves bodies unlimited.
+	MaxResponseBodyBytes int64
+	TLSConfig            *tls.Config
+	Proxy                func(*http.Request) (*url.URL, error)
+	TracerProvider       trace.TracerProvider
+	Retry                RetryConfig
+	CircuitBreaker       CircuitBreakerConfig
 }
 
 // New returns an HTTP/1.1 and HTTP/2 client with finite resource budgets and
@@ -79,20 +84,29 @@ func New(config Config) (*http.Client, error) {
 		MaxResponseHeaderBytes: config.MaxResponseHeaderBytes,
 		TLSClientConfig:        tlsConfig,
 	}
+	var base http.RoundTripper = transport
+	if config.Retry.MaxAttempts > 0 {
+		base = retryTransport{base: transport, config: config.Retry}
+	}
+	if config.CircuitBreaker.FailureThreshold > 0 {
+		base = newCircuitBreakerTransport(base, config.CircuitBreaker)
+	}
 	return &http.Client{
 		Timeout: config.RequestTimeout,
 		Transport: tracingTransport{
-			base:       transport,
-			tracer:     provider.Tracer(instrumentationName),
-			propagator: propagation.TraceContext{},
+			base:                 base,
+			tracer:               provider.Tracer(instrumentationName),
+			propagator:           propagation.TraceContext{},
+			maxResponseBodyBytes: config.MaxResponseBodyBytes,
 		},
 	}, nil
 }
 
 type tracingTransport struct {
-	base       http.RoundTripper
-	tracer     trace.Tracer
-	propagator propagation.TextMapPropagator
+	base                 http.RoundTripper
+	tracer               trace.Tracer
+	propagator           propagation.TextMapPropagator
+	maxResponseBodyBytes int64
 }
 
 func (transport tracingTransport) RoundTrip(request *http.Request) (*http.Response, error) {
@@ -107,11 +121,7 @@ func (transport tracingTransport) RoundTrip(request *http.Request) (*http.Respon
 		trace.WithAttributes(attribute.String("http.request.method", method)),
 	)
 
-	outbound := request.Clone(ctx)
-	outbound.Header = request.Header.Clone()
-	if outbound.Header == nil {
-		outbound.Header = make(http.Header)
-	}
+	outbound := cloneRequestForPropagation(request, ctx)
 	transport.propagator.Inject(ctx, propagation.HeaderCarrier(outbound.Header))
 
 	response, err := transport.base.RoundTrip(outbound)
@@ -139,7 +149,24 @@ func (transport tracingTransport) RoundTrip(request *http.Request) (*http.Respon
 		ctx:        ctx,
 		span:       span,
 	}
+	if transport.maxResponseBodyBytes > 0 {
+		if err := LimitResponseBody(response, transport.maxResponseBodyBytes); err != nil {
+			return nil, err
+		}
+	}
 	return response, nil
+}
+
+func cloneRequestForPropagation(request *http.Request, ctx context.Context) *http.Request {
+	// WithContext copies the request value without deep-copying read-only URL,
+	// trailer, transfer-encoding, and form state. Only Header must be isolated
+	// because trace propagation mutates it.
+	outbound := request.WithContext(ctx)
+	outbound.Header = request.Header.Clone()
+	if outbound.Header == nil {
+		outbound.Header = make(http.Header)
+	}
+	return outbound
 }
 
 type spanBody struct {
@@ -174,6 +201,11 @@ func (body *spanBody) Close() error {
 	return err
 }
 
+func (body *spanBody) responseBodyTooLarge() {
+	body.span.SetAttributes(attribute.String("error.type", "response_body_too_large"))
+	body.span.SetStatus(codes.Error, "outbound response body exceeded configured limit")
+}
+
 func (body *spanBody) end() {
 	body.once.Do(func() { body.span.End() })
 }
@@ -197,6 +229,8 @@ func classifyError(ctx context.Context, err error) (string, string) {
 		return "canceled", "outbound request canceled"
 	case errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded):
 		return "timeout", "outbound request timed out"
+	case errors.Is(err, ErrCircuitOpen):
+		return "circuit_open", "outbound request circuit is open"
 	}
 	// http.Client.Timeout cancels a custom RoundTripper through the legacy
 	// Request.Cancel channel and exposes no public sentinel to the transport.
@@ -244,6 +278,8 @@ func withDefaults(config Config) Config {
 	if config.MaxResponseHeaderBytes == 0 {
 		config.MaxResponseHeaderBytes = 1 << 20
 	}
+	config.Retry = withRetryDefaults(config.Retry)
+	config.CircuitBreaker = withCircuitBreakerDefaults(config.CircuitBreaker)
 	return config
 }
 
@@ -276,6 +312,15 @@ func validate(config Config) error {
 	}
 	if config.MaxResponseHeaderBytes <= 0 {
 		return errors.New("outbound HTTP response header limit must be greater than zero")
+	}
+	if config.MaxResponseBodyBytes < 0 {
+		return errors.New("outbound HTTP response body limit must not be negative")
+	}
+	if err := validateRetryConfig(config.Retry); err != nil {
+		return err
+	}
+	if err := validateCircuitBreakerConfig(config.CircuitBreaker); err != nil {
+		return err
 	}
 	if config.TLSConfig != nil {
 		if config.TLSConfig.MinVersion != 0 && config.TLSConfig.MinVersion < tls.VersionTLS12 {

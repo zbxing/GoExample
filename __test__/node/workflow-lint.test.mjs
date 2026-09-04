@@ -11,10 +11,84 @@ import {
   excludedWorkflowPaths,
   verifyWorkflowLintEvidence,
 } from '../../scripts/lib/workflow-lint.mjs';
+import {
+  isolatedGoToolchainEnvironment,
+  selectRepositoryToolCommand,
+} from '../../scripts/lib/go-toolchain-environment.mjs';
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, '..', '..');
 const tempRoot = path.join(repositoryRoot, '.temp', 'workflow-lint-tests');
+
+test('isolated Go toolchain environments remove every GOROOT spelling without mutating inputs', () => {
+  const environment = {
+    GOROOT: 'inherited-root',
+    GoRoOt: 'alternate-inherited-root',
+    GO_BINARY: 'pinned-go',
+    KEEP: 'inherited-value',
+  };
+  const overrides = {
+    gOrOoT: 'override-root',
+    KEEP: 'override-value',
+    GOCACHE: 'bounded-cache',
+  };
+
+  const isolated = isolatedGoToolchainEnvironment(environment, overrides);
+
+  assert.deepEqual(
+    Object.keys(isolated).filter((name) => name.toLowerCase() === 'goroot'),
+    [],
+  );
+  assert.deepEqual(isolated, {
+    GO_BINARY: 'pinned-go',
+    KEEP: 'override-value',
+    GOCACHE: 'bounded-cache',
+  });
+  assert.equal(environment.GOROOT, 'inherited-root');
+  assert.equal(environment.GoRoOt, 'alternate-inherited-root');
+  assert.equal(environment.KEEP, 'inherited-value');
+  assert.equal(overrides.gOrOoT, 'override-root');
+});
+
+test('repository tool selection preserves an explicit command without probing repository candidates', () => {
+  const repositoryCandidates = Object.freeze(['missing-repository-go']);
+  const selection = selectRepositoryToolCommand({
+    configuredCommand: '  caller-go  ',
+    repositoryCandidates,
+    fallbackCommand: 'go',
+  });
+
+  assert.deepEqual(selection, { command: 'caller-go', repositoryManaged: false });
+  assert.deepEqual(repositoryCandidates, ['missing-repository-go']);
+});
+
+test('repository tool selection uses existing repository candidates before the PATH fallback', async (t) => {
+  await mkdir(tempRoot, { recursive: true });
+  const fixtureRoot = await mkdtemp(path.join(tempRoot, 'go-selection-'));
+  t.after(() => rm(fixtureRoot, { recursive: true, force: true }));
+  const missingCandidate = path.join(fixtureRoot, 'missing-go');
+  const repositoryCandidate = path.join(fixtureRoot, 'repository-go');
+  await writeFile(repositoryCandidate, 'tool fixture', 'utf8');
+  const repositoryCandidates = [missingCandidate, repositoryCandidate];
+
+  assert.deepEqual(
+    selectRepositoryToolCommand({
+      configuredCommand: '',
+      repositoryCandidates,
+      fallbackCommand: 'go',
+    }),
+    { command: repositoryCandidate, repositoryManaged: true },
+  );
+  assert.deepEqual(
+    selectRepositoryToolCommand({
+      configuredCommand: '   ',
+      repositoryCandidates: [missingCandidate],
+      fallbackCommand: 'go',
+    }),
+    { command: 'go', repositoryManaged: false },
+  );
+  assert.deepEqual(repositoryCandidates, [missingCandidate, repositoryCandidate]);
+});
 
 async function createEvidence(t) {
   await mkdir(tempRoot, { recursive: true });

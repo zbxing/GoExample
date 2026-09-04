@@ -120,6 +120,15 @@ func generateWeakETag(body []byte, storage *[maxWeakETagLength]byte) []byte {
 }
 
 func weakETagMatches(header, expected string) bool {
+	// The common conditional-request form is one exact ETag value. Avoid the
+	// iterator and trimming work when no list syntax or surrounding whitespace
+	// is present; the general path below preserves wildcard/list semantics.
+	if header == expected {
+		return true
+	}
+	if weakExpected := strings.HasPrefix(expected, "W/"); (weakExpected && header == expected[2:]) || (!weakExpected && header == "W/"+expected) {
+		return true
+	}
 	expected = strings.TrimPrefix(expected, "W/")
 	for value := range strings.SplitSeq(header, ",") {
 		value = strings.TrimSpace(value)

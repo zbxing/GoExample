@@ -12,6 +12,7 @@ import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { fileMatchesSha256, findGoArchiveChecksum } from './lib/go-download.mjs';
+import { isolatedGoToolchainEnvironment } from './lib/go-toolchain-environment.mjs';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(currentDirectory, '..');
@@ -94,16 +95,22 @@ function goVersion(command) {
 
 function findGo() {
   const candidates = [
-    process.env.GO_BINARY?.trim(),
-    path.join(toolchainRoot, `go${requiredGoVersion}`, 'go', 'bin', goExecutableName),
-    path.join(toolchainRoot, 'go', 'bin', goExecutableName),
-    'go',
-  ].filter(Boolean);
+    { command: process.env.GO_BINARY?.trim(), repositoryManaged: false },
+    {
+      command: path.join(toolchainRoot, `go${requiredGoVersion}`, 'go', 'bin', goExecutableName),
+      repositoryManaged: true,
+    },
+    {
+      command: path.join(toolchainRoot, 'go', 'bin', goExecutableName),
+      repositoryManaged: true,
+    },
+    { command: 'go', repositoryManaged: false },
+  ].filter((candidate) => candidate.command);
 
   for (const candidate of candidates) {
-    const version = goVersion(candidate);
+    const version = goVersion(candidate.command);
     if (version === requiredGoVersion) {
-      return { command: candidate, version };
+      return { ...candidate, version };
     }
   }
   return null;
@@ -187,7 +194,7 @@ async function installGo() {
   if (!version) {
     throw new Error(`Go extraction completed but ${command} is not executable.`);
   }
-  return { command, version };
+  return { command, version, repositoryManaged: true };
 }
 
 function goModuleRoots() {
@@ -228,7 +235,9 @@ async function main() {
   }
   console.log(`[env] Using Go ${go.version}: ${go.command}`);
 
-  const goEnvironment = { ...process.env, GOWORK: 'off' };
+  const goEnvironment = go.repositoryManaged
+    ? isolatedGoToolchainEnvironment(process.env, { GOWORK: 'off' })
+    : { ...process.env, GOWORK: 'off' };
   for (const moduleRoot of goModuleRoots()) {
     console.log(`[env] Downloading Go dependencies: ${path.relative(repositoryRoot, moduleRoot)}`);
     await run(go.command, ['-C', moduleRoot, 'mod', 'download'], { env: goEnvironment });

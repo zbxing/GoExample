@@ -55,14 +55,13 @@ func run(ctx context.Context, output io.Writer) error {
 		ApplicationQueries: billingapi.Queries(service),
 		Endpoints:          append(httpapi.DefaultEndpoints(false), "GET /api/v1/billing/summary"),
 	}
-	app := httpapi.New(options)
-	handler, err := httpapi.NewHTTPHandler(app)
+	application, err := httpapi.NewHTTPApplication(options)
 	if err != nil {
-		return fmt.Errorf("initialize standard HTTP handler: %w", err)
+		return fmt.Errorf("initialize standard HTTP application: %w", err)
 	}
 	return server.RunHTTP(ctx, server.HTTPOptions{
-		Handler:             handler,
-		ApplicationShutdown: app.ShutdownWithContext,
+		Handler:             application,
+		ApplicationShutdown: application.Shutdown,
 		ConnectionObserver:  metrics,
 		Health:              checker,
 		Logger:              logger,

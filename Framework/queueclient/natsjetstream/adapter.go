@@ -20,10 +20,39 @@ import (
 )
 
 const (
-	defaultFetchMaxWait = time.Second
-	minimumFetchMaxWait = 10 * time.Millisecond
-	maximumFetchMaxWait = 30 * time.Second
+	defaultFetchMaxWait      = time.Second
+	minimumFetchMaxWait      = 10 * time.Millisecond
+	maximumFetchMaxWait      = 30 * time.Second
+	initialHeaderMapCapacity = 8
 )
+
+var jetStreamControlHeaders = [...]string{
+	jetstream.MsgIDHeader,
+	jetstream.ExpectedStreamHeader,
+	jetstream.ExpectedLastSeqHeader,
+	jetstream.ExpectedLastSubjSeqHeader,
+	jetstream.ExpectedLastSubjSeqSubjHeader,
+	jetstream.ExpectedLastMsgIDHeader,
+	jetstream.MsgTTLHeader,
+	jetstream.MsgRollup,
+	jetstream.MarkerReasonHeader,
+	jetstream.ScheduleHeader,
+	jetstream.ScheduleTargetHeader,
+}
+
+var jetStreamControlHeaderSet = map[string]struct{}{
+	jetstream.MsgIDHeader:                   {},
+	jetstream.ExpectedStreamHeader:          {},
+	jetstream.ExpectedLastSeqHeader:         {},
+	jetstream.ExpectedLastSubjSeqHeader:     {},
+	jetstream.ExpectedLastSubjSeqSubjHeader: {},
+	jetstream.ExpectedLastMsgIDHeader:       {},
+	jetstream.MsgTTLHeader:                  {},
+	jetstream.MsgRollup:                     {},
+	jetstream.MarkerReasonHeader:            {},
+	jetstream.ScheduleHeader:                {},
+	jetstream.ScheduleTargetHeader:          {},
+}
 
 var (
 	// ErrInvalidConfiguration indicates an incomplete or unsafe adapter config.
@@ -174,7 +203,7 @@ func (adapter *Adapter) Publish(ctx context.Context, message queueclient.Message
 	}
 	brokerMessage := nats.NewMsg(adapter.subject)
 	brokerMessage.Data = bytes.Clone(message.Body)
-	brokerMessage.Header = applicationHeaders(message.Headers)
+	copyApplicationHeaders(brokerMessage.Header, message.Headers)
 	if _, err := adapter.publisher.PublishMsg(ctx, brokerMessage); err != nil {
 		return ErrPublish
 	}
@@ -206,6 +235,12 @@ func (adapter *Adapter) ReceiveDelivery(ctx context.Context) (queueclient.Delive
 		}
 		message, err := fromJetStreamMessage(brokerMessage)
 		if err != nil {
+			if errors.Is(err, ErrInvalidMessage) {
+				if quarantineErr := adapter.quarantineInvalidMessage(ctx, brokerMessage); quarantineErr != nil {
+					return queueclient.Delivery{}, quarantineErr
+				}
+				continue
+			}
 			return queueclient.Delivery{}, err
 		}
 		return queueclient.Delivery{
@@ -241,6 +276,38 @@ func (adapter *Adapter) ReceiveDelivery(ctx context.Context) (queueclient.Delive
 	}
 }
 
+func (adapter *Adapter) quarantineInvalidMessage(ctx context.Context, source jetstream.Msg) error {
+	if source == nil {
+		return ErrInvalidMessage
+	}
+	metadata, err := source.Metadata()
+	if err != nil || metadata == nil || metadata.Stream == "" || metadata.Sequence.Stream == 0 {
+		return ErrInvalidMessage
+	}
+
+	dlqMessage := nats.NewMsg(adapter.deadLetterSubject)
+	dlqMessage.Data = bytes.Clone(source.Data())
+	for name, values := range source.Headers() {
+		if !jetStreamControlHeader(name) && len(values) == 1 {
+			dlqMessage.Header.Set(name, values[0])
+		}
+	}
+	dlqMessage.Header.Set(jetstream.MsgIDHeader, deadLetterID(metadata))
+	if _, err := adapter.publisher.PublishMsg(ctx, dlqMessage); err != nil {
+		if contextErr := ctx.Err(); contextErr != nil {
+			return contextErr
+		}
+		return ErrDeadLetter
+	}
+	if err := source.DoubleAck(ctx); err != nil {
+		if contextErr := ctx.Err(); contextErr != nil {
+			return contextErr
+		}
+		return ErrDeadLetter
+	}
+	return nil
+}
+
 func (adapter *Adapter) deadLetter(ctx context.Context, source jetstream.Msg, message queueclient.Message) error {
 	if ctx == nil {
 		return ErrInvalidContext
@@ -251,7 +318,7 @@ func (adapter *Adapter) deadLetter(ctx context.Context, source jetstream.Msg, me
 	}
 	dlqMessage := nats.NewMsg(adapter.deadLetterSubject)
 	dlqMessage.Data = bytes.Clone(message.Body)
-	dlqMessage.Header = applicationHeaders(message.Headers)
+	copyApplicationHeaders(dlqMessage.Header, message.Headers)
 	dlqMessage.Header.Set(jetstream.MsgIDHeader, deadLetterID(metadata))
 	if _, err := adapter.publisher.PublishMsg(ctx, dlqMessage); err != nil {
 		return ErrDeadLetter
@@ -266,11 +333,26 @@ func fromJetStreamMessage(message jetstream.Msg) (queueclient.Message, error) {
 	if message == nil {
 		return queueclient.Message{}, ErrInvalidMessage
 	}
+	headers := message.Headers()
+	var clonedHeaders map[string]string
+	// Common small sets can be copied in one pass. Only scan first when a large
+	// incoming map benefits from an exact capacity hint.
+	if len(headers) > initialHeaderMapCapacity {
+		applicationHeaderCount := 0
+		for name := range headers {
+			if !jetStreamControlHeader(name) {
+				applicationHeaderCount++
+			}
+		}
+		clonedHeaders = make(map[string]string, applicationHeaderCount)
+	} else {
+		clonedHeaders = make(map[string]string)
+	}
 	result := queueclient.Message{
 		Body:    bytes.Clone(message.Data()),
-		Headers: make(map[string]string),
+		Headers: clonedHeaders,
 	}
-	for name, values := range message.Headers() {
+	for name, values := range headers {
 		if jetStreamControlHeader(name) {
 			continue
 		}
@@ -282,14 +364,12 @@ func fromJetStreamMessage(message jetstream.Msg) (queueclient.Message, error) {
 	return result, nil
 }
 
-func applicationHeaders(headers map[string]string) nats.Header {
-	result := nats.Header{}
+func copyApplicationHeaders(result nats.Header, headers map[string]string) {
 	for name, value := range headers {
 		if !jetStreamControlHeader(name) {
 			result.Set(name, value)
 		}
 	}
-	return result
 }
 
 func deadLetterID(metadata *jetstream.MsgMetadata) string {
@@ -298,29 +378,43 @@ func deadLetterID(metadata *jetstream.MsgMetadata) string {
 	digest.Write([]byte{0})
 	digest.Write([]byte(metadata.Consumer))
 	digest.Write([]byte{0})
-	digest.Write([]byte(strconv.FormatUint(metadata.Sequence.Stream, 10)))
+	// Keep sequence formatting on the stack. DLQ retries can invoke this path
+	// repeatedly, and converting through a temporary string and byte slice is
+	// unnecessary while preserving the exact hash input.
+	var sequence [20]byte
+	digest.Write(strconv.AppendUint(sequence[:0], metadata.Sequence.Stream, 10))
 	return "goexample-dlq-" + hex.EncodeToString(digest.Sum(nil))
 }
 
 func jetStreamControlHeader(name string) bool {
-	for _, control := range []string{
-		jetstream.MsgIDHeader,
-		jetstream.ExpectedStreamHeader,
-		jetstream.ExpectedLastSeqHeader,
-		jetstream.ExpectedLastSubjSeqHeader,
-		jetstream.ExpectedLastSubjSeqSubjHeader,
-		jetstream.ExpectedLastMsgIDHeader,
-		jetstream.MsgTTLHeader,
-		jetstream.MsgRollup,
-		jetstream.MarkerReasonHeader,
-		jetstream.ScheduleHeader,
-		jetstream.ScheduleTargetHeader,
-	} {
-		if strings.EqualFold(name, control) {
-			return true
-		}
+	if _, ok := jetStreamControlHeaderSet[name]; ok {
+		return true
 	}
-	return false
+	// Most application headers do not share a control-header length. Dispatch
+	// by length first so mixed-case compatibility checks only compare candidates
+	// that can actually match instead of scanning the complete control list.
+	switch len(name) {
+	case len(jetstream.MsgIDHeader):
+		return strings.EqualFold(name, jetstream.MsgIDHeader) || strings.EqualFold(name, jetstream.MsgRollup)
+	case len(jetstream.ExpectedStreamHeader):
+		return strings.EqualFold(name, jetstream.ExpectedStreamHeader) || strings.EqualFold(name, jetstream.ScheduleTargetHeader)
+	case len(jetstream.ExpectedLastSeqHeader):
+		return strings.EqualFold(name, jetstream.ExpectedLastSeqHeader)
+	case len(jetstream.ExpectedLastSubjSeqHeader):
+		return strings.EqualFold(name, jetstream.ExpectedLastSubjSeqHeader)
+	case len(jetstream.ExpectedLastSubjSeqSubjHeader):
+		return strings.EqualFold(name, jetstream.ExpectedLastSubjSeqSubjHeader)
+	case len(jetstream.ExpectedLastMsgIDHeader):
+		return strings.EqualFold(name, jetstream.ExpectedLastMsgIDHeader)
+	case len(jetstream.MsgTTLHeader):
+		return strings.EqualFold(name, jetstream.MsgTTLHeader)
+	case len(jetstream.MarkerReasonHeader):
+		return strings.EqualFold(name, jetstream.MarkerReasonHeader)
+	case len(jetstream.ScheduleHeader):
+		return strings.EqualFold(name, jetstream.ScheduleHeader)
+	default:
+		return false
+	}
 }
 
 func validLiteralSubject(subject string) bool {

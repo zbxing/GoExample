@@ -43,16 +43,23 @@ func registerRoutes(
 	v1 := api.Group("/v1")
 	v1.Use(rejectWhenDraining(options.Health, options.Metrics))
 	v1.Use(boundedConcurrency(options.MaxInFlight, options.Metrics))
-	hasApplicationRoutes := len(options.ApplicationQueries) > 0 || len(options.ApplicationCommands) > 0
+	hasApplicationRoutes := len(options.ApplicationQueries) > 0 ||
+		len(options.ApplicationCommands) > 0 ||
+		len(options.ApplicationEventStreams) > 0 ||
+		len(options.ApplicationRoutes) > 0
 	if hasApplicationRoutes && options.RegisterRoutes != nil {
-		panic("ApplicationQueries/ApplicationCommands and RegisterRoutes cannot be configured together")
+		panic("application route descriptors and RegisterRoutes cannot be configured together")
 	}
 	if hasApplicationRoutes {
 		validateApplicationQueries(options.ApplicationQueries, AuthenticationEnabled(options), options.OIDCBrowser != nil)
 		validateApplicationCommands(options.ApplicationCommands, AuthenticationEnabled(options), options.OIDCBrowser != nil && options.OIDCBrowser.SessionsEnabled())
+		validateApplicationEventStreams(options.ApplicationEventStreams, options.ApplicationQueries, AuthenticationEnabled(options), options.OIDCBrowser != nil)
+		validateApplicationRoutes(options.ApplicationRoutes, options.ApplicationQueries, options.ApplicationCommands, options.ApplicationEventStreams, AuthenticationEnabled(options), options.OIDCBrowser != nil)
 		RegisterDefaultRoutes(v1, options)
 		registerApplicationQueries(v1, options.ApplicationQueries, options)
 		registerApplicationCommands(v1, options.ApplicationCommands, options)
+		registerApplicationEventStreams(v1, options.ApplicationEventStreams, options)
+		registerApplicationRoutes(v1, options.ApplicationRoutes)
 		return
 	}
 	if options.RegisterRoutes != nil {

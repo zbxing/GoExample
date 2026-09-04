@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { readBoundedGitCommit, readBoundedGoVersion } from './bounded-command.mjs';
+import { selectRepositoryToolCommand } from './go-toolchain-environment.mjs';
 
 export const auditChainEvidenceSchemaVersion = 1;
 export const auditChainTests = Object.freeze([
@@ -140,37 +141,29 @@ function requiredGoVersion(repositoryRoot) {
 export function resolveAuditChainGoCommand(repositoryRoot) {
   const executableName = process.platform === 'win32' ? 'go.exe' : 'go';
   const version = requiredGoVersion(repositoryRoot);
-  const candidates = [
-    process.env.GO_BINARY?.trim(),
-    path.join(repositoryRoot, '.temp', 'toolchain', `go${version}`, 'go', 'bin', executableName),
-    path.join(repositoryRoot, '.temp', 'toolchain', 'go', 'bin', executableName),
-  ].filter(Boolean);
-  return candidates.find((candidate) => existsSync(candidate)) ?? executableName;
+  return selectRepositoryToolCommand({
+    configuredCommand: process.env.GO_BINARY,
+    repositoryCandidates: [
+      path.join(repositoryRoot, '.temp', 'toolchain', `go${version}`, 'go', 'bin', executableName),
+      path.join(repositoryRoot, '.temp', 'toolchain', 'go', 'bin', executableName),
+    ],
+    fallbackCommand: executableName,
+  }).command;
 }
 
 function currentGoVersion(repositoryRoot) {
-  const result = spawnSync(resolveAuditChainGoCommand(repositoryRoot), ['version'], {
+  const value = readBoundedGoVersion(resolveAuditChainGoCommand(repositoryRoot), {
     cwd: path.join(repositoryRoot, 'Framework'),
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
   });
-  const value = `${result.stdout ?? ''}`.trim();
-  if (result.status !== 0 || !/^go version go\d+\.\d+\.\d+ [a-z0-9]+\/[a-z0-9]+$/.test(value)) {
+  if (value === null) {
     reject('cannot resolve the Go toolchain identity');
   }
   return value;
 }
 
 function currentGitCommit(repositoryRoot) {
-  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
-  });
-  const value = `${result.stdout ?? ''}`.trim();
-  if (result.status !== 0 || !gitCommitPattern.test(value)) {
+  const value = readBoundedGitCommit({ cwd: repositoryRoot });
+  if (value === null) {
     reject('cannot resolve the current Git commit');
   }
   return value;
@@ -189,6 +182,7 @@ function sourcePaths() {
     auditRunbook: 'docs/security/server-audit-events.md',
     evidenceRunner: 'scripts/audit-chain-evidence.mjs',
     evidenceVerifier: 'scripts/lib/audit-chain-evidence.mjs',
+    boundedCommand: 'scripts/lib/bounded-command.mjs',
     evidenceTests: '__test__/node/audit-chain-evidence.test.mjs',
     evidenceManifest: 'scripts/evidence-manifest.mjs',
     independentVerifier: 'scripts/evidence-verify.mjs',

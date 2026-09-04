@@ -265,15 +265,14 @@ func run(ctx context.Context, output io.Writer) (runErr error) {
 	); err != nil {
 		return fmt.Errorf("validate shared state: %w", err)
 	}
-	app := httpapi.New(apiOptions)
-	handler, err := httpapi.NewHTTPHandler(app)
+	application, err := httpapi.NewHTTPApplication(apiOptions)
 	if err != nil {
-		return fmt.Errorf("initialize standard HTTP handler: %w", err)
+		return fmt.Errorf("initialize standard HTTP application: %w", err)
 	}
 
 	return server.RunHTTP(ctx, server.HTTPOptions{
-		Handler:             handler,
-		ApplicationShutdown: app.ShutdownWithContext,
+		Handler:             application,
+		ApplicationShutdown: application.Shutdown,
 		ConnectionObserver:  metrics,
 		Health:              healthChecker,
 		Logger:              logger,

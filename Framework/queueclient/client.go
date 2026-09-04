@@ -19,6 +19,8 @@ import (
 
 const (
 	instrumentationName    = "github.com/zbxing/goexample/Framework/queueclient"
+	traceparentHeader      = "traceparent"
+	tracestateHeader       = "tracestate"
 	defaultPublishTimeout  = 3 * time.Second
 	defaultProcessTimeout  = 30 * time.Second
 	defaultMaxMessageBytes = 1 << 20
@@ -202,17 +204,76 @@ func validateHeaders(headers map[string]string, maxHeaders, maxBytes int) error 
 	if len(headers) > maxHeaders {
 		return ErrHeadersTooLarge
 	}
-	seen := make(map[string]struct{}, len(headers))
+	if len(headers) == 2 {
+		var firstName string
+		totalBytes := 0
+		for name, value := range headers {
+			if !validHeaderName(name) || strings.ContainsAny(value, "\r\n\x00") {
+				return ErrInvalidHeader
+			}
+			if len(name) > maxBytes-totalBytes {
+				return ErrHeadersTooLarge
+			}
+			totalBytes += len(name)
+			if len(value) > maxBytes-totalBytes {
+				return ErrHeadersTooLarge
+			}
+			totalBytes += len(value)
+			if firstName == "" {
+				firstName = name
+			} else if strings.EqualFold(firstName, name) {
+				return ErrInvalidHeader
+			}
+		}
+		return nil
+	}
+	// A duplicate header is impossible with zero or one entries. Keep those
+	// common paths allocation-free. Small sets use a stack-backed pairwise
+	// check; larger sets build one normalized-name map.
+	if len(headers) > 2 && len(headers) <= 4 {
+		var names [4]string
+		index := 0
+		totalBytes := 0
+		for name, value := range headers {
+			if !validHeaderName(name) || strings.ContainsAny(value, "\r\n\x00") {
+				return ErrInvalidHeader
+			}
+			for _, previous := range names[:index] {
+				if strings.EqualFold(previous, name) {
+					return ErrInvalidHeader
+				}
+			}
+			if len(name) > maxBytes-totalBytes {
+				return ErrHeadersTooLarge
+			}
+			totalBytes += len(name)
+			if len(value) > maxBytes-totalBytes {
+				return ErrHeadersTooLarge
+			}
+			totalBytes += len(value)
+			names[index] = name
+			index++
+		}
+		return nil
+	}
+	// For larger sets, build the normalized-name set once to detect
+	// case-insensitive duplicates.
+	var seen map[string]struct{}
+	if len(headers) > 2 {
+		seen = make(map[string]struct{}, len(headers))
+	}
 	totalBytes := 0
 	for name, value := range headers {
-		normalizedName := strings.ToLower(name)
 		if !validHeaderName(name) || strings.ContainsAny(value, "\r\n\x00") {
 			return ErrInvalidHeader
 		}
-		if _, exists := seen[normalizedName]; exists {
-			return ErrInvalidHeader
+		if seen != nil {
+			normalizedName := strings.ToLower(name)
+			if _, exists := seen[normalizedName]; exists {
+				return ErrInvalidHeader
+			}
+			seen[normalizedName] = struct{}{}
 		}
-		seen[normalizedName] = struct{}{}
 		if len(name) > maxBytes-totalBytes {
 			return ErrHeadersTooLarge
 		}
@@ -229,7 +290,10 @@ func validHeaderName(name string) bool {
 	if name == "" {
 		return false
 	}
-	for _, character := range name {
+	// Header names are restricted to visible ASCII. Byte scanning avoids the
+	// UTF-8 decoding overhead of range on this per-message validation path.
+	for index := 0; index < len(name); index++ {
+		character := name[index]
 		if character < 0x21 || character > 0x7e {
 			return false
 		}
@@ -246,17 +310,41 @@ func removeTraceHeaders(headers map[string]string) {
 }
 
 func traceCarrier(headers map[string]string) propagation.MapCarrier {
-	carrier := propagation.MapCarrier{}
+	var carrier propagation.MapCarrier
 	for name, value := range headers {
-		if isTraceHeader(name) {
-			carrier[strings.ToLower(name)] = value
+		if canonical := canonicalTraceHeader(name); canonical != "" {
+			if carrier == nil {
+				carrier = make(propagation.MapCarrier, 2)
+			}
+			// Use immutable canonical keys instead of strings.ToLower(name),
+			// which allocates when callers use mixed-case header names.
+			carrier[canonical] = value
 		}
 	}
 	return carrier
 }
 
 func isTraceHeader(name string) bool {
-	return strings.EqualFold(name, "traceparent") || strings.EqualFold(name, "tracestate")
+	return canonicalTraceHeader(name) != ""
+}
+
+func canonicalTraceHeader(name string) string {
+	// Header names are ASCII tokens. Reject other lengths before invoking the
+	// case-insensitive comparison so ordinary application headers take the
+	// constant-time fast path through this helper.
+	switch len(name) {
+	case len(traceparentHeader):
+		if strings.EqualFold(name, traceparentHeader) {
+			return traceparentHeader
+		}
+	case len(tracestateHeader):
+		if strings.EqualFold(name, tracestateHeader) {
+			return tracestateHeader
+		}
+	default:
+		return ""
+	}
+	return ""
 }
 
 func finishSpan(ctx context.Context, span trace.Span, err error) {

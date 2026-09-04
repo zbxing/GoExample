@@ -12,10 +12,10 @@ const releaseRoot = path.join(repositoryRoot, '.temp', 'server-release-test', `$
 const releaseRootRelative = path.relative(repositoryRoot, releaseRoot);
 const scriptPath = path.join(repositoryRoot, 'scripts', 'server-release.mjs');
 
-function run(task) {
+function run(task, environment = {}) {
   return spawnSync(process.execPath, [scriptPath, task], {
     cwd: repositoryRoot,
-    env: { ...process.env, SERVER_RELEASE_ROOT: releaseRootRelative },
+    env: { ...process.env, ...environment, SERVER_RELEASE_ROOT: releaseRootRelative },
     encoding: 'utf8',
     maxBuffer: 8 * 1024 * 1024,
   });
@@ -33,8 +33,10 @@ test('server release build is bounded and rejects artifact or metadata tampering
   const checksumPath = path.join(releaseRoot, 'SHA256SUMS');
   const sourceManifestPath = path.join(releaseRoot, 'source-manifest.json');
   const reproducibilityReportPath = path.join(releaseRoot, 'reproducibility-report.json');
+  const poisonedGoRoot = path.join(releaseRoot, 'foreign-go-root');
+  const poisonedEnvironment = { GOROOT: poisonedGoRoot };
 
-  const built = run('build');
+  const built = run('build', poisonedEnvironment);
   assert.equal(built.status, 0, built.stderr);
   const buildManifestSource = await readFile(manifestPath, 'utf8');
   const buildSourceManifestSource = await readFile(sourceManifestPath, 'utf8');
@@ -47,11 +49,11 @@ test('server release build is bounded and rejects artifact or metadata tampering
       [createHash('sha256').update(buildSourceManifestSource).digest('hex'), 'source-manifest.json'],
     ]),
   );
-  const verified = run('verify');
+  const verified = run('verify', poisonedEnvironment);
   assert.equal(verified.status, 0, verified.stderr);
-  const reproducible = run('reproducible');
+  const reproducible = run('reproducible', poisonedEnvironment);
   assert.equal(reproducible.status, 0, reproducible.stderr);
-  const reproducibleRerun = run('reproducible');
+  const reproducibleRerun = run('reproducible', poisonedEnvironment);
   assert.equal(reproducibleRerun.status, 0, reproducibleRerun.stderr);
 
   const manifestSource = await readFile(manifestPath, 'utf8');
