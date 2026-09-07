@@ -35,11 +35,19 @@ var contractLeaseExtensionRetry = queueclient.DeliveryRetryConfig{
 }
 
 const (
-	contractLeaseSafetyMargin = 500 * time.Millisecond
-	contractWorkerAckWait     = 9 * time.Second
-	contractExtendedAckWait   = 800 * time.Millisecond
-	contractExtendedHandling  = 1500 * time.Millisecond
-	contractExtensionMargin   = 200 * time.Millisecond
+	contractLeaseSafetyMargin       = 500 * time.Millisecond
+	contractWorkerAckWait           = 9 * time.Second
+	contractExtendedAckWait         = 800 * time.Millisecond
+	contractExtendedHandling        = 1500 * time.Millisecond
+	contractExtensionMargin         = 200 * time.Millisecond
+	contractDuplicateWindow         = time.Minute
+	contractDeduplicatedPublishRuns = 2
+	contractDeduplicatedStored      = 1
+	contractFetchMaxWait            = 100 * time.Millisecond
+	contractShortRequestExpires     = 50 * time.Millisecond
+	contractMaxRequestExpires       = 5 * time.Second
+	contractCancellationFetchWait   = 5 * time.Second
+	contractCancellationReturnLimit = time.Second
 )
 
 func TestRealNATSJetStreamDurableDelivery(t *testing.T) {
@@ -77,28 +85,245 @@ func TestRealNATSJetStreamDurableDelivery(t *testing.T) {
 	suffix := strings.ToUpper(strconv.FormatInt(time.Now().UnixNano(), 36))
 	sourceStream := "GOEXAMPLE_SOURCE_" + suffix
 	dlqStream := "GOEXAMPLE_DLQ_" + suffix
-	sourceSubject := "goexample.source." + strings.ToLower(suffix)
+	deduplicationStream := "GOEXAMPLE_DEDUP_" + suffix
+	sourceConsumerName := "WORKER_" + suffix
+	sourceSubjectPrefix := "goexample.source." + strings.ToLower(suffix)
+	sourceStreamSubject := sourceSubjectPrefix + ".>"
+	sourceSubject := sourceSubjectPrefix + ".primary"
+	foreignSubject := sourceSubjectPrefix + ".foreign"
+	pushDeliverySubject := "goexample.delivery." + strings.ToLower(suffix)
 	dlqSubject := "goexample.dlq." + strings.ToLower(suffix)
-	createContractStream(t, testContext, js, sourceStream, sourceSubject)
+	deduplicationSubject := "goexample.dedup." + strings.ToLower(suffix)
+	createContractStream(t, testContext, js, sourceStream, sourceStreamSubject)
 	createContractStream(t, testContext, js, dlqStream, dlqSubject)
+	createContractStream(t, testContext, js, deduplicationStream, deduplicationSubject)
 	t.Cleanup(func() {
 		cleanupContext, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cleanupCancel()
 		_ = js.DeleteStream(cleanupContext, sourceStream)
 		_ = js.DeleteStream(cleanupContext, dlqStream)
+		_ = js.DeleteStream(cleanupContext, deduplicationStream)
 	})
 
+	client, err := queueclient.New(queueclient.Config{
+		System:         queueclient.SystemNATS,
+		PublishTimeout: 3 * time.Second,
+		ProcessTimeout: 3 * time.Second,
+	})
+	if err != nil {
+		t.Fatalf("queueclient.New() error = %v", err)
+	}
+
 	sourceConsumer, err := js.CreateOrUpdateConsumer(testContext, sourceStream, jetstream.ConsumerConfig{
-		Name:              "WORKER_" + suffix,
-		Durable:           "WORKER_" + suffix,
+		Name:              sourceConsumerName,
+		Durable:           sourceConsumerName,
 		AckPolicy:         jetstream.AckExplicitPolicy,
-		AckWait:           150 * time.Millisecond,
+		DeliverPolicy:     jetstream.DeliverAllPolicy,
+		AckWait:           contractWorkerAckWait,
 		MaxDeliver:        5,
 		FilterSubject:     sourceSubject,
 		ReplayPolicy:      jetstream.ReplayInstantPolicy,
 		MaxAckPending:     8,
 		MaxRequestBatch:   1,
-		MaxRequestExpires: 5 * time.Second,
+		MaxRequestExpires: contractMaxRequestExpires,
+		DeliverSubject:    pushDeliverySubject,
+	})
+	if err != nil {
+		t.Fatalf("CreateOrUpdateConsumer(push source) error = %v", err)
+	}
+	modeAdapter, err := New(js, sourceConsumer, Config{
+		Subject:           sourceSubject,
+		DeadLetterSubject: dlqSubject,
+		FetchMaxWait:      contractFetchMaxWait,
+	})
+	if err != nil {
+		t.Fatalf("New(push source consumer) error = %v", err)
+	}
+	pushBudget, pushError := modeAdapter.PreflightConsumer(
+		testContext,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	pushConsumerRejected := errors.Is(pushError, ErrConsumerNotPull) && pushBudget > 0
+	if !pushConsumerRejected {
+		t.Fatalf("Adapter.PreflightConsumer(push consumer) = %s, %v", pushBudget, pushError)
+	}
+	pushInfo, err := sourceConsumer.Info(testContext)
+	if err != nil {
+		t.Fatalf("Info(push source consumer) error = %v", err)
+	}
+	pullModeConfig := pushInfo.Config
+	pullModeConfig.DeliverSubject = ""
+	if err := js.DeleteConsumer(testContext, sourceStream, pullModeConfig.Name); err != nil {
+		t.Fatalf("DeleteConsumer(push source) error = %v", err)
+	}
+	sourceConsumer, err = js.CreateOrUpdateConsumer(testContext, sourceStream, pullModeConfig)
+	if err != nil {
+		t.Fatalf("CreateOrUpdateConsumer(rebuilt pull source) error = %v", err)
+	}
+	modeAdapter, err = New(js, sourceConsumer, Config{
+		Subject:           sourceSubject,
+		DeadLetterSubject: dlqSubject,
+		FetchMaxWait:      contractFetchMaxWait,
+	})
+	if err != nil {
+		t.Fatalf("New(rebuilt pull source consumer) error = %v", err)
+	}
+	pullBudget, pullError := modeAdapter.PreflightConsumer(
+		testContext,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	pullModeInfo, infoError := sourceConsumer.Info(testContext)
+	rebuiltPullConsumerPreflightPassed := pullError == nil && pullBudget == pushBudget &&
+		infoError == nil && pullModeInfo.Config.DeliverSubject == ""
+	if !rebuiltPullConsumerPreflightPassed {
+		t.Fatalf("Adapter.PreflightConsumer(rebuilt pull consumer) = %s, %v; info = %v", pullBudget, pullError, infoError)
+	}
+	priorityConfig := pullModeInfo.Config
+	priorityConfig.PriorityPolicy = jetstream.PriorityPolicyPinned
+	priorityConfig.PinnedTTL = time.Second
+	priorityConfig.PriorityGroups = []string{"PRIMARY"}
+	if err := js.DeleteConsumer(testContext, sourceStream, sourceConsumerName); err != nil {
+		t.Fatalf("DeleteConsumer(rebuilt pull source) error = %v", err)
+	}
+	sourceConsumer, err = js.CreateOrUpdateConsumer(testContext, sourceStream, priorityConfig)
+	if err != nil {
+		t.Fatalf("CreateOrUpdateConsumer(priority source) error = %v", err)
+	}
+	priorityAdapter, err := New(js, sourceConsumer, Config{
+		Subject:           sourceSubject,
+		DeadLetterSubject: dlqSubject,
+		FetchMaxWait:      contractFetchMaxWait,
+	})
+	if err != nil {
+		t.Fatalf("New(priority source consumer) error = %v", err)
+	}
+	priorityBudget, priorityError := priorityAdapter.PreflightConsumer(
+		testContext,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	priorityConsumerRejected := errors.Is(priorityError, ErrConsumerPriorityPolicy) && priorityBudget == pushBudget
+	if !priorityConsumerRejected {
+		t.Fatalf("Adapter.PreflightConsumer(priority consumer) = %s, %v", priorityBudget, priorityError)
+	}
+	priorityInfo, err := sourceConsumer.Info(testContext)
+	if err != nil {
+		t.Fatalf("Info(priority source consumer) error = %v", err)
+	}
+	defaultPriorityConfig := priorityInfo.Config
+	defaultPriorityConfig.PriorityPolicy = jetstream.PriorityPolicyNone
+	defaultPriorityConfig.PinnedTTL = 0
+	defaultPriorityConfig.PriorityGroups = nil
+	if err := js.DeleteConsumer(testContext, sourceStream, sourceConsumerName); err != nil {
+		t.Fatalf("DeleteConsumer(priority source) error = %v", err)
+	}
+	sourceConsumer, err = js.CreateOrUpdateConsumer(testContext, sourceStream, defaultPriorityConfig)
+	if err != nil {
+		t.Fatalf("CreateOrUpdateConsumer(default priority source) error = %v", err)
+	}
+	defaultPriorityAdapter, err := New(js, sourceConsumer, Config{
+		Subject:           sourceSubject,
+		DeadLetterSubject: dlqSubject,
+		FetchMaxWait:      contractFetchMaxWait,
+	})
+	if err != nil {
+		t.Fatalf("New(default priority source consumer) error = %v", err)
+	}
+	defaultPriorityBudget, defaultPriorityError := defaultPriorityAdapter.PreflightConsumer(
+		testContext,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	defaultPriorityInfo, defaultPriorityInfoError := sourceConsumer.Info(testContext)
+	rebuiltDefaultPriorityConsumerPreflightPassed := defaultPriorityError == nil && defaultPriorityBudget == priorityBudget &&
+		defaultPriorityInfoError == nil && defaultPriorityInfo.Config.PriorityPolicy == jetstream.PriorityPolicyNone &&
+		len(defaultPriorityInfo.Config.PriorityGroups) == 0
+	if !rebuiltDefaultPriorityConsumerPreflightPassed {
+		t.Fatalf("Adapter.PreflightConsumer(default priority consumer) = %s, %v; info = %v", defaultPriorityBudget, defaultPriorityError, defaultPriorityInfoError)
+	}
+	ackAllConfig := defaultPriorityInfo.Config
+	ackAllConfig.AckPolicy = jetstream.AckAllPolicy
+	if err := js.DeleteConsumer(testContext, sourceStream, sourceConsumerName); err != nil {
+		t.Fatalf("DeleteConsumer(default priority source) error = %v", err)
+	}
+	sourceConsumer, err = js.CreateOrUpdateConsumer(testContext, sourceStream, ackAllConfig)
+	if err != nil {
+		t.Fatalf("CreateOrUpdateConsumer(AckAll source) error = %v", err)
+	}
+	ackAllAdapter, err := New(js, sourceConsumer, Config{
+		Subject:           sourceSubject,
+		DeadLetterSubject: dlqSubject,
+		FetchMaxWait:      contractFetchMaxWait,
+	})
+	if err != nil {
+		t.Fatalf("New(AckAll source consumer) error = %v", err)
+	}
+	ackAllBudget, ackAllError := ackAllAdapter.PreflightConsumer(
+		testContext,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	ackAllConsumerRejected := errors.Is(ackAllError, ErrConsumerAckPolicy) && ackAllBudget == defaultPriorityBudget
+	if !ackAllConsumerRejected {
+		t.Fatalf("Adapter.PreflightConsumer(AckAll consumer) = %s, %v", ackAllBudget, ackAllError)
+	}
+	ackAllInfo, err := sourceConsumer.Info(testContext)
+	if err != nil {
+		t.Fatalf("Info(AckAll source consumer) error = %v", err)
+	}
+	explicitAckConfig := ackAllInfo.Config
+	explicitAckConfig.AckPolicy = jetstream.AckExplicitPolicy
+	if err := js.DeleteConsumer(testContext, sourceStream, sourceConsumerName); err != nil {
+		t.Fatalf("DeleteConsumer(AckAll source) error = %v", err)
+	}
+	sourceConsumer, err = js.CreateOrUpdateConsumer(testContext, sourceStream, explicitAckConfig)
+	if err != nil {
+		t.Fatalf("CreateOrUpdateConsumer(explicit Ack source) error = %v", err)
+	}
+	explicitAckAdapter, err := New(js, sourceConsumer, Config{
+		Subject:           sourceSubject,
+		DeadLetterSubject: dlqSubject,
+		FetchMaxWait:      contractFetchMaxWait,
+	})
+	if err != nil {
+		t.Fatalf("New(explicit Ack source consumer) error = %v", err)
+	}
+	explicitAckBudget, explicitAckError := explicitAckAdapter.PreflightConsumer(
+		testContext,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	explicitAckInfo, explicitAckInfoError := sourceConsumer.Info(testContext)
+	rebuiltExplicitAckConsumerPreflightPassed := explicitAckError == nil && explicitAckBudget == ackAllBudget &&
+		explicitAckInfoError == nil && explicitAckInfo.Config.AckPolicy == jetstream.AckExplicitPolicy
+	if !rebuiltExplicitAckConsumerPreflightPassed {
+		t.Fatalf("Adapter.PreflightConsumer(explicit Ack consumer) = %s, %v; info = %v", explicitAckBudget, explicitAckError, explicitAckInfoError)
+	}
+	if err := js.DeleteConsumer(testContext, sourceStream, sourceConsumerName); err != nil {
+		t.Fatalf("DeleteConsumer(explicit Ack source) error = %v", err)
+	}
+
+	sourceConsumer, err = js.CreateOrUpdateConsumer(testContext, sourceStream, jetstream.ConsumerConfig{
+		Name:              sourceConsumerName,
+		Durable:           sourceConsumerName,
+		AckPolicy:         jetstream.AckExplicitPolicy,
+		DeliverPolicy:     jetstream.DeliverNewPolicy,
+		AckWait:           150 * time.Millisecond,
+		MaxDeliver:        1,
+		HeadersOnly:       true,
+		FilterSubject:     sourceStreamSubject,
+		ReplayPolicy:      jetstream.ReplayInstantPolicy,
+		MaxAckPending:     8,
+		MaxRequestBatch:   1,
+		MaxRequestExpires: contractMaxRequestExpires,
 	})
 	if err != nil {
 		t.Fatalf("CreateOrUpdateConsumer(source) error = %v", err)
@@ -110,12 +335,103 @@ func TestRealNATSJetStreamDurableDelivery(t *testing.T) {
 		FilterSubject:     dlqSubject,
 		MaxAckPending:     8,
 		MaxRequestBatch:   1,
-		MaxRequestExpires: 5 * time.Second,
+		MaxRequestExpires: contractMaxRequestExpires,
 	})
 	if err != nil {
 		t.Fatalf("CreateOrUpdateConsumer(DLQ) error = %v", err)
 	}
 
+	deliverNewBudget, deliverNewError := PreflightConsumer(
+		testContext,
+		sourceConsumer,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	deliverNewPolicyRejected := errors.Is(deliverNewError, ErrConsumerDeliveryPolicy) && deliverNewBudget > 0
+	if !deliverNewPolicyRejected {
+		t.Fatalf("PreflightConsumer(DeliverNew) = %s, %v", deliverNewBudget, deliverNewError)
+	}
+	deliverNewInfo, err := sourceConsumer.Info(testContext)
+	if err != nil {
+		t.Fatalf("Info(source consumer before DeliverAll rebuild) error = %v", err)
+	}
+	deliverAllConfig := deliverNewInfo.Config
+	deliverAllConfig.DeliverPolicy = jetstream.DeliverAllPolicy
+	deliverAllConfig.ReplayPolicy = jetstream.ReplayOriginalPolicy
+	if err := js.DeleteConsumer(testContext, sourceStream, deliverAllConfig.Name); err != nil {
+		t.Fatalf("DeleteConsumer(DeliverNew) error = %v", err)
+	}
+	sourceConsumer, err = js.CreateOrUpdateConsumer(testContext, sourceStream, deliverAllConfig)
+	if err != nil {
+		t.Fatalf("CreateOrUpdateConsumer(DeliverAll) error = %v", err)
+	}
+	replayOriginalBudget, replayOriginalError := PreflightConsumer(
+		testContext,
+		sourceConsumer,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	replayOriginalPolicyRejected := errors.Is(replayOriginalError, ErrConsumerReplayPolicy) && replayOriginalBudget > 0
+	if !replayOriginalPolicyRejected {
+		t.Fatalf("PreflightConsumer(ReplayOriginal) = %s, %v", replayOriginalBudget, replayOriginalError)
+	}
+	replayOriginalInfo, err := sourceConsumer.Info(testContext)
+	if err != nil {
+		t.Fatalf("Info(source consumer before ReplayInstant rebuild) error = %v", err)
+	}
+	replayInstantConfig := replayOriginalInfo.Config
+	replayInstantConfig.ReplayPolicy = jetstream.ReplayInstantPolicy
+	if err := js.DeleteConsumer(testContext, sourceStream, replayInstantConfig.Name); err != nil {
+		t.Fatalf("DeleteConsumer(ReplayOriginal) error = %v", err)
+	}
+	sourceConsumer, err = js.CreateOrUpdateConsumer(testContext, sourceStream, replayInstantConfig)
+	if err != nil {
+		t.Fatalf("CreateOrUpdateConsumer(ReplayInstant) error = %v", err)
+	}
+	limitedDeliveryBudget, limitedDeliveryError := PreflightConsumer(
+		testContext,
+		sourceConsumer,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	limitedDeliveryRejected := errors.Is(limitedDeliveryError, ErrMaxDeliverTooLow) && limitedDeliveryBudget > 0
+	if !limitedDeliveryRejected {
+		t.Fatalf("PreflightConsumer(MaxDeliver=1) = %s, %v", limitedDeliveryBudget, limitedDeliveryError)
+	}
+	limitedInfo, err := sourceConsumer.Info(testContext)
+	if err != nil {
+		t.Fatalf("Info(source consumer before MaxDeliver update) error = %v", err)
+	}
+	persistentConfig := limitedInfo.Config
+	persistentConfig.MaxDeliver = 5
+	sourceConsumer, err = js.UpdateConsumer(testContext, sourceStream, persistentConfig)
+	if err != nil {
+		t.Fatalf("UpdateConsumer(MaxDeliver) error = %v", err)
+	}
+	headersOnlyBudget, headersOnlyError := PreflightConsumer(
+		testContext,
+		sourceConsumer,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	headersOnlyRejected := errors.Is(headersOnlyError, ErrConsumerPayloadUnavailable) && headersOnlyBudget > 0
+	if !headersOnlyRejected {
+		t.Fatalf("PreflightConsumer(HeadersOnly=true) = %s, %v", headersOnlyBudget, headersOnlyError)
+	}
+	headersOnlyInfo, err := sourceConsumer.Info(testContext)
+	if err != nil {
+		t.Fatalf("Info(source consumer before HeadersOnly update) error = %v", err)
+	}
+	fullPayloadConfig := headersOnlyInfo.Config
+	fullPayloadConfig.HeadersOnly = false
+	sourceConsumer, err = js.UpdateConsumer(testContext, sourceStream, fullPayloadConfig)
+	if err != nil {
+		t.Fatalf("UpdateConsumer(HeadersOnly) error = %v", err)
+	}
 	adapter, err := New(js, sourceConsumer, Config{
 		Subject:           sourceSubject,
 		DeadLetterSubject: dlqSubject,
@@ -124,13 +440,106 @@ func TestRealNATSJetStreamDurableDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
-	client, err := queueclient.New(queueclient.Config{
-		System:         queueclient.SystemNATS,
-		PublishTimeout: 3 * time.Second,
-		ProcessTimeout: 3 * time.Second,
+	broadFilterBudget, broadFilterError := adapter.PreflightConsumer(
+		testContext,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	broadSubjectFilterRejected := errors.Is(broadFilterError, ErrConsumerSubjectMismatch) && broadFilterBudget > 0
+	if !broadSubjectFilterRejected {
+		t.Fatalf("Adapter.PreflightConsumer(broad subject filter) = %s, %v", broadFilterBudget, broadFilterError)
+	}
+	broadFilterInfo, err := sourceConsumer.Info(testContext)
+	if err != nil {
+		t.Fatalf("Info(source consumer before subject filter update) error = %v", err)
+	}
+	exactFilterConfig := broadFilterInfo.Config
+	exactFilterConfig.FilterSubject = sourceSubject
+	exactFilterConfig.FilterSubjects = nil
+	sourceConsumer, err = js.UpdateConsumer(testContext, sourceStream, exactFilterConfig)
+	if err != nil {
+		t.Fatalf("UpdateConsumer(subject filter) error = %v", err)
+	}
+	shortRequestExpiresConfig := exactFilterConfig
+	shortRequestExpiresConfig.MaxRequestExpires = contractShortRequestExpires
+	sourceConsumer, err = js.UpdateConsumer(testContext, sourceStream, shortRequestExpiresConfig)
+	if err != nil {
+		t.Fatalf("UpdateConsumer(short request expiration) error = %v", err)
+	}
+	_, brokerRequestExpiresError := sourceConsumer.Next(jetstream.FetchMaxWait(contractFetchMaxWait))
+	brokerRequestExpiresRejected := brokerRequestExpiresError != nil &&
+		!errors.Is(brokerRequestExpiresError, nats.ErrTimeout) &&
+		!errors.Is(brokerRequestExpiresError, jetstream.ErrNoMessages) &&
+		strings.Contains(brokerRequestExpiresError.Error(), "MaxRequestExpires")
+	if !brokerRequestExpiresRejected {
+		t.Fatalf("Next(over maximum request expiration) error = %v", brokerRequestExpiresError)
+	}
+	adapter, err = New(js, sourceConsumer, Config{
+		Subject:           sourceSubject,
+		DeadLetterSubject: dlqSubject,
+		FetchMaxWait:      contractFetchMaxWait,
 	})
 	if err != nil {
-		t.Fatalf("queueclient.New() error = %v", err)
+		t.Fatalf("New(exact subject consumer) error = %v", err)
+	}
+	shortRequestExpiresBudget, shortRequestExpiresError := adapter.PreflightConsumer(
+		testContext,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	shortRequestExpiresRejected := errors.Is(shortRequestExpiresError, ErrConsumerRequestExpires) && shortRequestExpiresBudget > 0
+	if !shortRequestExpiresRejected {
+		t.Fatalf("Adapter.PreflightConsumer(short request expiration) = %s, %v", shortRequestExpiresBudget, shortRequestExpiresError)
+	}
+	shortRequestExpiresInfo, err := sourceConsumer.Info(testContext)
+	if err != nil {
+		t.Fatalf("Info(source consumer before request expiration update) error = %v", err)
+	}
+	compatibleRequestExpiresConfig := shortRequestExpiresInfo.Config
+	compatibleRequestExpiresConfig.MaxRequestExpires = contractMaxRequestExpires
+	sourceConsumer, err = js.UpdateConsumer(testContext, sourceStream, compatibleRequestExpiresConfig)
+	if err != nil {
+		t.Fatalf("UpdateConsumer(compatible request expiration) error = %v", err)
+	}
+	adapter, err = New(js, sourceConsumer, Config{
+		Subject:           sourceSubject,
+		DeadLetterSubject: dlqSubject,
+		FetchMaxWait:      contractFetchMaxWait,
+	})
+	if err != nil {
+		t.Fatalf("New(compatible request expiration) error = %v", err)
+	}
+	deduplicationAdapter, err := New(js, sourceConsumer, Config{
+		Subject:           deduplicationSubject,
+		DeadLetterSubject: dlqSubject,
+		FetchMaxWait:      contractFetchMaxWait,
+	})
+	if err != nil {
+		t.Fatalf("New(deduplication adapter) error = %v", err)
+	}
+	deduplicationID := "goexample-event-" + strings.ToLower(suffix)
+	for range contractDeduplicatedPublishRuns {
+		if err := client.Publish(testContext, queueclient.Message{
+			Body:    []byte("deduplicated"),
+			Headers: map[string]string{"Tenant": "tenant-deduplication"},
+		}, func(publishContext context.Context, message queueclient.Message) error {
+			return deduplicationAdapter.PublishDeduplicated(publishContext, deduplicationID, message)
+		}); err != nil {
+			t.Fatalf("PublishDeduplicated() error = %v", err)
+		}
+	}
+	deduplicationHandle, err := js.Stream(testContext, deduplicationStream)
+	if err != nil {
+		t.Fatalf("Stream(deduplication) error = %v", err)
+	}
+	deduplicationInfo, err := deduplicationHandle.Info(testContext)
+	if err != nil {
+		t.Fatalf("Info(deduplication stream) error = %v", err)
+	}
+	if deduplicationInfo.State.Msgs != contractDeduplicatedStored {
+		t.Fatalf("deduplicated stored messages = %d, want %d", deduplicationInfo.State.Msgs, contractDeduplicatedStored)
 	}
 	shortLeaseBudget, shortLeaseError := PreflightConsumer(
 		testContext,
@@ -144,12 +553,16 @@ func TestRealNATSJetStreamDurableDelivery(t *testing.T) {
 		t.Fatalf("PreflightConsumer(short AckWait) = %s, %v", shortLeaseBudget, shortLeaseError)
 	}
 
+	if _, err := js.Publish(testContext, foreignSubject, []byte("must-not-reach-primary-adapter")); err != nil {
+		t.Fatalf("Publish(foreign subject) error = %v", err)
+	}
 	publishContractMessage(t, testContext, client, adapter, "redeliver", "tenant-redelivery")
 	first, err := adapter.ReceiveDelivery(testContext)
 	if err != nil {
 		t.Fatalf("ReceiveDelivery(first) error = %v", err)
 	}
-	if string(first.Message.Body) != "redeliver" || first.Message.Headers["Tenant"] != "tenant-redelivery" {
+	foreignSubjectExcluded := string(first.Message.Body) == "redeliver" && first.Message.Headers["Tenant"] == "tenant-redelivery"
+	if !foreignSubjectExcluded {
 		t.Fatalf("first delivery = %#v", first.Message)
 	}
 	redelivered, err := sourceConsumer.Next(jetstream.FetchMaxWait(3 * time.Second))
@@ -173,10 +586,65 @@ func TestRealNATSJetStreamDurableDelivery(t *testing.T) {
 	adapter, err = New(js, sourceConsumer, Config{
 		Subject:           sourceSubject,
 		DeadLetterSubject: dlqSubject,
-		FetchMaxWait:      100 * time.Millisecond,
+		FetchMaxWait:      contractFetchMaxWait,
 	})
 	if err != nil {
 		t.Fatalf("New(calibrated consumer) error = %v", err)
+	}
+	pauseResponse, err := js.PauseConsumer(testContext, sourceStream, sourceConsumerName, time.Now().Add(time.Minute))
+	if err != nil {
+		t.Fatalf("PauseConsumer(source) error = %v", err)
+	}
+	if !pauseResponse.Paused || pauseResponse.PauseRemaining <= 0 {
+		t.Fatalf("PauseConsumer(source) response = paused:%t remaining:%s", pauseResponse.Paused, pauseResponse.PauseRemaining)
+	}
+	pausedBudget, pausedError := adapter.PreflightConsumer(
+		testContext,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	pausedConsumerRejected := errors.Is(pausedError, ErrConsumerPaused) && pausedBudget == requiredLease
+	if !pausedConsumerRejected {
+		t.Fatalf("Adapter.PreflightConsumer(paused consumer) = %s, %v; want %s", pausedBudget, pausedError, requiredLease)
+	}
+	resumeResponse, err := js.ResumeConsumer(testContext, sourceStream, sourceConsumerName)
+	if err != nil {
+		t.Fatalf("ResumeConsumer(source) error = %v", err)
+	}
+	if resumeResponse.Paused || resumeResponse.PauseRemaining != 0 {
+		t.Fatalf("ResumeConsumer(source) response = paused:%t remaining:%s", resumeResponse.Paused, resumeResponse.PauseRemaining)
+	}
+	verifiedSubjectLease, subjectPreflightError := adapter.PreflightConsumer(
+		testContext,
+		client,
+		contractWorkerRetry,
+		contractLeaseSafetyMargin,
+	)
+	exactSubjectPreflightPassed := subjectPreflightError == nil && verifiedSubjectLease == requiredLease
+	if !exactSubjectPreflightPassed {
+		t.Fatalf("Adapter.PreflightConsumer(exact subject filter) = %s, %v; want %s", verifiedSubjectLease, subjectPreflightError, requiredLease)
+	}
+	exactSubjectInfo, err := sourceConsumer.Info(testContext)
+	if err != nil {
+		t.Fatalf("Info(source consumer after DeliverAll preflight) error = %v", err)
+	}
+	resumedConsumerPreflightPassed := exactSubjectPreflightPassed && !exactSubjectInfo.Paused
+	if !resumedConsumerPreflightPassed {
+		t.Fatalf("resumed consumer preflight/status = %t/%t", exactSubjectPreflightPassed, exactSubjectInfo.Paused)
+	}
+	deliverAllPolicyPreflightPassed := exactSubjectPreflightPassed && exactSubjectInfo.Config.DeliverPolicy == jetstream.DeliverAllPolicy
+	if !deliverAllPolicyPreflightPassed {
+		t.Fatalf("DeliverAll preflight/config = %t/%d", exactSubjectPreflightPassed, exactSubjectInfo.Config.DeliverPolicy)
+	}
+	replayInstantPolicyPreflightPassed := exactSubjectPreflightPassed && exactSubjectInfo.Config.ReplayPolicy == jetstream.ReplayInstantPolicy
+	if !replayInstantPolicyPreflightPassed {
+		t.Fatalf("ReplayInstant preflight/config = %t/%d", exactSubjectPreflightPassed, exactSubjectInfo.Config.ReplayPolicy)
+	}
+	compatibleRequestExpiresPreflightPassed := exactSubjectPreflightPassed &&
+		exactSubjectInfo.Config.MaxRequestExpires == contractMaxRequestExpires
+	if !compatibleRequestExpiresPreflightPassed {
+		t.Fatalf("compatible request expiration preflight/config = %t/%s", exactSubjectPreflightPassed, exactSubjectInfo.Config.MaxRequestExpires)
 	}
 
 	publishContractMessage(t, testContext, client, adapter, "acknowledge", "tenant-ack")
@@ -267,7 +735,7 @@ func TestRealNATSJetStreamDurableDelivery(t *testing.T) {
 	extendedAdapter, err := New(js, extendedConsumer, Config{
 		Subject:           sourceSubject,
 		DeadLetterSubject: dlqSubject,
-		FetchMaxWait:      100 * time.Millisecond,
+		FetchMaxWait:      contractFetchMaxWait,
 	})
 	if err != nil {
 		t.Fatalf("New(dynamic lease adapter) error = %v", err)
@@ -322,31 +790,105 @@ func TestRealNATSJetStreamDurableDelivery(t *testing.T) {
 	if info.NumAckPending != 0 || info.NumPending != 0 {
 		t.Fatalf("dynamic lease consumer pending = ack:%d messages:%d", info.NumAckPending, info.NumPending)
 	}
+	cancellationAdapter, err := New(js, sourceConsumer, Config{
+		Subject:           sourceSubject,
+		DeadLetterSubject: dlqSubject,
+		FetchMaxWait:      contractCancellationFetchWait,
+	})
+	if err != nil {
+		t.Fatalf("New(cancellation adapter) error = %v", err)
+	}
+	receiveContext, cancelReceive := context.WithCancel(testContext)
+	receiveResult := make(chan error, 1)
+	go func() {
+		_, receiveErr := cancellationAdapter.ReceiveDelivery(receiveContext)
+		receiveResult <- receiveErr
+	}()
+	waitContractConsumerWaiting(t, testContext, sourceConsumer, receiveResult)
+	cancellationStarted := time.Now()
+	cancelReceive()
+	var receiveCancellationError error
+	select {
+	case receiveCancellationError = <-receiveResult:
+	case <-time.After(contractCancellationReturnLimit):
+		t.Fatal("ReceiveDelivery did not return promptly after parent cancellation")
+	}
+	receiveCancellationLatency := time.Since(cancellationStarted)
+	receiveCancellationPropagated := errors.Is(receiveCancellationError, context.Canceled) &&
+		receiveCancellationLatency >= 0 && receiveCancellationLatency <= contractCancellationReturnLimit
+	if !receiveCancellationPropagated {
+		t.Fatalf("ReceiveDelivery(canceled waiting pull) = %s, %v", receiveCancellationLatency, receiveCancellationError)
+	}
 	writeDeliveryReport(t, reportPath, deliveryContractReport{
-		SchemaVersion:               1,
-		Status:                      "passed",
-		Storage:                     "file",
-		Replicas:                    1,
-		SourceMessagesPublished:     4,
-		RedeliveryObserved:          true,
-		RedeliveryCount:             metadata.NumDelivered,
-		Acknowledged:                1,
-		DeadLettered:                1,
-		DLQAcknowledged:             1,
-		ShortLeaseRejected:          shortLeaseRejected,
-		StaticLeasePreflightPassed:  true,
-		RequiredLeaseNanos:          requiredLease.Nanoseconds(),
-		WorkerAckWaitNanos:          contractWorkerAckWait.Nanoseconds(),
-		DynamicLeasePreflightPassed: true,
-		DynamicRequiredLeaseNanos:   extendedLease.Nanoseconds(),
-		DynamicAckWaitNanos:         contractExtendedAckWait.Nanoseconds(),
-		DynamicHandlingNanos:        contractExtendedHandling.Nanoseconds(),
-		LeaseExtensionIntervalNanos: contractLeaseExtensionRetry.LeaseExtensionInterval.Nanoseconds(),
-		LeaseExtensions:             extensionObserver.extended.Load(),
-		LeaseExtensionFailures:      extensionObserver.failed.Load(),
-		DynamicRedeliveryAfterAck:   false,
-		SourceAckPending:            info.NumAckPending,
-		SourceMessagesPending:       info.NumPending,
+		SchemaVersion:                      14,
+		Status:                             "passed",
+		Storage:                            "file",
+		Replicas:                           1,
+		PushConsumerRejected:               pushConsumerRejected,
+		RebuiltPullConsumerPreflightPassed: rebuiltPullConsumerPreflightPassed,
+		ConsumerDeliverSubject:             pullModeInfo.Config.DeliverSubject,
+		PriorityConsumerRejected:           priorityConsumerRejected,
+		RebuiltDefaultPriorityPassed:       rebuiltDefaultPriorityConsumerPreflightPassed,
+		ConsumerPriorityPolicy:             int(defaultPriorityInfo.Config.PriorityPolicy),
+		ConsumerPriorityGroupCount:         len(defaultPriorityInfo.Config.PriorityGroups),
+		AckAllConsumerRejected:             ackAllConsumerRejected,
+		RebuiltExplicitAckPassed:           rebuiltExplicitAckConsumerPreflightPassed,
+		ConsumerAckPolicy:                  int(explicitAckInfo.Config.AckPolicy),
+		ReceiveCancellationWaitingObserved: true,
+		ReceiveCancellationPropagated:      receiveCancellationPropagated,
+		ReceiveCancellationError:           receiveCancellationError.Error(),
+		ReceiveCancellationLatencyNanos:    receiveCancellationLatency.Nanoseconds(),
+		ReceiveCancellationFetchWaitNanos:  contractCancellationFetchWait.Nanoseconds(),
+		ReceiveCancellationLimitNanos:      contractCancellationReturnLimit.Nanoseconds(),
+		PersistentConsumerPreflightPassed:  true,
+		DeliverNewPolicyRejected:           deliverNewPolicyRejected,
+		DeliverAllPolicyPreflightPassed:    deliverAllPolicyPreflightPassed,
+		ConsumerDeliverPolicy:              int(info.Config.DeliverPolicy),
+		ReplayOriginalPolicyRejected:       replayOriginalPolicyRejected,
+		ReplayInstantPolicyPreflightPassed: replayInstantPolicyPreflightPassed,
+		ConsumerReplayPolicy:               int(info.Config.ReplayPolicy),
+		BrokerRequestExpiresRejected:       brokerRequestExpiresRejected,
+		ShortRequestExpiresRejected:        shortRequestExpiresRejected,
+		CompatibleRequestExpiresPassed:     compatibleRequestExpiresPreflightPassed,
+		AdapterFetchMaxWaitNanos:           contractFetchMaxWait.Nanoseconds(),
+		ConsumerMaxRequestExpiresNanos:     info.Config.MaxRequestExpires.Nanoseconds(),
+		PausedConsumerRejected:             pausedConsumerRejected,
+		ResumedConsumerPreflightPassed:     resumedConsumerPreflightPassed,
+		ConsumerPaused:                     exactSubjectInfo.Paused,
+		LimitedDeliveryRejected:            limitedDeliveryRejected,
+		ConsumerMaxDeliver:                 info.Config.MaxDeliver,
+		HeadersOnlyRejected:                headersOnlyRejected,
+		FullPayloadPreflightPassed:         true,
+		ConsumerHeadersOnly:                info.Config.HeadersOnly,
+		BroadSubjectFilterRejected:         broadSubjectFilterRejected,
+		ExactSubjectPreflightPassed:        exactSubjectPreflightPassed,
+		ConsumerFilterSubject:              info.Config.FilterSubject,
+		ForeignSubjectExcluded:             foreignSubjectExcluded,
+		SourceMessagesPublished:            4,
+		DeduplicatedPublishAttempts:        contractDeduplicatedPublishRuns,
+		DeduplicatedStoredMessages:         int(deduplicationInfo.State.Msgs),
+		DuplicateWindowNanos:               contractDuplicateWindow.Nanoseconds(),
+		DeduplicationVerified:              true,
+		RedeliveryObserved:                 true,
+		RedeliveryCount:                    metadata.NumDelivered,
+		Acknowledged:                       1,
+		DeadLettered:                       1,
+		DLQPublishConfirmed:                true,
+		DLQAcknowledged:                    1,
+		ShortLeaseRejected:                 shortLeaseRejected,
+		StaticLeasePreflightPassed:         true,
+		RequiredLeaseNanos:                 requiredLease.Nanoseconds(),
+		WorkerAckWaitNanos:                 contractWorkerAckWait.Nanoseconds(),
+		DynamicLeasePreflightPassed:        true,
+		DynamicRequiredLeaseNanos:          extendedLease.Nanoseconds(),
+		DynamicAckWaitNanos:                contractExtendedAckWait.Nanoseconds(),
+		DynamicHandlingNanos:               contractExtendedHandling.Nanoseconds(),
+		LeaseExtensionIntervalNanos:        contractLeaseExtensionRetry.LeaseExtensionInterval.Nanoseconds(),
+		LeaseExtensions:                    extensionObserver.extended.Load(),
+		LeaseExtensionFailures:             extensionObserver.failed.Load(),
+		DynamicRedeliveryAfterAck:          false,
+		SourceAckPending:                   info.NumAckPending,
+		SourceMessagesPending:              info.NumPending,
 	})
 }
 
@@ -389,7 +931,7 @@ func createContractStream(t *testing.T, ctx context.Context, js jetstream.JetStr
 		Discard:    jetstream.DiscardNew,
 		Storage:    jetstream.FileStorage,
 		Replicas:   1,
-		Duplicates: time.Minute,
+		Duplicates: contractDuplicateWindow,
 	}); err != nil {
 		t.Fatalf("CreateStream(%s) error = %v", name, err)
 	}
@@ -484,31 +1026,100 @@ func waitContractEvent(t *testing.T, ctx context.Context, event <-chan struct{},
 	}
 }
 
+func waitContractConsumerWaiting(
+	t *testing.T,
+	ctx context.Context,
+	consumer ConsumerInspector,
+	receiveResult <-chan error,
+) {
+	t.Helper()
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		info, err := consumer.Info(ctx)
+		if err == nil && info != nil && info.NumWaiting > 0 {
+			return
+		}
+		select {
+		case receiveErr := <-receiveResult:
+			t.Fatalf("ReceiveDelivery returned before the pull was waiting: %v", receiveErr)
+		case <-ticker.C:
+		case <-ctx.Done():
+			t.Fatal("timed out waiting for an active JetStream pull request")
+		}
+	}
+}
+
 type deliveryContractReport struct {
-	SchemaVersion               int    `json:"schemaVersion"`
-	Status                      string `json:"status"`
-	Storage                     string `json:"storage"`
-	Replicas                    int    `json:"replicas"`
-	SourceMessagesPublished     int    `json:"sourceMessagesPublished"`
-	RedeliveryObserved          bool   `json:"redeliveryObserved"`
-	RedeliveryCount             uint64 `json:"redeliveryCount"`
-	Acknowledged                int    `json:"acknowledged"`
-	DeadLettered                int    `json:"deadLettered"`
-	DLQAcknowledged             int    `json:"dlqAcknowledged"`
-	ShortLeaseRejected          bool   `json:"shortLeaseRejected"`
-	StaticLeasePreflightPassed  bool   `json:"staticLeasePreflightPassed"`
-	RequiredLeaseNanos          int64  `json:"requiredLeaseNanos"`
-	WorkerAckWaitNanos          int64  `json:"workerAckWaitNanos"`
-	DynamicLeasePreflightPassed bool   `json:"dynamicLeasePreflightPassed"`
-	DynamicRequiredLeaseNanos   int64  `json:"dynamicRequiredLeaseNanos"`
-	DynamicAckWaitNanos         int64  `json:"dynamicAckWaitNanos"`
-	DynamicHandlingNanos        int64  `json:"dynamicHandlingNanos"`
-	LeaseExtensionIntervalNanos int64  `json:"leaseExtensionIntervalNanos"`
-	LeaseExtensions             int32  `json:"leaseExtensions"`
-	LeaseExtensionFailures      int32  `json:"leaseExtensionFailures"`
-	DynamicRedeliveryAfterAck   bool   `json:"dynamicRedeliveryAfterAck"`
-	SourceAckPending            int    `json:"sourceAckPending"`
-	SourceMessagesPending       uint64 `json:"sourceMessagesPending"`
+	SchemaVersion                      int    `json:"schemaVersion"`
+	Status                             string `json:"status"`
+	Storage                            string `json:"storage"`
+	Replicas                           int    `json:"replicas"`
+	PushConsumerRejected               bool   `json:"pushConsumerRejected"`
+	RebuiltPullConsumerPreflightPassed bool   `json:"rebuiltPullConsumerPreflightPassed"`
+	ConsumerDeliverSubject             string `json:"consumerDeliverSubject"`
+	PriorityConsumerRejected           bool   `json:"priorityConsumerRejected"`
+	RebuiltDefaultPriorityPassed       bool   `json:"rebuiltDefaultPriorityConsumerPreflightPassed"`
+	ConsumerPriorityPolicy             int    `json:"consumerPriorityPolicy"`
+	ConsumerPriorityGroupCount         int    `json:"consumerPriorityGroupCount"`
+	AckAllConsumerRejected             bool   `json:"ackAllConsumerRejected"`
+	RebuiltExplicitAckPassed           bool   `json:"rebuiltExplicitAckConsumerPreflightPassed"`
+	ConsumerAckPolicy                  int    `json:"consumerAckPolicy"`
+	ReceiveCancellationWaitingObserved bool   `json:"receiveCancellationWaitingObserved"`
+	ReceiveCancellationPropagated      bool   `json:"receiveCancellationPropagated"`
+	ReceiveCancellationError           string `json:"receiveCancellationError"`
+	ReceiveCancellationLatencyNanos    int64  `json:"receiveCancellationLatencyNanos"`
+	ReceiveCancellationFetchWaitNanos  int64  `json:"receiveCancellationFetchMaxWaitNanos"`
+	ReceiveCancellationLimitNanos      int64  `json:"receiveCancellationReturnLimitNanos"`
+	PersistentConsumerPreflightPassed  bool   `json:"persistentConsumerPreflightPassed"`
+	DeliverNewPolicyRejected           bool   `json:"deliverNewPolicyRejected"`
+	DeliverAllPolicyPreflightPassed    bool   `json:"deliverAllPolicyPreflightPassed"`
+	ConsumerDeliverPolicy              int    `json:"consumerDeliverPolicy"`
+	ReplayOriginalPolicyRejected       bool   `json:"replayOriginalPolicyRejected"`
+	ReplayInstantPolicyPreflightPassed bool   `json:"replayInstantPolicyPreflightPassed"`
+	ConsumerReplayPolicy               int    `json:"consumerReplayPolicy"`
+	BrokerRequestExpiresRejected       bool   `json:"brokerRequestExpiresRejected"`
+	ShortRequestExpiresRejected        bool   `json:"shortRequestExpiresRejected"`
+	CompatibleRequestExpiresPassed     bool   `json:"compatibleRequestExpiresPreflightPassed"`
+	AdapterFetchMaxWaitNanos           int64  `json:"adapterFetchMaxWaitNanos"`
+	ConsumerMaxRequestExpiresNanos     int64  `json:"consumerMaxRequestExpiresNanos"`
+	PausedConsumerRejected             bool   `json:"pausedConsumerRejected"`
+	ResumedConsumerPreflightPassed     bool   `json:"resumedConsumerPreflightPassed"`
+	ConsumerPaused                     bool   `json:"consumerPaused"`
+	LimitedDeliveryRejected            bool   `json:"limitedDeliveryRejected"`
+	ConsumerMaxDeliver                 int    `json:"consumerMaxDeliver"`
+	HeadersOnlyRejected                bool   `json:"headersOnlyRejected"`
+	FullPayloadPreflightPassed         bool   `json:"fullPayloadPreflightPassed"`
+	ConsumerHeadersOnly                bool   `json:"consumerHeadersOnly"`
+	BroadSubjectFilterRejected         bool   `json:"broadSubjectFilterRejected"`
+	ExactSubjectPreflightPassed        bool   `json:"exactSubjectPreflightPassed"`
+	ConsumerFilterSubject              string `json:"consumerFilterSubject"`
+	ForeignSubjectExcluded             bool   `json:"foreignSubjectExcluded"`
+	SourceMessagesPublished            int    `json:"sourceMessagesPublished"`
+	DeduplicatedPublishAttempts        int    `json:"deduplicatedPublishAttempts"`
+	DeduplicatedStoredMessages         int    `json:"deduplicatedStoredMessages"`
+	DuplicateWindowNanos               int64  `json:"duplicateWindowNanos"`
+	DeduplicationVerified              bool   `json:"deduplicationVerified"`
+	RedeliveryObserved                 bool   `json:"redeliveryObserved"`
+	RedeliveryCount                    uint64 `json:"redeliveryCount"`
+	Acknowledged                       int    `json:"acknowledged"`
+	DeadLettered                       int    `json:"deadLettered"`
+	DLQPublishConfirmed                bool   `json:"dlqPublishConfirmed"`
+	DLQAcknowledged                    int    `json:"dlqAcknowledged"`
+	ShortLeaseRejected                 bool   `json:"shortLeaseRejected"`
+	StaticLeasePreflightPassed         bool   `json:"staticLeasePreflightPassed"`
+	RequiredLeaseNanos                 int64  `json:"requiredLeaseNanos"`
+	WorkerAckWaitNanos                 int64  `json:"workerAckWaitNanos"`
+	DynamicLeasePreflightPassed        bool   `json:"dynamicLeasePreflightPassed"`
+	DynamicRequiredLeaseNanos          int64  `json:"dynamicRequiredLeaseNanos"`
+	DynamicAckWaitNanos                int64  `json:"dynamicAckWaitNanos"`
+	DynamicHandlingNanos               int64  `json:"dynamicHandlingNanos"`
+	LeaseExtensionIntervalNanos        int64  `json:"leaseExtensionIntervalNanos"`
+	LeaseExtensions                    int32  `json:"leaseExtensions"`
+	LeaseExtensionFailures             int32  `json:"leaseExtensionFailures"`
+	DynamicRedeliveryAfterAck          bool   `json:"dynamicRedeliveryAfterAck"`
+	SourceAckPending                   int    `json:"sourceAckPending"`
+	SourceMessagesPending              uint64 `json:"sourceMessagesPending"`
 }
 
 func writeDeliveryReport(t *testing.T, reportPath string, report deliveryContractReport) {

@@ -12,7 +12,9 @@ import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { fileMatchesSha256, findGoArchiveChecksum } from './lib/go-download.mjs';
+import { readBoundedGoVersion } from './lib/bounded-command.mjs';
 import { isolatedGoToolchainEnvironment } from './lib/go-toolchain-environment.mjs';
+import { runEnvironmentFetch } from './lib/environment-fetch.mjs';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(currentDirectory, '..');
@@ -20,6 +22,21 @@ const frontRoot = path.join(repositoryRoot, 'MSFront');
 const toolchainRoot = path.join(repositoryRoot, '.temp', 'toolchain');
 const goExecutableName = process.platform === 'win32' ? 'go.exe' : 'go';
 const requiredGoVersion = readRequiredGoVersion();
+const environmentYarnInstallTimeoutMs = 10 * 60_000;
+const environmentGoDependencyTimeoutMs = 3 * 60_000;
+const environmentArchiveExtractTimeoutMs = 2 * 60_000;
+const environmentGoDownloadTimeoutMs = 2 * 60_000;
+
+function validateEnvironmentCommandTimeout(timeoutMs) {
+  if (
+    timeoutMs !== undefined &&
+    (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > environmentYarnInstallTimeoutMs)
+  ) {
+    throw new RangeError(
+      `Environment command timeout must be a safe integer between 1 and ${environmentYarnInstallTimeoutMs} milliseconds`,
+    );
+  }
+}
 
 function readRequiredGoVersion() {
   const workspace = readFileSync(path.join(repositoryRoot, 'go.work'), 'utf8');
@@ -44,13 +61,25 @@ function yarnInvocation(args) {
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
+    const timeoutMs = options.timeoutMs;
+    validateEnvironmentCommandTimeout(timeoutMs);
     const child = spawn(command, args, {
       cwd: options.cwd ?? repositoryRoot,
       env: options.env ?? process.env,
       stdio: 'inherit',
       shell: options.shell ?? false,
+      ...(timeoutMs === undefined
+        ? {}
+        : { timeout: timeoutMs, killSignal: 'SIGTERM' }),
+      ...(options.windowsHide === undefined ? {} : { windowsHide: options.windowsHide }),
     });
-    child.on('error', reject);
+    child.on('error', (error) => {
+      if (error?.code === 'ETIMEDOUT' && timeoutMs !== undefined) {
+        reject(new Error(`${command} timed out after ${timeoutMs} ms`));
+        return;
+      }
+      reject(error);
+    });
     child.on('exit', (code, signal) => {
       if (signal) {
         reject(new Error(`${command} stopped by signal ${signal}`));
@@ -65,9 +94,13 @@ function run(command, args, options = {}) {
   });
 }
 
-async function runYarn(args, cwd) {
+async function runYarn(args, cwd, options = {}) {
   const invocation = yarnInvocation(args);
-  await run(invocation.command, invocation.args, { cwd, shell: invocation.shell });
+  await run(invocation.command, invocation.args, {
+    cwd,
+    shell: invocation.shell,
+    ...options,
+  });
 }
 
 function yarnTreeIsCurrent(cwd) {
@@ -85,11 +118,11 @@ function yarnTreeIsCurrent(cwd) {
 }
 
 function goVersion(command) {
-  const result = spawnSync(command, ['version'], { encoding: 'utf8', shell: false });
-  if (result.status !== 0) {
+  const output = readBoundedGoVersion(command, { cwd: repositoryRoot });
+  if (output === null) {
     return null;
   }
-  const match = result.stdout.match(/go version go(\d+\.\d+(?:\.\d+)?)/);
+  const match = output.match(/go version go(\d+\.\d+(?:\.\d+)?)/);
   return match ? match[1] : null;
 }
 
@@ -137,14 +170,19 @@ async function installGo() {
   mkdirSync(installRoot, { recursive: true });
 
   console.log('[env] Reading the official Go download checksum');
-  const metadataResponse = await fetch('https://go.dev/dl/?mode=json&include=all');
-  if (!metadataResponse.ok) {
-    throw new Error(`Unable to read Go download metadata: HTTP ${metadataResponse.status}`);
-  }
-  const expectedChecksum = findGoArchiveChecksum(
-    await metadataResponse.json(),
-    requiredGoVersion,
-    archive.fileName,
+  const expectedChecksum = await runEnvironmentFetch(
+    'https://go.dev/dl/?mode=json&include=all',
+    async (metadataResponse) => {
+      if (!metadataResponse.ok) {
+        throw new Error(`Unable to read Go download metadata: HTTP ${metadataResponse.status}`);
+      }
+      return findGoArchiveChecksum(
+        await metadataResponse.json(),
+        requiredGoVersion,
+        archive.fileName,
+      );
+    },
+    { timeoutMs: environmentGoDownloadTimeoutMs },
   );
 
   if (existsSync(archivePath) && (await fileMatchesSha256(archivePath, expectedChecksum))) {
@@ -152,14 +190,19 @@ async function installGo() {
   } else {
     console.log(`[env] Downloading Go ${requiredGoVersion} from ${archive.url}`);
     try {
-      const response = await fetch(archive.url);
-      if (!response.ok || !response.body) {
-        throw new Error(`Unable to download Go: HTTP ${response.status}`);
-      }
-      await pipeline(Readable.fromWeb(response.body), createWriteStream(partialPath));
-      if (!(await fileMatchesSha256(partialPath, expectedChecksum))) {
-        throw new Error(`Go archive SHA-256 verification failed for ${archive.fileName}.`);
-      }
+      await runEnvironmentFetch(
+        archive.url,
+        async (response) => {
+          if (!response.ok || !response.body) {
+            throw new Error(`Unable to download Go: HTTP ${response.status}`);
+          }
+          await pipeline(Readable.fromWeb(response.body), createWriteStream(partialPath));
+          if (!(await fileMatchesSha256(partialPath, expectedChecksum))) {
+            throw new Error(`Go archive SHA-256 verification failed for ${archive.fileName}.`);
+          }
+        },
+        { timeoutMs: environmentGoDownloadTimeoutMs },
+      );
       rmSync(archivePath, { force: true });
       renameSync(partialPath, archivePath);
     } catch (error) {
@@ -183,10 +226,15 @@ async function installGo() {
           GOEXAMPLE_GO_ARCHIVE: archivePath,
           GOEXAMPLE_GO_INSTALL_ROOT: installRoot,
         },
+        timeoutMs: environmentArchiveExtractTimeoutMs,
+        windowsHide: true,
       },
     );
   } else {
-    await run('tar', ['-xzf', archivePath, '-C', installRoot]);
+    await run('tar', ['-xzf', archivePath, '-C', installRoot], {
+      timeoutMs: environmentArchiveExtractTimeoutMs,
+      windowsHide: true,
+    });
   }
 
   const command = path.join(installRoot, 'go', 'bin', goExecutableName);
@@ -227,7 +275,10 @@ function goModuleRoots() {
 
 async function main() {
   console.log('[env] Installing root Yarn dependencies');
-  await runYarn(['install', '--frozen-lockfile', '--non-interactive'], repositoryRoot);
+  await runYarn(['install', '--frozen-lockfile', '--non-interactive'], repositoryRoot, {
+    timeoutMs: environmentYarnInstallTimeoutMs,
+    windowsHide: true,
+  });
 
   let go = findGo();
   if (!go) {
@@ -240,8 +291,16 @@ async function main() {
     : { ...process.env, GOWORK: 'off' };
   for (const moduleRoot of goModuleRoots()) {
     console.log(`[env] Downloading Go dependencies: ${path.relative(repositoryRoot, moduleRoot)}`);
-    await run(go.command, ['-C', moduleRoot, 'mod', 'download'], { env: goEnvironment });
-    await run(go.command, ['-C', moduleRoot, 'mod', 'verify'], { env: goEnvironment });
+    await run(go.command, ['-C', moduleRoot, 'mod', 'download'], {
+      env: goEnvironment,
+      timeoutMs: environmentGoDependencyTimeoutMs,
+      windowsHide: true,
+    });
+    await run(go.command, ['-C', moduleRoot, 'mod', 'verify'], {
+      env: goEnvironment,
+      timeoutMs: environmentGoDependencyTimeoutMs,
+      windowsHide: true,
+    });
   }
 
   console.log('[env] Installing MSFront Yarn dependencies');

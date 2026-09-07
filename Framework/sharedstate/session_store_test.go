@@ -1,6 +1,9 @@
 package sharedstate
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"strings"
 	"testing"
@@ -9,6 +12,87 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/zbxing/goexample/Framework/auth"
 )
+
+func TestRedisRefreshSessionRotationUsesOneAtomicScriptCommand(t *testing.T) {
+	server := miniredis.RunT(t)
+	recorder, provider := newRedisTestTracerProvider(t)
+	state := newTestRedisWithProvider(t, context.Background(), server, "goexample:session-rotation-snapshot:", provider)
+	defer state.Close()
+
+	config := auth.SessionConfig{RefreshTTL: time.Hour, AbsoluteTTL: 24 * time.Hour, MaxFamilies: 4}
+	manager, err := auth.NewSessionManager(configWithStore(config, state))
+	if err != nil {
+		t.Fatalf("manager: %v", err)
+	}
+	token, _, err := manager.Start("user-1")
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	// The first rotation loads the script; measure only the warm EVALSHA path.
+	rotated, _, err := manager.Rotate(token)
+	if err != nil {
+		t.Fatalf("warm Rotate() error = %v", err)
+	}
+	before := len(recorder.Ended())
+	if _, _, err := manager.Rotate(rotated); err != nil {
+		t.Fatalf("measured Rotate() error = %v", err)
+	}
+	spans := recorder.Ended()[before:]
+	if len(spans) != 1 || spans[0].Name() != "redis.evalsha" {
+		t.Fatalf("refresh rotation Redis spans = %v, want one redis.evalsha span", spanNames(spans))
+	}
+}
+
+func TestRedisRefreshSessionRevokeUsesOneAtomicScriptCommand(t *testing.T) {
+	server := miniredis.RunT(t)
+	recorder, provider := newRedisTestTracerProvider(t)
+	state := newTestRedisWithProvider(t, context.Background(), server, "goexample:session-revoke-snapshot:", provider)
+	defer state.Close()
+
+	config := auth.SessionConfig{RefreshTTL: time.Hour, AbsoluteTTL: 24 * time.Hour, MaxFamilies: 4}
+	manager, err := auth.NewSessionManager(configWithStore(config, state))
+	if err != nil {
+		t.Fatalf("manager: %v", err)
+	}
+	token, _, err := manager.Start("user-1")
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	if err := manager.RevokeFamily(token); err != nil {
+		t.Fatalf("warm RevokeFamily() error = %v", err)
+	}
+	// A second revoke is still handled by the same atomic script and must not
+	// perform a separate token lookup before the script runs.
+	before := len(recorder.Ended())
+	if err := manager.RevokeFamily(token); !errors.Is(err, auth.ErrSessionRevoked) {
+		t.Fatalf("measured RevokeFamily() error = %v", err)
+	}
+	spans := recorder.Ended()[before:]
+	if len(spans) != 1 || spans[0].Name() != "redis.evalsha" {
+		t.Fatalf("refresh revoke Redis spans = %v, want one redis.evalsha span", spanNames(spans))
+	}
+}
+
+func TestRedisRefreshSessionRejectsMalformedFamilyMapping(t *testing.T) {
+	server := miniredis.RunT(t)
+	state := newTestRedis(t, server, "goexample:session-malformed-family:")
+	defer state.Close()
+
+	tokenHash := sha256.Sum256([]byte("synthetic-refresh-token"))
+	ctx := context.Background()
+	operationCtx, cancel := state.operationContext(ctx)
+	defer cancel()
+	if err := state.client.Set(operationCtx, state.sessionTokenKey(hex.EncodeToString(tokenHash[:])), "not-a-family-id", time.Minute).Err(); err != nil {
+		t.Fatalf("seed malformed family mapping: %v", err)
+	}
+	now := time.Now().UTC()
+	if _, err := state.RotateSession(ctx, tokenHash, sha256.Sum256([]byte("next")), now, time.Hour, 4); !errors.Is(err, auth.ErrSessionInvalid) {
+		t.Fatalf("RotateSession() malformed mapping error = %v", err)
+	}
+	if err := state.RevokeFamily(ctx, tokenHash, now); !errors.Is(err, auth.ErrSessionInvalid) {
+		t.Fatalf("RevokeFamily() malformed mapping error = %v", err)
+	}
+}
 
 func TestRedisSessionStoreRotatesAcrossClientsAndDetectsReuse(t *testing.T) {
 	server := miniredis.RunT(t)

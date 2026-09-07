@@ -20,10 +20,12 @@ import (
 )
 
 const (
-	defaultFetchMaxWait      = time.Second
-	minimumFetchMaxWait      = 10 * time.Millisecond
-	maximumFetchMaxWait      = 30 * time.Second
-	initialHeaderMapCapacity = 8
+	defaultFetchMaxWait       = time.Second
+	minimumFetchMaxWait       = 10 * time.Millisecond
+	maximumFetchMaxWait       = 30 * time.Second
+	initialHeaderMapCapacity  = 8
+	maximumPublishMessageID   = 256
+	minimumConsumerDeliveries = 2
 )
 
 var jetStreamControlHeaders = [...]string{
@@ -62,6 +64,9 @@ var (
 	// ErrPublish indicates that JetStream did not confirm a publish. Backend
 	// details are deliberately not exposed by this adapter.
 	ErrPublish = errors.New("nats jetstream publish failed")
+	// ErrInvalidMessageID indicates that a deduplicated publish did not provide
+	// a bounded printable ASCII identifier.
+	ErrInvalidMessageID = errors.New("nats jetstream publish message ID is invalid")
 	// ErrReceive indicates that the durable consumer could not receive work.
 	ErrReceive = errors.New("nats jetstream receive failed")
 	// ErrInvalidMessage indicates a message shape that queueclient cannot safely
@@ -79,9 +84,42 @@ var (
 	// configuration could not be inspected or is incompatible with reliable
 	// delivery. Backend details are deliberately not exposed.
 	ErrConsumerPreflight = errors.New("nats jetstream consumer preflight failed")
+	// ErrConsumerAckPolicy indicates that the server reports an acknowledgement
+	// policy incompatible with the adapter's per-message settlement contract.
+	ErrConsumerAckPolicy = errors.New("nats jetstream consumer acknowledgement policy is incompatible")
+	// ErrConsumerPaused indicates that the server reports the consumer is
+	// currently paused and therefore cannot deliver work.
+	ErrConsumerPaused = errors.New("nats jetstream consumer is paused")
+	// ErrConsumerNotPull indicates that the server reports a push consumer,
+	// which is incompatible with the adapter's bounded pull receive path.
+	ErrConsumerNotPull = errors.New("nats jetstream consumer is not pull based")
+	// ErrConsumerPriorityPolicy indicates that the server reports a priority
+	// consumer requiring pull request options the adapter does not provide.
+	ErrConsumerPriorityPolicy = errors.New("nats jetstream consumer priority policy is incompatible")
 	// ErrAckWaitTooShort indicates that at least one server-reported redelivery
 	// interval is shorter than queueclient's worst-case delivery budget.
 	ErrAckWaitTooShort = errors.New("nats jetstream acknowledgement wait is too short")
+	// ErrConsumerNotPersistent indicates that the server-reported consumer
+	// cannot retain delivery state across an inactive process or broker restart.
+	ErrConsumerNotPersistent = errors.New("nats jetstream consumer is not persistent")
+	// ErrMaxDeliverTooLow indicates that the server-reported consumer does not
+	// allow at least one redelivery after the initial delivery.
+	ErrMaxDeliverTooLow = errors.New("nats jetstream consumer maximum deliveries is too low")
+	// ErrConsumerPayloadUnavailable indicates that the server-reported consumer
+	// is configured to omit message payloads from delivery.
+	ErrConsumerPayloadUnavailable = errors.New("nats jetstream consumer payload is unavailable")
+	// ErrConsumerDeliveryPolicy indicates that the server-reported consumer can
+	// skip messages retained before the consumer starts.
+	ErrConsumerDeliveryPolicy = errors.New("nats jetstream consumer delivery policy is not reliable")
+	// ErrConsumerReplayPolicy indicates that the server-reported consumer can
+	// preserve historical message intervals while replaying retained backlog.
+	ErrConsumerReplayPolicy = errors.New("nats jetstream consumer replay policy is not reliable")
+	// ErrConsumerRequestExpires indicates that the server-reported consumer's
+	// pull request expiration limit is shorter than the adapter's bounded wait.
+	ErrConsumerRequestExpires = errors.New("nats jetstream consumer request expiration is incompatible")
+	// ErrConsumerSubjectMismatch indicates that the server-reported consumer
+	// is not restricted to the adapter's exact application subject.
+	ErrConsumerSubjectMismatch = errors.New("nats jetstream consumer subject does not match adapter")
 )
 
 // Publisher is the narrow JetStream publish surface required by Adapter.
@@ -144,17 +182,56 @@ func New(publisher Publisher, consumer Consumer, config Config) (*Adapter, error
 	}, nil
 }
 
-// PreflightConsumer verifies that a pre-provisioned explicit-ack consumer's
-// server-reported AckWait, or every BackOff interval when BackOff overrides
-// AckWait, covers the queue client's handler/retry/settlement budget plus the
-// caller's positive safety margin. It returns the required lease even when the
-// configured lease is too short.
+// PreflightConsumer verifies the adapter's actual consumer and additionally
+// requires pull mode with the default priority policy, exactly one
+// server-reported filter equal to the adapter's literal application subject,
+// and a pull expiration limit compatible with FetchMaxWait. This binds the
+// receive path to the publish and server request boundaries.
+func (adapter *Adapter) PreflightConsumer(
+	ctx context.Context,
+	client *queueclient.Client,
+	retry queueclient.DeliveryRetryConfig,
+	safetyMargin time.Duration,
+) (time.Duration, error) {
+	if ctx == nil {
+		return 0, ErrInvalidContext
+	}
+	if adapter == nil || nilInterface(adapter.consumer) || !validLiteralSubject(adapter.subject) {
+		return 0, ErrInvalidConfiguration
+	}
+	consumer, ok := adapter.consumer.(ConsumerInspector)
+	if !ok || nilInterface(consumer) {
+		return 0, ErrInvalidConfiguration
+	}
+	return preflightConsumer(ctx, consumer, client, retry, safetyMargin, adapter.subject, adapter.fetchMaxWait)
+}
+
+// PreflightConsumer verifies that a pre-provisioned explicit-ack pull consumer
+// uses the default priority policy, is durable and file-backed, is not deleted
+// automatically while inactive, starts with all retained matching messages,
+// replays them as fast as possible, allows at least one redelivery, delivers
+// complete message payloads, and has a server-reported AckWait (or every BackOff
+// interval when BackOff overrides AckWait) that covers the queue client's
+// handler/retry/settlement budget plus the caller's positive safety margin. It
+// returns the required lease when a server-reported reliability check fails.
 func PreflightConsumer(
 	ctx context.Context,
 	consumer ConsumerInspector,
 	client *queueclient.Client,
 	retry queueclient.DeliveryRetryConfig,
 	safetyMargin time.Duration,
+) (time.Duration, error) {
+	return preflightConsumer(ctx, consumer, client, retry, safetyMargin, "", 0)
+}
+
+func preflightConsumer(
+	ctx context.Context,
+	consumer ConsumerInspector,
+	client *queueclient.Client,
+	retry queueclient.DeliveryRetryConfig,
+	safetyMargin time.Duration,
+	expectedSubject string,
+	fetchMaxWait time.Duration,
 ) (time.Duration, error) {
 	if ctx == nil {
 		return 0, ErrInvalidContext
@@ -173,8 +250,41 @@ func PreflightConsumer(
 		}
 		return 0, ErrConsumerPreflight
 	}
-	if info == nil || info.Config.AckPolicy != jetstream.AckExplicitPolicy {
+	if info == nil {
 		return 0, ErrConsumerPreflight
+	}
+	if info.Config.AckPolicy != jetstream.AckExplicitPolicy {
+		return required, ErrConsumerAckPolicy
+	}
+	if info.Paused {
+		return required, ErrConsumerPaused
+	}
+	if info.Config.DeliverSubject != "" {
+		return required, ErrConsumerNotPull
+	}
+	if info.Config.PriorityPolicy != jetstream.PriorityPolicyNone || len(info.Config.PriorityGroups) != 0 {
+		return required, ErrConsumerPriorityPolicy
+	}
+	if info.Config.Durable == "" || info.Config.MemoryStorage || info.Config.InactiveThreshold != 0 {
+		return required, ErrConsumerNotPersistent
+	}
+	if info.Config.DeliverPolicy != jetstream.DeliverAllPolicy {
+		return required, ErrConsumerDeliveryPolicy
+	}
+	if info.Config.ReplayPolicy != jetstream.ReplayInstantPolicy {
+		return required, ErrConsumerReplayPolicy
+	}
+	if info.Config.MaxDeliver != -1 && info.Config.MaxDeliver < minimumConsumerDeliveries {
+		return required, ErrMaxDeliverTooLow
+	}
+	if info.Config.HeadersOnly {
+		return required, ErrConsumerPayloadUnavailable
+	}
+	if expectedSubject != "" && !consumerFiltersExactSubject(info.Config, expectedSubject) {
+		return required, ErrConsumerSubjectMismatch
+	}
+	if fetchMaxWait > 0 && info.Config.MaxRequestExpires > 0 && info.Config.MaxRequestExpires < fetchMaxWait {
+		return required, ErrConsumerRequestExpires
 	}
 
 	waits := info.Config.BackOff
@@ -192,26 +302,61 @@ func PreflightConsumer(
 	return required, nil
 }
 
+func consumerFiltersExactSubject(config jetstream.ConsumerConfig, expectedSubject string) bool {
+	if config.FilterSubject != "" {
+		return config.FilterSubject == expectedSubject && len(config.FilterSubjects) == 0
+	}
+	return len(config.FilterSubjects) == 1 && config.FilterSubjects[0] == expectedSubject
+}
+
 // Publish synchronously publishes one message and waits for the server ack.
 // JetStream control headers supplied as application data are not forwarded.
 func (adapter *Adapter) Publish(ctx context.Context, message queueclient.Message) error {
+	return adapter.publish(ctx, "", message, false)
+}
+
+// PublishDeduplicated synchronously publishes one message with a caller-owned
+// stable ID. JetStream suppresses matching IDs only within the target stream's
+// configured duplicate window; callers must reuse the ID for the same logical
+// event. Application headers cannot override the typed control value.
+func (adapter *Adapter) PublishDeduplicated(
+	ctx context.Context,
+	messageID string,
+	message queueclient.Message,
+) error {
+	return adapter.publish(ctx, messageID, message, true)
+}
+
+func (adapter *Adapter) publish(
+	ctx context.Context,
+	messageID string,
+	message queueclient.Message,
+	requireMessageID bool,
+) error {
 	if adapter == nil || nilInterface(adapter.publisher) {
 		return ErrInvalidConfiguration
 	}
 	if ctx == nil {
 		return ErrInvalidContext
 	}
+	if requireMessageID && !validPublishMessageID(messageID) {
+		return ErrInvalidMessageID
+	}
 	brokerMessage := nats.NewMsg(adapter.subject)
 	brokerMessage.Data = bytes.Clone(message.Body)
 	copyApplicationHeaders(brokerMessage.Header, message.Headers)
-	if _, err := adapter.publisher.PublishMsg(ctx, brokerMessage); err != nil {
+	if requireMessageID {
+		brokerMessage.Header.Set(jetstream.MsgIDHeader, messageID)
+	}
+	acknowledgement, err := adapter.publisher.PublishMsg(ctx, brokerMessage)
+	if err != nil || !validPublishAcknowledgement(acknowledgement) {
 		return ErrPublish
 	}
 	return nil
 }
 
-// ReceiveDelivery waits in bounded pulls until a message or cancellation is
-// observed, then returns private confirmed-ack and DLQ callbacks.
+// ReceiveDelivery waits in context-bound pulls until a message or cancellation
+// is observed, then returns private confirmed-ack and DLQ callbacks.
 func (adapter *Adapter) ReceiveDelivery(ctx context.Context) (queueclient.Delivery, error) {
 	if adapter == nil || nilInterface(adapter.consumer) || nilInterface(adapter.publisher) {
 		return queueclient.Delivery{}, ErrInvalidConfiguration
@@ -223,7 +368,7 @@ func (adapter *Adapter) ReceiveDelivery(ctx context.Context) (queueclient.Delive
 		if err := ctx.Err(); err != nil {
 			return queueclient.Delivery{}, err
 		}
-		brokerMessage, err := adapter.consumer.Next(jetstream.FetchMaxWait(adapter.fetchMaxWait))
+		brokerMessage, err := receiveNext(ctx, adapter.consumer, adapter.fetchMaxWait)
 		if err != nil {
 			if contextErr := ctx.Err(); contextErr != nil {
 				return queueclient.Delivery{}, contextErr
@@ -276,6 +421,19 @@ func (adapter *Adapter) ReceiveDelivery(ctx context.Context) (queueclient.Delive
 	}
 }
 
+func receiveNext(ctx context.Context, consumer Consumer, maximumWait time.Duration) (jetstream.Msg, error) {
+	fetchContext, cancel := context.WithTimeout(ctx, maximumWait)
+	defer cancel()
+	message, err := consumer.Next(jetstream.FetchContext(fetchContext))
+	if contextErr := ctx.Err(); contextErr != nil {
+		return nil, contextErr
+	}
+	if errors.Is(err, context.DeadlineExceeded) && errors.Is(fetchContext.Err(), context.DeadlineExceeded) {
+		return nil, jetstream.ErrNoMessages
+	}
+	return message, err
+}
+
 func (adapter *Adapter) quarantineInvalidMessage(ctx context.Context, source jetstream.Msg) error {
 	if source == nil {
 		return ErrInvalidMessage
@@ -293,7 +451,8 @@ func (adapter *Adapter) quarantineInvalidMessage(ctx context.Context, source jet
 		}
 	}
 	dlqMessage.Header.Set(jetstream.MsgIDHeader, deadLetterID(metadata))
-	if _, err := adapter.publisher.PublishMsg(ctx, dlqMessage); err != nil {
+	acknowledgement, err := adapter.publisher.PublishMsg(ctx, dlqMessage)
+	if err != nil || !validPublishAcknowledgement(acknowledgement) {
 		if contextErr := ctx.Err(); contextErr != nil {
 			return contextErr
 		}
@@ -320,7 +479,8 @@ func (adapter *Adapter) deadLetter(ctx context.Context, source jetstream.Msg, me
 	dlqMessage.Data = bytes.Clone(message.Body)
 	copyApplicationHeaders(dlqMessage.Header, message.Headers)
 	dlqMessage.Header.Set(jetstream.MsgIDHeader, deadLetterID(metadata))
-	if _, err := adapter.publisher.PublishMsg(ctx, dlqMessage); err != nil {
+	acknowledgement, err := adapter.publisher.PublishMsg(ctx, dlqMessage)
+	if err != nil || !validPublishAcknowledgement(acknowledgement) {
 		return ErrDeadLetter
 	}
 	if err := source.DoubleAck(ctx); err != nil {
@@ -370,6 +530,25 @@ func copyApplicationHeaders(result nats.Header, headers map[string]string) {
 			result.Set(name, value)
 		}
 	}
+}
+
+func validPublishMessageID(value string) bool {
+	if len(value) == 0 || len(value) > maximumPublishMessageID {
+		return false
+	}
+	for index := range len(value) {
+		if value[index] < '!' || value[index] > '~' {
+			return false
+		}
+	}
+	return true
+}
+
+func validPublishAcknowledgement(acknowledgement *jetstream.PubAck) bool {
+	if acknowledgement == nil || acknowledgement.Stream == "" || acknowledgement.Sequence == 0 {
+		return false
+	}
+	return true
 }
 
 func deadLetterID(metadata *jetstream.MsgMetadata) string {

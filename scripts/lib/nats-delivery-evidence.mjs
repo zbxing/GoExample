@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-export const natsDeliveryEvidenceSchemaVersion = 1;
+export const natsDeliveryEvidenceSchemaVersion = 14;
 export const natsDeliveryGoTest = 'TestRealNATSJetStreamDurableDelivery';
 
 const expectedImage = 'nats:2.14.5-alpine@sha256:d4ac35882ac65aff236cd65b9d3fa4d24332c681e1a85f94eedccd3cdd65b1da';
@@ -22,11 +22,53 @@ const deliveryArtifactNames = Object.freeze([
   'delivery-report.json',
 ]);
 const expectedContract = Object.freeze({
-  scope: 'single_node_file_stream_delivery_and_dynamic_lease',
+  scope: 'single_node_file_stream_pull_mode_default_priority_policy_explicit_ack_policy_context_canceled_waiting_pull_unpaused_deliver_all_replay_instant_compatible_pull_expiration_exact_subject_persistent_full_payload_delivery_dynamic_lease_publish_deduplication_and_confirmed_dlq',
   storage: 'file',
   replicas: 1,
+  pushConsumerRejected: true,
+  rebuiltPullConsumerPreflightPassed: true,
+  consumerDeliverSubject: '',
+  priorityConsumerRejected: true,
+  rebuiltDefaultPriorityConsumerPreflightPassed: true,
+  consumerPriorityPolicy: 0,
+  consumerPriorityGroupCount: 0,
+  ackAllConsumerRejected: true,
+  rebuiltExplicitAckConsumerPreflightPassed: true,
+  consumerAckPolicy: 0,
+  receiveCancellationWaitingObserved: true,
+  receiveCancellationPropagated: true,
+  receiveCancellationError: 'context canceled',
+  receiveCancellationFetchMaxWaitNanos: 5_000_000_000,
+  receiveCancellationReturnLimitNanos: 1_000_000_000,
+  persistentConsumerPreflightPassed: true,
+  deliverNewPolicyRejected: true,
+  deliverAllPolicyPreflightPassed: true,
+  consumerDeliverPolicy: 0,
+  replayOriginalPolicyRejected: true,
+  replayInstantPolicyPreflightPassed: true,
+  consumerReplayPolicy: 0,
+  brokerRequestExpiresRejected: true,
+  shortRequestExpiresRejected: true,
+  compatibleRequestExpiresPreflightPassed: true,
+  adapterFetchMaxWaitNanos: 100_000_000,
+  consumerMaxRequestExpiresNanos: 5_000_000_000,
+  pausedConsumerRejected: true,
+  resumedConsumerPreflightPassed: true,
+  consumerPaused: false,
+  limitedDeliveryRejected: true,
+  consumerMaxDeliver: 5,
+  headersOnlyRejected: true,
+  fullPayloadPreflightPassed: true,
+  consumerHeadersOnly: false,
+  broadSubjectFilterRejected: true,
+  exactSubjectPreflightPassed: true,
+  foreignSubjectExcluded: true,
   sourceMessagesPublished: 4,
-  requiredLeaseNanos: 8_510_000_000,
+  deduplicatedPublishAttempts: 2,
+  deduplicatedStoredMessages: 1,
+  dlqPublishConfirmed: true,
+  duplicateWindowNanos: 60_000_000_000,
+  requiredLeaseNanos: 8_515_000_000,
   workerAckWaitNanos: 9_000_000_000,
   dynamicRequiredLeaseNanos: 700_000_000,
   dynamicAckWaitNanos: 800_000_000,
@@ -36,11 +78,12 @@ const expectedContract = Object.freeze({
 });
 const limitations = Object.freeze([
   'the NATS server, file store, streams, durable consumers, subjects, credentials and port are disposable single-node non-production fixtures',
-  'the local contract proves bounded redelivery, acknowledgement, dead-lettering and cooperative lease extension only; it does not prove atomic settlement, ordering, exactly-once, target capacity or target-latency safety margins',
+  'the local contract proves push-consumer rejection followed by explicit pull-consumer rebuild, pinned-priority rejection followed by explicit default-policy rebuild, AckAll rejection followed by explicit-ack rebuild and successful preflight, cancellation of an established waiting pull through the parent context within a one-second local bound under a five-second fetch maximum, DeliverNew rejection followed by DeliverAll, ReplayOriginal rejection followed by ReplayInstant, a real broker rejection when a 100ms pull exceeds a 50ms consumer MaxRequestExpires, adapter preflight rejection of that mismatch followed by a compatible 5s limit, active consumer-pause rejection followed by explicit resume and successful preflight, exact-subject persistent full-payload consumer preflight, rejection of broad filtering, headers-only delivery and a one-delivery limit, exclusion of one foreign subject, bounded redelivery, acknowledgement, PubAck-confirmed dead-lettering before source acknowledgement, cooperative lease extension and stable-ID suppression only within a configured one-minute duplicate window; it does not prove production shutdown latency, immediate server-side waiting-request cleanup, consumer-mode, pause, priority or acknowledgement governance, priority fairness or starvation behavior, stream retention, stream-wide ACLs, replicas, atomic settlement, ordering, exactly-once, target capacity, backlog recovery time or target-latency safety margins',
   'natsBroker remains not_recorded until signed target-environment broker identity, authorization, recovery, capacity and approved RPO/RTO evidence is archived and independently verified',
 ]);
 const sha256Pattern = /^[a-f0-9]{64}$/;
 const canonicalTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+const consumerFilterSubjectPattern = /^goexample\.source\.[a-z0-9]+\.primary$/;
 
 function reject(message) {
   throw new Error(`NATS delivery evidence: ${message}`);
@@ -279,28 +322,96 @@ export function verifyNatsDeliveryContractArtifacts({ evidenceRoot }) {
   report = requireExactKeys(
     report,
     [
-      'acknowledged', 'deadLettered', 'dlqAcknowledged', 'dynamicAckWaitNanos',
+      'ackAllConsumerRejected', 'acknowledged', 'deadLettered', 'deduplicatedPublishAttempts',
+      'deduplicatedStoredMessages', 'deduplicationVerified', 'dlqAcknowledged',
+      'deliverAllPolicyPreflightPassed', 'deliverNewPolicyRejected', 'dlqPublishConfirmed',
+      'duplicateWindowNanos', 'dynamicAckWaitNanos',
       'dynamicHandlingNanos', 'dynamicLeasePreflightPassed', 'dynamicRedeliveryAfterAck',
       'dynamicRequiredLeaseNanos', 'leaseExtensionFailures', 'leaseExtensionIntervalNanos',
-      'leaseExtensions', 'redeliveryCount', 'redeliveryObserved', 'replicas',
-      'requiredLeaseNanos', 'schemaVersion', 'shortLeaseRejected', 'sourceAckPending',
+      'leaseExtensions', 'limitedDeliveryRejected', 'persistentConsumerPreflightPassed',
+      'adapterFetchMaxWaitNanos', 'broadSubjectFilterRejected',
+      'brokerRequestExpiresRejected', 'compatibleRequestExpiresPreflightPassed',
+      'consumerAckPolicy', 'consumerDeliverPolicy', 'consumerDeliverSubject', 'consumerFilterSubject', 'consumerHeadersOnly', 'consumerPaused',
+      'consumerMaxDeliver', 'consumerMaxRequestExpiresNanos', 'consumerPriorityGroupCount',
+      'consumerPriorityPolicy', 'consumerReplayPolicy',
+      'exactSubjectPreflightPassed', 'foreignSubjectExcluded',
+      'fullPayloadPreflightPassed', 'headersOnlyRejected', 'redeliveryCount',
+      'redeliveryObserved', 'replicas', 'pausedConsumerRejected', 'priorityConsumerRejected',
+      'pushConsumerRejected', 'rebuiltDefaultPriorityConsumerPreflightPassed',
+      'rebuiltExplicitAckConsumerPreflightPassed',
+      'rebuiltPullConsumerPreflightPassed',
+      'receiveCancellationError', 'receiveCancellationFetchMaxWaitNanos',
+      'receiveCancellationLatencyNanos', 'receiveCancellationPropagated',
+      'receiveCancellationReturnLimitNanos', 'receiveCancellationWaitingObserved',
+      'requiredLeaseNanos', 'schemaVersion', 'shortLeaseRejected',
+      'shortRequestExpiresRejected', 'sourceAckPending',
       'sourceMessagesPending', 'sourceMessagesPublished', 'staticLeasePreflightPassed',
-      'status', 'storage', 'workerAckWaitNanos',
+      'status', 'storage', 'replayInstantPolicyPreflightPassed', 'resumedConsumerPreflightPassed',
+      'replayOriginalPolicyRejected', 'workerAckWaitNanos',
     ],
     'delivery report',
   );
   if (
-    report.schemaVersion !== 1 ||
+    report.schemaVersion !== natsDeliveryEvidenceSchemaVersion ||
     report.status !== 'passed' ||
     report.storage !== expectedContract.storage ||
     report.replicas !== expectedContract.replicas ||
+    report.pushConsumerRejected !== expectedContract.pushConsumerRejected ||
+    report.rebuiltPullConsumerPreflightPassed !== expectedContract.rebuiltPullConsumerPreflightPassed ||
+    report.consumerDeliverSubject !== expectedContract.consumerDeliverSubject ||
+    report.priorityConsumerRejected !== expectedContract.priorityConsumerRejected ||
+    report.rebuiltDefaultPriorityConsumerPreflightPassed !== expectedContract.rebuiltDefaultPriorityConsumerPreflightPassed ||
+    report.consumerPriorityPolicy !== expectedContract.consumerPriorityPolicy ||
+    report.consumerPriorityGroupCount !== expectedContract.consumerPriorityGroupCount ||
+    report.ackAllConsumerRejected !== expectedContract.ackAllConsumerRejected ||
+    report.rebuiltExplicitAckConsumerPreflightPassed !== expectedContract.rebuiltExplicitAckConsumerPreflightPassed ||
+    report.consumerAckPolicy !== expectedContract.consumerAckPolicy ||
+    report.receiveCancellationWaitingObserved !== expectedContract.receiveCancellationWaitingObserved ||
+    report.receiveCancellationPropagated !== expectedContract.receiveCancellationPropagated ||
+    report.receiveCancellationError !== expectedContract.receiveCancellationError ||
+    report.receiveCancellationFetchMaxWaitNanos !== expectedContract.receiveCancellationFetchMaxWaitNanos ||
+    report.receiveCancellationReturnLimitNanos !== expectedContract.receiveCancellationReturnLimitNanos ||
+    !Number.isSafeInteger(report.receiveCancellationLatencyNanos) ||
+    report.receiveCancellationLatencyNanos < 0 ||
+    report.receiveCancellationLatencyNanos > report.receiveCancellationReturnLimitNanos ||
+    report.receiveCancellationLatencyNanos >= report.receiveCancellationFetchMaxWaitNanos ||
+    report.persistentConsumerPreflightPassed !== expectedContract.persistentConsumerPreflightPassed ||
+    report.deliverNewPolicyRejected !== expectedContract.deliverNewPolicyRejected ||
+    report.deliverAllPolicyPreflightPassed !== expectedContract.deliverAllPolicyPreflightPassed ||
+    report.consumerDeliverPolicy !== expectedContract.consumerDeliverPolicy ||
+    report.replayOriginalPolicyRejected !== expectedContract.replayOriginalPolicyRejected ||
+    report.replayInstantPolicyPreflightPassed !== expectedContract.replayInstantPolicyPreflightPassed ||
+    report.consumerReplayPolicy !== expectedContract.consumerReplayPolicy ||
+    report.brokerRequestExpiresRejected !== expectedContract.brokerRequestExpiresRejected ||
+    report.shortRequestExpiresRejected !== expectedContract.shortRequestExpiresRejected ||
+    report.compatibleRequestExpiresPreflightPassed !== expectedContract.compatibleRequestExpiresPreflightPassed ||
+    report.adapterFetchMaxWaitNanos !== expectedContract.adapterFetchMaxWaitNanos ||
+    report.consumerMaxRequestExpiresNanos !== expectedContract.consumerMaxRequestExpiresNanos ||
+    report.pausedConsumerRejected !== expectedContract.pausedConsumerRejected ||
+    report.resumedConsumerPreflightPassed !== expectedContract.resumedConsumerPreflightPassed ||
+    report.consumerPaused !== expectedContract.consumerPaused ||
+    report.limitedDeliveryRejected !== expectedContract.limitedDeliveryRejected ||
+    report.consumerMaxDeliver !== expectedContract.consumerMaxDeliver ||
+    report.headersOnlyRejected !== expectedContract.headersOnlyRejected ||
+    report.fullPayloadPreflightPassed !== expectedContract.fullPayloadPreflightPassed ||
+    report.consumerHeadersOnly !== expectedContract.consumerHeadersOnly ||
+    report.broadSubjectFilterRejected !== expectedContract.broadSubjectFilterRejected ||
+    report.exactSubjectPreflightPassed !== expectedContract.exactSubjectPreflightPassed ||
+    typeof report.consumerFilterSubject !== 'string' ||
+    !consumerFilterSubjectPattern.test(report.consumerFilterSubject) ||
+    report.foreignSubjectExcluded !== expectedContract.foreignSubjectExcluded ||
     report.sourceMessagesPublished !== expectedContract.sourceMessagesPublished ||
+    report.deduplicatedPublishAttempts !== expectedContract.deduplicatedPublishAttempts ||
+    report.deduplicatedStoredMessages !== expectedContract.deduplicatedStoredMessages ||
+    report.duplicateWindowNanos !== expectedContract.duplicateWindowNanos ||
+    report.deduplicationVerified !== true ||
     report.redeliveryObserved !== true ||
     !Number.isSafeInteger(report.redeliveryCount) ||
     report.redeliveryCount < 2 ||
     report.redeliveryCount > 5 ||
     report.acknowledged !== 1 ||
     report.deadLettered !== 1 ||
+    report.dlqPublishConfirmed !== expectedContract.dlqPublishConfirmed ||
     report.dlqAcknowledged !== 1 ||
     report.shortLeaseRejected !== true ||
     report.staticLeasePreflightPassed !== true ||
@@ -319,7 +430,7 @@ export function verifyNatsDeliveryContractArtifacts({ evidenceRoot }) {
     report.sourceAckPending !== 0 ||
     report.sourceMessagesPending !== 0
   ) {
-    reject('delivery report does not satisfy the fixed single-node delivery and dynamic lease contract');
+    reject('delivery report does not satisfy the fixed context-canceled pull-mode unpaused DeliverAll ReplayInstant compatible-pull-expiration exact-subject persistent full-payload single-node delivery, dynamic lease, publish deduplication, and confirmed DLQ contract');
   }
 
   const serverLog = readFileSync(serverLogPath, 'utf8');
@@ -419,7 +530,7 @@ export function verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }) {
     reject('command must equal the fixed real NATS contract invocation');
   }
   if (JSON.stringify(report.contract) !== JSON.stringify(expectedContract)) {
-    reject('contract must preserve the fixed single-node delivery and dynamic lease semantics');
+    reject('contract must preserve the fixed DeliverAll ReplayInstant exact-subject persistent full-payload single-node delivery, dynamic lease, publish deduplication, and confirmed DLQ semantics');
   }
 
   const runtime = requireExactKeys(

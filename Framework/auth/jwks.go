@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -56,6 +58,11 @@ type IDTokenClaims struct {
 	Acr      string           `json:"acr,omitempty"`
 	Amr      []string         `json:"amr,omitempty"`
 	Azp      string           `json:"azp,omitempty"`
+}
+
+type idTokenWireClaims struct {
+	IDTokenClaims
+	AccessTokenHash json.RawMessage `json:"at_hash"`
 }
 
 type JWKSVerifier struct {
@@ -148,13 +155,32 @@ func (verifier *JWKSVerifier) VerifyToken(ctx context.Context, rawToken string) 
 // Token exchange and provider-specific profile mapping remain outside the
 // Framework boundary.
 func (verifier *JWKSVerifier) VerifyIDToken(ctx context.Context, rawToken, expectedNonce string) (IDTokenClaims, error) {
-	if !verifier.Enabled() || ctx == nil || len(rawToken) == 0 || len(rawToken) > maxAccessTokenBytes || !boundedNonEmpty(expectedNonce) {
+	claims, _, err := verifier.verifyIDToken(ctx, rawToken, expectedNonce)
+	return claims, err
+}
+
+// VerifyIDTokenWithAccessToken validates an ID token and, when at_hash is
+// present, binds it to the access token returned by the same token response.
+// The current RS256-only verifier uses the corresponding SHA-256 hash.
+func (verifier *JWKSVerifier) VerifyIDTokenWithAccessToken(ctx context.Context, rawToken, expectedNonce, accessToken string) (IDTokenClaims, error) {
+	if !boundedToken(accessToken, maxAccessTokenBytes) {
 		return IDTokenClaims{}, ErrInvalidToken
 	}
-	claims := &IDTokenClaims{}
+	claims, accessTokenHash, err := verifier.verifyIDToken(ctx, rawToken, expectedNonce)
+	if err != nil || !validAccessTokenHash(accessTokenHash, accessToken) {
+		return IDTokenClaims{}, ErrInvalidToken
+	}
+	return claims, nil
+}
+
+func (verifier *JWKSVerifier) verifyIDToken(ctx context.Context, rawToken, expectedNonce string) (IDTokenClaims, json.RawMessage, error) {
+	if !verifier.Enabled() || ctx == nil || len(rawToken) == 0 || len(rawToken) > maxAccessTokenBytes || !boundedNonEmpty(expectedNonce) {
+		return IDTokenClaims{}, nil, ErrInvalidToken
+	}
+	claims := &idTokenWireClaims{}
 	token, err := verifier.parseSignedClaims(ctx, rawToken, claims, false)
 	if err != nil || !token.Valid || !validIDTokenClaims(
-		*claims,
+		claims.IDTokenClaims,
 		expectedNonce,
 		verifier.now().UTC(),
 		verifier.maxTokenAge,
@@ -163,9 +189,26 @@ func (verifier *JWKSVerifier) VerifyIDToken(ctx context.Context, rawToken, expec
 		verifier.requiredAMR,
 		verifier.maxAuthAge,
 	) {
-		return IDTokenClaims{}, ErrInvalidToken
+		return IDTokenClaims{}, nil, ErrInvalidToken
 	}
-	return *claims, nil
+	return claims.IDTokenClaims, claims.AccessTokenHash, nil
+}
+
+func validAccessTokenHash(rawHash json.RawMessage, accessToken string) bool {
+	if len(rawHash) == 0 {
+		return true
+	}
+	var actual string
+	if json.Unmarshal(rawHash, &actual) != nil || actual == "" {
+		return false
+	}
+	expected := oidcAccessTokenHash(accessToken)
+	return subtle.ConstantTimeCompare([]byte(actual), []byte(expected)) == 1
+}
+
+func oidcAccessTokenHash(accessToken string) string {
+	digest := sha256.Sum256([]byte(accessToken))
+	return base64.RawURLEncoding.EncodeToString(digest[:sha256.Size/2])
 }
 
 func (verifier *JWKSVerifier) parseSignedClaims(ctx context.Context, rawToken string, claims jwt.Claims, requireNotBefore bool) (*jwt.Token, error) {

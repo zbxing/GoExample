@@ -1,12 +1,13 @@
-import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   buildSDKReleaseManifest,
+  createSDKReleaseCheckRunner,
   verifySDKReleaseManifest,
   writeSDKReleaseManifest,
 } from './lib/sdk-release.mjs';
+import { readBoundedGitCommit } from './lib/bounded-command.mjs';
 import { readProjectManifest, selectProject } from './lib/project-contracts.mjs';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -41,15 +42,9 @@ function parseArguments() {
 }
 
 function sourceCommit() {
-  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
-  });
-  const commit = result.stdout.trim();
-  if (result.status !== 0 || !/^[a-f0-9]{40}$/.test(commit)) {
-    fail(`cannot resolve repository source commit: ${(result.stderr || result.stdout || '').trim()}`);
+  const commit = readBoundedGitCommit({ cwd: repositoryRoot });
+  if (commit === null) {
+    fail('cannot resolve repository source commit');
   }
   return commit;
 }
@@ -68,30 +63,18 @@ function recordedSourceCommit(project) {
   return manifest.sourceCommit;
 }
 
-function verifyGeneratedSDK(project) {
-  const result = spawnSync(
-    process.execPath,
-    [path.join(currentDirectory, 'go-sdk.mjs'), 'check', '--project', project.name],
-    {
-      cwd: repositoryRoot,
-      encoding: 'utf8',
-      shell: false,
-      windowsHide: true,
-    },
-  );
-  if (result.status !== 0) {
-    fail(`generated SDK check failed for ${project.name}: ${(result.stderr || result.stdout || '').trim()}`);
-  }
-}
-
 function run() {
   parseArguments();
   const manifest = readProjectManifest(repositoryRoot);
   const projects = projectSelector ? [selectProject(manifest, projectSelector)] : manifest.projects;
   const commit = task === 'prepare' ? sourceCommit() : null;
+  const verifyGeneratedSDK = createSDKReleaseCheckRunner({
+    cwd: repositoryRoot,
+    sdkScriptPath: path.join(currentDirectory, 'go-sdk.mjs'),
+  });
 
   for (const project of projects) {
-    verifyGeneratedSDK(project);
+    verifyGeneratedSDK(project.name);
     const releaseManifest = buildSDKReleaseManifest(repositoryRoot, project, {
       sourceCommit: commit ?? recordedSourceCommit(project),
     });

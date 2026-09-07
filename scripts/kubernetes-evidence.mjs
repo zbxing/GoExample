@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -7,12 +6,13 @@ import {
   kubernetesValidationFixture,
   verifyKubernetesEvidence,
 } from './lib/kubernetes-evidence.mjs';
+import { runEvidenceCommand } from './lib/evidence-command.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
 const evidenceRoot = path.join(repositoryRoot, '.temp', 'workflow-artifacts', 'kubernetes-manifest');
 const rendererPath = path.join(repositoryRoot, 'scripts', 'kubernetes-manifest.mjs');
-const maximumCommandOutput = 2 * 1024 * 1024;
+const kubernetesEvidenceCommandTimeoutMs = 30_000;
 
 function fail(message) {
   throw new Error(`Kubernetes evidence: ${message}`);
@@ -23,18 +23,10 @@ function capturedOutput(result) {
 }
 
 function commandResult(args) {
-  const result = spawnSync(process.execPath, [rendererPath, ...args], {
+  return runEvidenceCommand(process.execPath, [rendererPath, ...args], {
     cwd: repositoryRoot,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
-    maxBuffer: maximumCommandOutput,
+    timeoutMs: kubernetesEvidenceCommandTimeoutMs,
   });
-  return {
-    status: Number.isSafeInteger(result.status) ? result.status : 1,
-    stdout: `${result.stdout ?? ''}`,
-    stderr: `${result.stderr ?? result.error?.message ?? ''}`,
-  };
 }
 
 function run() {

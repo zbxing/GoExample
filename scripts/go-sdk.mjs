@@ -1,12 +1,8 @@
 import { createHash } from 'node:crypto';
 import {
   existsSync,
-  mkdirSync,
   readFileSync,
-  rmSync,
-  writeFileSync,
 } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -15,6 +11,11 @@ import {
   resolveProjectDocument,
   selectProject,
 } from './lib/project-contracts.mjs';
+import {
+  formatGoFileWithCandidatesSync,
+  formatGeneratedGoSDKSourceSync,
+  publishGeneratedGoSDKSync,
+} from './lib/sdk-generation.mjs';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(currentDirectory, '..');
@@ -68,8 +69,8 @@ try {
 const sourcePath = sourceDocument.path;
 const sdkRoot = path.join(repositoryRoot, project.sdk.path);
 const targetPath = path.join(sdkRoot, 'client.gen.go');
-const checkRoot = path.join(repositoryRoot, '.temp', 'sdk-check', project.name);
-const checkPath = path.join(checkRoot, 'client.gen.go');
+const versionPath = path.join(sdkRoot, 'VERSION');
+const stagingRoot = path.join(repositoryRoot, '.temp', 'sdk-generation');
 
 function fail(message) {
   throw new Error(message);
@@ -574,48 +575,38 @@ function gofmt(filePath) {
     path.join(repositoryRoot, '.temp', 'toolchain', 'go', 'bin', executableName),
     executableName,
   ].filter(Boolean);
-  for (const candidate of candidates) {
-    if (path.isAbsolute(candidate) && !existsSync(candidate)) {
-      continue;
-    }
-    const result = spawnSync(candidate, ['-w', filePath], {
-      cwd: repositoryRoot,
-      encoding: 'utf8',
-      shell: false,
-    });
-    if (result.status === 0) {
-      return;
-    }
-    if (!result.error) {
-      fail(`gofmt failed: ${result.stderr.trim() || `exit code ${result.status}`}`);
-    }
-  }
-  fail('gofmt was not found; run yarn env or set GOFMT_BINARY');
+  formatGoFileWithCandidatesSync(filePath, {
+    candidates,
+    cwd: repositoryRoot,
+  });
 }
 
 const source = sourceDocument.content;
 const document = assertOpenAPIDocument(source, sourcePath);
 const sourceHash = createHash('sha256').update(source).digest('hex');
 const generated = generateSource(document, sourceHash, sourceDocument.source, project.sdk.package);
-const outputPath = task === 'generate' ? targetPath : checkPath;
-mkdirSync(path.dirname(outputPath), { recursive: true });
-writeFileSync(outputPath, generated, 'utf8');
-gofmt(outputPath);
+const formatted = formatGeneratedGoSDKSourceSync(generated, {
+  stagingRoot,
+  formatFile: gofmt,
+});
 
 if (task === 'generate') {
-  writeFileSync(path.join(sdkRoot, 'VERSION'), `${document.info.version}\n`, 'utf8');
+  publishGeneratedGoSDKSync({
+    clientPath: targetPath,
+    versionPath,
+    formattedSource: formatted,
+    version: document.info.version,
+  });
   console.log(`Generated ${path.relative(repositoryRoot, targetPath)} from ${sourceDocument.source} (${collectOperations(document).length} operations)`);
 } else {
   if (!existsSync(targetPath)) {
     fail(`Generated SDK for ${project.name} is missing; run yarn sdk:generate --project ${project.name}`);
   }
   const expected = readFileSync(targetPath, 'utf8');
-  const actual = readFileSync(checkPath, 'utf8');
-  rmSync(checkRoot, { recursive: true, force: true });
-  if (actual !== expected) {
+  if (formatted !== expected) {
         fail(`Generated Go SDK is stale for ${project.name}; run yarn sdk:generate --project ${project.name} and commit the result`);
   }
-  const sdkVersion = readFileSync(path.join(sdkRoot, 'VERSION'), 'utf8').trim();
+  const sdkVersion = readFileSync(versionPath, 'utf8').trim();
   if (sdkVersion !== document.info.version) {
     fail(`SDK version ${sdkVersion} does not match ${project.name} OpenAPI version ${document.info.version}`);
   }

@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -7,6 +6,7 @@ import {
   verifyServerRecoveryEvidence,
   writeServerRecoveryEvidenceChecksums,
 } from './lib/server-recovery-evidence.mjs';
+import { runServerRecoveryDrill } from './lib/server-recovery-command.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -20,11 +20,9 @@ function fail(message) {
 function run() {
   mkdirSync(evidenceRoot, { recursive: true });
   const startedAt = new Date().toISOString();
-  const result = spawnSync(process.execPath, [path.join(scriptDirectory, 'server-recovery-drill.mjs')], {
+  const result = runServerRecoveryDrill({
     cwd: repositoryRoot,
-    stdio: 'inherit',
-    shell: false,
-    windowsHide: true,
+    scriptPath: path.join(scriptDirectory, 'server-recovery-drill.mjs'),
   });
   const completedAt = new Date().toISOString();
   const execution = {
@@ -32,7 +30,7 @@ function run() {
     completedAt,
     exitCode: Number.isInteger(result.status) ? result.status : null,
     signal: result.signal ?? null,
-    spawnErrorCode: result.error?.code ?? null,
+    spawnErrorCode: result.spawnErrorCode,
   };
   const report = buildServerRecoveryEvidenceReport({ repositoryRoot, evidenceRoot, execution });
   writeFileSync(path.join(evidenceRoot, 'report.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
@@ -41,7 +39,7 @@ function run() {
   console.log(
     `Server recovery evidence ${verified.report.status}: ${verified.artifactPaths.length} checksum-bound artifacts verified`,
   );
-  if (result.status !== 0 || result.signal || result.error) {
+  if (result.status !== 0 || result.signal || result.spawnErrorCode) {
     process.exitCode = Number.isInteger(result.status) && result.status !== 0 ? result.status : 1;
   }
 }

@@ -39,54 +39,67 @@ redis.call("ZADD", KEYS[4], absolute, ARGV[6])
 return 0
 `)
 
+	// rotateSessionScript derives the family key from the hash-only token
+	// mapping inside Redis. Keeping lookup and mutation in one script removes
+	// the GET/EVAL window while preserving replay detection via the old token
+	// mapping's TTL.
 	rotateSessionScript = redis.NewScript(`
-if redis.call("EXISTS", KEYS[2]) == 0 then
-  if redis.call("EXISTS", KEYS[1]) == 1 then return {2} end
-  return {1}
-end
-local absolute = tonumber(redis.call("HGET", KEYS[2], "absolute"))
-local now = tonumber(ARGV[1])
-if not absolute or absolute <= now then
-  redis.call("HSET", KEYS[2], "revoked", "1", "expired", "1")
+local familyID = redis.call("GET", KEYS[1])
+if not familyID then return {1} end
+if string.len(familyID) ~= 32 or not string.match(familyID, "^[0-9a-f]+$") then return {1} end
+local familyKey = ARGV[6] .. familyID
+local usedKey = ARGV[7] .. familyID
+if redis.call("EXISTS", familyKey) == 0 then
   return {2}
 end
-local current = redis.call("HGET", KEYS[2], "current")
-local revoked = redis.call("HGET", KEYS[2], "revoked")
+local absolute = tonumber(redis.call("HGET", familyKey, "absolute"))
+local now = tonumber(ARGV[1])
+if not absolute or absolute <= now then
+	  redis.call("HSET", familyKey, "revoked", "1", "expired", "1")
+	  return {2}
+end
+local current = redis.call("HGET", familyKey, "current")
+local revoked = redis.call("HGET", familyKey, "revoked")
 	if revoked == "1" then
 	  if current ~= ARGV[2] then return {4} end
 	  return {3}
 end
 if current ~= ARGV[2] then
-  redis.call("HSET", KEYS[2], "revoked", "1")
+	  redis.call("HSET", familyKey, "revoked", "1")
 	return {4}
 end
-local currentExpires = tonumber(redis.call("HGET", KEYS[2], "expires"))
+local currentExpires = tonumber(redis.call("HGET", familyKey, "expires"))
 if not currentExpires or currentExpires <= now then
-  redis.call("HSET", KEYS[2], "revoked", "1", "expired", "1")
+	  redis.call("HSET", familyKey, "revoked", "1", "expired", "1")
 	return {2}
 end
-if redis.call("SCARD", KEYS[3]) >= tonumber(ARGV[4]) then
-  redis.call("HSET", KEYS[2], "revoked", "1")
+if redis.call("SCARD", usedKey) >= tonumber(ARGV[4]) then
+	  redis.call("HSET", familyKey, "revoked", "1")
 	return {5}
 end
 local nextExpires = now + tonumber(ARGV[3])
 if nextExpires > absolute then nextExpires = absolute end
 local ttl = absolute - now
-redis.call("SADD", KEYS[3], ARGV[2])
-redis.call("PEXPIRE", KEYS[3], ttl)
-redis.call("HSET", KEYS[2], "current", ARGV[5], "expires", nextExpires)
-redis.call("SET", KEYS[4], ARGV[6], "PX", ttl)
+redis.call("SADD", usedKey, ARGV[2])
+redis.call("PEXPIRE", usedKey, ttl)
+redis.call("HSET", familyKey, "current", ARGV[5], "expires", nextExpires)
+redis.call("SET", KEYS[2], familyID, "PX", ttl)
 return {0, nextExpires}
 `)
 
+	// revokeSessionFamilyScript uses the same single-command lookup boundary
+	// for family revocation.
 	revokeSessionFamilyScript = redis.NewScript(`
-if redis.call("EXISTS", KEYS[1]) == 0 then return 1 end
-if redis.call("EXISTS", KEYS[2]) == 0 then return 2 end
+local familyID = redis.call("GET", KEYS[1])
+if not familyID then return 1 end
+if string.len(familyID) ~= 32 or not string.match(familyID, "^[0-9a-f]+$") then return 1 end
+local familyKey = ARGV[2] .. familyID
+if redis.call("EXISTS", familyKey) == 0 then return 2 end
 local now = tonumber(ARGV[1])
-local absolute = tonumber(redis.call("HGET", KEYS[2], "absolute"))
+local absolute = tonumber(redis.call("HGET", familyKey, "absolute"))
 if not absolute or absolute <= now then return 2 end
-if redis.call("HGET", KEYS[2], "revoked") == "1" then return 3 end
-redis.call("HSET", KEYS[2], "revoked", "1")
+if redis.call("HGET", familyKey, "revoked") == "1" then return 3 end
+redis.call("HSET", familyKey, "revoked", "1")
 return 0
 `)
 
@@ -180,28 +193,20 @@ func (s *Redis) CreateSession(ctx context.Context, userID, familyID string, toke
 
 // RotateSession atomically validates and rotates a refresh token hash. Raw
 // tokens never cross this package boundary or enter Redis; all Redis indexes
-// are hash-only.
+// are hash-only. Token lookup and family mutation happen in one Lua command.
 func (s *Redis) RotateSession(ctx context.Context, tokenHash, newHash [sha256.Size]byte, now time.Time, refreshTTL time.Duration, historyLimit int) (time.Time, error) {
 	if s == nil || refreshTTL <= 0 || historyLimit <= 0 {
 		return time.Time{}, errors.New("invalid session store rotate request")
 	}
 	tokenHex := hex.EncodeToString(tokenHash[:])
 	newTokenHex := hex.EncodeToString(newHash[:])
-	familyID, err := s.lookupSessionFamily(ctx, tokenHex)
-	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return time.Time{}, auth.ErrSessionInvalid
-		}
-		return time.Time{}, sessionRedisFailure("lookup refresh session", err)
-	}
 	operationCtx, cancel := s.operationContext(ctx)
 	defer cancel()
 	values, err := rotateSessionScript.Run(operationCtx, s.client, []string{
 		s.sessionTokenKey(tokenHex),
-		s.sessionFamilyKey(familyID),
-		s.sessionUsedKey(familyID),
 		s.sessionTokenKey(newTokenHex),
-	}, now.UnixMilli(), tokenHex, refreshTTL.Milliseconds(), historyLimit, newTokenHex, familyID).Int64Slice()
+	}, now.UTC().UnixMilli(), tokenHex, refreshTTL.Milliseconds(), historyLimit, newTokenHex,
+		s.sessionFamilyKeyPrefix(), s.sessionUsedKeyPrefix()).Int64Slice()
 	if err != nil {
 		return time.Time{}, sessionRedisFailure("rotate refresh session", err)
 	}
@@ -234,19 +239,12 @@ func (s *Redis) RevokeFamily(ctx context.Context, tokenHash [sha256.Size]byte, n
 		return errors.New("invalid session store")
 	}
 	tokenHex := hex.EncodeToString(tokenHash[:])
-	familyID, err := s.lookupSessionFamily(ctx, tokenHex)
-	if err != nil {
-		if errors.Is(err, redis.Nil) {
-			return auth.ErrSessionInvalid
-		}
-		return sessionRedisFailure("lookup refresh session", err)
-	}
+	// The script reads the token mapping and revokes its family atomically.
 	operationCtx, cancel := s.operationContext(ctx)
 	defer cancel()
 	result, err := revokeSessionFamilyScript.Run(operationCtx, s.client, []string{
 		s.sessionTokenKey(tokenHex),
-		s.sessionFamilyKey(familyID),
-	}, now.UnixMilli()).Int()
+	}, now.UTC().UnixMilli(), s.sessionFamilyKeyPrefix()).Int()
 	if err != nil {
 		return sessionRedisFailure("revoke refresh session", err)
 	}
@@ -298,14 +296,12 @@ func (s *Redis) ActiveFamilies(ctx context.Context, userID string, now time.Time
 	return count, nil
 }
 
-func (s *Redis) lookupSessionFamily(ctx context.Context, tokenHex string) (string, error) {
-	operationCtx, cancel := s.operationContext(ctx)
-	defer cancel()
-	return s.client.Get(operationCtx, s.sessionTokenKey(tokenHex)).Result()
-}
-
 func (s *Redis) sessionFamilyKey(familyID string) string {
 	return s.key(sessionKeyNamespace + "family:" + familyID)
+}
+
+func (s *Redis) sessionFamilyKeyPrefix() string {
+	return s.key(sessionKeyNamespace + "family:")
 }
 
 func (s *Redis) sessionTokenKey(tokenHex string) string {
@@ -314,6 +310,10 @@ func (s *Redis) sessionTokenKey(tokenHex string) string {
 
 func (s *Redis) sessionUsedKey(familyID string) string {
 	return s.key(sessionKeyNamespace + "used:" + familyID)
+}
+
+func (s *Redis) sessionUsedKeyPrefix() string {
+	return s.key(sessionKeyNamespace + "used:")
 }
 
 func (s *Redis) sessionUserKey(userHash [sha256.Size]byte) string {

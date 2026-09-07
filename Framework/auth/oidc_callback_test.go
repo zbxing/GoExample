@@ -27,7 +27,8 @@ func TestCompleteOIDCCallbackConsumesStateAndBindsIDTokenNonce(t *testing.T) {
 			_, _ = response.Write(jwksJSON(t, "callback", &key.PublicKey))
 		case "/token":
 			response.Header().Set("Content-Type", "application/json")
-			idToken := signIDToken(t, key, "callback", IDTokenClaims{
+			const accessToken = "opaque-access"
+			idTokenClaims := IDTokenClaims{
 				Nonce: nonce,
 				RegisteredClaims: jwt.RegisteredClaims{
 					Issuer:    issuer,
@@ -36,8 +37,16 @@ func TestCompleteOIDCCallbackConsumesStateAndBindsIDTokenNonce(t *testing.T) {
 					ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),
 					IssuedAt:  jwt.NewNumericDate(now.Add(-time.Minute)),
 				},
+			}
+			token := jwt.NewWithClaims(jwt.SigningMethodRS256, idTokenClaimsWithAccessTokenHash{
+				IDTokenClaims: idTokenClaims, AccessTokenHash: oidcAccessTokenHash(accessToken),
 			})
-			writeOIDCTestJSON(t, response, OIDCTokenResponse{AccessToken: "opaque-access", TokenType: "Bearer", ExpiresIn: 300, IDToken: idToken})
+			token.Header["kid"] = "callback"
+			idToken, signErr := token.SignedString(key)
+			if signErr != nil {
+				t.Fatalf("sign callback ID token: %v", signErr)
+			}
+			writeOIDCTestJSON(t, response, OIDCTokenResponse{AccessToken: accessToken, TokenType: "Bearer", ExpiresIn: 300, IDToken: idToken})
 		default:
 			response.WriteHeader(http.StatusNotFound)
 		}
@@ -75,6 +84,68 @@ func TestCompleteOIDCCallbackConsumesStateAndBindsIDTokenNonce(t *testing.T) {
 	}
 	if _, err := CompleteOIDCCallback(context.Background(), manager, client, verifier, request.State, "replay"); !errors.Is(err, ErrOIDCCallbackInvalid) {
 		t.Fatalf("replayed callback error = %v", err)
+	}
+}
+
+func TestCompleteOIDCCallbackRejectsMismatchedAccessTokenHash(t *testing.T) {
+	now := time.Date(2026, time.September, 6, 12, 0, 0, 0, time.UTC)
+	key := generateRSAKey(t, 2048)
+	var nonce string
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/.well-known/openid-configuration":
+			writeOIDCTestJSON(t, response, validOIDCMetadata(serverIssuer(request)))
+		case "/jwks":
+			response.Header().Set("Content-Type", "application/json")
+			_, _ = response.Write(jwksJSON(t, "callback-hash", &key.PublicKey))
+		case "/token":
+			claims := IDTokenClaims{
+				Nonce: nonce,
+				RegisteredClaims: jwt.RegisteredClaims{
+					Issuer: server.URL, Subject: "oidc-subject", Audience: jwt.ClaimStrings{"callback-client"},
+					ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)), IssuedAt: jwt.NewNumericDate(now),
+				},
+			}
+			token := jwt.NewWithClaims(jwt.SigningMethodRS256, idTokenClaimsWithAccessTokenHash{
+				IDTokenClaims: claims, AccessTokenHash: oidcAccessTokenHash("different-access-token"),
+			})
+			token.Header["kid"] = "callback-hash"
+			rawToken, err := token.SignedString(key)
+			if err != nil {
+				t.Fatalf("sign callback ID token: %v", err)
+			}
+			writeOIDCTestJSON(t, response, OIDCTokenResponse{AccessToken: "opaque-access", TokenType: "Bearer", ExpiresIn: 300, IDToken: rawToken})
+		default:
+			response.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	manager, err := NewAuthorizationRequestManager(AuthorizationRequestConfig{
+		AuthorizationURL: "https://issuer.example/authorize", ClientID: "callback-client", RedirectURL: "https://app.example/callback", Now: func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatalf("manager: %v", err)
+	}
+	client, err := NewOIDCClient(context.Background(), OIDCClientConfig{Issuer: server.URL, ClientID: "callback-client", RedirectURL: "https://app.example/callback", HTTPTimeout: time.Second})
+	if err != nil {
+		t.Fatalf("client: %v", err)
+	}
+	verifier, err := NewJWKSVerifier(context.Background(), JWKSConfig{Issuer: server.URL, Audience: "callback-client", JWKSURL: server.URL + "/jwks", Now: func() time.Time { return now }})
+	if err != nil {
+		t.Fatalf("verifier: %v", err)
+	}
+	request, err := manager.Start()
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	nonce = request.Nonce
+	if _, err := CompleteOIDCCallback(context.Background(), manager, client, verifier, request.State, "callback-code"); !errors.Is(err, ErrOIDCCallbackInvalid) {
+		t.Fatalf("mismatched at_hash error = %v", err)
+	}
+	if _, err := CompleteOIDCCallback(context.Background(), manager, client, verifier, request.State, "replay"); !errors.Is(err, ErrOIDCCallbackInvalid) {
+		t.Fatalf("replayed mismatched callback error = %v", err)
 	}
 }
 

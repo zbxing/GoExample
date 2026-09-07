@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runBoundedCommand } from './lib/bounded-command.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const tempRoot = path.join(repositoryRoot, '.temp');
@@ -43,8 +43,7 @@ function fail(message) {
 }
 
 function run(command, args) {
-  const result = spawnSync(command, args, { cwd: repositoryRoot, encoding: 'utf8', shell: false, windowsHide: true });
-  return result.status === 0 ? `${result.stdout ?? ''}`.trim() || 'unknown' : 'unknown';
+  return runBoundedCommand(command, args, { cwd: repositoryRoot }) ?? 'unknown';
 }
 
 function hashFile(filePath) {

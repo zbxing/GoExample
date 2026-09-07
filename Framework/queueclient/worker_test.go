@@ -93,8 +93,8 @@ func TestMinimumDeliveryLeaseUsesEffectiveRetryBudget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MinimumDeliveryLease() error = %v", err)
 	}
-	if budget != 12*time.Second+50*time.Millisecond {
-		t.Fatalf("delivery lease budget = %s, want 12.05s", budget)
+	if budget != 12*time.Second+150*time.Millisecond {
+		t.Fatalf("delivery lease budget = %s, want 12.15s", budget)
 	}
 	renewedBudget, err := client.MinimumDeliveryLease(DeliveryRetryConfig{
 		MaxAttempts:            4,
@@ -133,8 +133,8 @@ func TestMinimumDeliveryLeaseUsesEffectiveRetryBudget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MinimumDeliveryLease(defaults) error = %v", err)
 	}
-	if defaultBudget != 94*time.Second+300*time.Millisecond {
-		t.Fatalf("default delivery lease budget = %s, want 1m34.3s", defaultBudget)
+	if defaultBudget != 94*time.Second+450*time.Millisecond {
+		t.Fatalf("default delivery lease budget = %s, want 1m34.45s", defaultBudget)
 	}
 
 	maximumAttemptsBudget, err := client.MinimumDeliveryLease(DeliveryRetryConfig{
@@ -146,8 +146,120 @@ func TestMinimumDeliveryLeaseUsesEffectiveRetryBudget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MinimumDeliveryLease(max attempts) error = %v", err)
 	}
-	if maximumAttemptsBudget != 20*time.Second+33*time.Nanosecond {
+	if maximumAttemptsBudget != 20*time.Second+34*time.Nanosecond {
 		t.Fatalf("maximum-attempt delivery lease budget = %s", maximumAttemptsBudget)
+	}
+}
+
+func TestDeliveryRetryJitterUsesInclusivePositiveWindow(t *testing.T) {
+	const delay = 100 * time.Millisecond
+	const maximum = time.Second
+
+	if got := deliveryRetryJitter(delay, maximum, func(limit int64) int64 {
+		if want := int64(delay/2) + 1; limit != want {
+			t.Fatalf("random limit = %d, want %d", limit, want)
+		}
+		return 0
+	}); got != delay {
+		t.Fatalf("lower-bound deliveryRetryJitter() = %s, want %s", got, delay)
+	}
+
+	want := delay + delay/2
+	if got := deliveryRetryJitter(delay, maximum, func(limit int64) int64 {
+		return limit - 1
+	}); got != want {
+		t.Fatalf("upper-bound deliveryRetryJitter() = %s, want %s", got, want)
+	}
+}
+
+func TestDeliveryRetryJitterTruncatesWindowAtMaximumBackoff(t *testing.T) {
+	const delay = 90 * time.Millisecond
+	const maximum = 100 * time.Millisecond
+	wantLimit := int64(maximum-delay) + 1
+
+	got := deliveryRetryJitter(delay, maximum, func(limit int64) int64 {
+		if limit != wantLimit {
+			t.Fatalf("random limit = %d, want %d", limit, wantLimit)
+		}
+		return limit - 1
+	})
+	if got != maximum {
+		t.Fatalf("deliveryRetryJitter() = %s, want %s", got, maximum)
+	}
+}
+
+func TestDeliveryRetryJitterSkipsSamplingWithoutWindow(t *testing.T) {
+	sample := func(int64) int64 {
+		t.Fatal("random source called without an available jitter window")
+		return 0
+	}
+	for _, test := range []struct {
+		name    string
+		delay   time.Duration
+		maximum time.Duration
+	}{
+		{name: "at maximum", delay: time.Second, maximum: time.Second},
+		{name: "sub-nanosecond half window", delay: time.Nanosecond, maximum: time.Second},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := deliveryRetryJitter(test.delay, test.maximum, sample); got != test.delay {
+				t.Fatalf("deliveryRetryJitter() = %s, want %s", got, test.delay)
+			}
+		})
+	}
+}
+
+func TestWorkerGroupUsesInjectedDeliveryRetryJitter(t *testing.T) {
+	client, err := New(Config{System: SystemNATS, ProcessTimeout: time.Second})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	observer := &deliveryObserverRecorder{}
+	var attempts atomic.Int32
+	var acknowledged atomic.Int32
+	var deadLettered atomic.Int32
+	group, err := NewWorkerGroup(client, WorkerConfig{
+		ReceiveDelivery: func(context.Context) (Delivery, error) { return Delivery{}, nil },
+		Handle: func(context.Context, Message) error {
+			if attempts.Add(1) == 1 {
+				return errors.New("retry")
+			}
+			return nil
+		},
+		DeliveryObserver: observer,
+		Retry: DeliveryRetryConfig{
+			MaxAttempts:       2,
+			InitialBackoff:    2 * time.Nanosecond,
+			MaxBackoff:        10 * time.Nanosecond,
+			SettlementTimeout: time.Second,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewWorkerGroup() error = %v", err)
+	}
+	var samples atomic.Int32
+	group.randomInt64N = func(limit int64) int64 {
+		if limit != 2 {
+			t.Fatalf("random limit = %d, want 2", limit)
+		}
+		samples.Add(1)
+		return limit - 1
+	}
+
+	err = group.processDelivery(context.Background(), Delivery{
+		Message:     Message{Body: []byte("jitter")},
+		Acknowledge: func(context.Context) error { acknowledged.Add(1); return nil },
+		DeadLetter:  func(context.Context) error { deadLettered.Add(1); return nil },
+	})
+	if err != nil {
+		t.Fatalf("processDelivery() error = %v", err)
+	}
+	if attempts.Load() != 2 || samples.Load() != 1 || acknowledged.Load() != 1 || deadLettered.Load() != 0 {
+		t.Fatalf("attempts/samples/ack/dead-letter = %d/%d/%d/%d", attempts.Load(), samples.Load(), acknowledged.Load(), deadLettered.Load())
+	}
+	if events := observer.snapshot(); events["retried"] != 1 || events["acknowledged"] != 1 ||
+		events["dead_lettered"] != 0 || events["settlement_failed"] != 0 {
+		t.Fatalf("delivery events = %+v", events)
 	}
 }
 

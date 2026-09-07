@@ -5,6 +5,13 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import {
+  createServerReleaseCommandRunner,
+  serverReleaseCommandDiagnosticCharacterLimit,
+  serverReleaseCommandMaximumDurationMs,
+  serverReleaseCommandMaximumOutputBytes,
+  serverReleaseMetadataCommandTimeoutMs,
+} from '../../scripts/lib/server-release-command.mjs';
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, '..', '..');
@@ -24,6 +31,114 @@ function run(task, environment = {}) {
 function encodeChecksums(entries) {
   return entries.map(([sha256, name]) => `${sha256}  ${name}\n`).join('');
 }
+
+test('server release command runner applies bounded non-shell options', () => {
+  const calls = [];
+  const environment = { GOFLAGS: '-mod=readonly' };
+  const runCommand = createServerReleaseCommandRunner({
+    cwd: repositoryRoot,
+    spawn(command, args, options) {
+      calls.push({ command, args, options });
+      return { status: 0, signal: null, error: null, stdout: ' go version go1.25.13 windows/amd64 \n' };
+    },
+  });
+
+  assert.equal(
+    runCommand('go', ['version'], {
+      description: 'go version',
+      env: environment,
+      timeoutMs: serverReleaseMetadataCommandTimeoutMs,
+    }),
+    'go version go1.25.13 windows/amd64',
+  );
+  assert.deepEqual(calls, [{
+    command: 'go',
+    args: ['version'],
+    options: {
+      cwd: repositoryRoot,
+      env: environment,
+      encoding: 'utf8',
+      shell: false,
+      windowsHide: true,
+      maxBuffer: serverReleaseCommandMaximumOutputBytes,
+      timeout: serverReleaseMetadataCommandTimeoutMs,
+      killSignal: 'SIGTERM',
+    },
+  }]);
+});
+
+test('server release command runner rejects invalid inputs without spawning', () => {
+  let spawnCount = 0;
+  const runCommand = createServerReleaseCommandRunner({
+    cwd: repositoryRoot,
+    spawn() {
+      spawnCount += 1;
+      return { status: 0, stdout: '' };
+    },
+  });
+
+  for (const timeoutMs of [undefined, 0, -1, 1.5, Number.NaN, serverReleaseCommandMaximumDurationMs + 1]) {
+    assert.throws(
+      () => runCommand('go', ['version'], { timeoutMs }),
+      /timeout must be a safe integer/,
+    );
+  }
+  assert.throws(() => runCommand('', [], { timeoutMs: 1 }), /must be a non-empty string/);
+  assert.throws(() => runCommand('go', [null], { timeoutMs: 1 }), /array of strings/);
+  assert.throws(
+    () => runCommand('go', [], { description: '', timeoutMs: 1 }),
+    /description must be a non-empty string/,
+  );
+  assert.equal(spawnCount, 0);
+});
+
+test('server release command runner classifies timeout, signal, overflow, spawn, exit, and missing-status failures', () => {
+  const failures = [
+    [{ status: null, error: Object.assign(new Error('late'), { code: 'ETIMEDOUT' }) }, /timed out after 30000 ms/],
+    [{ status: null, signal: 'SIGTERM' }, /terminated by signal SIGTERM/],
+    [{ status: null, error: Object.assign(new Error('large'), { code: 'ENOBUFS' }) }, /output exceeded 8388608 bytes/],
+    [{ status: null, error: Object.assign(new Error('permission denied'), { code: 'EACCES' }) }, /failed to start \(EACCES\): permission denied/],
+    [{ status: 2, stderr: 'compile failed', stdout: 'private output' }, /exited with status 2: compile failed/],
+    [{ status: null, stderr: 'no status', stdout: 'private output' }, /failed without an exit status: no status/],
+  ];
+
+  for (const [result, pattern] of failures) {
+    const runCommand = createServerReleaseCommandRunner({
+      cwd: repositoryRoot,
+      spawn() {
+        return result;
+      },
+    });
+    assert.throws(
+      () => runCommand('go', ['build'], { description: 'build', timeoutMs: 30_000 }),
+      pattern,
+    );
+  }
+});
+
+test('server release command runner bounds stderr diagnostics and never reports stdout', () => {
+  const runCommand = createServerReleaseCommandRunner({
+    cwd: repositoryRoot,
+    spawn() {
+      return {
+        status: 1,
+        stderr: 'x'.repeat(serverReleaseCommandDiagnosticCharacterLimit * 2),
+        stdout: 'private-success-output',
+      };
+    },
+  });
+
+  let error;
+  assert.throws(
+    () => runCommand('go', ['build'], { description: 'build', timeoutMs: 30_000 }),
+    (candidate) => {
+      error = candidate;
+      return /\.\.\.\[truncated\]$/.test(candidate.message);
+    },
+  );
+  assert.ok(error.message.length < serverReleaseCommandDiagnosticCharacterLimit + 100);
+  assert.doesNotMatch(error.message, /private-success-output/);
+});
 
 test('server release build is bounded and rejects artifact or metadata tampering', async (t) => {
   t.after(() => rm(releaseRoot, { recursive: true, force: true }));
@@ -83,6 +198,7 @@ test('server release build is bounded and rejects artifact or metadata tampering
     'go.work',
     'package.json',
     'scripts/server-release.mjs',
+    'scripts/lib/server-release-command.mjs',
     'Framework/go.mod',
     'Framework/go.sum',
     'Solutions/Example/go.mod',

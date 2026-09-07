@@ -45,6 +45,12 @@ type oidcBrowserTestProvider struct {
 	exchangeStatus     int
 	exchangeErrorBody  string
 	accessTokenSubject string
+	accessTokenHash    string
+}
+
+type oidcBrowserIDTokenClaims struct {
+	auth.IDTokenClaims
+	AccessTokenHash string `json:"at_hash"`
 }
 
 func newOIDCBrowserTestProvider(t *testing.T) *oidcBrowserTestProvider {
@@ -68,13 +74,19 @@ func (provider *oidcBrowserTestProvider) serveHTTP(response http.ResponseWriter,
 	switch request.URL.Path {
 	case "/.well-known/openid-configuration":
 		response.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(response).Encode(auth.OIDCProviderMetadata{
-			Issuer:                        provider.server.URL,
-			AuthorizationEndpoint:         "https://identity.example/authorize",
-			TokenEndpoint:                 provider.server.URL + "/token",
-			JWKSURI:                       provider.server.URL + "/jwks",
-			ResponseTypesSupported:        []string{"code"},
-			CodeChallengeMethodsSupported: []string{"S256"},
+		_ = json.NewEncoder(response).Encode(struct {
+			auth.OIDCProviderMetadata
+			TokenEndpointAuthMethodsSupported []string `json:"token_endpoint_auth_methods_supported"`
+		}{
+			OIDCProviderMetadata: auth.OIDCProviderMetadata{
+				Issuer:                        provider.server.URL,
+				AuthorizationEndpoint:         "https://identity.example/authorize",
+				TokenEndpoint:                 provider.server.URL + "/token",
+				JWKSURI:                       provider.server.URL + "/jwks",
+				ResponseTypesSupported:        []string{"code"},
+				CodeChallengeMethodsSupported: []string{"S256"},
+			},
+			TokenEndpointAuthMethodsSupported: []string{"none"},
 		})
 	case "/jwks":
 		response.Header().Set("Content-Type", "application/json")
@@ -97,6 +109,7 @@ func (provider *oidcBrowserTestProvider) serveToken(response http.ResponseWriter
 	status := provider.exchangeStatus
 	errorBody := provider.exchangeErrorBody
 	accessTokenSubject := provider.accessTokenSubject
+	accessTokenHash := provider.accessTokenHash
 	provider.mu.Unlock()
 	if status != http.StatusOK {
 		response.Header().Set("Content-Type", "application/json")
@@ -111,15 +124,21 @@ func (provider *oidcBrowserTestProvider) serveToken(response http.ResponseWriter
 		return
 	}
 	accessToken := provider.sign(tClaims(provider.server.URL, accessTokenSubject, provider.now))
-	idToken := provider.sign(auth.IDTokenClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    provider.server.URL,
-			Subject:   "browser-user-1",
-			Audience:  jwt.ClaimStrings{oidcBrowserTestAudience},
-			IssuedAt:  jwt.NewNumericDate(provider.now),
-			ExpiresAt: jwt.NewNumericDate(provider.now.Add(5 * time.Minute)),
+	if accessTokenHash == "" {
+		accessTokenHash = oidcBrowserAccessTokenHash(accessToken)
+	}
+	idToken := provider.sign(oidcBrowserIDTokenClaims{
+		IDTokenClaims: auth.IDTokenClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				Issuer:    provider.server.URL,
+				Subject:   "browser-user-1",
+				Audience:  jwt.ClaimStrings{oidcBrowserTestAudience},
+				IssuedAt:  jwt.NewNumericDate(provider.now),
+				ExpiresAt: jwt.NewNumericDate(provider.now.Add(5 * time.Minute)),
+			},
+			Nonce: nonce,
 		},
-		Nonce: nonce,
+		AccessTokenHash: accessTokenHash,
 	})
 	response.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(response).Encode(auth.OIDCTokenResponse{
@@ -155,6 +174,17 @@ func (provider *oidcBrowserTestProvider) setNonce(nonce string) {
 	provider.mu.Lock()
 	defer provider.mu.Unlock()
 	provider.nonce = nonce
+}
+
+func (provider *oidcBrowserTestProvider) setAccessTokenHash(accessTokenHash string) {
+	provider.mu.Lock()
+	defer provider.mu.Unlock()
+	provider.accessTokenHash = accessTokenHash
+}
+
+func oidcBrowserAccessTokenHash(accessToken string) string {
+	digest := sha256.Sum256([]byte(accessToken))
+	return base64.RawURLEncoding.EncodeToString(digest[:sha256.Size/2])
 }
 
 func (provider *oidcBrowserTestProvider) failExchange(status int, body string) {
@@ -764,6 +794,33 @@ func TestOIDCBrowserRejectsMissingOrMismatchedCookieAndConsumesState(t *testing.
 	}
 	if provider.exchanges() != 0 {
 		t.Fatalf("OIDC cookie failures exchanged %d codes", provider.exchanges())
+	}
+}
+
+func TestOIDCBrowserRejectsMismatchedAccessTokenHash(t *testing.T) {
+	provider := newOIDCBrowserTestProvider(t)
+	const privateHash = "provider-private-at-hash"
+	provider.setAccessTokenHash(privateHash)
+	var logs bytes.Buffer
+	app := newOIDCBrowserTestApp(t, provider, &logs)
+	start := startOIDCBrowser(t, app)
+	provider.setNonce(start.nonce)
+
+	response := oidcBrowserCallback(t, app, start.state, "mismatched-hash-code", start.cookie, "")
+	envelope := decodeEnvelope(t, response)
+	response.Body.Close()
+	if response.StatusCode != http.StatusBadRequest || envelope.Msg != "browser authentication callback is invalid" {
+		t.Fatalf("at_hash rejection = %d/%#v", response.StatusCode, envelope)
+	}
+	replay := oidcBrowserCallback(t, app, start.state, "replay-code", start.cookie, "")
+	replay.Body.Close()
+	if replay.StatusCode != http.StatusBadRequest {
+		t.Fatalf("at_hash consumed-state replay status = %d", replay.StatusCode)
+	}
+	for _, privateValue := range []string{privateHash, start.state, start.nonce, start.cookie.Value, "mismatched-hash-code"} {
+		if strings.Contains(logs.String(), privateValue) || strings.Contains(envelope.Msg, privateValue) {
+			t.Fatalf("at_hash failure leaked private value %q: logs=%s", privateValue, logs.String())
+		}
 	}
 }
 

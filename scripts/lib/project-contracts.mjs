@@ -3,10 +3,14 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
-  writeFileSync,
 } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
+import { writeFileAtomicallySync } from './atomic-output.mjs';
+import {
+  maximumCommandDurationMs,
+  runBoundedCommand,
+} from './bounded-command.mjs';
 
 export const PROJECT_CONTRACT_MANIFEST = 'contracts/projects.json';
 export const MANAGED_SERVICE_ROOTS = ['Solutions', 'Services'];
@@ -14,6 +18,8 @@ const SHA256 = /^[a-f0-9]{40}$/;
 const PROJECT_NAME = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 const REFS = /^refs\/(heads|tags)\/[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 const DOCUMENT_PATH = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/;
+const CONTROL_CHARACTER = /[\u0000-\u001f\u007f]/;
+const monotonicNow = () => performance.now();
 
 function isObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -62,7 +68,27 @@ function normalizeRepository(value) {
   if (value.startsWith('-')) {
     fail('contract.repository cannot start with a dash');
   }
-  if (/^https:\/\//i.test(value) || /^ssh:\/\//i.test(value) || /^git@[^:]+:.+/.test(value)) {
+  if (CONTROL_CHARACTER.test(value)) {
+    fail('contract.repository cannot contain control characters');
+  }
+  if (/^https:\/\//i.test(value)) {
+    let repositoryURL;
+    try {
+      repositoryURL = new URL(value);
+    } catch {
+      fail('contract.repository must contain a valid HTTPS Git URL');
+    }
+    if (
+      repositoryURL.username ||
+      repositoryURL.password ||
+      repositoryURL.search ||
+      repositoryURL.hash
+    ) {
+      fail('contract.repository HTTPS URL cannot contain credentials, a query, or a fragment');
+    }
+    return value;
+  }
+  if (/^ssh:\/\//i.test(value) || /^git@[^:]+:.+/.test(value)) {
     return value;
   }
   if (path.isAbsolute(value) || value.startsWith('./') || value.startsWith('../')) {
@@ -179,18 +205,67 @@ export function selectProject(manifest, selector = 'Example') {
   return match;
 }
 
-function git(repositoryRoot, args, { allowFailure = false } = {}) {
-  const result = spawnSync('git', args, {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
-  });
-  if (result.status !== 0 && !allowFailure) {
-    const detail = (result.stderr || result.stdout || '').trim();
-    fail(`git ${args[0] ?? ''} failed${detail ? `: ${detail}` : ''}`);
+function validateProjectContractGitDuration(timeoutMs) {
+  if (
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs <= 0 ||
+    timeoutMs > maximumCommandDurationMs
+  ) {
+    throw new RangeError(
+      `Project contract Git timeout must be a safe integer between 1 and ${maximumCommandDurationMs} milliseconds`,
+    );
   }
-  return result;
+}
+
+function readProjectContractGitClock(now) {
+  const timestamp = now();
+  if (!Number.isFinite(timestamp)) {
+    throw new TypeError('Project contract Git clock must return a finite number');
+  }
+  return timestamp;
+}
+
+function remainingProjectContractGitDuration(deadline, timeoutMs, now) {
+  const remaining = Math.min(timeoutMs, Math.ceil(deadline - readProjectContractGitClock(now)));
+  return remaining > 0 ? remaining : null;
+}
+
+export function createProjectContractGitRunner(repositoryRoot, {
+  run = runBoundedCommand,
+  now = monotonicNow,
+  timeoutMs = maximumCommandDurationMs,
+} = {}) {
+  validateProjectContractGitDuration(timeoutMs);
+  if (typeof run !== 'function' || typeof now !== 'function') {
+    throw new TypeError('Project contract Git runner and clock must be functions');
+  }
+  const deadline = readProjectContractGitClock(now) + timeoutMs;
+  const environment = {
+    ...process.env,
+    GIT_TERMINAL_PROMPT: '0',
+    GCM_INTERACTIVE: 'Never',
+  };
+
+  return (args, { allowFailure = false } = {}) => {
+    const remainingTimeoutMs = remainingProjectContractGitDuration(deadline, timeoutMs, now);
+    let output = null;
+    if (remainingTimeoutMs !== null) {
+      try {
+        output = run('git', args, {
+          cwd: repositoryRoot,
+          env: environment,
+          raw: true,
+          timeoutMs: remainingTimeoutMs,
+        });
+      } catch {
+        output = null;
+      }
+    }
+    if (output === null && !allowFailure) {
+      fail(`git ${args[0] ?? 'command'} failed within the ${timeoutMs} ms total budget`);
+    }
+    return output;
+  };
 }
 
 function cacheRoot(repositoryRoot, entry) {
@@ -209,10 +284,10 @@ function materializedPath(repositoryRoot, entry) {
   );
 }
 
-function ensureCommit(repositoryRoot, entry, { fetchRemote, verifyRef = true } = {}) {
+function ensureCommit(repositoryRoot, entry, gitRunner, { fetchRemote, verifyRef = true } = {}) {
   const cache = cacheRoot(repositoryRoot, entry);
   if (fetchRemote && verifyRef) {
-    const resolved = resolveRef(repositoryRoot, entry.contract.repository, entry.contract.ref);
+    const resolved = resolveRef(repositoryRoot, entry.contract.repository, entry.contract.ref, { gitRunner });
     if (resolved !== entry.contract.resolvedCommit) {
       fail(`${entry.projectPath} ${entry.contract.ref} resolves to ${resolved}, expected pinned ${entry.contract.resolvedCommit}`);
     }
@@ -222,28 +297,35 @@ function ensureCommit(repositoryRoot, entry, { fetchRemote, verifyRef = true } =
       fail(`${entry.projectPath} external contract is not materialized; run yarn contracts:materialize --project ${entry.name} --fetch`);
     }
     mkdirSync(path.dirname(cache), { recursive: true });
-    git(repositoryRoot, ['init', '--bare', cache]);
+    gitRunner(['init', '--bare', cache]);
   }
-  const check = git(repositoryRoot, ['--git-dir', cache, 'cat-file', '-e', `${entry.contract.resolvedCommit}^{commit}`], { allowFailure: true });
-  if (check.status !== 0 && fetchRemote) {
+  const check = gitRunner(['--git-dir', cache, 'cat-file', '-e', `${entry.contract.resolvedCommit}^{commit}`], { allowFailure: true });
+  if (check === null && fetchRemote) {
     const fetchTarget = verifyRef ? entry.contract.ref : entry.contract.resolvedCommit;
-    git(repositoryRoot, ['--git-dir', cache, 'fetch', '--no-tags', '--depth=1', entry.contract.repository, fetchTarget]);
+    gitRunner(['--git-dir', cache, 'fetch', '--no-tags', '--depth=1', entry.contract.repository, fetchTarget]);
   }
-  const verified = git(repositoryRoot, ['--git-dir', cache, 'cat-file', '-e', `${entry.contract.resolvedCommit}^{commit}`], { allowFailure: true });
-  if (verified.status !== 0) {
+  const verified = gitRunner(['--git-dir', cache, 'cat-file', '-e', `${entry.contract.resolvedCommit}^{commit}`], { allowFailure: true });
+  if (verified === null) {
     fail(`${entry.projectPath} contract commit ${entry.contract.resolvedCommit} is unavailable locally`);
   }
   return cache;
 }
 
-export function resolveProjectDocument(repositoryRoot, entry, { fetchRemote = false, verifyRef = true, gitRef = null } = {}) {
+export function resolveProjectDocument(repositoryRoot, entry, {
+  fetchRemote = false,
+  verifyRef = true,
+  gitRef = null,
+  gitRunner = null,
+  writeOutput = writeFileAtomicallySync,
+} = {}) {
   const contract = entry.contract;
+  const runGit = () => gitRunner ?? createProjectContractGitRunner(repositoryRoot);
   if (contract.repository === 'workspace') {
     const workspacePath = path.resolve(repositoryRoot, contract.document);
     if (gitRef) {
-      const result = git(repositoryRoot, ['show', `${gitRef}:${contract.document}`]);
+      const result = runGit()(['show', `${gitRef}:${contract.document}`]);
       return {
-        content: result.stdout,
+        content: result,
         source: `${gitRef}:${contract.document}`,
         path: workspacePath,
         commit: null,
@@ -259,30 +341,33 @@ export function resolveProjectDocument(repositoryRoot, entry, { fetchRemote = fa
       commit: contract.resolvedCommit,
     };
   }
-  const cache = ensureCommit(repositoryRoot, entry, { fetchRemote, verifyRef });
-  const result = git(repositoryRoot, ['--git-dir', cache, 'show', `${contract.resolvedCommit}:${contract.document}`]);
+  const projectGitRunner = runGit();
+  const cache = ensureCommit(repositoryRoot, entry, projectGitRunner, { fetchRemote, verifyRef });
+  const result = projectGitRunner(['--git-dir', cache, 'show', `${contract.resolvedCommit}:${contract.document}`]);
   const target = materializedPath(repositoryRoot, entry);
   mkdirSync(path.dirname(target), { recursive: true });
-  if (!existsSync(target) || readFileSync(target, 'utf8') !== result.stdout) {
-    writeFileSync(target, result.stdout, 'utf8');
+  if (!existsSync(target) || readFileSync(target, 'utf8') !== result) {
+    writeOutput(target, result, { encoding: 'utf8' });
   }
   return {
-    content: result.stdout,
+    content: result,
     source: `${contract.repository}@${contract.ref}#${contract.resolvedCommit}:${contract.document}`,
     path: target,
     commit: contract.resolvedCommit,
   };
 }
 
-export function resolveRef(repositoryRoot, repository, ref) {
+export function resolveRef(repositoryRoot, repository, ref, { gitRunner = null } = {}) {
   if (repository === 'workspace') {
     return null;
   }
   if (!REFS.test(ref)) {
     fail(`cannot resolve non-pinned ref ${ref}`);
   }
-  const result = git(repositoryRoot, ['ls-remote', repository, ref, `${ref}^{}`]);
-  const commits = result.stdout
+  const result = (gitRunner ?? createProjectContractGitRunner(repositoryRoot))(
+    ['ls-remote', repository, ref, `${ref}^{}`],
+  );
+  const commits = result
     .trim()
     .split(/\r?\n/)
     .filter(Boolean)
@@ -314,11 +399,19 @@ export function assertOpenAPIDocument(content, source) {
   return document;
 }
 
-export function validateProjectContracts(repositoryRoot, { project = null, fetchRemote = false } = {}) {
+export function validateProjectContracts(repositoryRoot, {
+  project = null,
+  fetchRemote = false,
+  gitRunner = null,
+} = {}) {
   const manifest = readProjectManifest(repositoryRoot);
   const selected = project ? [selectProject(manifest, project)] : manifest.projects;
+  const projectGitRunner = gitRunner ?? createProjectContractGitRunner(repositoryRoot);
   const resolved = selected.map((entry) => {
-    const document = resolveProjectDocument(repositoryRoot, entry, { fetchRemote });
+    const document = resolveProjectDocument(repositoryRoot, entry, {
+      fetchRemote,
+      gitRunner: projectGitRunner,
+    });
     assertOpenAPIDocument(document.content, document.source);
     return { entry, ...document };
   });

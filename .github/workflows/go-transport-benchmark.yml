@@ -11,6 +11,7 @@ on:
       - "scripts/transport-benchmark-baseline.mjs"
       - "scripts/transport-benchmark-report.mjs"
       - "scripts/transport-soak-report.mjs"
+      - "scripts/lib/transport-benchmark-stability.mjs"
       - "scripts/evidence-manifest.mjs"
       - "scripts/evidence-verify.mjs"
       - "__test__/node/transport-benchmark-baseline.test.mjs"
@@ -28,6 +29,7 @@ on:
       - "scripts/transport-benchmark-baseline.mjs"
       - "scripts/transport-benchmark-report.mjs"
       - "scripts/transport-soak-report.mjs"
+      - "scripts/lib/transport-benchmark-stability.mjs"
       - "scripts/evidence-manifest.mjs"
       - "scripts/evidence-verify.mjs"
       - "__test__/node/transport-benchmark-baseline.test.mjs"
@@ -196,6 +198,12 @@ jobs:
           --output .temp/transport-benchmark/baseline.json
           --provenance .temp/transport-benchmark/baseline-source.json
           --reason pull_request_not_eligible
+
+      - name: Verify prepared trusted benchmark baseline
+        run: >-
+          node scripts/transport-benchmark-baseline.mjs verify
+          --output .temp/transport-benchmark/baseline.json
+          --provenance .temp/transport-benchmark/baseline-source.json
 
       - name: Capture runner environment
         shell: bash

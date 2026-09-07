@@ -34,8 +34,8 @@ The event record must not contain a submitted username, password, authorization 
 | `login` | `limited` | `rate_limited` | the authentication limiter rejected the request |
 | `login` | `success` | `oidc_started` | a bounded PKCE authorization request and state-binding cookie were created |
 | `login` | `failure` | `oidc_start_failed` | bounded authorization state could not be created; raw errors are omitted |
-| `login` | `success` | `oidc_callback_valid` | state/cookie, exchange, nonce and matching token subjects were verified; tokens are omitted |
-| `login` | `failure` | `oidc_callback_invalid` | state/cookie/provider callback, nonce, claims or subject binding failed; callback values are omitted |
+| `login` | `success` | `oidc_callback_valid` | state/cookie, exchange, nonce, optional `at_hash` and matching token subjects were verified; tokens are omitted |
+| `login` | `failure` | `oidc_callback_invalid` | state/cookie/provider callback, nonce, `at_hash`, claims or subject binding failed; callback values are omitted |
 | `login` | `failure` | `oidc_exchange_failed` | the bounded token exchange failed; provider status, body and errors are omitted |
 | `login` | `success` | `oidc_session_started` | verified callback claims established an opaque application session; raw session/CSRF values are omitted |
 | `login` | `failure` | `oidc_session_failed` | application session creation failed; store errors and credentials are omitted |

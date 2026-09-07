@@ -8,7 +8,6 @@ import {
   readdirSync,
   readFileSync,
   readSync,
-  writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -45,6 +44,7 @@ import {
   optionalEvidenceInputPaths,
 } from './lib/evidence-manifest-contract.mjs';
 import { runBoundedCommand, summarizeGitStatus } from './lib/bounded-command.mjs';
+import { writeFileAtomicallySync } from './lib/atomic-output.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -962,7 +962,7 @@ const manifest = {
     },
     oidcProvider: {
       status: 'not_recorded',
-      reason: 'local JWKS, bounded PKCE/state/nonce discovery/token exchange, hash-keyed cross-client authorization-request storage and atomic consume, Secure HttpOnly SameSite state-cookie callback, hash-only opaque browser session/CSRF/logout, subject-owned tenant/resource authorization, refresh-session tests, and dual-client miniredis stores prove repository behavior only; no target identity provider, MFA, device session inventory, production policy/relationship store, production Redis HA, or production centralized revocation evidence was found',
+      reason: 'local JWKS, bounded PKCE/state/nonce discovery/token exchange, optional at_hash access-token binding, hash-keyed cross-client authorization-request storage and atomic consume, Secure HttpOnly SameSite state-cookie callback, hash-only opaque browser session/CSRF/logout, subject-owned tenant/resource authorization, refresh-session tests, and dual-client miniredis stores prove repository behavior only; no target identity provider, MFA, device session inventory, production policy/relationship store, production Redis HA, or production centralized revocation evidence was found',
     },
     signedRelease: {
       status: signedReleaseStatus,
@@ -984,5 +984,5 @@ const manifest = {
   },
 };
 
-writeFileSync(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+writeFileAtomicallySync(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(`Evidence manifest written to ${relativePath(outputPath)}`);

@@ -48,6 +48,10 @@ var (
 // callers do not need a racy existence check before returning a conflict.
 var ErrOptimisticConflict = errors.New("optimistic update conflict")
 
+// ErrOutboxEnqueue reports that a caller-owned transactional outbox statement
+// did not prove that it inserted exactly one event row.
+var ErrOutboxEnqueue = errors.New("outbox enqueue did not affect exactly one row")
+
 // Config defines finite PostgreSQL operation, transaction, and connection-pool
 // budgets. Zero values select conservative defaults; negative values are
 // rejected.
@@ -336,6 +340,17 @@ func (transaction *Tx) ExecVersioned(ctx context.Context, statement string, argu
 	return execVersioned(ctx, transaction.tx, transaction.tracer, transaction.operationTimeout, statement, arguments...)
 }
 
+// EnqueueOutbox executes a caller-owned outbox insert within the current
+// transaction and requires exactly one affected row. Callers own the schema,
+// SQL, stable event identifier, payload, and dispatcher. This method does not
+// provide broker settlement or exactly-once delivery.
+func (transaction *Tx) EnqueueOutbox(ctx context.Context, statement string, arguments ...any) error {
+	if err := transaction.validate(); err != nil {
+		return err
+	}
+	return enqueueOutbox(ctx, transaction.tx, transaction.tracer, transaction.operationTimeout, statement, arguments...)
+}
+
 // Query consumes rows within the transaction and operation budgets.
 func (transaction *Tx) Query(ctx context.Context, statement string, arguments []any, consume func(*sql.Rows) error) error {
 	if err := transaction.validate(); err != nil {
@@ -390,14 +405,10 @@ func execVersioned(ctx context.Context, target executor, tracer trace.Tracer, ti
 	ctx, span := startSpan(ctx, tracer, "UPDATE")
 	result, err := target.ExecContext(ctx, statement, arguments...)
 	if err == nil {
-		if result == nil {
-			err = errRowsAffectedUnavailable
-		} else {
-			var affected int64
-			affected, err = result.RowsAffected()
+		var affected int64
+		affected, err = rowsAffected(result)
+		if err == nil {
 			switch {
-			case err != nil:
-				err = errors.Join(errRowsAffectedUnavailable, err)
 			case affected == 0:
 				err = ErrOptimisticConflict
 			case affected != 1:
@@ -407,6 +418,44 @@ func execVersioned(ctx context.Context, target executor, tracer trace.Tracer, ti
 	}
 	finishSpan(ctx, span, err)
 	return err
+}
+
+func enqueueOutbox(ctx context.Context, target executor, tracer trace.Tracer, timeout time.Duration, statement string, arguments ...any) error {
+	ctx, cancel, err := boundedContext(ctx, timeout)
+	if err != nil {
+		return err
+	}
+	defer cancel()
+	ctx, span := startSpan(ctx, tracer, "OUTBOX")
+	result, err := target.ExecContext(ctx, statement, arguments...)
+	if err == nil {
+		affected, rowsErr := rowsAffected(result)
+		switch {
+		case rowsErr != nil:
+			err = errors.Join(ErrOutboxEnqueue, rowsErr)
+		case affected != 1:
+			err = ErrOutboxEnqueue
+		}
+	}
+	finishSpan(ctx, span, err)
+	return err
+}
+
+func rowsAffected(result sql.Result) (affected int64, err error) {
+	if result == nil {
+		return 0, errRowsAffectedUnavailable
+	}
+	defer func() {
+		if recover() != nil {
+			affected = 0
+			err = errRowsAffectedUnavailable
+		}
+	}()
+	affected, err = result.RowsAffected()
+	if err != nil {
+		return 0, errors.Join(errRowsAffectedUnavailable, err)
+	}
+	return affected, nil
 }
 
 func query(ctx context.Context, target queryer, tracer trace.Tracer, timeout time.Duration, operation, statement string, arguments []any, consume func(*sql.Rows) error) (err error) {

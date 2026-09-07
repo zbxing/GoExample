@@ -5,11 +5,19 @@ import {
   mkdirSync,
   readFileSync,
   unlinkSync,
-  writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  writeFileAtomicallySync,
+  writeFilesWithRollbackSync,
+} from './lib/atomic-output.mjs';
 import { validateEnvironmentFingerprint } from './lib/transport-benchmark-environment.mjs';
+import {
+  transportBenchmarkExpectedRounds,
+  verifyTransportBenchmarkRoundStabilityMetadata,
+  verifyTransportBenchmarkRoundStabilityResult,
+} from './lib/transport-benchmark-stability.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -24,6 +32,10 @@ const unavailableReasons = new Set([
   'artifact_download_failed',
   'pull_request_not_eligible',
   'report_schema_migration',
+]);
+const recordedUnavailableReasons = new Set([
+  ...unavailableReasons,
+  'compatible_candidate_missing',
 ]);
 const workloadNames = [
   'steady-c1',
@@ -70,6 +82,22 @@ function fail(message) {
   process.exit(1);
 }
 
+function validateRoundStabilityMetadata(value, label) {
+  try {
+    verifyTransportBenchmarkRoundStabilityMetadata(value, label);
+  } catch (error) {
+    fail(error.message);
+  }
+}
+
+function validateRoundStabilityResult(result, label) {
+  try {
+    verifyTransportBenchmarkRoundStabilityResult(result, label);
+  } catch (error) {
+    fail(error.message);
+  }
+}
+
 function parseArguments(command) {
   const allowed = command === 'prepare'
     ? new Set([
@@ -85,9 +113,11 @@ function parseArguments(command) {
     ])
     : command === 'unavailable'
       ? new Set(['--output', '--provenance', '--reason'])
-      : null;
+      : command === 'verify'
+        ? new Set(['--output', '--provenance'])
+        : null;
   if (!allowed) {
-    fail('command must be prepare or unavailable');
+    fail('command must be prepare, unavailable, or verify');
   }
   const options = {};
   const args = process.argv.slice(3);
@@ -139,7 +169,11 @@ function requireRegularOutput(filePath, label) {
 function writeJSON(filePath, value) {
   requireRegularOutput(filePath, 'provenance output');
   mkdirSync(path.dirname(filePath), { recursive: true });
-  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+  writeFileAtomicallySync(filePath, encodeJSON(value));
+}
+
+function encodeJSON(value) {
+  return `${JSON.stringify(value, null, 2)}\n`;
 }
 
 function removeBaseline(filePath) {
@@ -150,9 +184,10 @@ function removeBaseline(filePath) {
 }
 
 function validateCandidate(candidate) {
-  if (candidate.schemaVersion !== 5 || candidate.scope !== reportScope) {
-    fail('candidate must be a schemaVersion 5 transport capacity and scenario report');
+  if (candidate.schemaVersion !== 6 || candidate.scope !== reportScope) {
+    fail('candidate must be a schemaVersion 6 transport capacity and scenario report');
   }
+  validateRoundStabilityMetadata(candidate.roundStability, 'candidate roundStability');
   try {
     validateEnvironmentFingerprint(candidate.environmentFingerprint, { requireGitHubActions: true });
   } catch (error) {
@@ -164,6 +199,26 @@ function validateCandidate(candidate) {
   if (!candidate.capacity || !Array.isArray(candidate.capacity.workloads)) {
     fail('candidate capacity workloads are missing');
   }
+  if (!candidate.latency || candidate.latency.payloadBytes !== candidate.capacity.payloadBytes) {
+    fail('candidate latency and capacity payloadBytes must match');
+  }
+  for (const transport of capacityTransports) {
+    const result = candidate.latency.results?.[transport];
+    const median = result?.median;
+    validateRoundStabilityResult(result, `candidate latency ${transport}`);
+    if (
+      !median
+      || !(median.throughputRps > 0)
+      || !Number.isInteger(median.p50Nanos)
+      || median.p50Nanos < 1
+      || !Number.isInteger(median.p95Nanos)
+      || median.p95Nanos < 1
+      || !Number.isInteger(median.p99Nanos)
+      || median.p99Nanos < 1
+    ) {
+      fail(`candidate is missing a valid latency ${transport} median`);
+    }
+  }
   const names = candidate.capacity.workloads.map((workload) => workload?.name);
   if (
     names.length !== workloadNames.length
@@ -174,10 +229,14 @@ function validateCandidate(candidate) {
   }
   for (const workload of candidate.capacity.workloads) {
     for (const transport of capacityTransports) {
-      const median = workload.results?.[transport]?.median;
+      const result = workload.results?.[transport];
+      const median = result?.median;
+      validateRoundStabilityResult(result, `candidate capacity ${workload.name}/${transport}`);
       if (
         !median
         || !(median.throughputRps > 0)
+        || !Number.isInteger(median.p50Nanos)
+        || median.p50Nanos < 1
         || !Number.isInteger(median.p95Nanos)
         || median.p95Nanos < 1
         || !Number.isInteger(median.p99Nanos)
@@ -213,8 +272,12 @@ function validateCandidate(candidate) {
     for (const transport of scenarioTransports) {
       const result = candidateScenario.results?.[transport];
       const median = result?.median;
+      validateRoundStabilityResult(
+        result,
+        `candidate scenario ${candidateScenario.name}/${transport}`,
+      );
       if (
-        result?.rounds !== 5
+        result?.rounds !== transportBenchmarkExpectedRounds
         || !median
         || !(median.throughputRps > 0)
         || !Number.isInteger(median.p50Nanos)
@@ -259,6 +322,109 @@ function validateSource(options) {
   }
 }
 
+function validateRecordedSource(source) {
+  if (!source || typeof source !== 'object' || Array.isArray(source)) {
+    fail('provenance source must be an object');
+  }
+  if (
+    typeof source.repository !== 'string'
+    || !Number.isSafeInteger(source.runId)
+    || source.runId < 1
+    || typeof source.headSha !== 'string'
+    || typeof source.headBranch !== 'string'
+    || typeof source.event !== 'string'
+    || typeof source.artifactName !== 'string'
+  ) {
+    fail('provenance source fields are invalid');
+  }
+  validateSource({
+    '--repository': source.repository,
+    '--run-id': String(source.runId),
+    '--head-sha': source.headSha,
+    '--head-branch': source.headBranch,
+    '--event': source.event,
+    '--artifact-name': source.artifactName,
+  });
+  if (source.workflow !== workflow) {
+    fail('provenance source workflow is invalid');
+  }
+  const expectedURL = `https://github.com/${source.repository}/actions/runs/${source.runId}`;
+  if (source.url !== expectedURL) {
+    fail('provenance source URL is invalid');
+  }
+}
+
+function readJSON(filePath, label) {
+  if (!existsSync(filePath)) {
+    fail(`${label} does not exist`);
+  }
+  const stat = lstatSync(filePath);
+  if (!stat.isFile() || stat.size < 1 || stat.size > maximumCandidateBytes) {
+    fail(`${label} must be a non-empty regular file no larger than ${maximumCandidateBytes} bytes`);
+  }
+  const raw = readFileSync(filePath, 'utf8');
+  try {
+    return { raw, stat, value: JSON.parse(raw) };
+  } catch (error) {
+    fail(`${label} is not valid JSON: ${error.message}`);
+  }
+}
+
+function verifySelection(outputPath, provenancePath) {
+  requireRegularOutput(outputPath, 'baseline output');
+  requireRegularOutput(provenancePath, 'provenance output');
+  const provenance = readJSON(provenancePath, 'provenance').value;
+  if (provenance.schemaVersion !== 1) {
+    fail('provenance schemaVersion must be 1');
+  }
+  if (provenance.status === 'not_available') {
+    if (!recordedUnavailableReasons.has(provenance.reason)) {
+      fail('provenance not_available reason is invalid');
+    }
+    if (existsSync(outputPath)) {
+      fail('not_available provenance must not have a baseline output');
+    }
+    if (provenance.source !== undefined) {
+      validateRecordedSource(provenance.source);
+    }
+    console.log(`Transport benchmark baseline verified as not available: ${provenance.reason}`);
+    return;
+  }
+  if (provenance.status !== 'selected') {
+    fail('provenance status must be selected or not_available');
+  }
+  validateRecordedSource(provenance.source);
+  const baseline = readJSON(outputPath, 'baseline');
+  validateCandidate(baseline.value);
+  const candidate = provenance.candidate;
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    fail('selected provenance candidate must be an object');
+  }
+  if (typeof candidate.input !== 'string' || candidate.input.length === 0) {
+    fail('selected provenance candidate input is invalid');
+  }
+  requirePath(candidateRoot, candidate.input, 'provenance candidate input');
+  const expectedSha256 = createHash('sha256').update(baseline.raw).digest('hex');
+  if (candidate.output !== relativePath(outputPath)) {
+    fail('selected provenance candidate output does not match the baseline path');
+  }
+  if (candidate.bytes !== baseline.stat.size) {
+    fail('selected provenance candidate byte count does not match the baseline');
+  }
+  if (candidate.sha256 !== expectedSha256) {
+    fail('selected provenance candidate sha256 does not match the baseline');
+  }
+  if (
+    candidate.reportSchemaVersion !== baseline.value.schemaVersion
+    || candidate.reportScope !== baseline.value.scope
+    || candidate.generatedAt !== baseline.value.generatedAt
+    || candidate.environmentFingerprintSha256 !== baseline.value.environmentFingerprint.sha256
+  ) {
+    fail('selected provenance candidate metadata does not match the baseline');
+  }
+  console.log(`Transport benchmark baseline selection verified for workflow run ${provenance.source.runId}`);
+}
+
 function unavailable(outputPath, provenancePath, reason, source = undefined) {
   removeBaseline(outputPath);
   writeJSON(provenancePath, {
@@ -275,7 +441,8 @@ function prepare(options) {
   const candidatePath = requirePath(candidateRoot, options['--candidate'], 'candidate');
   const outputPath = requirePath(benchmarkRoot, options['--output'], 'baseline output');
   const provenancePath = requirePath(benchmarkRoot, options['--provenance'], 'provenance output');
-  removeBaseline(outputPath);
+  requireRegularOutput(outputPath, 'baseline output');
+  requireRegularOutput(provenancePath, 'provenance output');
   const source = {
     repository: options['--repository'],
     workflow,
@@ -301,14 +468,12 @@ function prepare(options) {
   } catch (error) {
     fail(`candidate is not valid JSON: ${error.message}`);
   }
-  if (candidate.schemaVersion === 4 && candidate.scope === reportScope) {
+  if (candidate.schemaVersion === 5 && candidate.scope === reportScope) {
     unavailable(outputPath, provenancePath, 'report_schema_migration', source);
     return;
   }
   validateCandidate(candidate);
-  mkdirSync(path.dirname(outputPath), { recursive: true });
-  writeFileSync(outputPath, raw, 'utf8');
-  writeJSON(provenancePath, {
+  const provenance = {
     schemaVersion: 1,
     status: 'selected',
     source,
@@ -322,7 +487,13 @@ function prepare(options) {
       generatedAt: candidate.generatedAt,
       environmentFingerprintSha256: candidate.environmentFingerprint.sha256,
     },
-  });
+  };
+  mkdirSync(path.dirname(outputPath), { recursive: true });
+  mkdirSync(path.dirname(provenancePath), { recursive: true });
+  writeFilesWithRollbackSync([
+    { outputPath, data: raw },
+    { outputPath: provenancePath, data: encodeJSON(provenance) },
+  ]);
   console.log(`Transport benchmark baseline prepared from workflow run ${source.runId}`);
 }
 
@@ -330,7 +501,7 @@ const command = process.argv[2];
 const options = parseArguments(command);
 if (command === 'prepare') {
   prepare(options);
-} else {
+} else if (command === 'unavailable') {
   const provenancePath = requirePath(
     benchmarkRoot,
     options['--provenance'],
@@ -341,4 +512,12 @@ if (command === 'prepare') {
   }
   const outputPath = requirePath(benchmarkRoot, options['--output'], 'baseline output');
   unavailable(outputPath, provenancePath, options['--reason']);
+} else {
+  const outputPath = requirePath(benchmarkRoot, options['--output'], 'baseline output');
+  const provenancePath = requirePath(
+    benchmarkRoot,
+    options['--provenance'],
+    'provenance output',
+  );
+  verifySelection(outputPath, provenancePath);
 }

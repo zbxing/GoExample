@@ -6,11 +6,18 @@ import {
   compareEnvironmentFingerprints,
   validateEnvironmentFingerprint,
 } from './lib/transport-benchmark-environment.mjs';
+import {
+  createTransportBenchmarkRoundStabilityMetadata,
+  summarizeTransportBenchmarkRoundStability,
+  transportBenchmarkExpectedRounds,
+  verifyTransportBenchmarkRoundStabilityMetadata,
+  verifyTransportBenchmarkRoundStabilityResult,
+} from './lib/transport-benchmark-stability.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
 const evidenceRoot = path.join(repositoryRoot, '.temp', 'transport-benchmark');
-const expectedRounds = 5;
+const expectedRounds = transportBenchmarkExpectedRounds;
 const capacityTransports = ['fiber', 'net-http', 'framework-net-http'];
 const scenarioTransports = ['fiber', 'framework-net-http'];
 const supportedTransports = new Set([...capacityTransports, ...scenarioTransports]);
@@ -66,6 +73,30 @@ const expectedScenarioNames = scenarioWorkloads.map((scenario) => scenario.name)
 function fail(message) {
   console.error(`Transport benchmark report: ${message}`);
   process.exit(1);
+}
+
+function summarizeRoundStability(measurements, label) {
+  try {
+    return summarizeTransportBenchmarkRoundStability(measurements, label);
+  } catch (error) {
+    fail(error.message);
+  }
+}
+
+function verifyRoundStabilityMetadata(value, label) {
+  try {
+    verifyTransportBenchmarkRoundStabilityMetadata(value, label);
+  } catch (error) {
+    fail(error.message);
+  }
+}
+
+function verifyRoundStabilityResult(result, label) {
+  try {
+    verifyTransportBenchmarkRoundStabilityResult(result, label);
+  } catch (error) {
+    fail(error.message);
+  }
 }
 
 function parseArguments() {
@@ -216,6 +247,7 @@ function summarizeLatency(measurements) {
           p95Nanos: median(group, 'p95Nanos'),
           p99Nanos: median(group, 'p99Nanos'),
         },
+        stability: summarizeRoundStability(group, `latency ${transport}`),
       }];
     }),
   );
@@ -227,7 +259,7 @@ function summarizeLatency(measurements) {
   };
 }
 
-function summarizeCapacityMeasurement(group) {
+function summarizeCapacityMeasurement(group, label) {
   const medianFields = [
     'throughputRps',
     'p50Nanos',
@@ -252,7 +284,11 @@ function summarizeCapacityMeasurement(group) {
     })),
     'value',
   );
-  return { rounds: group.length, median: summary };
+  return {
+    rounds: group.length,
+    median: summary,
+    stability: summarizeRoundStability(group, label),
+  };
 }
 
 function compare(fiber, netHTTP) {
@@ -383,7 +419,10 @@ function summarizeCapacity(measurements) {
     const results = Object.fromEntries(
       capacityTransports.map((transport) => [
         transport,
-        summarizeCapacityMeasurement(groups.get(`${workload.name}/${transport}`)),
+        summarizeCapacityMeasurement(
+          groups.get(`${workload.name}/${transport}`),
+          `capacity ${workload.name}/${transport}`,
+        ),
       ]),
     );
     return {
@@ -464,6 +503,10 @@ function summarizeScenarios(measurements) {
             p95Nanos: median(group, 'p95Nanos'),
             p99Nanos: median(group, 'p99Nanos'),
           },
+          stability: summarizeRoundStability(
+            group,
+            `scenario ${scenario.name}/${transport}`,
+          ),
         }];
       }));
       return {
@@ -498,9 +541,10 @@ function requireBaselineReport(baselinePath) {
   } catch (error) {
     fail(`baseline is not valid JSON: ${error.message}`);
   }
-  if (baseline.schemaVersion !== 5 || baseline.scope !== 'linux_loopback_combined_client_server_harness') {
-    fail('baseline must be a schemaVersion 5 transport capacity and scenario report');
+  if (baseline.schemaVersion !== 6 || baseline.scope !== 'linux_loopback_combined_client_server_harness') {
+    fail('baseline must be a schemaVersion 6 transport capacity and scenario report');
   }
+  verifyRoundStabilityMetadata(baseline.roundStability, 'baseline roundStability');
   try {
     validateEnvironmentFingerprint(baseline.environmentFingerprint, { requireGitHubActions: true });
   } catch (error) {
@@ -511,6 +555,18 @@ function requireBaselineReport(baselinePath) {
   }
   if (baseline.latency?.payloadBytes !== baseline.capacity.payloadBytes) {
     fail('baseline latency and capacity payloadBytes must match');
+  }
+  for (const transport of capacityTransports) {
+    const result = baseline.latency.results?.[transport];
+    verifyRoundStabilityResult(result, `baseline latency ${transport}`);
+    const latencyMedian = result?.median;
+    if (!latencyMedian || typeof latencyMedian !== 'object') {
+      fail(`baseline is missing latency ${transport} median`);
+    }
+    requireFiniteNumber(latencyMedian, 'throughputRps', { minimum: Number.MIN_VALUE });
+    for (const field of ['p50Nanos', 'p95Nanos', 'p99Nanos']) {
+      requireFiniteNumber(latencyMedian, field, { integer: true, minimum: 1 });
+    }
   }
   requireFiniteNumber(baseline.capacity, 'payloadBytes', { integer: true, minimum: 1 });
   const baselineWorkloadNames = baseline.capacity.workloads.map((workload) => workload?.name);
@@ -523,7 +579,9 @@ function requireBaselineReport(baselinePath) {
   }
   for (const workload of baseline.capacity.workloads) {
     for (const transport of capacityTransports) {
-      const median = workload.results?.[transport]?.median;
+      const result = workload.results?.[transport];
+      verifyRoundStabilityResult(result, `baseline capacity ${workload.name}/${transport}`);
+      const median = result?.median;
       if (!median || typeof median !== 'object') {
         fail(`baseline is missing ${workload.name}/${transport} median`);
       }
@@ -560,7 +618,11 @@ function requireBaselineReport(baselinePath) {
     });
     for (const transport of scenarioTransports) {
       const result = baselineScenario.results?.[transport];
-      if (result?.rounds !== expectedRounds || !result.median || typeof result.median !== 'object') {
+      verifyRoundStabilityResult(
+        result,
+        `baseline scenario ${baselineScenario.name}/${transport}`,
+      );
+      if (!result.median || typeof result.median !== 'object') {
         fail(`baseline is missing ${baselineScenario.name}/${transport} scenario median`);
       }
       requireFiniteNumber(result.median, 'throughputRps', { minimum: Number.MIN_VALUE });
@@ -711,11 +773,12 @@ try {
   fail(`environment fingerprint could not be captured: ${error.message}`);
 }
 const report = {
-  schemaVersion: 5,
+  schemaVersion: 6,
   generatedAt: new Date().toISOString(),
   scope: 'linux_loopback_combined_client_server_harness',
   source: { input: relativePath(options.input), expectedRounds },
   environmentFingerprint,
+  roundStability: createTransportBenchmarkRoundStabilityMetadata(),
   latency: summarizeLatency(latencyMeasurements),
   capacity: summarizeCapacity(capacityMeasurements),
   scenarios: summarizeScenarios(scenarioMeasurements),
@@ -733,6 +796,7 @@ const report = {
     'scenario workloads are fixed loopback synthetic contracts, not target payload, target identity provider, target dependency, or TLS edge evidence',
     'directional ratios are descriptive medians and require a successful remote artifact before a transport decision',
     'net-http is a minimal native migration baseline; framework-net-http measures the production Framework adapter and middleware path',
+    'the fixed 2.0 per-group max/min gate rejects extreme five-round dispersion but is not a confidence interval or production SLO',
   ],
 };
 

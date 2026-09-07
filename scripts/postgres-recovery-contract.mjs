@@ -2,12 +2,15 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   buildPostgresRecoveryChecksums,
   buildPostgresRecoveryEvidenceReport,
 } from './lib/postgres-recovery-evidence.mjs';
+import {
+  contractCommandMaximumOutputBytes,
+  createContractCommandRunner,
+} from './lib/contract-command.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -24,7 +27,6 @@ const backupContainerPath = `/tmp/goexample-recovery-${runID}.dump`;
 const backupHostPath = path.join(artifactDirectory, 'backup.dump');
 const rawRecoveryPath = path.join(artifactDirectory, 'recovery-raw.json');
 const recoveryReportPath = path.join(artifactDirectory, 'recovery-report.json');
-const maximumOutputBytes = 8 * 1024 * 1024;
 const contract = {
   schemaVersion: 1,
   scope: 'linux_docker_logical_backup_restore',
@@ -51,42 +53,12 @@ if (args.length > 0) {
   fail(`unknown argument: ${args[0]}`);
 }
 
+const runContractCommand = createContractCommandRunner({ cwd: repositoryRoot });
+
 function run(command, commandArgs, options = {}) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, commandArgs, {
-      cwd: repositoryRoot,
-      env: options.env ?? process.env,
-      shell: false,
-      windowsHide: true,
-      timeout: options.timeoutMs ?? 60_000,
-      killSignal: 'SIGKILL',
-    });
-    let stdout = '';
-    let stderr = '';
-    let outputExceeded = false;
-    const collect = (stream, chunk) => {
-      const next = stream + chunk;
-      if (Buffer.byteLength(next) > maximumOutputBytes) {
-        outputExceeded = true;
-        child.kill('SIGKILL');
-        return stream;
-      }
-      return next;
-    };
-    child.stdout.on('data', (chunk) => { stdout = collect(stdout, chunk); });
-    child.stderr.on('data', (chunk) => { stderr = collect(stderr, chunk); });
-    child.on('error', reject);
-    child.on('exit', (code, signal) => {
-      const status = outputExceeded || signal ? 1 : (code ?? 1);
-      const result = { status, signal: signal ?? null, stdout, stderr, outputExceeded };
-      if (status !== 0 && !options.allowFailure) {
-        const error = new Error(`${command} exited with code ${status}`);
-        error.result = result;
-        reject(error);
-        return;
-      }
-      resolve(result);
-    });
+  return runContractCommand(command, commandArgs, {
+    ...options,
+    maxOutputBytes: options.maxOutputBytes ?? contractCommandMaximumOutputBytes,
   });
 }
 

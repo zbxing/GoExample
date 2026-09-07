@@ -674,9 +674,6 @@ func TestConnectionConcurrencyRejectsExcessConnectionsOverTCP(t *testing.T) {
 	if err := connection.SetDeadline(time.Now().Add(time.Second)); err != nil {
 		t.Fatalf("set excess connection deadline: %v", err)
 	}
-	if _, err := fmt.Fprintf(connection, "GET /livez HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", address); err != nil {
-		t.Fatalf("write excess connection request: %v", err)
-	}
 	statusLine, err := bufio.NewReader(connection).ReadString('\n')
 	if err != nil {
 		t.Fatalf("read excess connection response: %v", err)

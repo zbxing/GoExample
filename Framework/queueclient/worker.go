@@ -3,6 +3,7 @@ package queueclient
 import (
 	"context"
 	"errors"
+	"math/rand/v2"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -95,9 +96,9 @@ type DeliveryLeaseObserver interface {
 	DeliveryLeaseExtensionFailed()
 }
 
-// DeliveryRetryConfig bounds reliable-delivery attempts, exponential backoff,
-// and acknowledgement/dead-letter callback duration. Zero values select
-// conservative defaults.
+// DeliveryRetryConfig bounds reliable-delivery attempts, exponential backoff
+// with positive jitter, and acknowledgement/dead-letter callback duration.
+// Zero values select conservative defaults.
 type DeliveryRetryConfig struct {
 	MaxAttempts            int
 	InitialBackoff         time.Duration
@@ -147,7 +148,7 @@ func (client *Client) MinimumDeliveryLease(config DeliveryRetryConfig, safetyMar
 			return 0, errInvalidLeaseBudget
 		}
 		if attempt < config.MaxAttempts {
-			total, ok = addDeliveryBudget(total, deliveryBackoff(config, attempt))
+			total, ok = addDeliveryBudget(total, maximumDeliveryBackoff(config, attempt))
 			if !ok {
 				return 0, errInvalidLeaseBudget
 			}
@@ -197,6 +198,7 @@ type WorkerGroup struct {
 	deliveryObserver DeliveryObserver
 	leaseObserver    DeliveryLeaseObserver
 	retry            DeliveryRetryConfig
+	randomInt64N     func(int64) int64
 
 	state  atomic.Uint32
 	mu     sync.Mutex
@@ -441,7 +443,7 @@ func (group *WorkerGroup) deliverySettlementPlan(
 			return delivery.DeadLetter, group.observeDeadLettered, nil
 		}
 		group.observeRetried()
-		if err := waitDeliveryBackoff(ctx, deliveryBackoff(group.retry, attempt)); err != nil {
+		if err := waitDeliveryBackoff(ctx, group.jitteredDeliveryBackoff(attempt)); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -575,6 +577,31 @@ func deliveryBackoff(config DeliveryRetryConfig, retry int) time.Duration {
 		return config.MaxBackoff
 	}
 	return delay
+}
+
+func (group *WorkerGroup) jitteredDeliveryBackoff(retry int) time.Duration {
+	randomInt64N := group.randomInt64N
+	if randomInt64N == nil {
+		randomInt64N = rand.Int64N
+	}
+	return deliveryRetryJitter(deliveryBackoff(group.retry, retry), group.retry.MaxBackoff, randomInt64N)
+}
+
+func deliveryRetryJitter(delay, maximum time.Duration, randomInt64N func(int64) int64) time.Duration {
+	window := deliveryRetryJitterWindow(delay, maximum)
+	if window <= 0 {
+		return delay
+	}
+	return delay + time.Duration(randomInt64N(int64(window)+1))
+}
+
+func maximumDeliveryBackoff(config DeliveryRetryConfig, retry int) time.Duration {
+	delay := deliveryBackoff(config, retry)
+	return delay + deliveryRetryJitterWindow(delay, config.MaxBackoff)
+}
+
+func deliveryRetryJitterWindow(delay, maximum time.Duration) time.Duration {
+	return min(delay/2, maximum-delay)
 }
 
 func addDeliveryBudget(total, duration time.Duration) (time.Duration, bool) {

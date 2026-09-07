@@ -1,9 +1,15 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
+import { writeFileAtomicallySync } from './atomic-output.mjs';
 import { assertOpenAPIDocument, resolveProjectDocument } from './project-contracts.mjs';
 
 export const SDK_RELEASE_MANIFEST_FILE = 'release-manifest.json';
+export const sdkReleaseCheckTimeoutMs = 90_000;
+export const sdkReleaseCheckMaximumOutputBytes = 4 * 1024 * 1024;
+export const sdkReleaseCheckDiagnosticCharacterLimit = 4_096;
 
 const SHA256 = /^[a-f0-9]{64}$/;
 const COMMIT = /^[a-f0-9]{40}$/;
@@ -13,6 +19,128 @@ const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete']);
 
 function fail(message) {
   throw new Error(`SDK release readiness: ${message}`);
+}
+
+function monotonicNow() {
+  return performance.now();
+}
+
+function readSDKReleaseCheckClock(now) {
+  if (typeof now !== 'function') {
+    fail('SDK check clock must be a function');
+  }
+  const value = now();
+  if (!Number.isFinite(value) || value < 0) {
+    fail('SDK check clock must return a non-negative finite number');
+  }
+  return value;
+}
+
+function validateSDKReleaseCheckTimeout(timeoutMs) {
+  if (
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs <= 0 ||
+    timeoutMs > sdkReleaseCheckTimeoutMs
+  ) {
+    fail(`SDK check timeout must be a safe integer between 1 and ${sdkReleaseCheckTimeoutMs} milliseconds`);
+  }
+}
+
+function remainingSDKReleaseCheckDuration(deadline, timeoutMs, now) {
+  const remaining = Math.min(timeoutMs, Math.ceil(deadline - readSDKReleaseCheckClock(now)));
+  return remaining > 0 ? remaining : null;
+}
+
+function boundedSDKReleaseCheckDiagnostic(value) {
+  const diagnostic = `${value ?? ''}`.trim();
+  if (diagnostic.length <= sdkReleaseCheckDiagnosticCharacterLimit) {
+    return diagnostic;
+  }
+  const suffix = '\n...[truncated]';
+  return `${diagnostic.slice(0, sdkReleaseCheckDiagnosticCharacterLimit - suffix.length)}${suffix}`;
+}
+
+function sdkReleaseCheckFailureDetail(result, timeoutMs) {
+  const errorCode = result?.error?.code;
+  if (errorCode === 'ETIMEDOUT') {
+    return `timed out within the remaining ${timeoutMs} ms budget`;
+  }
+  if (errorCode === 'ENOBUFS') {
+    return `output exceeded ${sdkReleaseCheckMaximumOutputBytes} bytes`;
+  }
+  if (result?.signal) {
+    return `terminated by signal ${result.signal}`;
+  }
+
+  const diagnostic = boundedSDKReleaseCheckDiagnostic(
+    result?.stderr || result?.error?.message,
+  );
+  if (errorCode) {
+    return `failed to start (${errorCode})${diagnostic ? `: ${diagnostic}` : ''}`;
+  }
+  if (Number.isSafeInteger(result?.status)) {
+    return `exited with status ${result.status}${diagnostic ? `: ${diagnostic}` : ''}`;
+  }
+  return diagnostic ? `failed without an exit status: ${diagnostic}` : 'failed without an exit status';
+}
+
+export function createSDKReleaseCheckRunner({
+  cwd,
+  sdkScriptPath,
+  executable = process.execPath,
+  timeoutMs = sdkReleaseCheckTimeoutMs,
+  spawn = spawnSync,
+  now = monotonicNow,
+} = {}) {
+  validateSDKReleaseCheckTimeout(timeoutMs);
+  if (typeof cwd !== 'string' || cwd.length === 0) {
+    fail('SDK check cwd must be a non-empty string');
+  }
+  if (typeof sdkScriptPath !== 'string' || sdkScriptPath.length === 0) {
+    fail('SDK check script path must be a non-empty string');
+  }
+  if (typeof executable !== 'string' || executable.length === 0) {
+    fail('SDK check executable must be a non-empty string');
+  }
+  if (typeof spawn !== 'function') {
+    fail('SDK check spawn must be a function');
+  }
+
+  const deadline = readSDKReleaseCheckClock(now) + timeoutMs;
+  return function verifyGeneratedSDK(projectName) {
+    if (typeof projectName !== 'string' || projectName.length === 0) {
+      fail('SDK check project name must be a non-empty string');
+    }
+    const remainingTimeoutMs = remainingSDKReleaseCheckDuration(deadline, timeoutMs, now);
+    if (remainingTimeoutMs === null) {
+      fail(`generated SDK check budget was exhausted before ${projectName}`);
+    }
+
+    let result;
+    try {
+      result = spawn(
+        executable,
+        [sdkScriptPath, 'check', '--project', projectName],
+        {
+          cwd,
+          encoding: 'utf8',
+          shell: false,
+          windowsHide: true,
+          maxBuffer: sdkReleaseCheckMaximumOutputBytes,
+          timeout: remainingTimeoutMs,
+          killSignal: 'SIGTERM',
+        },
+      );
+    } catch (error) {
+      result = { status: null, error };
+    }
+    if (result?.status === 0 && !result.error && !result.signal) {
+      return;
+    }
+    fail(
+      `generated SDK check failed for ${projectName}: ${sdkReleaseCheckFailureDetail(result, remainingTimeoutMs)}`,
+    );
+  };
 }
 
 function hash(content) {
@@ -164,8 +292,13 @@ function encodedManifest(manifest) {
   return `${JSON.stringify(manifest, null, 2)}\n`;
 }
 
-export function writeSDKReleaseManifest(repositoryRoot, project, manifest) {
-  writeFileSync(manifestPath(repositoryRoot, project), encodedManifest(manifest), 'utf8');
+export function writeSDKReleaseManifest(
+  repositoryRoot,
+  project,
+  manifest,
+  writeOutput = writeFileAtomicallySync,
+) {
+  writeOutput(manifestPath(repositoryRoot, project), encodedManifest(manifest), { encoding: 'utf8' });
 }
 
 export function verifySDKReleaseManifest(repositoryRoot, project, manifest) {

@@ -1,5 +1,4 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -12,6 +11,7 @@ import {
   verifyPrometheusRuleEvidence,
 } from './lib/prometheus-rules.mjs';
 import { isolatedGoToolchainEnvironment } from './lib/go-toolchain-environment.mjs';
+import { runEvidenceCommand } from './lib/evidence-command.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -21,7 +21,6 @@ const toolRoot = path.join(repositoryRoot, 'tools', 'promtool');
 const prometheusRoot = path.join(repositoryRoot, 'support', 'deploy', 'prometheus');
 const validationCredentialPath = path.join(prometheusRoot, 'secrets', 'goexample_metrics_token');
 const validationCredential = 'promtool-validation-fixture-not-a-production-secret';
-const maximumCommandOutput = 2 * 1024 * 1024;
 
 function fail(message) {
   throw new Error(`Prometheus rules: ${message}`);
@@ -67,18 +66,7 @@ function requiredGoVersion() {
 }
 
 function commandResult(command, args, options) {
-  const result = spawnSync(command, args, {
-    ...options,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
-    maxBuffer: maximumCommandOutput,
-  });
-  return {
-    status: Number.isSafeInteger(result.status) ? result.status : 1,
-    stdout: `${result.stdout ?? ''}`,
-    stderr: `${result.stderr ?? result.error?.message ?? ''}`,
-  };
+  return runEvidenceCommand(command, args, options);
 }
 
 function findGo(version, environment) {

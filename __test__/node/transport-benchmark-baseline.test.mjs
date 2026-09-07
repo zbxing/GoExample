@@ -79,23 +79,82 @@ function environmentFingerprint() {
   };
 }
 
+const stabilityFields = ['throughputRps', 'p50Nanos', 'p95Nanos', 'p99Nanos'];
+
+function stableResult(median) {
+  return {
+    rounds: 5,
+    median,
+    stability: {
+      status: 'passed',
+      metrics: Object.fromEntries(stabilityFields.map((field) => [field, {
+        minimum: median[field],
+        maximum: median[field],
+        maxToMinRatio: 1,
+      }])),
+    },
+  };
+}
+
 function candidate() {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     generatedAt: '2026-08-25T00:00:00.000Z',
     scope: 'linux_loopback_combined_client_server_harness',
     environmentFingerprint: environmentFingerprint(),
-    latency: { payloadBytes: 88 },
+    roundStability: {
+      status: 'passed',
+      method: 'per_group_max_to_min_ratio',
+      expectedRounds: 5,
+      maxMetricSpreadRatio: 2,
+      metricFields: stabilityFields,
+    },
+    latency: {
+      payloadBytes: 88,
+      results: {
+        fiber: stableResult({
+          throughputRps: 1200,
+          p50Nanos: 1000,
+          p95Nanos: 1400,
+          p99Nanos: 1800,
+        }),
+        'net-http': stableResult({
+          throughputRps: 1000,
+          p50Nanos: 1200,
+          p95Nanos: 1750,
+          p99Nanos: 2300,
+        }),
+        'framework-net-http': stableResult({
+          throughputRps: 800,
+          p50Nanos: 1400,
+          p95Nanos: 2200,
+          p99Nanos: 2900,
+        }),
+      },
+    },
     capacity: {
       payloadBytes: 88,
       workloads: workloads.map((name) => ({
         name,
         results: {
-          fiber: { median: { throughputRps: 1200, p95Nanos: 1400, p99Nanos: 1800 } },
-          'net-http': { median: { throughputRps: 1000, p95Nanos: 1750, p99Nanos: 2300 } },
-          'framework-net-http': {
-            median: { throughputRps: 800, p95Nanos: 2200, p99Nanos: 2900 },
-          },
+          fiber: stableResult({
+            throughputRps: 1200,
+            p50Nanos: 1000,
+            p95Nanos: 1400,
+            p99Nanos: 1800,
+          }),
+          'net-http': stableResult({
+            throughputRps: 1000,
+            p50Nanos: 1200,
+            p95Nanos: 1750,
+            p99Nanos: 2300,
+          }),
+          'framework-net-http': stableResult({
+            throughputRps: 800,
+            p50Nanos: 1400,
+            p95Nanos: 2200,
+            p99Nanos: 2900,
+          }),
         },
       })),
     },
@@ -103,24 +162,18 @@ function candidate() {
       workloads: scenarios.map((scenario) => ({
         ...scenario,
         results: {
-          fiber: {
-            rounds: 5,
-            median: {
-              throughputRps: 1200,
-              p50Nanos: 1000,
-              p95Nanos: 1400,
-              p99Nanos: 1800,
-            },
-          },
-          'framework-net-http': {
-            rounds: 5,
-            median: {
-              throughputRps: 1000,
-              p50Nanos: 1100,
-              p95Nanos: 1750,
-              p99Nanos: 2300,
-            },
-          },
+          fiber: stableResult({
+            throughputRps: 1200,
+            p50Nanos: 1000,
+            p95Nanos: 1400,
+            p99Nanos: 1800,
+          }),
+          'framework-net-http': stableResult({
+            throughputRps: 1000,
+            p50Nanos: 1100,
+            p95Nanos: 1750,
+            p99Nanos: 2300,
+          }),
         },
       })),
     },
@@ -153,6 +206,15 @@ function runPrepare(candidatePath, outputPath, provenancePath, overrides = {}) {
   ], { cwd: repositoryRoot, encoding: 'utf8' });
 }
 
+function runVerify(outputPath, provenancePath) {
+  return spawnSync(process.execPath, [
+    scriptPath,
+    'verify',
+    '--output', path.relative(repositoryRoot, outputPath),
+    '--provenance', path.relative(repositoryRoot, provenancePath),
+  ], { cwd: repositoryRoot, encoding: 'utf8' });
+}
+
 test('transport benchmark baseline prepares a compatible trusted-run candidate', async (t) => {
   await mkdir(candidateFixtureRoot, { recursive: true });
   await mkdir(outputFixtureRoot, { recursive: true });
@@ -177,11 +239,96 @@ test('transport benchmark baseline prepares a compatible trusted-run candidate',
   assert.equal(provenance.source.event, 'push');
   assert.equal(provenance.source.headBranch, 'main');
   assert.match(provenance.candidate.sha256, /^[a-f0-9]{64}$/);
-  assert.equal(provenance.candidate.reportSchemaVersion, 5);
+  assert.equal(provenance.candidate.reportSchemaVersion, 6);
   assert.equal(
     provenance.candidate.environmentFingerprintSha256,
     candidate().environmentFingerprint.sha256,
   );
+  const verified = runVerify(outputPath, provenancePath);
+  assert.equal(verified.status, 0, verified.stderr);
+  assert.match(verified.stdout, /selection verified for workflow run 12345/);
+});
+
+test('transport benchmark baseline preserves the prior selection when candidate validation fails', async (t) => {
+  await mkdir(candidateFixtureRoot, { recursive: true });
+  await mkdir(outputFixtureRoot, { recursive: true });
+  const candidateRoot = await mkdtemp(path.join(candidateFixtureRoot, 'preserve-'));
+  const outputRoot = await mkdtemp(path.join(outputFixtureRoot, 'preserve-'));
+  t.after(() => Promise.all([
+    rm(candidateRoot, { recursive: true, force: true }),
+    rm(outputRoot, { recursive: true, force: true }),
+  ]));
+  const candidatePath = path.join(candidateRoot, 'baseline-candidate.json');
+  const outputPath = path.join(outputRoot, 'baseline.json');
+  const provenancePath = path.join(outputRoot, 'baseline-source.json');
+  const previousBaseline = '{"schemaVersion":6,"scope":"trusted-prior"}\n';
+  const previousProvenance = '{"schemaVersion":1,"status":"selected","source":{"runId":7}}\n';
+  const incompatible = candidate();
+  incompatible.capacity.workloads.pop();
+  const tampered = candidate();
+  tampered.environmentFingerprint.cpu.logicalCpus += 1;
+  const missingStabilityMetadata = candidate();
+  delete missingStabilityMetadata.roundStability;
+  const missingStabilitySummary = candidate();
+  delete missingStabilitySummary.latency.results.fiber.stability;
+  const forgedStabilityRatio = candidate();
+  forgedStabilityRatio.capacity.workloads[0]
+    .results.fiber.stability.metrics.throughputRps.maxToMinRatio = 1.5;
+  const outOfRangeMedian = candidate();
+  outOfRangeMedian.scenarios.workloads[0].results.fiber.median.p99Nanos = 1801;
+  const cases = [
+    {
+      name: 'invalid-json',
+      source: '{invalid\n',
+      message: /candidate is not valid JSON/,
+    },
+    {
+      name: 'invalid-scope',
+      source: '{"schemaVersion":6,"scope":"broken"}\n',
+      message: /candidate must be a schemaVersion 6 transport capacity and scenario report/,
+    },
+    {
+      name: 'incompatible-matrix',
+      source: `${JSON.stringify(incompatible)}\n`,
+      message: /candidate workload matrix is incompatible/,
+    },
+    {
+      name: 'tampered-fingerprint',
+      source: `${JSON.stringify(tampered)}\n`,
+      message: /environmentFingerprint sha256 does not match/,
+    },
+    {
+      name: 'missing-stability-metadata',
+      source: `${JSON.stringify(missingStabilityMetadata)}\n`,
+      message: /candidate roundStability must be an object/,
+    },
+    {
+      name: 'missing-stability-summary',
+      source: `${JSON.stringify(missingStabilitySummary)}\n`,
+      message: /candidate latency fiber stability must be an object/,
+    },
+    {
+      name: 'forged-stability-ratio',
+      source: `${JSON.stringify(forgedStabilityRatio)}\n`,
+      message: /candidate capacity steady-c1\/fiber throughputRps maxToMinRatio does not match/,
+    },
+    {
+      name: 'out-of-range-median',
+      source: `${JSON.stringify(outOfRangeMedian)}\n`,
+      message: /candidate scenario response-32k-c16\/fiber p99Nanos median must stay between/,
+    },
+  ];
+
+  for (const scenario of cases) {
+    await writeFile(candidatePath, scenario.source, 'utf8');
+    await writeFile(outputPath, previousBaseline, 'utf8');
+    await writeFile(provenancePath, previousProvenance, 'utf8');
+    const result = runPrepare(candidatePath, outputPath, provenancePath);
+    assert.equal(result.status, 1, scenario.name);
+    assert.match(result.stderr, scenario.message, scenario.name);
+    assert.equal(await readFile(outputPath, 'utf8'), previousBaseline, scenario.name);
+    assert.equal(await readFile(provenancePath, 'utf8'), previousProvenance, scenario.name);
+  }
 });
 
 test('transport benchmark baseline records a missing candidate without inventing history', async (t) => {
@@ -207,6 +354,7 @@ test('transport benchmark baseline records a missing candidate without inventing
   assert.equal(provenance.status, 'not_available');
   assert.equal(provenance.reason, 'compatible_candidate_missing');
   await assert.rejects(readFile(outputPath, 'utf8'), /ENOENT/);
+  assert.equal(runVerify(outputPath, provenancePath).status, 0);
 });
 
 test('transport benchmark baseline treats the prior schema as a one-run migration gap', async (t) => {
@@ -222,7 +370,7 @@ test('transport benchmark baseline treats the prior schema as a one-run migratio
   const outputPath = path.join(outputRoot, 'baseline.json');
   const provenancePath = path.join(outputRoot, 'baseline-source.json');
   const legacy = candidate();
-  legacy.schemaVersion = 4;
+  legacy.schemaVersion = 5;
   await writeFile(candidatePath, `${JSON.stringify(legacy)}\n`, 'utf8');
 
   const result = runPrepare(candidatePath, outputPath, provenancePath);
@@ -231,6 +379,7 @@ test('transport benchmark baseline treats the prior schema as a one-run migratio
   const provenance = JSON.parse(await readFile(provenancePath, 'utf8'));
   assert.equal(provenance.status, 'not_available');
   assert.equal(provenance.reason, 'report_schema_migration');
+  assert.equal(runVerify(outputPath, provenancePath).status, 0);
 });
 
 test('transport benchmark baseline unavailable command clears stale output', async (t) => {
@@ -253,6 +402,48 @@ test('transport benchmark baseline unavailable command clears stale output', asy
   const provenance = JSON.parse(await readFile(provenancePath, 'utf8'));
   assert.equal(provenance.status, 'not_available');
   assert.equal(provenance.reason, 'artifact_download_failed');
+  assert.equal(runVerify(outputPath, provenancePath).status, 0);
+
+  await writeFile(outputPath, 'stale baseline\n', 'utf8');
+  const stale = runVerify(outputPath, provenancePath);
+  assert.equal(stale.status, 1);
+  assert.match(stale.stderr, /not_available provenance must not have a baseline output/);
+});
+
+test('transport benchmark baseline verifier rejects baseline and provenance drift', async (t) => {
+  await mkdir(candidateFixtureRoot, { recursive: true });
+  await mkdir(outputFixtureRoot, { recursive: true });
+  const candidateRoot = await mkdtemp(path.join(candidateFixtureRoot, 'verify-'));
+  const outputRoot = await mkdtemp(path.join(outputFixtureRoot, 'verify-'));
+  t.after(() => Promise.all([
+    rm(candidateRoot, { recursive: true, force: true }),
+    rm(outputRoot, { recursive: true, force: true }),
+  ]));
+  const candidatePath = path.join(candidateRoot, 'baseline-candidate.json');
+  const outputPath = path.join(outputRoot, 'baseline.json');
+  const provenancePath = path.join(outputRoot, 'baseline-source.json');
+  const encoded = `${JSON.stringify(candidate(), null, 2)}\n`;
+  await writeFile(candidatePath, encoded, 'utf8');
+  assert.equal(runPrepare(candidatePath, outputPath, provenancePath).status, 0);
+
+  await writeFile(outputPath, encoded.replace('2026-08-25', '2026-08-24'), 'utf8');
+  const baselineDrift = runVerify(outputPath, provenancePath);
+  assert.equal(baselineDrift.status, 1);
+  assert.match(baselineDrift.stderr, /candidate sha256 does not match the baseline/);
+
+  assert.equal(runPrepare(candidatePath, outputPath, provenancePath).status, 0);
+  const provenance = JSON.parse(await readFile(provenancePath, 'utf8'));
+  provenance.candidate.sha256 = '0'.repeat(64);
+  await writeFile(provenancePath, `${JSON.stringify(provenance, null, 2)}\n`, 'utf8');
+  const provenanceDrift = runVerify(outputPath, provenancePath);
+  assert.equal(provenanceDrift.status, 1);
+  assert.match(provenanceDrift.stderr, /candidate sha256 does not match the baseline/);
+
+  provenance.status = 'unknown';
+  await writeFile(provenancePath, `${JSON.stringify(provenance, null, 2)}\n`, 'utf8');
+  const statusDrift = runVerify(outputPath, provenancePath);
+  assert.equal(statusDrift.status, 1);
+  assert.match(statusDrift.stderr, /status must be selected or not_available/);
 });
 
 test('transport benchmark baseline rejects untrusted events and incompatible reports', async (t) => {
@@ -287,7 +478,7 @@ test('transport benchmark baseline rejects untrusted events and incompatible rep
   assert.equal(invalidFrameworkCapacity.status, 1);
   assert.match(
     invalidFrameworkCapacity.stderr,
-    /candidate is missing a valid steady-c1\/framework-net-http median/,
+    /candidate capacity steady-c1\/framework-net-http must be an object/,
   );
 
   const missingScenario = candidate();
@@ -304,7 +495,7 @@ test('transport benchmark baseline rejects untrusted events and incompatible rep
   assert.equal(invalidFrameworkScenario.status, 1);
   assert.match(
     invalidFrameworkScenario.stderr,
-    /candidate is missing a valid response-32k-c16\/framework-net-http scenario median/,
+    /candidate scenario response-32k-c16\/framework-net-http must be an object/,
   );
 
   const incompatibleScenario = candidate();

@@ -90,6 +90,26 @@ end
 redis.call("DEL", KEYS[1])
 return #tokens
 `)
+	listBrowserSessionsScript = redis.NewScript(`
+local now = tonumber(ARGV[1])
+local limit = tonumber(ARGV[2])
+local payloadPrefix = ARGV[3]
+local invalid = "__goexample_browser_inventory_invalid__"
+redis.call("ZREMRANGEBYSCORE", KEYS[1], "-inf", now)
+local tokens = redis.call("ZRANGE", KEYS[1], 0, limit - 1)
+local payloads = {}
+for _, token in ipairs(tokens) do
+  if string.len(token) ~= 64 or not string.match(token, "^[0-9a-f]+$") then
+    return {invalid}
+  end
+  local payload = redis.call("GET", payloadPrefix .. token)
+  if not payload then
+    return {invalid}
+  end
+  table.insert(payloads, payload)
+end
+return payloads
+`)
 )
 
 type browserSessionPayload struct {
@@ -229,7 +249,9 @@ func (s *Redis) deleteBrowserSessionByHash(ctx context.Context, tokenHex string)
 	return nil
 }
 
-// ListBrowserSessions returns a bounded active-session inventory for one hashed subject.
+// ListBrowserSessions returns a bounded active-session inventory for one hashed
+// subject. Redis performs index cleanup and payload reads in one Lua snapshot so
+// concurrent revoke or expiry cannot split the inventory across commands.
 func (s *Redis) ListBrowserSessions(ctx context.Context, subjectHash [sha256.Size]byte, now time.Time, limit int) ([]auth.BrowserSessionInfo, error) {
 	if s == nil || ctx == nil || limit <= 0 || limit > maxBrowserSessionInventory {
 		return nil, auth.ErrBrowserSessionInvalid
@@ -237,29 +259,24 @@ func (s *Redis) ListBrowserSessions(ctx context.Context, subjectHash [sha256.Siz
 	subjectHex := hex.EncodeToString(subjectHash[:])
 	operationCtx, cancel := s.operationContext(ctx)
 	defer cancel()
-	if err := s.client.ZRemRangeByScore(operationCtx, s.browserSubjectSessionsKey(subjectHex), "-inf", formatRedisMillis(now.UTC().UnixMilli())).Err(); err != nil {
-		return nil, sessionRedisFailure("clean browser session inventory", err)
-	}
-	tokens, err := s.client.ZRange(operationCtx, s.browserSubjectSessionsKey(subjectHex), 0, int64(limit)).Result()
+	payloads, err := listBrowserSessionsScript.Run(operationCtx, s.client, []string{
+		s.browserSubjectSessionsKey(subjectHex),
+	}, now.UTC().UnixMilli(), limit, s.browserSessionTokenKeyPrefix()).StringSlice()
 	if err != nil {
 		return nil, sessionRedisFailure("list browser sessions", err)
 	}
-	if len(tokens) > limit {
+	if len(payloads) == 1 && payloads[0] == "__goexample_browser_inventory_invalid__" {
 		return nil, auth.ErrBrowserSessionInvalid
 	}
-	items := make([]auth.BrowserSessionInfo, 0, len(tokens))
-	for _, tokenHex := range tokens {
-		if !validSHA256Hex(tokenHex) {
+	if len(payloads) > limit {
+		return nil, auth.ErrBrowserSessionInvalid
+	}
+	items := make([]auth.BrowserSessionInfo, 0, len(payloads))
+	for _, rawPayload := range payloads {
+		if len(rawPayload) == 0 || len(rawPayload) > maxBrowserSessionPayload {
 			return nil, auth.ErrBrowserSessionInvalid
 		}
-		rawPayload, getErr := s.client.Get(operationCtx, s.browserSessionKey(tokenHex)).Bytes()
-		if getErr != nil {
-			if errors.Is(getErr, redis.Nil) {
-				return nil, auth.ErrBrowserSessionInvalid
-			}
-			return nil, sessionRedisFailure("read browser session inventory", getErr)
-		}
-		record, decodeErr := decodeBrowserSessionPayload(rawPayload)
+		record, decodeErr := decodeBrowserSessionPayload([]byte(rawPayload))
 		if decodeErr != nil || record.SubjectHash != subjectHash || !record.ExpiresAt.After(now.UTC()) {
 			return nil, auth.ErrBrowserSessionInvalid
 		}

@@ -65,33 +65,37 @@ func TestPreflightConsumerUsesServerAckWaitAndBackoff(t *testing.T) {
 		MaxBackoff:        200 * time.Millisecond,
 		SettlementTimeout: 500 * time.Millisecond,
 	}
-	const required = 2700 * time.Millisecond
+	const required = 2750 * time.Millisecond
 	for name, test := range map[string]struct {
 		config  jetstream.ConsumerConfig
 		wantErr error
 	}{
 		"ack wait above budget": {
-			config: jetstream.ConsumerConfig{AckPolicy: jetstream.AckExplicitPolicy, AckWait: 3 * time.Second},
+			config: jetstream.ConsumerConfig{Durable: "WORKER", AckPolicy: jetstream.AckExplicitPolicy, AckWait: 3 * time.Second, MaxDeliver: -1},
 		},
 		"exact boundary": {
-			config: jetstream.ConsumerConfig{AckPolicy: jetstream.AckExplicitPolicy, AckWait: required},
+			config: jetstream.ConsumerConfig{Durable: "WORKER", AckPolicy: jetstream.AckExplicitPolicy, AckWait: required, MaxDeliver: -1},
 		},
 		"short ack wait": {
-			config:  jetstream.ConsumerConfig{AckPolicy: jetstream.AckExplicitPolicy, AckWait: required - time.Nanosecond},
+			config:  jetstream.ConsumerConfig{Durable: "WORKER", AckPolicy: jetstream.AckExplicitPolicy, AckWait: required - time.Nanosecond, MaxDeliver: -1},
 			wantErr: ErrAckWaitTooShort,
 		},
 		"all backoff intervals sufficient": {
 			config: jetstream.ConsumerConfig{
-				AckPolicy: jetstream.AckExplicitPolicy,
-				AckWait:   time.Millisecond,
-				BackOff:   []time.Duration{3 * time.Second, required},
+				Durable:    "WORKER",
+				AckPolicy:  jetstream.AckExplicitPolicy,
+				AckWait:    time.Millisecond,
+				BackOff:    []time.Duration{3 * time.Second, required},
+				MaxDeliver: -1,
 			},
 		},
 		"later backoff interval too short": {
 			config: jetstream.ConsumerConfig{
-				AckPolicy: jetstream.AckExplicitPolicy,
-				AckWait:   time.Hour,
-				BackOff:   []time.Duration{3 * time.Second, required - time.Nanosecond},
+				Durable:    "WORKER",
+				AckPolicy:  jetstream.AckExplicitPolicy,
+				AckWait:    time.Hour,
+				BackOff:    []time.Duration{3 * time.Second, required - time.Nanosecond},
+				MaxDeliver: -1,
 			},
 			wantErr: ErrAckWaitTooShort,
 		},
@@ -113,8 +117,10 @@ func TestPreflightConsumerRejectsInvalidOrUnavailableConfiguration(t *testing.T)
 		t.Fatalf("queueclient.New() error = %v", err)
 	}
 	validInfo := &jetstream.ConsumerInfo{Config: jetstream.ConsumerConfig{
-		AckPolicy: jetstream.AckExplicitPolicy,
-		AckWait:   2 * time.Minute,
+		Durable:    "WORKER",
+		AckPolicy:  jetstream.AckExplicitPolicy,
+		AckWait:    2 * time.Minute,
+		MaxDeliver: -1,
 	}}
 	var typedNil *fakeConsumer
 	for name, test := range map[string]struct {
@@ -132,9 +138,9 @@ func TestPreflightConsumerRejectsInvalidOrUnavailableConfiguration(t *testing.T)
 		"negative margin":  {ctx: context.Background(), consumer: &fakeConsumer{info: validInfo}, client: client, margin: -time.Second, wantErr: ErrInvalidConfiguration},
 		"info failure":     {ctx: context.Background(), consumer: &fakeConsumer{infoErr: errors.New("private-server-url")}, client: client, margin: time.Second, wantErr: ErrConsumerPreflight},
 		"nil info":         {ctx: context.Background(), consumer: &fakeConsumer{}, client: client, margin: time.Second, wantErr: ErrConsumerPreflight},
-		"non-explicit ack": {ctx: context.Background(), consumer: &fakeConsumer{info: &jetstream.ConsumerInfo{}}, client: client, margin: time.Second, wantErr: ErrConsumerPreflight},
-		"zero ack wait":    {ctx: context.Background(), consumer: &fakeConsumer{info: &jetstream.ConsumerInfo{Config: jetstream.ConsumerConfig{AckPolicy: jetstream.AckExplicitPolicy}}}, client: client, margin: time.Second, wantErr: ErrConsumerPreflight},
-		"negative backoff": {ctx: context.Background(), consumer: &fakeConsumer{info: &jetstream.ConsumerInfo{Config: jetstream.ConsumerConfig{AckPolicy: jetstream.AckExplicitPolicy, BackOff: []time.Duration{-time.Second}}}}, client: client, margin: time.Second, wantErr: ErrConsumerPreflight},
+		"non-explicit ack": {ctx: context.Background(), consumer: &fakeConsumer{info: &jetstream.ConsumerInfo{Config: jetstream.ConsumerConfig{AckPolicy: jetstream.AckNonePolicy}}}, client: client, margin: time.Second, wantErr: ErrConsumerAckPolicy},
+		"zero ack wait":    {ctx: context.Background(), consumer: &fakeConsumer{info: &jetstream.ConsumerInfo{Config: jetstream.ConsumerConfig{Durable: "WORKER", AckPolicy: jetstream.AckExplicitPolicy, MaxDeliver: -1}}}, client: client, margin: time.Second, wantErr: ErrConsumerPreflight},
+		"negative backoff": {ctx: context.Background(), consumer: &fakeConsumer{info: &jetstream.ConsumerInfo{Config: jetstream.ConsumerConfig{Durable: "WORKER", AckPolicy: jetstream.AckExplicitPolicy, BackOff: []time.Duration{-time.Second}, MaxDeliver: -1}}}, client: client, margin: time.Second, wantErr: ErrConsumerPreflight},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := PreflightConsumer(test.ctx, test.consumer, test.client, queueclient.DeliveryRetryConfig{}, test.margin)
@@ -142,6 +148,767 @@ func TestPreflightConsumerRejectsInvalidOrUnavailableConfiguration(t *testing.T)
 				t.Fatalf("PreflightConsumer() error = %v", err)
 			}
 		})
+	}
+}
+
+func TestPreflightConsumerRequiresExplicitAckPolicy(t *testing.T) {
+	client, err := queueclient.New(queueclient.Config{System: queueclient.SystemNATS})
+	if err != nil {
+		t.Fatalf("queueclient.New() error = %v", err)
+	}
+	valid := jetstream.ConsumerConfig{
+		Durable:       "PRIVATE_ACK_WORKER",
+		AckPolicy:     jetstream.AckExplicitPolicy,
+		DeliverPolicy: jetstream.DeliverAllPolicy,
+		ReplayPolicy:  jetstream.ReplayInstantPolicy,
+		AckWait:       2 * time.Minute,
+		MaxDeliver:    -1,
+		FilterSubject: "private.events.primary",
+	}
+	for name, test := range map[string]struct {
+		policy  jetstream.AckPolicy
+		wantErr error
+	}{
+		"explicit": {
+			policy: jetstream.AckExplicitPolicy,
+		},
+		"all": {
+			policy:  jetstream.AckAllPolicy,
+			wantErr: ErrConsumerAckPolicy,
+		},
+		"none": {
+			policy:  jetstream.AckNonePolicy,
+			wantErr: ErrConsumerAckPolicy,
+		},
+		"flow control": {
+			policy:  jetstream.AckFlowControlPolicy,
+			wantErr: ErrConsumerAckPolicy,
+		},
+		"unknown": {
+			policy:  jetstream.AckPolicy(255),
+			wantErr: ErrConsumerAckPolicy,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := valid
+			config.AckPolicy = test.policy
+			consumer := &fakeConsumer{info: &jetstream.ConsumerInfo{Config: config}}
+			budget, preflightErr := PreflightConsumer(
+				context.Background(),
+				consumer,
+				client,
+				queueclient.DeliveryRetryConfig{},
+				time.Second,
+			)
+			if !errors.Is(preflightErr, test.wantErr) || budget <= 0 {
+				t.Fatalf("PreflightConsumer() = %s, %v", budget, preflightErr)
+			}
+			if consumer.infoCalls != 1 {
+				t.Fatalf("Consumer.Info() calls = %d, want 1", consumer.infoCalls)
+			}
+			if preflightErr != nil {
+				for _, privateValue := range []string{
+					config.Durable,
+					config.FilterSubject,
+					strconv.Itoa(int(config.AckPolicy)),
+					"private-server-url",
+				} {
+					if strings.Contains(preflightErr.Error(), privateValue) {
+						t.Fatalf("PreflightConsumer() exposed acknowledgement configuration: %v", preflightErr)
+					}
+				}
+			}
+		})
+	}
+
+	incompatible := valid
+	incompatible.AckPolicy = jetstream.AckAllPolicy
+	incompatible.DeliverSubject = "private.delivery.inbox"
+	incompatible.PriorityPolicy = jetstream.PriorityPolicyPinned
+	incompatible.PriorityGroups = []string{"PRIVATE_PRIORITY_GROUP"}
+	consumer := &fakeConsumer{info: &jetstream.ConsumerInfo{Config: incompatible, Paused: true}}
+	adapter, err := New(
+		&fakePublisher{},
+		consumer,
+		Config{Subject: valid.FilterSubject, DeadLetterSubject: "private.events.dlq"},
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	budget, preflightErr := adapter.PreflightConsumer(
+		context.Background(),
+		client,
+		queueclient.DeliveryRetryConfig{},
+		time.Second,
+	)
+	if !errors.Is(preflightErr, ErrConsumerAckPolicy) || budget <= 0 || consumer.infoCalls != 1 {
+		t.Fatalf("Adapter.PreflightConsumer() = %s, %v; Info calls = %d", budget, preflightErr, consumer.infoCalls)
+	}
+}
+
+func TestPreflightConsumerRejectsPausedState(t *testing.T) {
+	client, err := queueclient.New(queueclient.Config{System: queueclient.SystemNATS})
+	if err != nil {
+		t.Fatalf("queueclient.New() error = %v", err)
+	}
+	valid := jetstream.ConsumerConfig{
+		Durable:       "PRIVATE_WORKER_NAME",
+		AckPolicy:     jetstream.AckExplicitPolicy,
+		DeliverPolicy: jetstream.DeliverAllPolicy,
+		ReplayPolicy:  jetstream.ReplayInstantPolicy,
+		AckWait:       2 * time.Minute,
+		MaxDeliver:    -1,
+		FilterSubject: "private.events.primary",
+	}
+	const privatePauseRemaining = 37 * time.Minute
+	for name, test := range map[string]struct {
+		paused  bool
+		wantErr error
+	}{
+		"unpaused": {},
+		"paused":   {paused: true, wantErr: ErrConsumerPaused},
+	} {
+		t.Run(name, func(t *testing.T) {
+			consumer := &fakeConsumer{info: &jetstream.ConsumerInfo{
+				Config:         valid,
+				Paused:         test.paused,
+				PauseRemaining: privatePauseRemaining,
+			}}
+			budget, preflightErr := PreflightConsumer(
+				context.Background(),
+				consumer,
+				client,
+				queueclient.DeliveryRetryConfig{},
+				time.Second,
+			)
+			if !errors.Is(preflightErr, test.wantErr) || budget <= 0 {
+				t.Fatalf("PreflightConsumer() = %s, %v", budget, preflightErr)
+			}
+			if consumer.infoCalls != 1 {
+				t.Fatalf("Consumer.Info() calls = %d, want 1", consumer.infoCalls)
+			}
+			if preflightErr != nil && (strings.Contains(preflightErr.Error(), valid.Durable) ||
+				strings.Contains(preflightErr.Error(), privatePauseRemaining.String())) {
+				t.Fatalf("PreflightConsumer() exposed pause configuration: %v", preflightErr)
+			}
+		})
+	}
+
+	pausedConsumer := &fakeConsumer{info: &jetstream.ConsumerInfo{
+		Config:         valid,
+		Paused:         true,
+		PauseRemaining: privatePauseRemaining,
+	}}
+	adapter, err := New(
+		&fakePublisher{},
+		pausedConsumer,
+		Config{Subject: valid.FilterSubject, DeadLetterSubject: "private.events.dlq"},
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	budget, preflightErr := adapter.PreflightConsumer(
+		context.Background(),
+		client,
+		queueclient.DeliveryRetryConfig{},
+		time.Second,
+	)
+	if !errors.Is(preflightErr, ErrConsumerPaused) || budget <= 0 || pausedConsumer.infoCalls != 1 {
+		t.Fatalf("Adapter.PreflightConsumer() = %s, %v; Info calls = %d", budget, preflightErr, pausedConsumer.infoCalls)
+	}
+
+	invalidAck := valid
+	invalidAck.AckPolicy = jetstream.AckNonePolicy
+	_, preflightErr = PreflightConsumer(
+		context.Background(),
+		&fakeConsumer{info: &jetstream.ConsumerInfo{Config: invalidAck, Paused: true}},
+		client,
+		queueclient.DeliveryRetryConfig{},
+		time.Second,
+	)
+	if !errors.Is(preflightErr, ErrConsumerAckPolicy) {
+		t.Fatalf("PreflightConsumer(paused invalid ack) error = %v", preflightErr)
+	}
+}
+
+func TestPreflightConsumerRequiresPullMode(t *testing.T) {
+	client, err := queueclient.New(queueclient.Config{System: queueclient.SystemNATS})
+	if err != nil {
+		t.Fatalf("queueclient.New() error = %v", err)
+	}
+	valid := jetstream.ConsumerConfig{
+		Durable:       "PRIVATE_WORKER_NAME",
+		AckPolicy:     jetstream.AckExplicitPolicy,
+		DeliverPolicy: jetstream.DeliverAllPolicy,
+		ReplayPolicy:  jetstream.ReplayInstantPolicy,
+		AckWait:       2 * time.Minute,
+		MaxDeliver:    -1,
+		FilterSubject: "private.events.primary",
+	}
+	for name, test := range map[string]struct {
+		deliverySubject string
+		wantErr         error
+	}{
+		"pull": {},
+		"push": {deliverySubject: "private.delivery.inbox", wantErr: ErrConsumerNotPull},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := valid
+			config.DeliverSubject = test.deliverySubject
+			consumer := &fakeConsumer{info: &jetstream.ConsumerInfo{Config: config}}
+			budget, preflightErr := PreflightConsumer(
+				context.Background(),
+				consumer,
+				client,
+				queueclient.DeliveryRetryConfig{},
+				time.Second,
+			)
+			if !errors.Is(preflightErr, test.wantErr) || budget <= 0 {
+				t.Fatalf("PreflightConsumer() = %s, %v", budget, preflightErr)
+			}
+			if consumer.infoCalls != 1 {
+				t.Fatalf("Consumer.Info() calls = %d, want 1", consumer.infoCalls)
+			}
+			if preflightErr != nil && (strings.Contains(preflightErr.Error(), config.Durable) ||
+				strings.Contains(preflightErr.Error(), config.FilterSubject) ||
+				strings.Contains(preflightErr.Error(), config.DeliverSubject)) {
+				t.Fatalf("PreflightConsumer() exposed consumer configuration: %v", preflightErr)
+			}
+		})
+	}
+
+	push := valid
+	push.DeliverSubject = "private.delivery.inbox"
+	pushConsumer := &fakeConsumer{info: &jetstream.ConsumerInfo{Config: push}}
+	adapter, err := New(
+		&fakePublisher{},
+		pushConsumer,
+		Config{Subject: valid.FilterSubject, DeadLetterSubject: "private.events.dlq"},
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	budget, preflightErr := adapter.PreflightConsumer(
+		context.Background(),
+		client,
+		queueclient.DeliveryRetryConfig{},
+		time.Second,
+	)
+	if !errors.Is(preflightErr, ErrConsumerNotPull) || budget <= 0 || pushConsumer.infoCalls != 1 {
+		t.Fatalf("Adapter.PreflightConsumer() = %s, %v; Info calls = %d", budget, preflightErr, pushConsumer.infoCalls)
+	}
+
+	pausedPush := push
+	_, preflightErr = PreflightConsumer(
+		context.Background(),
+		&fakeConsumer{info: &jetstream.ConsumerInfo{Config: pausedPush, Paused: true}},
+		client,
+		queueclient.DeliveryRetryConfig{},
+		time.Second,
+	)
+	if !errors.Is(preflightErr, ErrConsumerPaused) {
+		t.Fatalf("PreflightConsumer(paused push consumer) error = %v", preflightErr)
+	}
+}
+
+func TestPreflightConsumerRequiresDefaultPriorityPolicy(t *testing.T) {
+	client, err := queueclient.New(queueclient.Config{System: queueclient.SystemNATS})
+	if err != nil {
+		t.Fatalf("queueclient.New() error = %v", err)
+	}
+	valid := jetstream.ConsumerConfig{
+		Durable:       "PRIVATE_WORKER_NAME",
+		AckPolicy:     jetstream.AckExplicitPolicy,
+		DeliverPolicy: jetstream.DeliverAllPolicy,
+		ReplayPolicy:  jetstream.ReplayInstantPolicy,
+		AckWait:       2 * time.Minute,
+		MaxDeliver:    -1,
+		FilterSubject: "private.events.primary",
+	}
+	for name, test := range map[string]struct {
+		policy  jetstream.PriorityPolicy
+		groups  []string
+		wantErr error
+	}{
+		"default": {},
+		"pinned": {
+			policy:  jetstream.PriorityPolicyPinned,
+			groups:  []string{"private-pinned-group"},
+			wantErr: ErrConsumerPriorityPolicy,
+		},
+		"overflow": {
+			policy:  jetstream.PriorityPolicyOverflow,
+			groups:  []string{"private-overflow-group"},
+			wantErr: ErrConsumerPriorityPolicy,
+		},
+		"prioritized": {
+			policy:  jetstream.PriorityPolicyPrioritized,
+			groups:  []string{"private-prioritized-group"},
+			wantErr: ErrConsumerPriorityPolicy,
+		},
+		"unknown": {
+			policy:  jetstream.PriorityPolicy(255),
+			wantErr: ErrConsumerPriorityPolicy,
+		},
+		"group without policy": {
+			groups:  []string{"private-orphan-group"},
+			wantErr: ErrConsumerPriorityPolicy,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := valid
+			config.PriorityPolicy = test.policy
+			config.PriorityGroups = test.groups
+			consumer := &fakeConsumer{info: &jetstream.ConsumerInfo{Config: config}}
+			budget, preflightErr := PreflightConsumer(
+				context.Background(),
+				consumer,
+				client,
+				queueclient.DeliveryRetryConfig{},
+				time.Second,
+			)
+			if !errors.Is(preflightErr, test.wantErr) || budget <= 0 {
+				t.Fatalf("PreflightConsumer() = %s, %v", budget, preflightErr)
+			}
+			if consumer.infoCalls != 1 {
+				t.Fatalf("Consumer.Info() calls = %d, want 1", consumer.infoCalls)
+			}
+			if preflightErr != nil {
+				for _, privateValue := range append([]string{config.Durable, strconv.Itoa(int(config.PriorityPolicy))}, config.PriorityGroups...) {
+					if privateValue != "" && strings.Contains(preflightErr.Error(), privateValue) {
+						t.Fatalf("PreflightConsumer() exposed priority configuration: %v", preflightErr)
+					}
+				}
+			}
+		})
+	}
+
+	pinned := valid
+	pinned.PriorityPolicy = jetstream.PriorityPolicyPinned
+	pinned.PriorityGroups = []string{"private-adapter-group"}
+	pinnedConsumer := &fakeConsumer{info: &jetstream.ConsumerInfo{Config: pinned}}
+	adapter, err := New(
+		&fakePublisher{},
+		pinnedConsumer,
+		Config{Subject: valid.FilterSubject, DeadLetterSubject: "private.events.dlq"},
+	)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	budget, preflightErr := adapter.PreflightConsumer(
+		context.Background(),
+		client,
+		queueclient.DeliveryRetryConfig{},
+		time.Second,
+	)
+	if !errors.Is(preflightErr, ErrConsumerPriorityPolicy) || budget <= 0 || pinnedConsumer.infoCalls != 1 {
+		t.Fatalf("Adapter.PreflightConsumer() = %s, %v; Info calls = %d", budget, preflightErr, pinnedConsumer.infoCalls)
+	}
+
+	pausedPinned := pinned
+	_, preflightErr = PreflightConsumer(
+		context.Background(),
+		&fakeConsumer{info: &jetstream.ConsumerInfo{Config: pausedPinned, Paused: true}},
+		client,
+		queueclient.DeliveryRetryConfig{},
+		time.Second,
+	)
+	if !errors.Is(preflightErr, ErrConsumerPaused) {
+		t.Fatalf("PreflightConsumer(paused priority consumer) error = %v", preflightErr)
+	}
+
+	pushPinned := pinned
+	pushPinned.DeliverSubject = "private.delivery.inbox"
+	_, preflightErr = PreflightConsumer(
+		context.Background(),
+		&fakeConsumer{info: &jetstream.ConsumerInfo{Config: pushPinned}},
+		client,
+		queueclient.DeliveryRetryConfig{},
+		time.Second,
+	)
+	if !errors.Is(preflightErr, ErrConsumerNotPull) {
+		t.Fatalf("PreflightConsumer(push priority consumer) error = %v", preflightErr)
+	}
+}
+
+func TestPreflightConsumerRequiresPersistentRedeliveryConfiguration(t *testing.T) {
+	client, err := queueclient.New(queueclient.Config{System: queueclient.SystemNATS})
+	if err != nil {
+		t.Fatalf("queueclient.New() error = %v", err)
+	}
+	valid := jetstream.ConsumerConfig{
+		Durable:    "WORKER",
+		AckPolicy:  jetstream.AckExplicitPolicy,
+		AckWait:    2 * time.Minute,
+		MaxDeliver: -1,
+	}
+	for name, test := range map[string]struct {
+		mutate  func(*jetstream.ConsumerConfig)
+		wantErr error
+	}{
+		"empty durable": {
+			mutate:  func(config *jetstream.ConsumerConfig) { config.Durable = "" },
+			wantErr: ErrConsumerNotPersistent,
+		},
+		"memory storage": {
+			mutate:  func(config *jetstream.ConsumerConfig) { config.MemoryStorage = true },
+			wantErr: ErrConsumerNotPersistent,
+		},
+		"inactive cleanup": {
+			mutate:  func(config *jetstream.ConsumerConfig) { config.InactiveThreshold = time.Minute },
+			wantErr: ErrConsumerNotPersistent,
+		},
+		"negative unsupported maximum": {
+			mutate:  func(config *jetstream.ConsumerConfig) { config.MaxDeliver = -2 },
+			wantErr: ErrMaxDeliverTooLow,
+		},
+		"zero maximum": {
+			mutate:  func(config *jetstream.ConsumerConfig) { config.MaxDeliver = 0 },
+			wantErr: ErrMaxDeliverTooLow,
+		},
+		"initial delivery only": {
+			mutate:  func(config *jetstream.ConsumerConfig) { config.MaxDeliver = 1 },
+			wantErr: ErrMaxDeliverTooLow,
+		},
+		"unlimited deliveries": {
+			mutate: func(config *jetstream.ConsumerConfig) { config.MaxDeliver = -1 },
+		},
+		"minimum deliveries": {
+			mutate: func(config *jetstream.ConsumerConfig) { config.MaxDeliver = 2 },
+		},
+		"higher finite deliveries": {
+			mutate: func(config *jetstream.ConsumerConfig) { config.MaxDeliver = 5 },
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := valid
+			test.mutate(&config)
+			budget, preflightErr := PreflightConsumer(
+				context.Background(),
+				&fakeConsumer{info: &jetstream.ConsumerInfo{Config: config}},
+				client,
+				queueclient.DeliveryRetryConfig{},
+				time.Second,
+			)
+			if preflightErr != test.wantErr || budget <= 0 {
+				t.Fatalf("PreflightConsumer() = %s, %v", budget, preflightErr)
+			}
+			if preflightErr != nil && ((config.Durable != "" && strings.Contains(preflightErr.Error(), config.Durable)) || strings.Contains(preflightErr.Error(), strconv.Itoa(config.MaxDeliver))) {
+				t.Fatalf("PreflightConsumer() exposed configuration: %v", preflightErr)
+			}
+		})
+	}
+}
+
+func TestPreflightConsumerRequiresFullMessagePayload(t *testing.T) {
+	client, err := queueclient.New(queueclient.Config{System: queueclient.SystemNATS})
+	if err != nil {
+		t.Fatalf("queueclient.New() error = %v", err)
+	}
+	valid := jetstream.ConsumerConfig{
+		Durable:    "PRIVATE_WORKER_NAME",
+		AckPolicy:  jetstream.AckExplicitPolicy,
+		AckWait:    2 * time.Minute,
+		MaxDeliver: -1,
+	}
+	for name, test := range map[string]struct {
+		headersOnly bool
+		wantErr     error
+	}{
+		"full payload": {},
+		"headers only": {
+			headersOnly: true,
+			wantErr:     ErrConsumerPayloadUnavailable,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := valid
+			config.HeadersOnly = test.headersOnly
+			budget, preflightErr := PreflightConsumer(
+				context.Background(),
+				&fakeConsumer{info: &jetstream.ConsumerInfo{Config: config}},
+				client,
+				queueclient.DeliveryRetryConfig{},
+				time.Second,
+			)
+			if preflightErr != test.wantErr || budget <= 0 {
+				t.Fatalf("PreflightConsumer() = %s, %v", budget, preflightErr)
+			}
+			if preflightErr != nil && (strings.Contains(preflightErr.Error(), config.Durable) || strings.Contains(preflightErr.Error(), strconv.FormatBool(config.HeadersOnly))) {
+				t.Fatalf("PreflightConsumer() exposed configuration: %v", preflightErr)
+			}
+		})
+	}
+}
+
+func TestPreflightConsumerRequiresCompleteDeliveryPolicy(t *testing.T) {
+	client, err := queueclient.New(queueclient.Config{System: queueclient.SystemNATS})
+	if err != nil {
+		t.Fatalf("queueclient.New() error = %v", err)
+	}
+	valid := jetstream.ConsumerConfig{
+		Durable:    "PRIVATE_WORKER_NAME",
+		AckPolicy:  jetstream.AckExplicitPolicy,
+		AckWait:    2 * time.Minute,
+		MaxDeliver: -1,
+	}
+	for name, test := range map[string]struct {
+		policy  jetstream.DeliverPolicy
+		wantErr error
+	}{
+		"all":              {policy: jetstream.DeliverAllPolicy},
+		"last":             {policy: jetstream.DeliverLastPolicy, wantErr: ErrConsumerDeliveryPolicy},
+		"new":              {policy: jetstream.DeliverNewPolicy, wantErr: ErrConsumerDeliveryPolicy},
+		"start sequence":   {policy: jetstream.DeliverByStartSequencePolicy, wantErr: ErrConsumerDeliveryPolicy},
+		"start time":       {policy: jetstream.DeliverByStartTimePolicy, wantErr: ErrConsumerDeliveryPolicy},
+		"last per subject": {policy: jetstream.DeliverLastPerSubjectPolicy, wantErr: ErrConsumerDeliveryPolicy},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := valid
+			config.DeliverPolicy = test.policy
+			budget, preflightErr := PreflightConsumer(
+				context.Background(),
+				&fakeConsumer{info: &jetstream.ConsumerInfo{Config: config}},
+				client,
+				queueclient.DeliveryRetryConfig{},
+				time.Second,
+			)
+			if !errors.Is(preflightErr, test.wantErr) || budget <= 0 {
+				t.Fatalf("PreflightConsumer() = %s, %v", budget, preflightErr)
+			}
+			if preflightErr != nil && (strings.Contains(preflightErr.Error(), config.Durable) ||
+				strings.Contains(preflightErr.Error(), strconv.Itoa(int(config.DeliverPolicy)))) {
+				t.Fatalf("PreflightConsumer() exposed delivery policy configuration: %v", preflightErr)
+			}
+		})
+	}
+}
+
+func TestPreflightConsumerRequiresInstantReplayPolicy(t *testing.T) {
+	client, err := queueclient.New(queueclient.Config{System: queueclient.SystemNATS})
+	if err != nil {
+		t.Fatalf("queueclient.New() error = %v", err)
+	}
+	valid := jetstream.ConsumerConfig{
+		Durable:       "PRIVATE_WORKER_NAME",
+		AckPolicy:     jetstream.AckExplicitPolicy,
+		DeliverPolicy: jetstream.DeliverAllPolicy,
+		AckWait:       2 * time.Minute,
+		MaxDeliver:    -1,
+	}
+	for name, test := range map[string]struct {
+		policy  jetstream.ReplayPolicy
+		wantErr error
+	}{
+		"instant":  {policy: jetstream.ReplayInstantPolicy},
+		"original": {policy: jetstream.ReplayOriginalPolicy, wantErr: ErrConsumerReplayPolicy},
+		"unknown":  {policy: jetstream.ReplayPolicy(255), wantErr: ErrConsumerReplayPolicy},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := valid
+			config.ReplayPolicy = test.policy
+			budget, preflightErr := PreflightConsumer(
+				context.Background(),
+				&fakeConsumer{info: &jetstream.ConsumerInfo{Config: config}},
+				client,
+				queueclient.DeliveryRetryConfig{},
+				time.Second,
+			)
+			if !errors.Is(preflightErr, test.wantErr) || budget <= 0 {
+				t.Fatalf("PreflightConsumer() = %s, %v", budget, preflightErr)
+			}
+			if preflightErr != nil && (strings.Contains(preflightErr.Error(), config.Durable) ||
+				strings.Contains(preflightErr.Error(), strconv.Itoa(int(config.ReplayPolicy)))) {
+				t.Fatalf("PreflightConsumer() exposed replay policy configuration: %v", preflightErr)
+			}
+		})
+	}
+}
+
+func TestAdapterPreflightConsumerRequiresExactSubjectFilter(t *testing.T) {
+	client, err := queueclient.New(queueclient.Config{System: queueclient.SystemNATS})
+	if err != nil {
+		t.Fatalf("queueclient.New() error = %v", err)
+	}
+	const expectedSubject = "private.events.primary"
+	valid := jetstream.ConsumerConfig{
+		Durable:    "PRIVATE_WORKER_NAME",
+		AckPolicy:  jetstream.AckExplicitPolicy,
+		AckWait:    2 * time.Minute,
+		MaxDeliver: -1,
+	}
+	for name, test := range map[string]struct {
+		filterSubject  string
+		filterSubjects []string
+		wantErr        error
+	}{
+		"exact filter subject": {
+			filterSubject: expectedSubject,
+		},
+		"exact single filter subjects": {
+			filterSubjects: []string{expectedSubject},
+		},
+		"unfiltered": {
+			wantErr: ErrConsumerSubjectMismatch,
+		},
+		"wildcard": {
+			filterSubject: "private.events.*",
+			wantErr:       ErrConsumerSubjectMismatch,
+		},
+		"different literal": {
+			filterSubject: "private.events.secondary",
+			wantErr:       ErrConsumerSubjectMismatch,
+		},
+		"multiple filters": {
+			filterSubjects: []string{expectedSubject, "private.events.secondary"},
+			wantErr:        ErrConsumerSubjectMismatch,
+		},
+		"both filter fields": {
+			filterSubject:  expectedSubject,
+			filterSubjects: []string{expectedSubject},
+			wantErr:        ErrConsumerSubjectMismatch,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := valid
+			config.FilterSubject = test.filterSubject
+			config.FilterSubjects = test.filterSubjects
+			consumer := &fakeConsumer{info: &jetstream.ConsumerInfo{Config: config}}
+			adapter, newErr := New(
+				&fakePublisher{},
+				consumer,
+				Config{Subject: expectedSubject, DeadLetterSubject: "private.events.dlq"},
+			)
+			if newErr != nil {
+				t.Fatalf("New() error = %v", newErr)
+			}
+			budget, preflightErr := adapter.PreflightConsumer(
+				context.Background(),
+				client,
+				queueclient.DeliveryRetryConfig{},
+				time.Second,
+			)
+			if preflightErr != test.wantErr || budget <= 0 {
+				t.Fatalf("Adapter.PreflightConsumer() = %s, %v", budget, preflightErr)
+			}
+			if consumer.infoCalls != 1 {
+				t.Fatalf("Consumer.Info() calls = %d, want 1", consumer.infoCalls)
+			}
+			if preflightErr != nil && (strings.Contains(preflightErr.Error(), expectedSubject) ||
+				strings.Contains(preflightErr.Error(), config.FilterSubject) && config.FilterSubject != "") {
+				t.Fatalf("Adapter.PreflightConsumer() exposed subject configuration: %v", preflightErr)
+			}
+		})
+	}
+
+	var nilAdapter *Adapter
+	if _, err := nilAdapter.PreflightConsumer(context.Background(), client, queueclient.DeliveryRetryConfig{}, time.Second); !errors.Is(err, ErrInvalidConfiguration) {
+		t.Fatalf("nil Adapter.PreflightConsumer() error = %v", err)
+	}
+	if _, err := nilAdapter.PreflightConsumer(nil, client, queueclient.DeliveryRetryConfig{}, time.Second); !errors.Is(err, ErrInvalidContext) {
+		t.Fatalf("nil Adapter.PreflightConsumer(nil) error = %v", err)
+	}
+	adapter, err := New(
+		&fakePublisher{},
+		&receiveOnlyConsumer{},
+		Config{Subject: expectedSubject, DeadLetterSubject: "private.events.dlq"},
+	)
+	if err != nil {
+		t.Fatalf("New(receive-only consumer) error = %v", err)
+	}
+	if _, err := adapter.PreflightConsumer(context.Background(), client, queueclient.DeliveryRetryConfig{}, time.Second); !errors.Is(err, ErrInvalidConfiguration) {
+		t.Fatalf("receive-only Adapter.PreflightConsumer() error = %v", err)
+	}
+}
+
+func TestAdapterPreflightConsumerRequiresCompatibleRequestExpiration(t *testing.T) {
+	client, err := queueclient.New(queueclient.Config{System: queueclient.SystemNATS})
+	if err != nil {
+		t.Fatalf("queueclient.New() error = %v", err)
+	}
+	const (
+		expectedSubject = "private.events.primary"
+		fetchMaxWait    = time.Second
+	)
+	valid := jetstream.ConsumerConfig{
+		Durable:       "PRIVATE_WORKER_NAME",
+		AckPolicy:     jetstream.AckExplicitPolicy,
+		DeliverPolicy: jetstream.DeliverAllPolicy,
+		ReplayPolicy:  jetstream.ReplayInstantPolicy,
+		AckWait:       2 * time.Minute,
+		MaxDeliver:    -1,
+		FilterSubject: expectedSubject,
+	}
+	for name, test := range map[string]struct {
+		maximum time.Duration
+		wantErr error
+	}{
+		"unlimited":      {},
+		"exact boundary": {maximum: fetchMaxWait},
+		"above boundary": {maximum: 2 * fetchMaxWait},
+		"short by 1ns":   {maximum: fetchMaxWait - time.Nanosecond, wantErr: ErrConsumerRequestExpires},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := valid
+			config.MaxRequestExpires = test.maximum
+			consumer := &fakeConsumer{info: &jetstream.ConsumerInfo{Config: config}}
+			adapter, newErr := New(
+				&fakePublisher{},
+				consumer,
+				Config{
+					Subject:           expectedSubject,
+					DeadLetterSubject: "private.events.dlq",
+					FetchMaxWait:      fetchMaxWait,
+				},
+			)
+			if newErr != nil {
+				t.Fatalf("New() error = %v", newErr)
+			}
+			budget, preflightErr := adapter.PreflightConsumer(
+				context.Background(),
+				client,
+				queueclient.DeliveryRetryConfig{},
+				time.Second,
+			)
+			if !errors.Is(preflightErr, test.wantErr) || budget <= 0 {
+				t.Fatalf("Adapter.PreflightConsumer() = %s, %v", budget, preflightErr)
+			}
+			if consumer.infoCalls != 1 {
+				t.Fatalf("Consumer.Info() calls = %d, want 1", consumer.infoCalls)
+			}
+			if preflightErr != nil && (strings.Contains(preflightErr.Error(), config.Durable) ||
+				strings.Contains(preflightErr.Error(), expectedSubject) ||
+				strings.Contains(preflightErr.Error(), test.maximum.String())) {
+				t.Fatalf("Adapter.PreflightConsumer() exposed expiration configuration: %v", preflightErr)
+			}
+		})
+	}
+
+	short := valid
+	short.MaxRequestExpires = fetchMaxWait - time.Nanosecond
+	budget, preflightErr := PreflightConsumer(
+		context.Background(),
+		&fakeConsumer{info: &jetstream.ConsumerInfo{Config: short}},
+		client,
+		queueclient.DeliveryRetryConfig{},
+		time.Second,
+	)
+	if preflightErr != nil || budget <= 0 {
+		t.Fatalf("package PreflightConsumer() = %s, %v", budget, preflightErr)
+	}
+
+	invalidReplay := short
+	invalidReplay.ReplayPolicy = jetstream.ReplayOriginalPolicy
+	adapter, err := New(
+		&fakePublisher{},
+		&fakeConsumer{info: &jetstream.ConsumerInfo{Config: invalidReplay}},
+		Config{Subject: expectedSubject, DeadLetterSubject: "private.events.dlq", FetchMaxWait: fetchMaxWait},
+	)
+	if err != nil {
+		t.Fatalf("New(invalid replay) error = %v", err)
+	}
+	if _, err := adapter.PreflightConsumer(context.Background(), client, queueclient.DeliveryRetryConfig{}, time.Second); !errors.Is(err, ErrConsumerReplayPolicy) {
+		t.Fatalf("Adapter.PreflightConsumer(invalid replay and expiration) error = %v", err)
 	}
 }
 
@@ -204,6 +971,103 @@ func TestAdapterPublishesReceivesAndAcknowledgesClonedMessages(t *testing.T) {
 	}
 }
 
+func TestAdapterPublishDeduplicatedUsesOnlyBoundedTypedMessageID(t *testing.T) {
+	publisher := &fakePublisher{}
+	adapter, err := New(publisher, &fakeConsumer{}, Config{
+		Subject:           "events.primary",
+		DeadLetterSubject: "events.dlq",
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	var nilAdapter *Adapter
+	if err := nilAdapter.PublishDeduplicated(context.Background(), "stable-event-id", queueclient.Message{}); !errors.Is(err, ErrInvalidConfiguration) {
+		t.Fatalf("nil PublishDeduplicated() error = %v", err)
+	}
+	if err := adapter.PublishDeduplicated(nil, "stable-event-id", queueclient.Message{}); !errors.Is(err, ErrInvalidContext) {
+		t.Fatalf("PublishDeduplicated(nil context) error = %v", err)
+	}
+
+	const stableID = "order-123e4567-e89b-12d3-a456-426614174000"
+	message := queueclient.Message{Headers: map[string]string{
+		"Tenant":              "tenant-a",
+		jetstream.MsgIDHeader: "caller-controlled",
+	}}
+	if err := adapter.PublishDeduplicated(context.Background(), stableID, message); err != nil {
+		t.Fatalf("PublishDeduplicated() error = %v", err)
+	}
+	published := publisher.snapshot()
+	if len(published) != 1 || published[0].Header.Get("Tenant") != "tenant-a" ||
+		published[0].Header.Get(jetstream.MsgIDHeader) != stableID {
+		t.Fatalf("deduplicated publish headers = %#v", published)
+	}
+
+	for name, messageID := range map[string]string{
+		"empty":        "",
+		"space":        "event id",
+		"leading":      " event-id",
+		"control":      "event\rid",
+		"non ascii":    "event-é",
+		"over maximum": strings.Repeat("a", maximumPublishMessageID+1),
+	} {
+		t.Run(name, func(t *testing.T) {
+			isolatedPublisher := &fakePublisher{}
+			isolatedAdapter, newErr := New(isolatedPublisher, &fakeConsumer{}, Config{
+				Subject:           "events.primary",
+				DeadLetterSubject: "events.dlq",
+			})
+			if newErr != nil {
+				t.Fatalf("New() error = %v", newErr)
+			}
+			publishErr := isolatedAdapter.PublishDeduplicated(context.Background(), messageID, queueclient.Message{})
+			if !errors.Is(publishErr, ErrInvalidMessageID) ||
+				(messageID != "" && strings.Contains(publishErr.Error(), messageID)) {
+				t.Fatalf("PublishDeduplicated() error = %v", publishErr)
+			}
+			if calls := len(isolatedPublisher.snapshot()); calls != 0 {
+				t.Fatalf("publisher calls = %d, want 0", calls)
+			}
+		})
+	}
+
+	if err := adapter.PublishDeduplicated(
+		context.Background(),
+		strings.Repeat("a", maximumPublishMessageID),
+		queueclient.Message{},
+	); err != nil {
+		t.Fatalf("PublishDeduplicated(maximum ID) error = %v", err)
+	}
+}
+
+func TestAdapterPublishRequiresStructuredServerAcknowledgement(t *testing.T) {
+	for name, test := range map[string]struct {
+		ack     *jetstream.PubAck
+		wantErr error
+	}{
+		"nil acknowledgement":       {wantErr: ErrPublish},
+		"missing stream":            {ack: &jetstream.PubAck{Sequence: 1}, wantErr: ErrPublish},
+		"missing sequence":          {ack: &jetstream.PubAck{Stream: "EVENTS"}, wantErr: ErrPublish},
+		"duplicate acknowledgement": {ack: &jetstream.PubAck{Stream: "EVENTS", Sequence: 1, Duplicate: true}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			publisher := &fakePublisher{publishAck: func(*nats.Msg) *jetstream.PubAck { return test.ack }}
+			adapter, err := New(publisher, &fakeConsumer{}, Config{
+				Subject:           "events.primary",
+				DeadLetterSubject: "events.dlq",
+			})
+			if err != nil {
+				t.Fatalf("New() error = %v", err)
+			}
+			if err := adapter.Publish(context.Background(), queueclient.Message{}); !errors.Is(err, test.wantErr) {
+				t.Fatalf("Publish() error = %v, want %v", err, test.wantErr)
+			}
+			if err := adapter.PublishDeduplicated(context.Background(), "stable-event-id", queueclient.Message{}); !errors.Is(err, test.wantErr) {
+				t.Fatalf("PublishDeduplicated() error = %v, want %v", err, test.wantErr)
+			}
+		})
+	}
+}
+
 func TestAdapterDeadLetterIsPublishBeforeAckAndDedupeStable(t *testing.T) {
 	publisher := &fakePublisher{publishErr: errors.New("private publish failure")}
 	brokerMessage := &fakeMessage{
@@ -259,6 +1123,48 @@ func TestAdapterDeadLetterIsPublishBeforeAckAndDedupeStable(t *testing.T) {
 	}
 	if brokerMessage.doubleAckCalls != 2 {
 		t.Fatalf("source DoubleAck() calls = %d", brokerMessage.doubleAckCalls)
+	}
+}
+
+func TestAdapterDeadLetterRejectsInvalidPublishAcknowledgementBeforeSourceAck(t *testing.T) {
+	tests := map[string]struct {
+		ack      *jetstream.PubAck
+		wantErr  error
+		wantAcks int
+	}{
+		"nil acknowledgement":       {wantErr: ErrDeadLetter},
+		"missing stream":            {ack: &jetstream.PubAck{Sequence: 1}, wantErr: ErrDeadLetter},
+		"missing sequence":          {ack: &jetstream.PubAck{Stream: "DLQ"}, wantErr: ErrDeadLetter},
+		"duplicate acknowledgement": {ack: &jetstream.PubAck{Stream: "DLQ", Sequence: 1, Duplicate: true}, wantAcks: 1},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			message := &fakeMessage{
+				data:     []byte("dead-letter"),
+				metadata: &jetstream.MsgMetadata{Stream: "EVENTS", Consumer: "WORKER", Sequence: jetstream.SequencePair{Stream: 11}},
+			}
+			publisher := &fakePublisher{publishAck: func(*nats.Msg) *jetstream.PubAck { return test.ack }}
+			adapter, err := New(publisher, &fakeConsumer{messages: []jetstream.Msg{message}}, Config{
+				Subject:           "events.primary",
+				DeadLetterSubject: "events.dlq",
+			})
+			if err != nil {
+				t.Fatalf("New() error = %v", err)
+			}
+			delivery, err := adapter.ReceiveDelivery(context.Background())
+			if err != nil {
+				t.Fatalf("ReceiveDelivery() error = %v", err)
+			}
+			if err := delivery.DeadLetter(context.Background()); !errors.Is(err, test.wantErr) {
+				t.Fatalf("DeadLetter() error = %v, want %v", err, test.wantErr)
+			}
+			if message.doubleAckCalls != test.wantAcks {
+				t.Fatalf("source DoubleAck() calls = %d, want %d", message.doubleAckCalls, test.wantAcks)
+			}
+			if len(publisher.snapshot()) != 1 {
+				t.Fatalf("DLQ publishes = %d, want 1", len(publisher.snapshot()))
+			}
+		})
 	}
 }
 
@@ -366,6 +1272,56 @@ func TestAdapterInvalidMessageQuarantineFailsClosed(t *testing.T) {
 			t.Fatalf("invalid metadata settlement = publishes:%d acks:%d", len(publisher.snapshot()), message.doubleAckCalls)
 		}
 	})
+}
+
+func TestAdapterInvalidMessageQuarantineRejectsInvalidPublishAcknowledgementBeforeSourceAck(t *testing.T) {
+	tests := map[string]struct {
+		ack      *jetstream.PubAck
+		wantErr  error
+		wantAcks int
+	}{
+		"nil acknowledgement":       {wantErr: ErrDeadLetter},
+		"missing stream":            {ack: &jetstream.PubAck{Sequence: 1}, wantErr: ErrDeadLetter},
+		"missing sequence":          {ack: &jetstream.PubAck{Stream: "DLQ"}, wantErr: ErrDeadLetter},
+		"duplicate acknowledgement": {ack: &jetstream.PubAck{Stream: "DLQ", Sequence: 1, Duplicate: true}, wantAcks: 1},
+	}
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			invalid := &fakeMessage{
+				data:     []byte("invalid"),
+				headers:  nats.Header{"Tenant": []string{"one", "two"}},
+				metadata: &jetstream.MsgMetadata{Stream: "EVENTS", Consumer: "WORKER", Sequence: jetstream.SequencePair{Stream: 12}},
+			}
+			valid := &fakeMessage{
+				data:     []byte("valid"),
+				metadata: &jetstream.MsgMetadata{Stream: "EVENTS", Consumer: "WORKER", Sequence: jetstream.SequencePair{Stream: 13}},
+			}
+			consumer := &fakeConsumer{messages: []jetstream.Msg{invalid, valid}}
+			publisher := &fakePublisher{publishAck: func(*nats.Msg) *jetstream.PubAck { return test.ack }}
+			adapter, err := New(publisher, consumer, Config{Subject: "events.primary", DeadLetterSubject: "events.dlq"})
+			if err != nil {
+				t.Fatalf("New() error = %v", err)
+			}
+
+			delivery, receiveErr := adapter.ReceiveDelivery(context.Background())
+			if !errors.Is(receiveErr, test.wantErr) {
+				t.Fatalf("ReceiveDelivery() error = %v, want %v", receiveErr, test.wantErr)
+			}
+			if test.wantErr == nil && string(delivery.Message.Body) != "valid" {
+				t.Fatalf("delivery body = %q, want valid", delivery.Message.Body)
+			}
+			if invalid.doubleAckCalls != test.wantAcks {
+				t.Fatalf("source DoubleAck() calls = %d, want %d", invalid.doubleAckCalls, test.wantAcks)
+			}
+			wantPending := 1
+			if test.wantErr == nil {
+				wantPending = 0
+			}
+			if len(consumer.messages) != wantPending {
+				t.Fatalf("pending consumer messages = %d, want %d", len(consumer.messages), wantPending)
+			}
+		})
+	}
 }
 
 func TestDeadLetterIDUsesStableDigestInput(t *testing.T) {
@@ -580,12 +1536,15 @@ func legacyApplicationHeaders(headers map[string]string) nats.Header {
 	return result
 }
 
-func TestAdapterReceiveHonorsCancellationBetweenBoundedPulls(t *testing.T) {
+func TestAdapterReceiveUsesContextBoundedPull(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	consumer := &fakeConsumer{}
-	consumer.next = func() (jetstream.Msg, error) {
+	consumer.next = func(options ...jetstream.FetchOpt) (jetstream.Msg, error) {
+		if len(options) != 1 {
+			t.Fatalf("Consumer.Next() options = %d, want 1", len(options))
+		}
 		cancel()
-		return nil, jetstream.ErrNoMessages
+		return nil, errors.New("private pull failure")
 	}
 	adapter, err := New(&fakePublisher{}, consumer, Config{Subject: "events.primary", DeadLetterSubject: "events.dlq"})
 	if err != nil {
@@ -594,15 +1553,71 @@ func TestAdapterReceiveHonorsCancellationBetweenBoundedPulls(t *testing.T) {
 	if _, err := adapter.ReceiveDelivery(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("ReceiveDelivery() error = %v", err)
 	}
+	if consumer.nextCalls != 1 || consumer.lastNextOptionCount != 1 {
+		t.Fatalf("Consumer.Next() = calls:%d options:%d", consumer.nextCalls, consumer.lastNextOptionCount)
+	}
 	if _, err := adapter.ReceiveDelivery(nil); !errors.Is(err, ErrInvalidContext) {
 		t.Fatalf("ReceiveDelivery(nil) error = %v", err)
 	}
+}
+
+func TestAdapterReceiveContinuesAfterInternalPullDeadline(t *testing.T) {
+	message := &fakeMessage{data: []byte("received")}
+	consumer := &fakeConsumer{}
+	consumer.next = func(options ...jetstream.FetchOpt) (jetstream.Msg, error) {
+		if len(options) != 1 {
+			t.Fatalf("Consumer.Next() options = %d, want 1", len(options))
+		}
+		if consumer.nextCalls == 1 {
+			time.Sleep(2 * minimumFetchMaxWait)
+			return nil, context.DeadlineExceeded
+		}
+		return message, nil
+	}
+	adapter, err := New(&fakePublisher{}, consumer, Config{
+		Subject:           "events.primary",
+		DeadLetterSubject: "events.dlq",
+		FetchMaxWait:      minimumFetchMaxWait,
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	delivery, err := adapter.ReceiveDelivery(context.Background())
+	if err != nil || string(delivery.Message.Body) != "received" {
+		t.Fatalf("ReceiveDelivery() = %#v, %v", delivery.Message, err)
+	}
+	if consumer.nextCalls != 2 || consumer.lastNextOptionCount != 1 {
+		t.Fatalf("Consumer.Next() = calls:%d options:%d", consumer.nextCalls, consumer.lastNextOptionCount)
+	}
+}
+
+func BenchmarkDeliveryPullOption(b *testing.B) {
+	consumer := &fakeConsumer{next: func(...jetstream.FetchOpt) (jetstream.Msg, error) {
+		return &fakeMessage{}, nil
+	}}
+	b.Run("context-bounded", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			if _, err := receiveNext(context.Background(), consumer, defaultFetchMaxWait); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run("legacy-max-wait", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			if _, err := consumer.Next(jetstream.FetchMaxWait(defaultFetchMaxWait)); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
 }
 
 type fakePublisher struct {
 	mu         sync.Mutex
 	messages   []*nats.Msg
 	publishErr error
+	publishAck func(*nats.Msg) *jetstream.PubAck
 }
 
 func (publisher *fakePublisher) PublishMsg(_ context.Context, message *nats.Msg, _ ...jetstream.PublishOpt) (*jetstream.PubAck, error) {
@@ -618,6 +1633,9 @@ func (publisher *fakePublisher) PublishMsg(_ context.Context, message *nats.Msg,
 		cloned.Header[name] = append([]string(nil), values...)
 	}
 	publisher.messages = append(publisher.messages, cloned)
+	if publisher.publishAck != nil {
+		return publisher.publishAck(cloned), nil
+	}
 	return &jetstream.PubAck{Stream: "TEST", Sequence: uint64(len(publisher.messages))}, nil
 }
 
@@ -628,16 +1646,21 @@ func (publisher *fakePublisher) snapshot() []*nats.Msg {
 }
 
 type fakeConsumer struct {
-	messages []jetstream.Msg
-	nextErr  error
-	next     func() (jetstream.Msg, error)
-	info     *jetstream.ConsumerInfo
-	infoErr  error
+	messages            []jetstream.Msg
+	nextErr             error
+	next                func(...jetstream.FetchOpt) (jetstream.Msg, error)
+	nextCalls           int
+	lastNextOptionCount int
+	info                *jetstream.ConsumerInfo
+	infoErr             error
+	infoCalls           int
 }
 
-func (consumer *fakeConsumer) Next(...jetstream.FetchOpt) (jetstream.Msg, error) {
+func (consumer *fakeConsumer) Next(options ...jetstream.FetchOpt) (jetstream.Msg, error) {
+	consumer.nextCalls++
+	consumer.lastNextOptionCount = len(options)
 	if consumer.next != nil {
-		return consumer.next()
+		return consumer.next(options...)
 	}
 	if consumer.nextErr != nil {
 		return nil, consumer.nextErr
@@ -651,7 +1674,14 @@ func (consumer *fakeConsumer) Next(...jetstream.FetchOpt) (jetstream.Msg, error)
 }
 
 func (consumer *fakeConsumer) Info(context.Context) (*jetstream.ConsumerInfo, error) {
+	consumer.infoCalls++
 	return consumer.info, consumer.infoErr
+}
+
+type receiveOnlyConsumer struct{}
+
+func (*receiveOnlyConsumer) Next(...jetstream.FetchOpt) (jetstream.Msg, error) {
+	return nil, jetstream.ErrNoMessages
 }
 
 type fakeMessage struct {

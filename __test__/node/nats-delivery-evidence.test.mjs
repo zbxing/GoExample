@@ -58,19 +58,64 @@ function goOutput(passed = true) {
 
 function innerReport() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 14,
     status: 'passed',
     storage: 'file',
     replicas: 1,
+    pushConsumerRejected: true,
+    rebuiltPullConsumerPreflightPassed: true,
+    consumerDeliverSubject: '',
+    priorityConsumerRejected: true,
+    rebuiltDefaultPriorityConsumerPreflightPassed: true,
+    consumerPriorityPolicy: 0,
+    consumerPriorityGroupCount: 0,
+    ackAllConsumerRejected: true,
+    rebuiltExplicitAckConsumerPreflightPassed: true,
+    consumerAckPolicy: 0,
+    receiveCancellationWaitingObserved: true,
+    receiveCancellationPropagated: true,
+    receiveCancellationError: 'context canceled',
+    receiveCancellationLatencyNanos: 25_000_000,
+    receiveCancellationFetchMaxWaitNanos: 5_000_000_000,
+    receiveCancellationReturnLimitNanos: 1_000_000_000,
+    persistentConsumerPreflightPassed: true,
+    deliverNewPolicyRejected: true,
+    deliverAllPolicyPreflightPassed: true,
+    consumerDeliverPolicy: 0,
+    replayOriginalPolicyRejected: true,
+    replayInstantPolicyPreflightPassed: true,
+    consumerReplayPolicy: 0,
+    brokerRequestExpiresRejected: true,
+    shortRequestExpiresRejected: true,
+    compatibleRequestExpiresPreflightPassed: true,
+    adapterFetchMaxWaitNanos: 100_000_000,
+    consumerMaxRequestExpiresNanos: 5_000_000_000,
+    pausedConsumerRejected: true,
+    resumedConsumerPreflightPassed: true,
+    consumerPaused: false,
+    limitedDeliveryRejected: true,
+    consumerMaxDeliver: 5,
+    headersOnlyRejected: true,
+    fullPayloadPreflightPassed: true,
+    consumerHeadersOnly: false,
+    broadSubjectFilterRejected: true,
+    exactSubjectPreflightPassed: true,
+    consumerFilterSubject: 'goexample.source.contract.primary',
+    foreignSubjectExcluded: true,
     sourceMessagesPublished: 4,
+    deduplicatedPublishAttempts: 2,
+    deduplicatedStoredMessages: 1,
+    duplicateWindowNanos: 60_000_000_000,
+    deduplicationVerified: true,
     redeliveryObserved: true,
     redeliveryCount: 2,
     acknowledged: 1,
     deadLettered: 1,
+    dlqPublishConfirmed: true,
     dlqAcknowledged: 1,
     shortLeaseRejected: true,
     staticLeasePreflightPassed: true,
-    requiredLeaseNanos: 8_510_000_000,
+    requiredLeaseNanos: 8_515_000_000,
     workerAckWaitNanos: 9_000_000_000,
     dynamicLeasePreflightPassed: true,
     dynamicRequiredLeaseNanos: 700_000_000,
@@ -121,10 +166,53 @@ async function createEvidence(t) {
   return { binary, binarySHA256, evidenceRoot, inner, outer: outer.report, reportPath: outer.reportPath };
 }
 
-test('NATS delivery evidence binds redelivery, settlement, static preflight, and dynamic lease extension', async (t) => {
+test('NATS delivery evidence binds in-flight pull cancellation, push, priority, and AckAll rejection with compatible rebuilds, reliable delivery, deduplication, confirmed DLQ settlement, and lease extension', async (t) => {
   const { evidenceRoot } = await createEvidence(t);
   const contract = verifyNatsDeliveryContractArtifacts({ evidenceRoot });
   const verified = verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot });
+  assert.equal(contract.report.deduplicatedPublishAttempts, 2);
+  assert.equal(contract.report.deduplicatedStoredMessages, 1);
+  assert.equal(contract.report.duplicateWindowNanos, 60_000_000_000);
+  assert.equal(contract.report.deduplicationVerified, true);
+  assert.equal(contract.report.dlqPublishConfirmed, true);
+  assert.equal(contract.report.pushConsumerRejected, true);
+  assert.equal(contract.report.rebuiltPullConsumerPreflightPassed, true);
+  assert.equal(contract.report.consumerDeliverSubject, '');
+  assert.equal(contract.report.priorityConsumerRejected, true);
+  assert.equal(contract.report.rebuiltDefaultPriorityConsumerPreflightPassed, true);
+  assert.equal(contract.report.consumerPriorityPolicy, 0);
+  assert.equal(contract.report.consumerPriorityGroupCount, 0);
+  assert.equal(contract.report.ackAllConsumerRejected, true);
+  assert.equal(contract.report.rebuiltExplicitAckConsumerPreflightPassed, true);
+  assert.equal(contract.report.consumerAckPolicy, 0);
+  assert.equal(contract.report.receiveCancellationWaitingObserved, true);
+  assert.equal(contract.report.receiveCancellationPropagated, true);
+  assert.equal(contract.report.receiveCancellationError, 'context canceled');
+  assert.ok(contract.report.receiveCancellationLatencyNanos < contract.report.receiveCancellationFetchMaxWaitNanos);
+  assert.equal(contract.report.persistentConsumerPreflightPassed, true);
+  assert.equal(contract.report.deliverNewPolicyRejected, true);
+  assert.equal(contract.report.deliverAllPolicyPreflightPassed, true);
+  assert.equal(contract.report.consumerDeliverPolicy, 0);
+  assert.equal(contract.report.replayOriginalPolicyRejected, true);
+  assert.equal(contract.report.replayInstantPolicyPreflightPassed, true);
+  assert.equal(contract.report.consumerReplayPolicy, 0);
+  assert.equal(contract.report.brokerRequestExpiresRejected, true);
+  assert.equal(contract.report.shortRequestExpiresRejected, true);
+  assert.equal(contract.report.compatibleRequestExpiresPreflightPassed, true);
+  assert.equal(contract.report.adapterFetchMaxWaitNanos, 100_000_000);
+  assert.equal(contract.report.consumerMaxRequestExpiresNanos, 5_000_000_000);
+  assert.equal(contract.report.pausedConsumerRejected, true);
+  assert.equal(contract.report.resumedConsumerPreflightPassed, true);
+  assert.equal(contract.report.consumerPaused, false);
+  assert.equal(contract.report.limitedDeliveryRejected, true);
+  assert.equal(contract.report.consumerMaxDeliver, 5);
+  assert.equal(contract.report.headersOnlyRejected, true);
+  assert.equal(contract.report.fullPayloadPreflightPassed, true);
+  assert.equal(contract.report.consumerHeadersOnly, false);
+  assert.equal(contract.report.broadSubjectFilterRejected, true);
+  assert.equal(contract.report.exactSubjectPreflightPassed, true);
+  assert.equal(contract.report.consumerFilterSubject, 'goexample.source.contract.primary');
+  assert.equal(contract.report.foreignSubjectExcluded, true);
   assert.equal(contract.report.dynamicRequiredLeaseNanos, 700_000_000);
   assert.equal(verified.report.schemaVersion, natsDeliveryEvidenceSchemaVersion);
   assert.equal(verified.report.status, 'passed');
@@ -170,6 +258,193 @@ test('NATS delivery evidence rejects scope, status, semantic, log, binary, and c
   await writeFile(
     path.join(evidenceRoot, 'delivery-report.json'),
     `${JSON.stringify(semanticTamper, null, 2)}\n`,
+    'utf8',
+  );
+  await writeOuterEvidence(evidenceRoot);
+  assert.throws(
+    () => verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }),
+    /delivery report does not satisfy/,
+  );
+
+  const missingDeliveryPolicy = structuredClone(inner);
+  delete missingDeliveryPolicy.deliverAllPolicyPreflightPassed;
+  await writeFile(
+    path.join(evidenceRoot, 'delivery-report.json'),
+    `${JSON.stringify(missingDeliveryPolicy, null, 2)}\n`,
+    'utf8',
+  );
+  await writeOuterEvidence(evidenceRoot);
+  assert.throws(
+    () => verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }),
+    /delivery report keys must be exactly/,
+  );
+
+  const missingReplayPolicy = structuredClone(inner);
+  delete missingReplayPolicy.replayInstantPolicyPreflightPassed;
+  await writeFile(
+    path.join(evidenceRoot, 'delivery-report.json'),
+    `${JSON.stringify(missingReplayPolicy, null, 2)}\n`,
+    'utf8',
+  );
+  await writeOuterEvidence(evidenceRoot);
+  assert.throws(
+    () => verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }),
+    /delivery report keys must be exactly/,
+  );
+
+  const missingRequestExpiration = structuredClone(inner);
+  delete missingRequestExpiration.compatibleRequestExpiresPreflightPassed;
+  await writeFile(
+    path.join(evidenceRoot, 'delivery-report.json'),
+    `${JSON.stringify(missingRequestExpiration, null, 2)}\n`,
+    'utf8',
+  );
+  await writeOuterEvidence(evidenceRoot);
+  assert.throws(
+    () => verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }),
+    /delivery report keys must be exactly/,
+  );
+
+  const missingConsumerPause = structuredClone(inner);
+  delete missingConsumerPause.resumedConsumerPreflightPassed;
+  await writeFile(
+    path.join(evidenceRoot, 'delivery-report.json'),
+    `${JSON.stringify(missingConsumerPause, null, 2)}\n`,
+    'utf8',
+  );
+  await writeOuterEvidence(evidenceRoot);
+  assert.throws(
+    () => verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }),
+    /delivery report keys must be exactly/,
+  );
+
+  const missingConsumerMode = structuredClone(inner);
+  delete missingConsumerMode.rebuiltPullConsumerPreflightPassed;
+  await writeFile(
+    path.join(evidenceRoot, 'delivery-report.json'),
+    `${JSON.stringify(missingConsumerMode, null, 2)}\n`,
+    'utf8',
+  );
+  await writeOuterEvidence(evidenceRoot);
+  assert.throws(
+    () => verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }),
+    /delivery report keys must be exactly/,
+  );
+
+  const missingPriorityPolicy = structuredClone(inner);
+  delete missingPriorityPolicy.rebuiltDefaultPriorityConsumerPreflightPassed;
+  await writeFile(
+    path.join(evidenceRoot, 'delivery-report.json'),
+    `${JSON.stringify(missingPriorityPolicy, null, 2)}\n`,
+    'utf8',
+  );
+  await writeOuterEvidence(evidenceRoot);
+  assert.throws(
+    () => verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }),
+    /delivery report keys must be exactly/,
+  );
+
+  const missingAckPolicy = structuredClone(inner);
+  delete missingAckPolicy.rebuiltExplicitAckConsumerPreflightPassed;
+  await writeFile(
+    path.join(evidenceRoot, 'delivery-report.json'),
+    `${JSON.stringify(missingAckPolicy, null, 2)}\n`,
+    'utf8',
+  );
+  await writeOuterEvidence(evidenceRoot);
+  assert.throws(
+    () => verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }),
+    /delivery report keys must be exactly/,
+  );
+
+  const missingReceiveCancellation = structuredClone(inner);
+  delete missingReceiveCancellation.receiveCancellationPropagated;
+  await writeFile(
+    path.join(evidenceRoot, 'delivery-report.json'),
+    `${JSON.stringify(missingReceiveCancellation, null, 2)}\n`,
+    'utf8',
+  );
+  await writeOuterEvidence(evidenceRoot);
+  assert.throws(
+    () => verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }),
+    /delivery report keys must be exactly/,
+  );
+
+  for (const [field, value] of [
+    ['schemaVersion', 13],
+    ['pushConsumerRejected', false],
+    ['rebuiltPullConsumerPreflightPassed', false],
+    ['consumerDeliverSubject', 'private.delivery.inbox'],
+    ['priorityConsumerRejected', false],
+    ['rebuiltDefaultPriorityConsumerPreflightPassed', false],
+    ['consumerPriorityPolicy', 1],
+    ['consumerPriorityGroupCount', 1],
+    ['ackAllConsumerRejected', false],
+    ['rebuiltExplicitAckConsumerPreflightPassed', false],
+    ['consumerAckPolicy', 1],
+    ['receiveCancellationWaitingObserved', false],
+    ['receiveCancellationPropagated', false],
+    ['receiveCancellationError', 'private pull failure'],
+    ['receiveCancellationLatencyNanos', 1_000_000_001],
+    ['receiveCancellationFetchMaxWaitNanos', 4_000_000_000],
+    ['receiveCancellationReturnLimitNanos', 500_000_000],
+    ['persistentConsumerPreflightPassed', false],
+    ['deliverNewPolicyRejected', false],
+    ['deliverAllPolicyPreflightPassed', false],
+    ['consumerDeliverPolicy', 2],
+    ['replayOriginalPolicyRejected', false],
+    ['replayInstantPolicyPreflightPassed', false],
+    ['consumerReplayPolicy', 1],
+    ['brokerRequestExpiresRejected', false],
+    ['shortRequestExpiresRejected', false],
+    ['compatibleRequestExpiresPreflightPassed', false],
+    ['adapterFetchMaxWaitNanos', 50_000_000],
+    ['consumerMaxRequestExpiresNanos', 50_000_000],
+    ['pausedConsumerRejected', false],
+    ['resumedConsumerPreflightPassed', false],
+    ['consumerPaused', true],
+    ['limitedDeliveryRejected', false],
+    ['consumerMaxDeliver', 1],
+    ['headersOnlyRejected', false],
+    ['fullPayloadPreflightPassed', false],
+    ['consumerHeadersOnly', true],
+    ['broadSubjectFilterRejected', false],
+    ['exactSubjectPreflightPassed', false],
+    ['consumerFilterSubject', 'goexample.source.contract.>'],
+    ['foreignSubjectExcluded', false],
+  ]) {
+    const persistentPreflightTamper = structuredClone(inner);
+    persistentPreflightTamper[field] = value;
+    await writeFile(
+      path.join(evidenceRoot, 'delivery-report.json'),
+      `${JSON.stringify(persistentPreflightTamper, null, 2)}\n`,
+      'utf8',
+    );
+    await writeOuterEvidence(evidenceRoot);
+    assert.throws(
+      () => verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }),
+      /delivery report does not satisfy/,
+    );
+  }
+
+  const deduplicationTamper = structuredClone(inner);
+  deduplicationTamper.deduplicatedStoredMessages = 2;
+  await writeFile(
+    path.join(evidenceRoot, 'delivery-report.json'),
+    `${JSON.stringify(deduplicationTamper, null, 2)}\n`,
+    'utf8',
+  );
+  await writeOuterEvidence(evidenceRoot);
+  assert.throws(
+    () => verifyNatsDeliveryEvidence({ repositoryRoot, evidenceRoot }),
+    /delivery report does not satisfy/,
+  );
+
+  const dlqAcknowledgementTamper = structuredClone(inner);
+  dlqAcknowledgementTamper.dlqPublishConfirmed = false;
+  await writeFile(
+    path.join(evidenceRoot, 'delivery-report.json'),
+    `${JSON.stringify(dlqAcknowledgementTamper, null, 2)}\n`,
     'utf8',
   );
   await writeOuterEvidence(evidenceRoot);

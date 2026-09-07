@@ -214,6 +214,7 @@ function collectSource(repositoryRoot) {
     httpClientTests: 'Framework/httpclient/client_test.go',
     drillRunner: 'scripts/server-recovery-drill.mjs',
     evidenceRunner: 'scripts/server-recovery-evidence.mjs',
+    commandRunner: 'scripts/lib/server-recovery-command.mjs',
     evidenceVerifier: 'scripts/lib/server-recovery-evidence.mjs',
     boundedCommand: 'scripts/lib/bounded-command.mjs',
     evidenceTests: '__test__/node/server-recovery-evidence.test.mjs',

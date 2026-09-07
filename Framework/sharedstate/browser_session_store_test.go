@@ -11,6 +11,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/zbxing/goexample/Framework/auth"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
 
 func TestRedisBrowserSessionStoreSharesAndRevokesHashOnlySession(t *testing.T) {
@@ -44,6 +45,72 @@ func TestRedisBrowserSessionStoreSharesAndRevokesHashOnlySession(t *testing.T) {
 	}
 	if _, err := first.Verify(context.Background(), credentials.SessionToken, "", false); !errors.Is(err, auth.ErrBrowserSessionInvalid) {
 		t.Fatalf("revoked Verify() error = %v", err)
+	}
+}
+
+func TestRedisBrowserSessionInventoryUsesOneAtomicSnapshotCommand(t *testing.T) {
+	server := miniredis.RunT(t)
+	recorder, provider := newRedisTestTracerProvider(t)
+	state := newTestRedisWithProvider(t, context.Background(), server, "goexample:browser-inventory-snapshot:", provider)
+	defer state.Close()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	manager := newRedisBrowserSessionManagerWithSubjectLimit(t, &now, 4, 4, state)
+	for range 3 {
+		if _, err := manager.Start(context.Background(), redisBrowserClaims(now)); err != nil {
+			t.Fatalf("Start() error = %v", err)
+		}
+		now = now.Add(time.Millisecond)
+	}
+	// Prime the script cache so the measured call is one EVALSHA span rather
+	// than the initial EVALSHA/NOSCRIPT plus EVAL fallback pair.
+	if _, err := manager.ListForSubject(context.Background(), "browser-user-1"); err != nil {
+		t.Fatalf("warm ListForSubject() error = %v", err)
+	}
+	before := len(recorder.Ended())
+	items, err := manager.ListForSubject(context.Background(), "browser-user-1")
+	if err != nil {
+		t.Fatalf("ListForSubject() error = %v", err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("inventory length = %d, want 3", len(items))
+	}
+	spans := recorder.Ended()[before:]
+	if len(spans) != 1 || spans[0].Name() != "redis.evalsha" {
+		t.Fatalf("inventory Redis spans = %v, want one redis.evalsha span", spanNames(spans))
+	}
+}
+
+func spanNames(spans []sdktrace.ReadOnlySpan) []string {
+	names := make([]string, len(spans))
+	for index, span := range spans {
+		names[index] = span.Name()
+	}
+	return names
+}
+
+func TestRedisBrowserSessionInventoryFailsClosedForMissingPayloadInSnapshot(t *testing.T) {
+	server := miniredis.RunT(t)
+	state := newTestRedis(t, server, "goexample:browser-inventory-snapshot-invalid:")
+	defer state.Close()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	manager := newRedisBrowserSessionManagerWithSubjectLimit(t, &now, 2, 2, state)
+	_, err := manager.Start(context.Background(), redisBrowserClaims(now))
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	var payloadKey string
+	for _, key := range server.Keys() {
+		if strings.Contains(key, "browser-session:token:") {
+			payloadKey = key
+			break
+		}
+	}
+	if payloadKey == "" {
+		t.Fatal("browser session payload key was not created")
+	}
+	server.Del(payloadKey)
+	if _, err := manager.ListForSubject(context.Background(), "browser-user-1"); !errors.Is(err, auth.ErrBrowserSessionInvalid) {
+		t.Fatalf("missing inventory ListForSubject() error = %v", err)
 	}
 }
 

@@ -74,7 +74,7 @@ function innerReport() {
     sourceMessagesPending: 0,
     shortLeaseRejected: true,
     leasePreflightPassed: true,
-    requiredLeaseNanos: 8_510_000_000,
+    requiredLeaseNanos: 8_515_000_000,
     workerAckWaitNanos: 9_000_000_000,
   };
 }

@@ -7,8 +7,12 @@ import http2 from 'node:http2';
 import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  contractCommandDefaultTimeoutMs,
+  contractCommandMaximumOutputBytes,
+  createContractCommandRunner,
+} from './lib/contract-command.mjs';
 import {
   buildNginxEdgeChecksums,
   buildNginxEdgeEvidenceReport,
@@ -29,6 +33,9 @@ const certificatePath = path.join(runtimeDirectory, 'tls.crt');
 const privateKeyPath = path.join(runtimeDirectory, 'tls.key');
 const events = [];
 const startedAt = new Date().toISOString();
+const edgeCommandTimeoutMs = contractCommandDefaultTimeoutMs;
+const edgeImagePullTimeoutMs = 120_000;
+const edgeCleanupTimeoutMs = 30_000;
 let containerCreated = false;
 let upstreamServer;
 
@@ -36,36 +43,14 @@ function record(name, details = {}) {
   events.push({ name, ...details });
 }
 
-function commandError(command, args, code, stdout, stderr) {
-  const error = new Error(`${command} ${args.join(' ')} exited with code ${code}`);
-  error.stdout = stdout;
-  error.stderr = stderr;
-  return error;
-}
+const runContractCommand = createContractCommandRunner({ cwd: repositoryRoot });
 
-function run(command, args, { allowFailure = false } = {}) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd: repositoryRoot,
-      env: process.env,
-      shell: false,
-      windowsHide: true,
-    });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (chunk) => { stdout += chunk; });
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
-    child.on('error', reject);
-    child.on('exit', (code, signal) => {
-      const status = signal ? 1 : (code ?? 1);
-      const result = { status, stdout, stderr };
-      if (status !== 0 && !allowFailure) {
-        reject(commandError(command, args, status, stdout, stderr));
-        return;
-      }
-      resolve(result);
-    });
-  });
+function run(command, args, {
+  allowFailure = false,
+  timeoutMs = edgeCommandTimeoutMs,
+  maxOutputBytes = contractCommandMaximumOutputBytes,
+} = {}) {
+  return runContractCommand(command, args, { allowFailure, timeoutMs, maxOutputBytes });
 }
 
 function withTimeout(promise, milliseconds, name) {
@@ -235,7 +220,10 @@ async function waitForEdge(port) {
 async function writeArtifacts(status, error, containerLogs) {
   await rm(artifactDirectory, { recursive: true, force: true });
   await mkdir(artifactDirectory, { recursive: true });
-  const git = await run('git', ['rev-parse', 'HEAD'], { allowFailure: true });
+  const git = await run('git', ['rev-parse', 'HEAD'], {
+    allowFailure: true,
+    timeoutMs: edgeCleanupTimeoutMs,
+  });
   const runnerOS = process.env.RUNNER_OS ?? os.platform();
   const runnerArch = process.env.RUNNER_ARCH ?? os.arch();
   const gitCommit = git.status === 0 ? git.stdout.trim() : 'unknown';
@@ -278,6 +266,7 @@ async function executeContract() {
   if (process.platform !== 'linux') {
     throw new Error('the real Nginx edge contract requires a Linux Docker host');
   }
+  await run('docker', ['pull', image], { timeoutMs: edgeImagePullTimeoutMs });
   await mkdir(deploymentDirectory, { recursive: true });
   await mkdir(runtimeDirectory, { recursive: true });
   const upstream = await startUpstream();
@@ -380,9 +369,15 @@ try {
   failure = error;
 } finally {
   if (containerCreated) {
-    const logs = await run('docker', ['logs', containerName], { allowFailure: true });
+    const logs = await run('docker', ['logs', containerName], {
+      allowFailure: true,
+      timeoutMs: edgeCleanupTimeoutMs,
+    });
     containerLogs = `${logs.stdout}${logs.stderr}`;
-    await run('docker', ['rm', '--force', containerName], { allowFailure: true });
+    await run('docker', ['rm', '--force', containerName], {
+      allowFailure: true,
+      timeoutMs: edgeCleanupTimeoutMs,
+    });
   }
   if (upstreamServer) {
     upstreamServer.closeAllConnections?.();

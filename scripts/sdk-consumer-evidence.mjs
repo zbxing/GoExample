@@ -70,6 +70,7 @@ function run() {
     encoding: 'utf8',
     shell: false,
     timeout: 120_000,
+    killSignal: 'SIGTERM',
     windowsHide: true,
     maxBuffer: 4 * 1024 * 1024,
   });

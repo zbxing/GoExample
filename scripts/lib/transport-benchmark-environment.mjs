@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
 import os from 'node:os';
+import { runBoundedCommand } from './bounded-command.mjs';
 
 const fingerprintFields = [
   ['runner.provider', (value) => value.runner.provider],
@@ -130,15 +130,13 @@ function goVersion(environment) {
     return configured.startsWith('go') ? configured : `go${configured}`;
   }
   const command = environment.GO_BINARY?.trim() || (process.platform === 'win32' ? 'go.exe' : 'go');
-  const result = spawnSync(command, ['env', 'GOVERSION'], {
-    encoding: 'utf8',
+  const value = runBoundedCommand(command, ['env', 'GOVERSION'], {
     env: environment,
-    shell: false,
   });
-  if (result.status !== 0 || !result.stdout.trim()) {
+  if (value === null) {
     throw new Error('go env GOVERSION must succeed to fingerprint the benchmark toolchain');
   }
-  return result.stdout.trim();
+  return value;
 }
 
 export function captureEnvironmentFingerprint(environment = process.env) {

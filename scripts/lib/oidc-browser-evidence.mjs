@@ -4,9 +4,11 @@ import path from 'node:path';
 import { readBoundedGitCommit, readBoundedGoVersion } from './bounded-command.mjs';
 import { selectRepositoryToolCommand } from './go-toolchain-environment.mjs';
 
-export const oidcBrowserEvidenceSchemaVersion = 1;
+export const oidcBrowserEvidenceSchemaVersion = 3;
 export const oidcBrowserTests = Object.freeze([
-  'TestOIDCBrowserCompletesStateCookieBoundCallbackOnce',
+	'TestOIDCClientNegotiatesTokenEndpointAuthentication',
+	'TestOIDCClientBuildsCompliantTokenAuthenticationRequests',
+	'TestOIDCBrowserCompletesStateCookieBoundCallbackOnce',
   'TestOIDCBrowserSessionInventoryAndSubjectBoundRevocation',
   'TestOIDCBrowserSessionDeviceNameRequiresCSRFAndScopesUpdates',
   'TestOIDCBrowserSessionInventoryFailsClosedForLegacyStore',
@@ -15,6 +17,7 @@ export const oidcBrowserTests = Object.freeze([
   'TestOIDCBrowserCollapsesProviderFailuresAndPrivateQueryValues',
   'TestOIDCBrowserRequiresExternalAuthenticationMode',
   'TestOIDCBrowserReservesConditionalRoutesOnlyWhenEnabled',
+  'TestOIDCBrowserRejectsMismatchedAccessTokenHash',
 ]);
 export const oidcBrowserGoArguments = Object.freeze([
   'test',
@@ -22,10 +25,11 @@ export const oidcBrowserGoArguments = Object.freeze([
   '-count=1',
   '-timeout=60s',
   `-run=^(${oidcBrowserTests.join('|')})$`,
-  './httpapi',
+	'./auth',
+	'./httpapi',
 ]);
 export const oidcBrowserLimitations = Object.freeze([
-  'proves repository-local httptest OIDC browser routing, state and cookie binding, session inventory, revocation, CSRF device metadata, and fail-closed behavior only',
+	'proves repository-local httptest token-endpoint client authentication negotiation and request shape, OIDC browser routing, state, cookie and optional at_hash binding, session inventory, revocation, CSRF device metadata, and fail-closed behavior only',
   'does not establish target IdP discovery, MFA enrollment, challenge, recovery, claim mapping, key rotation, or production browser compatibility',
   'does not establish production Redis HA, KMS or Vault custody, policy deployment, device fingerprinting or UI, remote provenance, or identity incident recovery',
 ]);
@@ -176,8 +180,11 @@ function sourcePaths() {
     frameworkGoMod: 'Framework/go.mod',
     frameworkGoSum: 'Framework/go.sum',
     tokenVerifier: 'Framework/auth/service.go',
-    oidcFlow: 'Framework/auth/oidc_flow.go',
-    oidcClient: 'Framework/auth/oidc_client.go',
+    jwksVerifier: 'Framework/auth/jwks.go',
+    jwksVerifierTests: 'Framework/auth/jwks_test.go',
+		oidcFlow: 'Framework/auth/oidc_flow.go',
+		oidcClient: 'Framework/auth/oidc_client.go',
+		oidcClientTests: 'Framework/auth/oidc_client_test.go',
     oidcCallback: 'Framework/auth/oidc_callback.go',
     browserSession: 'Framework/auth/browser_session.go',
     oidcBrowser: 'Framework/httpapi/oidc_browser.go',
@@ -338,9 +345,12 @@ export function buildOIDCBrowserEvidenceReport({ repositoryRoot, evidenceRoot, e
         csrfProtectedDeviceName: true,
         legacyStoreFailsClosed: true,
         backendOutageCollapsed: true,
-        providerErrorsRedacted: true,
-        externalAuthModeRequired: true,
+			providerErrorsRedacted: true,
+			tokenEndpointAuthenticationNegotiated: true,
+			tokenRequestCredentialsBound: true,
+			externalAuthModeRequired: true,
         conditionalRoutesReserved: true,
+        accessTokenHashBound: true,
       },
     },
     source: collectSource(repositoryRoot),
@@ -419,9 +429,10 @@ export function verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot }) {
     contract.assertions,
     [
       'backendOutageCollapsed', 'conditionalRoutesReserved', 'csrfProtectedDeviceName',
-      'externalAuthModeRequired', 'legacyStoreFailsClosed', 'providerErrorsRedacted',
-      'singleUseState', 'stateCookieBoundCallback', 'subjectBoundRevocation',
-      'subjectBoundSessionInventory',
+		'externalAuthModeRequired', 'legacyStoreFailsClosed', 'providerErrorsRedacted',
+		'singleUseState', 'stateCookieBoundCallback', 'subjectBoundRevocation',
+		'subjectBoundSessionInventory', 'accessTokenHashBound',
+		'tokenEndpointAuthenticationNegotiated', 'tokenRequestCredentialsBound',
     ],
     'report.contract.assertions',
   );

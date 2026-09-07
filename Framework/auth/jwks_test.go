@@ -122,6 +122,78 @@ func TestJWKSVerifierValidatesIDTokenNonceAudienceAndAge(t *testing.T) {
 	}
 }
 
+type idTokenClaimsWithAccessTokenHash struct {
+	IDTokenClaims
+	AccessTokenHash any `json:"at_hash"`
+}
+
+func TestJWKSVerifierBindsOptionalIDTokenAccessTokenHash(t *testing.T) {
+	now := time.Date(2026, time.September, 6, 12, 0, 0, 0, time.UTC)
+	key := generateRSAKey(t, 2048)
+	server := newJWKSServer(t, jwksJSON(t, "at-hash", &key.PublicKey))
+	verifier := newTestJWKSVerifier(t, server.URL, func() time.Time { return now })
+	const accessToken = "opaque-access-token"
+	claims := IDTokenClaims{
+		Nonce: "nonce-123",
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    "https://issuer.example",
+			Subject:   "subject-123",
+			Audience:  jwt.ClaimStrings{"goexample-api"},
+			ExpiresAt: jwt.NewNumericDate(now.Add(5 * time.Minute)),
+			IssuedAt:  jwt.NewNumericDate(now.Add(-time.Minute)),
+		},
+	}
+	withHash := func(value any) string {
+		t.Helper()
+		token := jwt.NewWithClaims(jwt.SigningMethodRS256, idTokenClaimsWithAccessTokenHash{
+			IDTokenClaims:   claims,
+			AccessTokenHash: value,
+		})
+		token.Header["kid"] = "at-hash"
+		rawToken, err := token.SignedString(key)
+		if err != nil {
+			t.Fatalf("SignedString(at_hash) error = %v", err)
+		}
+		return rawToken
+	}
+
+	validToken := withHash(oidcAccessTokenHash(accessToken))
+	verified, err := verifier.VerifyIDTokenWithAccessToken(context.Background(), validToken, "nonce-123", accessToken)
+	if err != nil || verified.Subject != claims.Subject {
+		t.Fatalf("VerifyIDTokenWithAccessToken(valid) = %#v, %v", verified, err)
+	}
+	if _, err := verifier.VerifyIDToken(context.Background(), validToken, "nonce-123"); err != nil {
+		t.Fatalf("legacy VerifyIDToken() rejected a valid token with at_hash: %v", err)
+	}
+	withoutHash := signIDToken(t, key, "at-hash", claims)
+	if _, err := verifier.VerifyIDTokenWithAccessToken(context.Background(), withoutHash, "nonce-123", accessToken); err != nil {
+		t.Fatalf("VerifyIDTokenWithAccessToken(missing at_hash) error = %v", err)
+	}
+
+	invalidClaims := []struct {
+		name  string
+		value any
+	}{
+		{name: "mismatch", value: oidcAccessTokenHash("other-access-token")},
+		{name: "empty", value: ""},
+		{name: "null", value: nil},
+		{name: "non-string", value: 7},
+		{name: "padded base64url", value: oidcAccessTokenHash(accessToken) + "=="},
+	}
+	for _, test := range invalidClaims {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := verifier.VerifyIDTokenWithAccessToken(context.Background(), withHash(test.value), "nonce-123", accessToken); !errors.Is(err, ErrInvalidToken) {
+				t.Fatalf("VerifyIDTokenWithAccessToken() error = %v", err)
+			}
+		})
+	}
+	for _, invalidAccessToken := range []string{"", " access-token", "access-token\n", strings.Repeat("x", maxAccessTokenBytes+1)} {
+		if _, err := verifier.VerifyIDTokenWithAccessToken(context.Background(), validToken, "nonce-123", invalidAccessToken); !errors.Is(err, ErrInvalidToken) {
+			t.Fatalf("invalid access token error = %v", err)
+		}
+	}
+}
+
 func TestJWKSVerifierEnforcesIDTokenAssurancePolicy(t *testing.T) {
 	now := time.Date(2026, time.August, 24, 9, 0, 0, 0, time.UTC)
 	key := generateRSAKey(t, 2048)

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -21,6 +22,11 @@ const (
 	maxOIDCTokenLifetime      = 24 * time.Hour
 	maxOIDCRefreshTokenBytes  = 8 << 10
 	maxOIDCScopeBytes         = 4 << 10
+	maxOIDCAuthMethods        = 16
+	maxOIDCAuthMethodBytes    = 128
+
+	oidcTokenAuthNone              = "none"
+	oidcTokenAuthClientSecretBasic = "client_secret_basic"
 )
 
 var (
@@ -53,6 +59,30 @@ type OIDCProviderMetadata struct {
 	CodeChallengeMethodsSupported []string `json:"code_challenge_methods_supported"`
 }
 
+// oidcProviderMetadataDocument keeps optional discovery capabilities out of
+// the public metadata struct so adding protocol fields does not break callers
+// that use an unkeyed OIDCProviderMetadata literal.
+type oidcProviderMetadataDocument struct {
+	Issuer                            string          `json:"issuer"`
+	AuthorizationEndpoint             string          `json:"authorization_endpoint"`
+	TokenEndpoint                     string          `json:"token_endpoint"`
+	JWKSURI                           string          `json:"jwks_uri"`
+	ResponseTypesSupported            []string        `json:"response_types_supported"`
+	CodeChallengeMethodsSupported     []string        `json:"code_challenge_methods_supported"`
+	TokenEndpointAuthMethodsSupported json.RawMessage `json:"token_endpoint_auth_methods_supported"`
+}
+
+func (document oidcProviderMetadataDocument) metadata() OIDCProviderMetadata {
+	return OIDCProviderMetadata{
+		Issuer:                        document.Issuer,
+		AuthorizationEndpoint:         document.AuthorizationEndpoint,
+		TokenEndpoint:                 document.TokenEndpoint,
+		JWKSURI:                       document.JWKSURI,
+		ResponseTypesSupported:        document.ResponseTypesSupported,
+		CodeChallengeMethodsSupported: document.CodeChallengeMethodsSupported,
+	}
+}
+
 // OIDCTokenResponse contains bounded token endpoint output. IDToken must be
 // passed to JWKSVerifier.VerifyIDToken with AuthorizationCode.Nonce by callers.
 type OIDCTokenResponse struct {
@@ -74,6 +104,7 @@ type OIDCClient struct {
 	httpTimeout  time.Duration
 	httpClient   *http.Client
 	metadata     OIDCProviderMetadata
+	tokenAuth    string
 }
 
 // NewOIDCClient discovers and validates a provider before returning a client.
@@ -100,6 +131,10 @@ func NewOIDCClient(ctx context.Context, config OIDCClientConfig) (*OIDCClient, e
 		redirectURL:  config.RedirectURL,
 		httpTimeout:  config.HTTPTimeout,
 		httpClient:   client,
+		tokenAuth:    oidcTokenAuthNone,
+	}
+	if result.clientSecret != "" {
+		result.tokenAuth = oidcTokenAuthClientSecretBasic
 	}
 	metadata, err := result.discover(ctx)
 	if err != nil {
@@ -132,8 +167,14 @@ func (client *OIDCClient) ExchangeCode(ctx context.Context, authorization Author
 		"grant_type":    {"authorization_code"},
 		"code":          {authorization.Code},
 		"redirect_uri":  {client.redirectURL},
-		"client_id":     {client.clientID},
 		"code_verifier": {authorization.CodeVerifier},
+	}
+	switch client.tokenAuth {
+	case oidcTokenAuthNone:
+		form.Set("client_id", client.clientID)
+	case oidcTokenAuthClientSecretBasic:
+	default:
+		return OIDCTokenResponse{}, ErrOIDCTokenExchange
 	}
 	requestContext, cancel := context.WithTimeout(ctx, client.httpTimeout)
 	defer cancel()
@@ -143,8 +184,8 @@ func (client *OIDCClient) ExchangeCode(ctx context.Context, authorization Author
 	}
 	request.Header.Set("Accept", "application/json")
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	if client.clientSecret != "" {
-		request.SetBasicAuth(client.clientID, client.clientSecret)
+	if client.tokenAuth == oidcTokenAuthClientSecretBasic {
+		request.SetBasicAuth(url.QueryEscape(client.clientID), url.QueryEscape(client.clientSecret))
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
@@ -159,7 +200,7 @@ func (client *OIDCClient) ExchangeCode(ctx context.Context, authorization Author
 		return OIDCTokenResponse{}, ErrOIDCTokenExchange
 	}
 	var tokens OIDCTokenResponse
-	if err := json.Unmarshal(body, &tokens); err != nil || !validOIDCTokenResponse(tokens) {
+	if err := unmarshalOIDCJSON(body, &tokens); err != nil || !validOIDCTokenResponse(tokens) {
 		return OIDCTokenResponse{}, ErrOIDCTokenExchange
 	}
 	return tokens, nil
@@ -186,8 +227,13 @@ func (client *OIDCClient) discover(ctx context.Context) (OIDCProviderMetadata, e
 	if err != nil {
 		return OIDCProviderMetadata{}, ErrOIDCProviderUnavailable
 	}
-	var metadata OIDCProviderMetadata
-	if err := json.Unmarshal(body, &metadata); err != nil || !validOIDCProviderMetadata(metadata, client.issuer) {
+	var document oidcProviderMetadataDocument
+	if err := unmarshalOIDCJSON(body, &document); err != nil {
+		return OIDCProviderMetadata{}, ErrOIDCProviderUnavailable
+	}
+	metadata := document.metadata()
+	if !validOIDCProviderMetadata(metadata, client.issuer) ||
+		!validOIDCTokenEndpointAuthMethods(document.TokenEndpointAuthMethodsSupported, client.tokenAuth) {
 		return OIDCProviderMetadata{}, ErrOIDCProviderUnavailable
 	}
 	return metadata, nil
@@ -254,6 +300,99 @@ func validOIDCProviderMetadata(metadata OIDCProviderMetadata, issuer string) boo
 		return false
 	}
 	return true
+}
+
+func validOIDCTokenEndpointAuthMethods(raw json.RawMessage, required string) bool {
+	if len(raw) == 0 {
+		return required == oidcTokenAuthClientSecretBasic
+	}
+	var methods []string
+	if err := json.Unmarshal(raw, &methods); err != nil || methods == nil || len(methods) == 0 || len(methods) > maxOIDCAuthMethods {
+		return false
+	}
+	found := false
+	for _, method := range methods {
+		if method == "" || len(method) > maxOIDCAuthMethodBytes || strings.TrimSpace(method) != method || strings.ContainsAny(method, "\x00\r\n") {
+			return false
+		}
+		found = found || method == required
+	}
+	return found
+}
+
+// unmarshalOIDCJSON rejects duplicate object keys before decoding into Go
+// structs. encoding/json otherwise lets later keys overwrite earlier values,
+// which makes security-sensitive discovery and token fields ambiguous.
+func unmarshalOIDCJSON(body []byte, target any) error {
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	if err := scanOIDCJSONValue(decoder); err != nil {
+		return err
+	}
+	if _, err := decoder.Token(); err != io.EOF {
+		if err == nil {
+			return errors.New("OIDC JSON contains multiple top-level values")
+		}
+		return err
+	}
+	return json.Unmarshal(body, target)
+}
+
+func scanOIDCJSONValue(decoder *json.Decoder) error {
+	token, err := decoder.Token()
+	if err != nil {
+		return err
+	}
+	delimiter, ok := token.(json.Delim)
+	if !ok {
+		return nil
+	}
+	switch delimiter {
+	case '{':
+		seen := make(map[string]struct{})
+		for decoder.More() {
+			keyToken, err := decoder.Token()
+			if err != nil {
+				return err
+			}
+			key, ok := keyToken.(string)
+			if !ok {
+				return errors.New("OIDC JSON object key is not a string")
+			}
+			// encoding/json matches struct fields case-insensitively, so reject
+			// case-folded duplicates as well as exact duplicates.
+			canonicalKey := strings.ToLower(key)
+			if _, exists := seen[canonicalKey]; exists {
+				return errors.New("OIDC JSON object contains duplicate keys")
+			}
+			seen[canonicalKey] = struct{}{}
+			if err := scanOIDCJSONValue(decoder); err != nil {
+				return err
+			}
+		}
+		end, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if end != json.Delim('}') {
+			return errors.New("OIDC JSON object is not terminated")
+		}
+	case '[':
+		for decoder.More() {
+			if err := scanOIDCJSONValue(decoder); err != nil {
+				return err
+			}
+		}
+		end, err := decoder.Token()
+		if err != nil {
+			return err
+		}
+		if end != json.Delim(']') {
+			return errors.New("OIDC JSON array is not terminated")
+		}
+	default:
+		return errors.New("OIDC JSON contains an invalid delimiter")
+	}
+	return nil
 }
 
 func validateOIDCURL(raw, name string) error {

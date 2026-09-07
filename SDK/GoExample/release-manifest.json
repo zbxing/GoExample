@@ -5,7 +5,7 @@
   "sdkPath": "SDK/GoExample",
   "modulePath": "github.com/zbxing/goexample/SDK/GoExample",
   "sdkVersion": "1.4.0",
-  "sourceCommit": "db891252eed9a764ed8b1d9405f08abf4729a4c8",
+  "sourceCommit": "816a4cbb5c5e0a9b30a28d65597812eef575022c",
   "expectedTag": "SDK/GoExample/v1.4.0",
   "publication": "not_checked",
   "openapi": {

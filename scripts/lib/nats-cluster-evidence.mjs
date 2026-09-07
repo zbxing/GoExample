@@ -349,7 +349,7 @@ export function verifyNatsClusterContractArtifacts({ evidenceRoot }) {
     report.publishedAfterFailover !== 1 || report.workerAcknowledged !== 2 ||
     report.deadLettered !== 1 || report.sourceAckPending !== 0 || report.sourceMessagesPending !== 0 ||
     report.survivingServers !== 2 || report.shortLeaseRejected !== true ||
-    report.leasePreflightPassed !== true || report.requiredLeaseNanos !== 8_510_000_000 ||
+    report.leasePreflightPassed !== true || report.requiredLeaseNanos !== 8_515_000_000 ||
     report.workerAckWaitNanos !== expectedContract.workerAckWaitNanos ||
     report.sameConnectionSession !== true || report.disconnectedObserved !== true ||
     report.reconnectedObserved !== true || report.connectionServerBefore !== report.oldLeader ||

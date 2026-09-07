@@ -128,6 +128,9 @@ function fixture({
   omitCapacityTransport = '',
   omitScenarioTransport = '',
   tamperFrameworkTransport = false,
+  unstableLatency = false,
+  unstableCapacity = false,
+  unstableScenario = false,
 } = {}) {
   const lines = [];
   for (let round = 1; round <= rounds; round += 1) {
@@ -143,7 +146,8 @@ function fixture({
         requests: 2000,
         concurrency: 16,
         payloadBytes: 88,
-        throughputRps: (fiber ? 1200 : framework ? 800 : 1000) + round,
+        throughputRps: ((fiber ? 1200 : framework ? 800 : 1000) + round)
+          * (unstableLatency && fiber && round === rounds ? 3 : 1),
         p50Nanos: (fiber ? 1000 : framework ? 1400 : 1200) + round,
         p95Nanos: (fiber ? 1500 : framework ? 2100 : 1800) + round,
         p99Nanos: (fiber ? 1900 : framework ? 2800 : 2400) + round,
@@ -168,7 +172,15 @@ function fixture({
           concurrency: workload.concurrency,
           keepAlive: workload.keepAlive,
           payloadBytes: driftPayload && round === 5 && fiber && workload.name === 'steady-c64' ? 89 : 88,
-          throughputRps: throughputBase * throughputFactor + round,
+          throughputRps: (throughputBase * throughputFactor + round)
+            * (
+              unstableCapacity
+              && fiber
+              && workload.name === 'steady-c1'
+              && round === rounds
+                ? 3
+                : 1
+            ),
           p50Nanos: (fiber ? 900 : framework ? 1350 : 1100) + round,
           p95Nanos: (fiber ? 1400 : framework ? 2200 : 1750) + round,
           p99Nanos: (fiber ? 1800 : framework ? 2900 : 2300) + round,
@@ -219,9 +231,16 @@ function fixture({
             && scenario.name === 'response-32k-c16'
             ? scenario.payloadBytes + 1
             : scenario.payloadBytes,
-          throughputRps: (
+          throughputRps: ((
             fiber ? scenario.fiberThroughput : scenario.frameworkNetHTTPThroughput
-          ) + round,
+          ) + round) * (
+            unstableScenario
+            && fiber
+            && scenario.name === 'response-32k-c16'
+            && round === rounds
+              ? 3
+              : 1
+          ),
           p50Nanos: (fiber ? 1000 : 1100) + round,
           p95Nanos: (fiber ? 1500 : 1700) + round,
           p99Nanos: (fiber ? 1900 : 2200) + round,
@@ -245,7 +264,7 @@ test('transport benchmark report validates the matrix and emits medians and rati
   const result = run(input, output);
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(await readFile(output, 'utf8'));
-  assert.equal(report.schemaVersion, 5);
+  assert.equal(report.schemaVersion, 6);
   assert.equal(report.scope, 'linux_loopback_combined_client_server_harness');
   assert.equal(report.environmentFingerprint.runner.provider, 'github-actions');
   assert.equal(report.environmentFingerprint.runner.os, 'Linux');
@@ -253,8 +272,20 @@ test('transport benchmark report validates the matrix and emits medians and rati
   assert.equal(report.environmentFingerprint.toolchain.goVersion, 'go1.25.0');
   assert.equal(report.environmentFingerprint.execution.gomaxprocs, 2);
   assert.match(report.environmentFingerprint.sha256, /^[a-f0-9]{64}$/);
+  assert.deepEqual(report.roundStability, {
+    status: 'passed',
+    method: 'per_group_max_to_min_ratio',
+    expectedRounds: 5,
+    maxMetricSpreadRatio: 2,
+    metricFields: ['throughputRps', 'p50Nanos', 'p95Nanos', 'p99Nanos'],
+  });
   assert.equal(report.latency.results.fiber.rounds, 5);
   assert.equal(report.latency.results.fiber.median.throughputRps, 1203);
+  assert.deepEqual(report.latency.results.fiber.stability.metrics.throughputRps, {
+    minimum: 1201,
+    maximum: 1205,
+    maxToMinRatio: 1.003331,
+  });
   assert.equal(report.capacity.workloads.length, 9);
   assert.equal(report.capacity.workloads[0].results['net-http'].median.totalAllocBytes, 125003);
   assert.equal(
@@ -327,14 +358,20 @@ test('transport benchmark report applies fixed cross-run regression thresholds',
   assert.match(payloadFailure.stderr, /baseline payloadBytes must match current report/);
 
   const regressed = structuredClone(baselineReport);
-  regressed.capacity.workloads[0].results.fiber.median.throughputRps *= 1.5;
+  const regressedCapacityResult = regressed.capacity.workloads[0].results.fiber;
+  regressedCapacityResult.median.throughputRps *= 1.5;
+  regressedCapacityResult.stability.metrics.throughputRps.minimum *= 1.5;
+  regressedCapacityResult.stability.metrics.throughputRps.maximum *= 1.5;
   await writeFile(baseline, `${JSON.stringify(regressed)}\n`, 'utf8');
   const failing = runWithBaseline(input, output, baseline);
   assert.equal(failing.status, 1);
   assert.match(failing.stderr, /throughput regressed beyond baseline threshold/);
 
   const scenarioRegressed = structuredClone(baselineReport);
-  scenarioRegressed.scenarios.workloads[0].results.fiber.median.throughputRps *= 1.5;
+  const regressedScenarioResult = scenarioRegressed.scenarios.workloads[0].results.fiber;
+  regressedScenarioResult.median.throughputRps *= 1.5;
+  regressedScenarioResult.stability.metrics.throughputRps.minimum *= 1.5;
+  regressedScenarioResult.stability.metrics.throughputRps.maximum *= 1.5;
   await writeFile(baseline, `${JSON.stringify(scenarioRegressed)}\n`, 'utf8');
   const scenarioFailure = runWithBaseline(input, output, baseline);
   assert.equal(scenarioFailure.status, 1);
@@ -432,6 +469,21 @@ test('transport benchmark report rejects incomplete, failed, and payload-drifted
       name: 'scenario-payload-drift',
       raw: fixture({ driftScenarioPayload: true }),
       message: /scenario response-32k-c16 payloadBytes must remain stable/,
+    },
+    {
+      name: 'unstable-latency',
+      raw: fixture({ unstableLatency: true }),
+      message: /latency fiber throughputRps max\/min ratio .* exceeds 2/,
+    },
+    {
+      name: 'unstable-capacity',
+      raw: fixture({ unstableCapacity: true }),
+      message: /capacity steady-c1\/fiber throughputRps max\/min ratio .* exceeds 2/,
+    },
+    {
+      name: 'unstable-scenario',
+      raw: fixture({ unstableScenario: true }),
+      message: /scenario response-32k-c16\/fiber throughputRps max\/min ratio .* exceeds 2/,
     },
   ];
   for (const scenario of cases) {

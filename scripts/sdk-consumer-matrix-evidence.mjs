@@ -59,6 +59,7 @@ function run() {
     encoding: 'utf8',
     shell: false,
     timeout: sdkConsumerMatrixProcessTimeoutMs,
+    killSignal: 'SIGTERM',
     windowsHide: true,
     maxBuffer: 4 * 1024 * 1024,
   });

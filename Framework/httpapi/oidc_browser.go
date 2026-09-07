@@ -137,7 +137,7 @@ func registerOIDCBrowserRoutes(authGroup fiber.Router, options Options, authLimi
 			recordSecurityAudit(c, options, securityEventLogin, securityOutcomeFailure, "oidc_exchange_failed", "oidc_browser", "")
 			return failure(c, fiber.StatusBadGateway, "browser authentication is unavailable")
 		}
-		idClaims, err := browser.idTokenVerifier.VerifyIDToken(requestContext, tokens.IDToken, authorization.Nonce)
+		idClaims, err := browser.idTokenVerifier.VerifyIDTokenWithAccessToken(requestContext, tokens.IDToken, authorization.Nonce, tokens.AccessToken)
 		if err != nil {
 			recordSecurityAudit(c, options, securityEventLogin, securityOutcomeFailure, "oidc_callback_invalid", "oidc_browser", "")
 			return failure(c, fiber.StatusBadRequest, "browser authentication callback is invalid")

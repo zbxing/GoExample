@@ -1,11 +1,12 @@
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   isolatedGoToolchainEnvironment,
   selectRepositoryToolCommand,
 } from './lib/go-toolchain-environment.mjs';
+import { runBoundedCommand } from './lib/bounded-command.mjs';
+import { createGoProjectCommandRunner, goProjectTaskBudgetMs } from './lib/go-project-command.mjs';
 import { readProjectManifest, selectProject } from './lib/project-contracts.mjs';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -107,13 +108,11 @@ const executableName = `${projectName.toLowerCase()}-server${process.platform ==
 const buildVersion = /^[A-Za-z0-9._+-]+$/.test(workspacePackage.version)
   ? workspacePackage.version
   : 'dev';
-const gitCommitResult = spawnSync('git', ['rev-parse', '--short=12', 'HEAD'], {
+const gitCommit = runBoundedCommand('git', ['rev-parse', '--short=12', 'HEAD'], {
   cwd: repositoryRoot,
-  encoding: 'utf8',
-  shell: false,
 });
-const buildCommit = /^[a-f0-9]{7,40}$/i.test(gitCommitResult.stdout?.trim() ?? '')
-  ? gitCommitResult.stdout.trim()
+const buildCommit = /^[a-f0-9]{7,40}$/i.test(gitCommit ?? '')
+  ? gitCommit
   : 'unknown';
 const buildTime = new Date().toISOString();
 const frameworkAPIBaselineRef = process.env.FRAMEWORK_API_BASE_REF?.trim();
@@ -268,13 +267,11 @@ function commandIsAvailable(command) {
   if (!command) {
     return false;
   }
-  const result = spawnSync(command, ['--version'], {
+  return runBoundedCommand(command, ['--version'], {
     cwd: repositoryRoot,
     env: goEnvironmentWithPath,
-    encoding: 'utf8',
-    shell: false,
-  });
-  return result.status === 0;
+    raw: true,
+  }) !== null;
 }
 
 function findWindowsGcc() {
@@ -308,38 +305,20 @@ if (task === 'race') {
 }
 const definition = taskDefinitions[task];
 const commands = definition.commands ?? [definition];
+const executable = task === 'vuln' && govulncheckCommand ? govulncheckCommand : goCommand;
+const runnerCommands = commands.map((command) => ({
+  cwd: command.cwd,
+  args: task === 'vuln' && govulncheckCommand ? ['./...'] : command.args,
+}));
+const runGoProjectTask = createGoProjectCommandRunner();
 
-function runCommand(index) {
-  if (index >= commands.length) {
-    return;
-  }
-
-  const command = commands[index];
-  const executable = task === 'vuln' && govulncheckCommand ? govulncheckCommand : goCommand;
-  const args = task === 'vuln' && govulncheckCommand ? ['./...'] : command.args;
-  const child = spawn(executable, args, {
-    cwd: command.cwd,
-    env: goEnvironmentWithPath,
-    stdio: 'inherit',
-  });
-
-  child.on('error', (error) => {
-    console.error(`Unable to start ${executable}: ${error.message}`);
-    process.exitCode = 1;
-  });
-
-  child.on('exit', (code, signal) => {
-    if (signal) {
-      console.error(`Go project task stopped by signal ${signal}`);
-      process.exitCode = 1;
-      return;
-    }
-    if (code !== 0) {
-      process.exitCode = code ?? 1;
-      return;
-    }
-    runCommand(index + 1);
-  });
-}
-
-runCommand(0);
+runGoProjectTask({
+  task,
+  executable,
+  commands: runnerCommands,
+  env: goEnvironmentWithPath,
+  budgetMs: goProjectTaskBudgetMs[task],
+}).catch((error) => {
+  console.error(error.message);
+  process.exitCode = error.exitCode ?? 1;
+});

@@ -3,15 +3,20 @@ package httpclient
 import (
 	"context"
 	"errors"
+	"io"
+	"math/rand/v2"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
 const (
-	defaultRetryInitialBackoff = 50 * time.Millisecond
-	defaultRetryMaxBackoff     = 500 * time.Millisecond
-	maximumRetryBackoff        = 5 * time.Second
-	maximumRetryAttempts       = 5
+	defaultRetryInitialBackoff           = 50 * time.Millisecond
+	defaultRetryMaxBackoff               = 500 * time.Millisecond
+	maximumRetryBackoff                  = 5 * time.Second
+	maximumRetryAttempts                 = 5
+	maximumRetryResponseDrainBytes int64 = 32 * 1024
 )
 
 var errRequestBodyReplay = errors.New("outbound HTTP request body could not be replayed")
@@ -19,6 +24,9 @@ var errRequestBodyReplay = errors.New("outbound HTTP request body could not be r
 // RetryConfig defines an explicit, bounded retry policy for safe HTTP methods.
 // MaxAttempts includes the initial request; zero disables retries. Requests with
 // a body are retried only when Request.GetBody can produce an independent copy.
+// Valid Retry-After values are honored without exceeding MaxBackoff or the
+// original request deadline. Retry waits receive bounded positive jitter; an
+// over-budget value stops automatic retries.
 type RetryConfig struct {
 	MaxAttempts    int
 	InitialBackoff time.Duration
@@ -26,8 +34,9 @@ type RetryConfig struct {
 }
 
 type retryTransport struct {
-	base   http.RoundTripper
-	config RetryConfig
+	base         http.RoundTripper
+	config       RetryConfig
+	randomInt64N func(int64) int64
 }
 
 func (transport retryTransport) RoundTrip(request *http.Request) (*http.Response, error) {
@@ -42,13 +51,15 @@ func (transport retryTransport) RoundTrip(request *http.Request) (*http.Response
 			return response, err
 		}
 
-		delay := retryBackoff(transport.config, attempt)
+		delay, withinBudget := retryDelay(transport.config, attempt, response, time.Now())
+		if !withinBudget {
+			return response, err
+		}
+		delay = transport.jitteredRetryDelay(delay)
 		if !retryDelayFits(request.Context(), delay) {
 			return response, err
 		}
-		if response != nil && response.Body != nil {
-			_ = response.Body.Close()
-		}
+		closeRetryResponse(response)
 		if err := waitForRetry(request.Context(), delay); err != nil {
 			return nil, err
 		}
@@ -57,6 +68,18 @@ func (transport retryTransport) RoundTrip(request *http.Request) (*http.Response
 			return nil, errRequestBodyReplay
 		}
 	}
+}
+
+func closeRetryResponse(response *http.Response) {
+	if response == nil || response.Body == nil {
+		return
+	}
+	if response.ContentLength >= 0 && response.ContentLength <= maximumRetryResponseDrainBytes {
+		// The extra byte reaches EOF for a truthful Content-Length while bounding
+		// a custom or non-conforming body that returns more than it declared.
+		_, _ = io.CopyN(io.Discard, response.Body, response.ContentLength+1)
+	}
+	_ = response.Body.Close()
 }
 
 func retryableRequest(request *http.Request) bool {
@@ -124,6 +147,71 @@ func retryBackoff(config RetryConfig, retryNumber int) time.Duration {
 		delay *= 2
 	}
 	return min(delay, config.MaxBackoff)
+}
+
+func retryDelay(config RetryConfig, retryNumber int, response *http.Response, now time.Time) (time.Duration, bool) {
+	delay := retryBackoff(config, retryNumber)
+	if response == nil {
+		return delay, true
+	}
+	retryAfter, ok := parseRetryAfter(response.Header.Get("Retry-After"), now)
+	if !ok {
+		return delay, true
+	}
+	if retryAfter > config.MaxBackoff {
+		return 0, false
+	}
+	return max(delay, retryAfter), true
+}
+
+func (transport retryTransport) jitteredRetryDelay(delay time.Duration) time.Duration {
+	randomInt64N := transport.randomInt64N
+	if randomInt64N == nil {
+		randomInt64N = rand.Int64N
+	}
+	return retryJitter(delay, transport.config.MaxBackoff, randomInt64N)
+}
+
+func retryJitter(delay, maximum time.Duration, randomInt64N func(int64) int64) time.Duration {
+	window := min(delay/2, maximum-delay)
+	if window <= 0 {
+		return delay
+	}
+	return delay + time.Duration(randomInt64N(int64(window)+1))
+}
+
+func parseRetryAfter(value string, now time.Time) (time.Duration, bool) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, false
+	}
+
+	digitsOnly := true
+	for index := 0; index < len(value); index++ {
+		if value[index] < '0' || value[index] > '9' {
+			digitsOnly = false
+			break
+		}
+	}
+	if digitsOnly {
+		seconds, err := strconv.ParseUint(value, 10, 64)
+		if err != nil || seconds > uint64(maximumRetryBackoff/time.Second) {
+			// MaxBackoff cannot exceed maximumRetryBackoff. Keep a syntactically
+			// valid but oversized value distinguishable from a malformed header.
+			return maximumRetryBackoff + time.Nanosecond, true
+		}
+		return time.Duration(seconds) * time.Second, true
+	}
+
+	retryAt, err := http.ParseTime(value)
+	if err != nil {
+		return 0, false
+	}
+	delay := retryAt.Sub(now)
+	if delay < 0 {
+		return 0, true
+	}
+	return delay, true
 }
 
 func retryDelayFits(ctx context.Context, delay time.Duration) bool {

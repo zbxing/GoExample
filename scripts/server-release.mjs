@@ -10,16 +10,23 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   isolatedGoToolchainEnvironment,
   selectRepositoryToolCommand,
 } from './lib/go-toolchain-environment.mjs';
+import {
+  createServerReleaseCommandRunner,
+  serverReleaseBuildCommandTimeoutMs,
+  serverReleaseDependencyCommandTimeoutMs,
+  serverReleaseMetadataCommandTimeoutMs,
+  serverReleaseTaskCommandTimeoutMs,
+} from './lib/server-release-command.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
+const runServerReleaseCommand = createServerReleaseCommandRunner({ cwd: repositoryRoot });
 const tempRoot = path.join(repositoryRoot, '.temp');
 const task = process.argv[2];
 const entrypoint = './Solutions/Example/cmd/server';
@@ -79,23 +86,15 @@ function requireRegularFile(filePath, name) {
 }
 
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
-    cwd: options.cwd ?? repositoryRoot,
-    env: options.env ?? process.env,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
-    maxBuffer: 8 * 1024 * 1024,
-  });
-  if (result.status !== 0) {
-    const detail = `${result.stderr ?? ''}`.trim() || `${result.stdout ?? ''}`.trim();
-    fail(`${options.description ?? command} failed${detail ? `: ${detail}` : ''}`);
+  try {
+    return runServerReleaseCommand(command, args, options);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : `${error}`);
   }
-  return `${result.stdout ?? ''}`.trim();
 }
 
 function git(args, description) {
-  return run('git', args, { description });
+  return run('git', args, { description, timeoutMs: serverReleaseMetadataCommandTimeoutMs });
 }
 
 function hashFile(filePath) {
@@ -211,6 +210,7 @@ function collectSourceManifest(environment) {
   const output = run(goCommand, ['list', '-deps', `-json=${fields}`, entrypoint], {
     env: environment,
     description: 'resolve repository-local server release inputs',
+    timeoutMs: serverReleaseDependencyCommandTimeoutMs,
   });
   const packages = parseJSONSequence(output, 'go list output');
   if (packages.length === 0) {
@@ -228,7 +228,12 @@ function collectSourceManifest(environment) {
     inputs.set(relativePath, resolved);
   }
 
-  for (const relativePath of ['go.work', 'package.json', 'scripts/server-release.mjs']) {
+  for (const relativePath of [
+    'go.work',
+    'package.json',
+    'scripts/server-release.mjs',
+    'scripts/lib/server-release-command.mjs',
+  ]) {
     addInput(path.join(repositoryRoot, ...relativePath.split('/')), `source input ${relativePath}`);
   }
   const workspaceSum = path.join(repositoryRoot, 'go.work.sum');
@@ -579,6 +584,7 @@ function validateGoVersion(environment) {
   const output = run(goCommand, ['version'], {
     env: environment,
     description: 'go version',
+    timeoutMs: serverReleaseMetadataCommandTimeoutMs,
   });
   if (!new RegExp(`^go version go${toolchainVersion.replaceAll('.', '\\.')} `).test(output)) {
     fail(`Go toolchain must be exactly go${toolchainVersion}`);
@@ -630,7 +636,11 @@ function build() {
   run(
     goCommand,
     ['build', '-p=1', '-trimpath', '-buildvcs=false', '-ldflags', ldflags, '-o', artifactPath, entrypoint],
-    { env: environment, description: 'build Linux server release' },
+    {
+      env: environment,
+      description: 'build Linux server release',
+      timeoutMs: serverReleaseBuildCommandTimeoutMs,
+    },
   );
   chmodSync(artifactPath, 0o755);
   const stats = requireRegularFile(artifactPath, 'release artifact');
@@ -785,6 +795,7 @@ function runReleaseTask(taskName, targetRoot, description, environment = {}) {
       SERVER_RELEASE_ROOT: requestedRoot,
     },
     description,
+    timeoutMs: serverReleaseTaskCommandTimeoutMs,
   });
 }
 

@@ -17,6 +17,10 @@ import {
   runBoundedCommand,
   summarizeGitStatus,
 } from '../../scripts/lib/bounded-command.mjs';
+import {
+  writeFileAtomicallySync,
+  writeFilesWithRollbackSync,
+} from '../../scripts/lib/atomic-output.mjs';
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(testDirectory, '..', '..');
@@ -58,6 +62,21 @@ test('repository-managed Go entrypoints isolate inherited GOROOT through the sha
   assert.match(projectRunner, /goSelection\.repositoryManaged\s*\? isolatedGoToolchainEnvironment\(process\.env, goEnvironmentOverrides\)/);
   assert.match(environmentRunner, /repositoryManaged: true/);
   assert.match(environmentRunner, /go\.repositoryManaged\s*\? isolatedGoToolchainEnvironment\(process\.env, \{ GOWORK: 'off' \}\)/);
+  assert.match(environmentRunner, /environmentYarnInstallTimeoutMs = 10 \* 60_000/);
+  assert.match(environmentRunner, /environmentGoDependencyTimeoutMs = 3 \* 60_000/);
+  assert.match(environmentRunner, /environmentArchiveExtractTimeoutMs = 2 \* 60_000/);
+  assert.match(environmentRunner, /environmentGoDownloadTimeoutMs = 2 \* 60_000/);
+  assert.match(environmentRunner, /import \{ runEnvironmentFetch \} from '\.\/lib\/environment-fetch\.mjs'/);
+  assert.equal((environmentRunner.match(/await runEnvironmentFetch\(/g) ?? []).length, 2);
+  assert.match(environmentRunner, /'https:\/\/go\.dev\/dl\/\?mode=json&include=all'/);
+  assert.match(environmentRunner, /archive\.url/);
+  assert.match(environmentRunner, /timeout: timeoutMs/);
+  assert.match(environmentRunner, /killSignal: 'SIGTERM'/);
+  assert.match(environmentRunner, /windowsHide: options\.windowsHide/);
+  assert.match(environmentRunner, /runYarn\(\['install', '--frozen-lockfile', '--non-interactive'\], repositoryRoot, \{[\s\S]*timeoutMs: environmentYarnInstallTimeoutMs/);
+  assert.match(environmentRunner, /timeoutMs: environmentGoDependencyTimeoutMs/);
+  assert.match(environmentRunner, /timeoutMs: environmentArchiveExtractTimeoutMs/);
+  assert.match(environmentRunner, /yarnTreeIsCurrent\(frontRoot\)/);
   for (const [index, runner] of strictRunners.entries()) {
     assert.match(runner, /isolatedGoToolchainEnvironment/);
     assert.match(runner, /from '\.\/lib\/go-toolchain-environment\.mjs'/);
@@ -65,6 +84,33 @@ test('repository-managed Go entrypoints isolate inherited GOROOT through the sha
     assertEvidenceInput(entrypoints[index]);
   }
   assertEvidenceInput('scripts/environment.mjs');
+  assertEvidenceInput('docs/待优化/待优化V45.md');
+  assertEvidenceInput('docs/待优化/待优化V46.md');
+  assertEvidenceInput('docs/待优化/待优化V47.md');
+  assertEvidenceInput('docs/待优化/待优化V48.md');
+  assertEvidenceInput('docs/待优化/待优化V49.md');
+  assertEvidenceInput('docs/待优化/待优化V50.md');
+  assertEvidenceInput('docs/待优化/待优化V51.md');
+  assertEvidenceInput('docs/待优化/待优化V52.md');
+  assertEvidenceInput('docs/待优化/待优化V53.md');
+  assertEvidenceInput('docs/待优化/待优化V54.md');
+  assertEvidenceInput('docs/待优化/待优化V55.md');
+  assertEvidenceInput('docs/待优化/待优化V56.md');
+  assertEvidenceInput('docs/待优化/待优化V57.md');
+  assertEvidenceInput('docs/待优化/待优化V58.md');
+  assertEvidenceInput('docs/待优化/待优化V59.md');
+  assertEvidenceInput('docs/待优化/待优化V60.md');
+  assertEvidenceInput('docs/待优化/待优化V61.md');
+  assertEvidenceInput('docs/待优化/待优化V62.md');
+  assertEvidenceInput('docs/待优化/待优化V63.md');
+  assertEvidenceInput('docs/待优化/待优化V64.md');
+  assertEvidenceInput('docs/待优化/待优化V65.md');
+  assertEvidenceInput('docs/待优化/待优化V66.md');
+  assertEvidenceInput('docs/待优化/待优化V67.md');
+  assertEvidenceInput('docs/待优化/待优化V68.md');
+  assertEvidenceInput('scripts/lib/transport-benchmark-stability.mjs');
+  assertEvidenceInput('scripts/lib/environment-fetch.mjs');
+  assertEvidenceInput('__test__/node/environment-fetch.test.mjs');
 });
 
 test('Go tool entrypoints share explicit, repository, and PATH command selection', async () => {
@@ -476,8 +522,9 @@ test('OpenAPI compatibility gate compares pull requests with their base commit',
   assert.match(workflow, /fetch-depth:\s*0/);
   assert.match(workflow, /github\.event\.pull_request\.base\.sha/);
   assert.match(workflow, /yarn openapi:compat --base-ref/);
-  assert.match(script, /spawnSync\('git', \['show'/);
-  assert.match(script, /shell:\s*false/);
+  assert.match(script, /createProjectContractGitRunner/);
+  assert.match(script, /projectGitRunner\(\['show'/);
+  assert.doesNotMatch(script, /spawnSync/);
   assert.match(compatibilityLibrary, /parameter serialization changed/);
   assert.match(compatibilityLibrary, /nullable changed from/);
   assert.match(compatibilityLibrary, /discriminator changed and requires explicit versioning review/);
@@ -653,6 +700,18 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
     path.join(repositoryRoot, 'scripts', 'lib', 'transport-benchmark-environment.mjs'),
     'utf8',
   );
+  const transportStability = await readFile(
+    path.join(repositoryRoot, 'scripts', 'lib', 'transport-benchmark-stability.mjs'),
+    'utf8',
+  );
+  const transportReportTests = await readFile(
+    path.join(repositoryRoot, '__test__', 'node', 'transport-benchmark-report.test.mjs'),
+    'utf8',
+  );
+  const transportBaselineTests = await readFile(
+    path.join(repositoryRoot, '__test__', 'node', 'transport-benchmark-baseline.test.mjs'),
+    'utf8',
+  );
   const transportSoakReport = await readFile(
     path.join(repositoryRoot, 'scripts', 'transport-soak-report.mjs'),
     'utf8',
@@ -714,8 +773,15 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(workflow, /head_repository\?\.full_name/);
   assert.match(workflow, /transport-benchmark-baseline\.mjs prepare/);
   assert.match(workflow, /transport-benchmark-baseline\.mjs unavailable/);
+  assert.match(workflow, /transport-benchmark-baseline\.mjs verify/);
+  assert.ok(
+    workflow.indexOf('transport-benchmark-baseline.mjs verify')
+      < workflow.indexOf('Generate capacity report'),
+    'baseline selection must be verified before the report can consume it',
+  );
   assert.match(workflow, /__test__\/node\/transport-benchmark-report\.test\.mjs/);
   assert.match(workflow, /__test__\/node\/transport-soak-report\.test\.mjs/);
+  assert.match(workflow, /scripts\/lib\/transport-benchmark-stability\.mjs/);
   assert.match(workflow, /baseline-source\.json/);
   assert.match(workflow, /yarn bench:transports/);
   assert.match(workflow, /lscpu/);
@@ -755,12 +821,22 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(transportBaseline, /compatible_candidate_missing/);
   assert.match(transportBaseline, /candidate workload matrix is incompatible/);
   assert.match(transportBaseline, /candidate scenario matrix is incompatible/);
-  assert.match(transportBaseline, /candidate must be a schemaVersion 5/);
+  assert.match(transportBaseline, /candidate must be a schemaVersion 6/);
   assert.match(transportBaseline, /report_schema_migration/);
+  assert.match(transportBaseline, /candidate\.schemaVersion === 5/);
+  assert.match(transportBaseline, /verifyTransportBenchmarkRoundStabilityMetadata/);
+  assert.match(transportBaseline, /verifyTransportBenchmarkRoundStabilityResult/);
   assert.match(transportBaseline, /event must be push or workflow_dispatch/);
   assert.match(transportBaseline, /createHash\('sha256'\)/);
   assert.match(transportBaseline, /validateEnvironmentFingerprint/);
   assert.match(transportBaseline, /environmentFingerprintSha256/);
+  assert.match(transportBaseline, /writeFileAtomicallySync/);
+  assert.match(transportBaseline, /writeFilesWithRollbackSync/);
+  assert.match(transportBaseline, /requireRegularOutput\(outputPath, 'baseline output'\)/);
+  assert.match(transportBaseline, /validateCandidate\(candidate\);[\s\S]*writeFilesWithRollbackSync\(\[/);
+  assert.match(transportBaseline, /function verifySelection\(/);
+  assert.match(transportBaseline, /candidate sha256 does not match the baseline/);
+  assert.match(transportBaseline, /function unavailable\([\s\S]*removeBaseline\(outputPath\)/);
   assert.match(goProjectRunner, /'bench-transports'[\s\S]*'-count=5'/);
   assert.match(goProjectRunner, /-run=\^TestProjectTransport/);
   assert.match(goProjectRunner, /-cpuprofile=transport\.cpu\.pprof/);
@@ -792,7 +868,7 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(transportBenchmark, /TRANSPORT_SOAK_DURATION/);
   assert.match(transportBenchmark, /TRANSPORT_SOAK/);
   assert.match(transportBenchmark, /TestProjectTransportSoakTCP[\s\S]*for _, candidate := range measuredProjectTransports\(\)/);
-  assert.match(transportReport, /const expectedRounds = 5/);
+  assert.match(transportReport, /const expectedRounds = transportBenchmarkExpectedRounds/);
   assert.match(transportReport, /steady-c1/);
   assert.match(transportReport, /steady-c2/);
   assert.match(transportReport, /steady-c4/);
@@ -812,7 +888,10 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(transportReport, /environment_fingerprint_mismatch/);
   assert.match(transportReport, /environmentComparison/);
   assert.match(transportReport, /parseMeasurements\(raw, 'TRANSPORT_SCENARIO'\)/);
-  assert.match(transportReport, /schemaVersion: 5/);
+  assert.match(transportReport, /schemaVersion: 6/);
+  assert.match(transportReport, /roundStability: createTransportBenchmarkRoundStabilityMetadata\(\)/);
+  assert.match(transportReport, /summarizeTransportBenchmarkRoundStability/);
+  assert.match(transportReport, /verifyTransportBenchmarkRoundStabilityResult/);
   assert.match(transportReport, /capacityTransports = \['fiber', 'net-http', 'framework-net-http'\]/);
   assert.match(transportReport, /scenarioTransports = \['fiber', 'framework-net-http'\]/);
   assert.match(transportReport, /frameworkAdapterRatios/);
@@ -821,6 +900,27 @@ test('Go transport benchmark workflow preserves repeatable Linux evidence', asyn
   assert.match(transportEnvironment, /toolchain\.goVersion/);
   assert.match(transportEnvironment, /execution\.gomaxprocs/);
   assert.match(transportEnvironment, /sha256 does not match its canonical fields/);
+  assert.match(transportStability, /transportBenchmarkExpectedRounds = 5/);
+  assert.match(transportStability, /transportBenchmarkMaximumMetricSpreadRatio = 2/);
+  for (const field of ['throughputRps', 'p50Nanos', 'p95Nanos', 'p99Nanos']) {
+    assert.match(transportStability, new RegExp(`'${field}'`));
+  }
+  assert.match(transportStability, /Number\(\(maximum \/ minimum\)\.toFixed\(6\)\)/);
+  assert.match(transportStability, /maximum must be >= minimum/);
+  assert.match(transportStability, /median must stay between minimum and maximum/);
+  assert.match(transportStability, /maxToMinRatio does not match minimum and maximum/);
+  assert.match(transportStability, /max\/min ratio .* exceeds/);
+  for (const scenario of ['unstable-latency', 'unstable-capacity', 'unstable-scenario']) {
+    assert.match(transportReportTests, new RegExp(`name: '${scenario}'`));
+  }
+  for (const scenario of [
+    'missing-stability-metadata',
+    'missing-stability-summary',
+    'forged-stability-ratio',
+    'out-of-range-median',
+  ]) {
+    assert.match(transportBaselineTests, new RegExp(`name: '${scenario}'`));
+  }
   assert.match(transportReport, /all measurement error rates must be zero/);
   assert.match(transportReport, /payloadBytes must remain stable/);
   assert.match(transportReport, /directionalRatios/);
@@ -1044,8 +1144,11 @@ test('bounded command execution applies duration limits and rejects unsafe overr
 
 test('bounded command execution only retries Windows launch failures', () => {
   const calls = [];
+  const environment = Object.freeze({ PATH: 'repository-tools' });
   const output = runBoundedCommand('tool', ['argument'], {
     commandShell: 'cmd.exe',
+    env: environment,
+    now: () => 0,
     platform: 'win32',
     timeoutMs: 1_234,
     spawn(command, args, options) {
@@ -1065,8 +1168,9 @@ test('bounded command execution only retries Windows launch failures', () => {
 
   assert.equal(output, 'shell result');
   assert.deepEqual(calls.map(({ command }) => command), ['tool', 'tool.cmd', 'tool.exe', 'cmd.exe']);
-  assert.deepEqual(calls.at(-1).args, ['/d', '/s', '/c', 'tool argument']);
+  assert.deepEqual(calls.at(-1).args, ['/d', '/s', '/v:off', '/c', 'tool argument']);
   for (const { options } of calls) {
+    assert.strictEqual(options.env, environment);
     assert.equal(options.timeout, 1_234);
     assert.equal(options.killSignal, 'SIGTERM');
     assert.equal(options.maxBuffer, maximumCommandOutputBytes);
@@ -1091,10 +1195,185 @@ test('bounded command execution only retries Windows launch failures', () => {
   }
 });
 
+test('bounded command execution shares one duration budget across Windows retries', () => {
+  const clockReadings = [1_000, 1_000, 1_250, 1_800, 1_950];
+  const calls = [];
+  const output = runBoundedCommand('tool', ['argument'], {
+    commandShell: 'cmd.exe',
+    now() {
+      assert.ok(clockReadings.length > 0, 'unexpected command clock read');
+      return clockReadings.shift();
+    },
+    platform: 'win32',
+    timeoutMs: 1_000,
+    spawn(command, args, options) {
+      calls.push({ command, args, timeout: options.timeout });
+      return command === 'cmd.exe'
+        ? { status: 0, stdout: ' bounded shell result\n' }
+        : { status: null, error: { code: 'ENOENT' } };
+    },
+  });
+
+  assert.equal(output, 'bounded shell result');
+  assert.deepEqual(calls.map(({ command }) => command), ['tool', 'tool.cmd', 'tool.exe', 'cmd.exe']);
+  assert.deepEqual(calls.map(({ timeout }) => timeout), [1_000, 750, 200, 50]);
+  assert.deepEqual(clockReadings, []);
+
+  const exhaustedClockReadings = [5_000, 5_000, 6_000];
+  const exhaustedCalls = [];
+  assert.equal(
+    runBoundedCommand('tool', [], {
+      now: () => exhaustedClockReadings.shift(),
+      platform: 'win32',
+      timeoutMs: 1_000,
+      spawn(command) {
+        exhaustedCalls.push(command);
+        return { status: null, error: { code: 'ENOENT' } };
+      },
+    }),
+    null,
+  );
+  assert.deepEqual(exhaustedCalls, ['tool']);
+
+  for (const now of [() => Number.NaN, () => Number.POSITIVE_INFINITY]) {
+    assert.throws(
+      () => runBoundedCommand('tool', [], { now }),
+      /Command clock must return a finite number/,
+    );
+  }
+});
+
+test('bounded command execution preserves explicit Windows command identity', () => {
+  const nativeCalls = [];
+  const nativeOutput = runBoundedCommand('go.exe', ['version'], {
+    platform: 'win32',
+    spawn(command) {
+      nativeCalls.push(command);
+      return command === 'go.exe.cmd'
+        ? { status: 0, stdout: 'go version go1.25.13 windows/amd64\n' }
+        : { status: null, error: { code: 'ENOENT' } };
+    },
+  });
+
+  assert.equal(nativeOutput, null);
+  assert.deepEqual(nativeCalls, ['go.exe']);
+
+  const absoluteBatch = 'C:\\repository\\tool.cmd';
+  const absoluteExecutable = 'C:\\repository\\tool.exe';
+  for (const [command, expectedCalls, expectedOutput] of [
+    ['tool.exe', ['tool.exe'], null],
+    ['tool.com', ['tool.com'], null],
+    ['tool.ps1', ['tool.ps1'], null],
+    [absoluteExecutable, [absoluteExecutable], null],
+    ['tool.cmd', ['tool.cmd', 'cmd.exe'], 'batch result'],
+    ['tool.CMD', ['tool.CMD', 'cmd.exe'], 'batch result'],
+    ['tool.bat', ['tool.bat', 'cmd.exe'], 'batch result'],
+    [absoluteBatch, [absoluteBatch, 'cmd.exe'], 'batch result'],
+  ]) {
+    const calls = [];
+    const output = runBoundedCommand(command, ['argument'], {
+      commandShell: 'cmd.exe',
+      platform: 'win32',
+      spawn(candidate) {
+        calls.push(candidate);
+        return candidate === 'cmd.exe'
+          ? { status: 0, stdout: ' batch result\n' }
+          : { status: null, error: { code: 'ENOENT' } };
+      },
+    });
+
+    assert.equal(output, expectedOutput, command);
+    assert.deepEqual(calls, expectedCalls, command);
+  }
+
+  const unsafeBatchCalls = [];
+  assert.equal(
+    runBoundedCommand('tool.cmd', ['two words'], {
+      platform: 'win32',
+      spawn(command) {
+        unsafeBatchCalls.push(command);
+        return { status: null, error: { code: 'ENOENT' } };
+      },
+    }),
+    null,
+  );
+  assert.deepEqual(unsafeBatchCalls, ['tool.cmd']);
+});
+
+test('bounded command rejects unsafe Windows shell fallback tokens', () => {
+  const unsafeTokens = [
+    '',
+    'two words',
+    '"quoted"',
+    '%PATH%',
+    '!DELAYED!',
+    'left&right',
+    'left|right',
+    'left<right',
+    'left>right',
+    'left^right',
+    '(group',
+    'group)',
+  ];
+
+  for (const unsafeToken of unsafeTokens) {
+    for (const [command, args] of [
+      [unsafeToken, ['argument']],
+      ['tool', [unsafeToken]],
+    ]) {
+      const calls = [];
+      assert.equal(
+        runBoundedCommand(command, args, {
+          commandShell: 'cmd.exe',
+          platform: 'win32',
+          spawn(candidate, candidateArgs) {
+            calls.push({ command: candidate, args: candidateArgs });
+            return { status: null, error: { code: 'ENOENT' } };
+          },
+        }),
+        null,
+        JSON.stringify({ command, args }),
+      );
+      assert.equal(calls.length, 3, JSON.stringify({ command, args, calls }));
+      assert.ok(calls.every(({ command: candidate }) => candidate !== 'cmd.exe'));
+      assert.ok(calls.every(({ args: candidateArgs }) => candidateArgs === args));
+    }
+  }
+});
+
+test('bounded command preserves simple Windows shell fallback tokens', () => {
+  const calls = [];
+  const args = ['--flag=value', 'refs/tags/v1.2.3:artifact', 'C:\\tools\\cache'];
+  const output = runBoundedCommand('repository-tool', args, {
+    commandShell: 'cmd.exe',
+    platform: 'win32',
+    spawn(command, candidateArgs) {
+      calls.push({ command, args: candidateArgs });
+      return command === 'cmd.exe'
+        ? { status: 0, stdout: ' safe fallback\n' }
+        : { status: null, error: { code: 'ENOENT' } };
+    },
+  });
+
+  assert.equal(output, 'safe fallback');
+  assert.deepEqual(calls.at(-1), {
+    command: 'cmd.exe',
+    args: [
+      '/d',
+      '/s',
+      '/v:off',
+      '/c',
+      'repository-tool --flag=value refs/tags/v1.2.3:artifact C:\\tools\\cache',
+    ],
+  });
+});
+
 test('bounded identity readers use fixed commands and reject malformed output', () => {
   const calls = [];
+  const environment = Object.freeze({ GOROOT: 'repository-go-root' });
   const goVersion = readBoundedGoVersion('repository-go', {
     cwd: 'repository-root',
+    env: environment,
     run(command, args, options) {
       calls.push({ command, args, options });
       return '  go version go1.25.13 windows/amd64\n';
@@ -1102,6 +1381,7 @@ test('bounded identity readers use fixed commands and reject malformed output', 
   });
   const gitCommit = readBoundedGitCommit({
     cwd: 'repository-root',
+    env: environment,
     run(command, args, options) {
       calls.push({ command, args, options });
       return ` ${'a'.repeat(40)}\n`;
@@ -1114,12 +1394,12 @@ test('bounded identity readers use fixed commands and reject malformed output', 
     {
       command: 'repository-go',
       args: ['version'],
-      options: { cwd: 'repository-root' },
+      options: { cwd: 'repository-root', env: environment },
     },
     {
       command: 'git',
       args: ['rev-parse', 'HEAD'],
-      options: { cwd: 'repository-root' },
+      options: { cwd: 'repository-root', env: environment },
     },
   ]);
 
@@ -1166,6 +1446,96 @@ test('domain evidence identity probes use the shared bounded command boundary', 
   }
 });
 
+test('short repository metadata probes use the shared bounded command boundary', async () => {
+  const expectedDirectTaskCalls = new Map([
+    ['scripts/environment.mjs', 1],
+    ['scripts/go-project.mjs', 0],
+    ['scripts/sdk-release.mjs', 0],
+    ['scripts/server-recovery-drill.mjs', 1],
+    ['scripts/lib/transport-benchmark-environment.mjs', 0],
+    ['scripts/v13-evidence.mjs', 0],
+    ['scripts/openapi-compat.mjs', 0],
+    ['scripts/lib/project-contracts.mjs', 0],
+  ]);
+  const sources = await Promise.all(
+    [...expectedDirectTaskCalls].map(async ([relativePath, expectedCalls]) => ({
+      expectedCalls,
+      relativePath,
+      source: await readFile(path.join(repositoryRoot, relativePath), 'utf8'),
+    })),
+  );
+
+  for (const { expectedCalls, relativePath, source } of sources) {
+    assert.match(source, /runBoundedCommand|readBoundedGitCommit|readBoundedGoVersion|createProjectContractGitRunner/, relativePath);
+    assert.equal(source.match(/spawnSync\(/g)?.length ?? 0, expectedCalls, relativePath);
+  }
+  assert.match(sources[1].source, /runBoundedCommand\('git', \['rev-parse', '--short=12', 'HEAD'\]/);
+  assert.match(sources[1].source, /runBoundedCommand\(command, \['--version'\],[\s\S]*env: goEnvironmentWithPath,[\s\S]*raw: true/);
+  assert.match(sources[3].source, /readBoundedGoVersion\(goCommand, \{[\s\S]*env: environment/);
+  assert.match(sources[4].source, /runBoundedCommand\(command, \['env', 'GOVERSION'\],[\s\S]*env: environment/);
+  assert.match(sources[6].source, /createProjectContractGitRunner\(repositoryRoot\)/);
+  assert.doesNotMatch(sources[6].source, /spawnSync/);
+  assert.match(sources[7].source, /timeoutMs: remainingTimeoutMs/);
+  assert.match(sources[7].source, /raw: true/);
+  assert.match(sources[7].source, /GIT_TERMINAL_PROMPT: '0'/);
+  assert.match(sources[7].source, /writeOutput = writeFileAtomicallySync/);
+  assert.match(sources[7].source, /writeOutput\(target, result/);
+  assert.doesNotMatch(sources[7].source, /writeFileSync\(target, result/);
+  assert.doesNotMatch(sources[7].source, /spawnSync/);
+});
+
+test('synchronous evidence entrypoints use the shared bounded command boundary', async () => {
+  const names = [
+    'scripts/kubernetes-evidence.mjs',
+    'scripts/prometheus-rules.mjs',
+    'scripts/workflow-lint.mjs',
+  ];
+  const [evidenceCommand, ...sources] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'evidence-command.mjs'), 'utf8'),
+    ...names.map((name) => readFile(path.join(repositoryRoot, name), 'utf8')),
+  ]);
+
+  assert.match(evidenceCommand, /evidenceCommandMaximumDurationMs = 180_000/);
+  assert.match(evidenceCommand, /evidenceCommandMaximumOutputBytes = 2 \* 1024 \* 1024/);
+  assert.match(evidenceCommand, /shell: false/);
+  assert.match(evidenceCommand, /windowsHide: true/);
+  assert.match(evidenceCommand, /timeout: timeoutMs/);
+  assert.match(evidenceCommand, /killSignal: 'SIGTERM'/);
+  assert.match(evidenceCommand, /maxBuffer: evidenceCommandMaximumOutputBytes/);
+  for (const [index, source] of sources.entries()) {
+    assert.match(source, /runEvidenceCommand/, names[index]);
+    assert.doesNotMatch(source, /node:child_process|\bspawnSync\(/, names[index]);
+  }
+  assert.match(sources[0], /kubernetesEvidenceCommandTimeoutMs = 30_000/);
+  assert.match(sources[0], /timeoutMs: kubernetesEvidenceCommandTimeoutMs/);
+  assert.match(sources[1], /runEvidenceCommand\(command, args, options\)/);
+  assert.match(sources[2], /runEvidenceCommand\(command, args, options\)/);
+});
+
+test('direct synchronous evidence runners pin the complete process termination contract', async () => {
+  const names = [
+    'scripts/authorization-evidence.mjs',
+    'scripts/audit-chain-evidence.mjs',
+    'scripts/oidc-browser-evidence.mjs',
+    'scripts/sdk-consumer-evidence.mjs',
+    'scripts/sdk-release-evidence.mjs',
+    'scripts/sdk-consumer-matrix-evidence.mjs',
+    'scripts/server-recovery-drill.mjs',
+  ];
+  const sources = await Promise.all(
+    names.map((name) => readFile(path.join(repositoryRoot, name), 'utf8')),
+  );
+
+  for (const [index, source] of sources.entries()) {
+    assert.equal(source.match(/spawnSync\(/g)?.length ?? 0, 1, names[index]);
+    assert.match(source, /shell:\s*false/, names[index]);
+    assert.match(source, /windowsHide:\s*true/, names[index]);
+    assert.match(source, /timeout:\s*[^,]+/, names[index]);
+    assert.match(source, /killSignal:\s*'SIGTERM'/, names[index]);
+    assert.match(source, /maxBuffer:\s*4 \* 1024 \* 1024/, names[index]);
+  }
+});
+
 test('Git status summaries keep dirty counts and hashes deterministic', () => {
   const status = ' M scripts/evidence-manifest.mjs\n?? .temp/cache/item-000001\n';
   const summary = summarizeGitStatus(status);
@@ -1184,9 +1554,10 @@ test('Git status summaries keep dirty counts and hashes deterministic', () => {
 
 test('evidence manifest archives hashes and keeps unverified boundaries explicit', async () => {
   const scriptPath = path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs');
-  const [script, verifier, boundedCommand, contract, packageDocument, natsClusterEvidenceHelper] = await Promise.all([
+  const [script, verifier, atomicOutput, boundedCommand, contract, packageDocument, natsClusterEvidenceHelper] = await Promise.all([
     readFile(scriptPath, 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'evidence-verify.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'atomic-output.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'lib', 'bounded-command.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'lib', 'evidence-manifest-contract.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
@@ -1196,10 +1567,17 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
   assert.match(script, /--untracked-files=all/);
   assert.match(script, /runBoundedCommand/);
   assert.match(script, /summarizeGitStatus/);
+  assert.match(script, /writeFileAtomicallySync\(outputPath/);
+  assert.doesNotMatch(script, /writeFileSync\(outputPath/);
+  assert.match(atomicOutput, /openSync\(temporaryPath, 'wx', mode\)/);
+  assert.match(atomicOutput, /fsyncSync\(descriptor\)/);
+  assert.match(atomicOutput, /renameSync\(temporaryPath, outputPath\)/);
   assert.match(boundedCommand, /maximumCommandDurationMs = 30_000/);
   assert.match(boundedCommand, /maximumCommandOutputBytes = 64 \* 1024 \* 1024/);
   assert.match(boundedCommand, /maxBuffer: maximumCommandOutputBytes/);
   assert.match(boundedCommand, /timeout: timeoutMs/);
+  assert.match(boundedCommand, /const deadline = readCommandClock\(now\) \+ timeoutMs/);
+  assert.match(boundedCommand, /timeout: remainingTimeoutMs/);
   assert.match(boundedCommand, /killSignal: 'SIGTERM'/);
   assert.match(boundedCommand, /changedFileCount/);
   assert.match(boundedCommand, /statusSha256/);
@@ -1236,7 +1614,7 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
   assert.match(verifier, /verifyNatsClusterContractArtifacts/);
   assert.match(verifier, /NATS cluster evidence artifact is missing from the manifest/);
   assert.match(natsClusterEvidenceHelper, /schemaVersion !== 6/);
-  assert.match(natsClusterEvidenceHelper, /requiredLeaseNanos !== 8_510_000_000/);
+  assert.match(natsClusterEvidenceHelper, /requiredLeaseNanos !== 8_515_000_000/);
   assert.match(natsClusterEvidenceHelper, /workerAckWaitNanos !== expectedContract\.workerAckWaitNanos/);
   assert.match(natsClusterEvidenceHelper, /persistedAfterQuorumRecovery !== 8/);
   assert.match(natsClusterEvidenceHelper, /persistedAfterConcurrentRecovery !== 10/);
@@ -1308,11 +1686,27 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V18.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V19.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V20.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V42.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V43.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V44.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V46.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V47.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V48.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V49.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V50.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V51.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V52.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V53.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V54.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V55.md' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'docs/待优化/待优化V56.md' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'SDK/GoExample/release-manifest.json' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'SDK/Billing/release-manifest.json' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/evidence-manifest.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/evidence-verify.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/bounded-command.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/evidence-command.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/environment-fetch.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/evidence-manifest-contract.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/audit-chain-evidence.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/audit-chain-evidence.mjs' && input.sha256));
@@ -1327,9 +1721,11 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/server-recovery-drill.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/server-recovery-evidence.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/server-recovery-evidence.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/server-recovery-command.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/server-release.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/transport-benchmark-report.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/transport-benchmark-environment.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/transport-benchmark-stability.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/transport-soak-report.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/kubernetes-manifest.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === 'scripts/lib/kubernetes-evidence.mjs' && input.sha256));
@@ -1355,6 +1751,8 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/authorization-evidence.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/oidc-browser-evidence.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/kubernetes-evidence.test.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/evidence-command.test.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/environment-fetch.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/sdk-release-evidence.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/nginx-edge.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/nginx-edge-evidence.test.mjs' && input.sha256));
@@ -1367,6 +1765,7 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/release-provenance.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/server-release.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/server-recovery-evidence.test.mjs' && input.sha256));
+    assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/server-recovery-command.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/transport-benchmark-report.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '__test__/node/transport-soak-report.test.mjs' && input.sha256));
     assert.ok(manifest.inputs.some((input) => input.path === '.github/workflows/go-transport-benchmark.yml' && input.sha256));
@@ -1733,9 +2132,203 @@ test('evidence manifest archives hashes and keeps unverified boundaries explicit
   }
 });
 
+test('atomic output publishes complete files and preserves the prior target on failure', async () => {
+  const destination = path.join(repositoryRoot, '.temp', 'atomic-output-contract', 'manifest.json');
+  const successEvents = [];
+  let successTemporaryPath = null;
+  writeFileAtomicallySync(destination, 'new manifest\n', {
+    operations: {
+      openSync(filePath, flags, mode) {
+        successTemporaryPath = filePath;
+        successEvents.push(['open', flags, mode]);
+        return 17;
+      },
+      writeFileSync(descriptor, data, options) {
+        successEvents.push(['write', descriptor, data, options.encoding]);
+      },
+      fsyncSync(descriptor) {
+        successEvents.push(['fsync', descriptor]);
+      },
+      closeSync(descriptor) {
+        successEvents.push(['close', descriptor]);
+      },
+      renameSync(source, target) {
+        successEvents.push(['rename', source, target]);
+      },
+      rmSync() {
+        assert.fail('successful publication must not clean up the committed temporary path');
+      },
+    },
+  });
+  assert.equal(path.dirname(successTemporaryPath), path.dirname(destination));
+  assert.notEqual(successTemporaryPath, destination);
+  assert.match(path.basename(successTemporaryPath), /^\.manifest\.json\.\d+-[a-f0-9]{32}\.tmp$/);
+  assert.deepEqual(successEvents, [
+    ['open', 'wx', 0o666],
+    ['write', 17, 'new manifest\n', 'utf8'],
+    ['fsync', 17],
+    ['close', 17],
+    ['rename', successTemporaryPath, destination],
+  ]);
+
+  const writeFailure = new Error('injected write failure');
+  const closeFailure = new Error('injected cleanup close failure');
+  const removeFailure = new Error('injected cleanup remove failure');
+  const failureEvents = [];
+  assert.throws(
+    () => writeFileAtomicallySync(destination, 'invalid', {
+      operations: {
+        openSync(filePath, flags) {
+          failureEvents.push(['open', filePath, flags]);
+          return 23;
+        },
+        writeFileSync() {
+          failureEvents.push(['write']);
+          throw writeFailure;
+        },
+        fsyncSync() {
+          assert.fail('failed writes must not be synchronized');
+        },
+        closeSync(descriptor) {
+          failureEvents.push(['close', descriptor]);
+          throw closeFailure;
+        },
+        renameSync() {
+          assert.fail('failed writes must not replace the canonical output');
+        },
+        rmSync(filePath, options) {
+          failureEvents.push(['remove', filePath, options.force]);
+          throw removeFailure;
+        },
+      },
+    }),
+    (error) => error === writeFailure,
+  );
+  assert.deepEqual(failureEvents.map(([event]) => event), ['open', 'write', 'close', 'remove']);
+  assert.equal(failureEvents[0][2], 'wx');
+  assert.equal(failureEvents[2][1], 23);
+  assert.equal(failureEvents[3][1], failureEvents[0][1]);
+  assert.equal(failureEvents[3][2], true);
+
+  const renameFailure = new Error('injected rename failure');
+  const renameEvents = [];
+  assert.throws(
+    () => writeFileAtomicallySync(destination, 'complete but unpublished', {
+      operations: {
+        openSync(filePath) {
+          renameEvents.push(['open', filePath]);
+          return 29;
+        },
+        writeFileSync() {
+          renameEvents.push(['write']);
+        },
+        fsyncSync() {
+          renameEvents.push(['fsync']);
+        },
+        closeSync() {
+          renameEvents.push(['close']);
+        },
+        renameSync() {
+          renameEvents.push(['rename']);
+          throw renameFailure;
+        },
+        rmSync(filePath, options) {
+          renameEvents.push(['remove', filePath, options.force]);
+        },
+      },
+    }),
+    (error) => error === renameFailure,
+  );
+  assert.deepEqual(renameEvents.map(([event]) => event), ['open', 'write', 'fsync', 'close', 'rename', 'remove']);
+  assert.equal(renameEvents.at(-1)[1], renameEvents[0][1]);
+  assert.equal(renameEvents.at(-1)[2], true);
+
+  const realDirectory = await mkdtemp(path.join(repositoryRoot, '.temp', 'atomic-output-'));
+  const realDestination = path.join(realDirectory, 'manifest.json');
+  try {
+    await writeFile(realDestination, 'old manifest\n', 'utf8');
+    writeFileAtomicallySync(realDestination, 'complete new manifest\n');
+    assert.equal(await readFile(realDestination, 'utf8'), 'complete new manifest\n');
+    assert.deepEqual(await readdir(realDirectory), ['manifest.json']);
+
+    const baselinePath = path.join(realDirectory, 'baseline.json');
+    const provenancePath = path.join(realDirectory, 'baseline-source.json');
+    await writeFile(baselinePath, 'old baseline\n', 'utf8');
+    await writeFile(provenancePath, 'old provenance\n', 'utf8');
+    const secondWriteFailure = new Error('injected second write failure');
+    let writeCount = 0;
+    assert.throws(
+      () => writeFilesWithRollbackSync([
+        { outputPath: baselinePath, data: 'new baseline\n' },
+        { outputPath: provenancePath, data: 'new provenance\n' },
+      ], {
+        writeOutput(outputPath, data, options) {
+          writeCount += 1;
+          if (writeCount === 2) {
+            throw secondWriteFailure;
+          }
+          writeFileAtomicallySync(outputPath, data, options);
+        },
+      }),
+      (error) => error === secondWriteFailure,
+    );
+    assert.equal(await readFile(baselinePath, 'utf8'), 'old baseline\n');
+    assert.equal(await readFile(provenancePath, 'utf8'), 'old provenance\n');
+
+    await rm(baselinePath, { force: true });
+    writeCount = 0;
+    assert.throws(
+      () => writeFilesWithRollbackSync([
+        { outputPath: baselinePath, data: 'new baseline\n' },
+        { outputPath: provenancePath, data: 'new provenance\n' },
+      ], {
+        writeOutput(outputPath, data, options) {
+          writeCount += 1;
+          if (writeCount === 2) {
+            throw secondWriteFailure;
+          }
+          writeFileAtomicallySync(outputPath, data, options);
+        },
+      }),
+      (error) => error === secondWriteFailure,
+    );
+    await assert.rejects(readFile(baselinePath, 'utf8'), /ENOENT/);
+    assert.equal(await readFile(provenancePath, 'utf8'), 'old provenance\n');
+
+    const rollbackFailure = new Error('injected rollback failure');
+    await writeFile(baselinePath, 'old baseline\n', 'utf8');
+    writeCount = 0;
+    assert.throws(
+      () => writeFilesWithRollbackSync([
+        { outputPath: baselinePath, data: 'new baseline\n' },
+        { outputPath: provenancePath, data: 'new provenance\n' },
+      ], {
+        writeOutput(outputPath, data, options) {
+          writeCount += 1;
+          if (writeCount === 2) {
+            throw secondWriteFailure;
+          }
+          if (writeCount === 3) {
+            throw rollbackFailure;
+          }
+          writeFileAtomicallySync(outputPath, data, options);
+        },
+      }),
+      (error) => (
+        error instanceof AggregateError
+        && error.cause === secondWriteFailure
+        && error.errors.includes(rollbackFailure)
+      ),
+    );
+  } finally {
+    await rm(realDirectory, { recursive: true, force: true });
+  }
+});
+
 test('Go server release is checksum-bound, tamper-tested, and remotely attested', async () => {
-  const [releaseScript, releaseTests, provenanceHelper, provenanceTests, environment, workflow, nodeWorkflow, packageDocument, evidenceManifest, evidenceVerify] = await Promise.all([
+  const [releaseScript, releaseCommand, releaseTests, provenanceHelper, provenanceTests, environment, workflow, nodeWorkflow, packageDocument, evidenceManifest, evidenceVerify] = await Promise.all([
     readFile(path.join(repositoryRoot, 'scripts', 'server-release.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'server-release-command.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, '__test__', 'node', 'server-release.test.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'lib', 'release-provenance.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, '__test__', 'node', 'release-provenance.test.mjs'), 'utf8'),
@@ -1750,7 +2343,7 @@ test('Go server release is checksum-bound, tamper-tested, and remotely attested'
 
   assert.match(scripts['test:node'], /--test-concurrency=1/);
   assert.match(scripts['test:node'], /release-provenance\.test\.mjs/);
-  assert.match(scripts['test:node'], /workflow-lint\.test\.mjs && node --test --test-concurrency=1 __test__\/node\/server-release\.test\.mjs$/);
+  assert.match(scripts['test:node'], /workflow-lint\.test\.mjs __test__\/node\/contract-command\.test\.mjs __test__\/node\/go-project-command\.test\.mjs __test__\/node\/evidence-command\.test\.mjs __test__\/node\/environment-fetch\.test\.mjs && node --test --test-concurrency=1 __test__\/node\/server-release\.test\.mjs$/);
   assert.equal(scripts['release:server:build'], 'node scripts/server-release.mjs build');
   assert.equal(scripts['release:server:verify'], 'node scripts/server-release.mjs verify');
   assert.match(releaseScript, /CGO_ENABLED: '0'/);
@@ -1769,7 +2362,33 @@ test('Go server release is checksum-bound, tamper-tested, and remotely attested'
   assert.match(releaseScript, /goexample_server_release_sources/);
   assert.match(releaseScript, /'list', '-deps'/);
   assert.match(releaseScript, /source manifest does not exactly match the current server release input closure/);
+  assert.match(releaseScript, /createServerReleaseCommandRunner\(\{ cwd: repositoryRoot \}\)/);
+  assert.match(releaseScript, /scripts\/lib\/server-release-command\.mjs/);
+  assert.match(releaseScript, /timeoutMs: serverReleaseMetadataCommandTimeoutMs/);
+  assert.match(releaseScript, /timeoutMs: serverReleaseDependencyCommandTimeoutMs/);
+  assert.match(releaseScript, /timeoutMs: serverReleaseBuildCommandTimeoutMs/);
+  assert.match(releaseScript, /timeoutMs: serverReleaseTaskCommandTimeoutMs/);
+  assert.doesNotMatch(releaseScript, /node:child_process|\bspawnSync\b/);
+  assert.match(releaseCommand, /serverReleaseCommandMaximumDurationMs = 600_000/);
+  assert.match(releaseCommand, /serverReleaseMetadataCommandTimeoutMs = 30_000/);
+  assert.match(releaseCommand, /serverReleaseDependencyCommandTimeoutMs = 120_000/);
+  assert.match(releaseCommand, /serverReleaseBuildCommandTimeoutMs = 180_000/);
+  assert.match(releaseCommand, /serverReleaseTaskCommandTimeoutMs = 600_000/);
+  assert.match(releaseCommand, /serverReleaseCommandMaximumOutputBytes = 8 \* 1024 \* 1024/);
+  assert.match(releaseCommand, /serverReleaseCommandDiagnosticCharacterLimit = 4_096/);
+  assert.match(releaseCommand, /maxBuffer: serverReleaseCommandMaximumOutputBytes/);
+  assert.match(releaseCommand, /timeout: timeoutMs/);
+  assert.match(releaseCommand, /killSignal: 'SIGTERM'/);
+  assert.match(releaseCommand, /shell: false/);
   assert.match(releaseTests, /rejects artifact or metadata tampering/);
+  for (const testName of [
+    'applies bounded non-shell options',
+    'rejects invalid inputs without spawning',
+    'classifies timeout, signal, overflow, spawn, exit, and missing-status failures',
+    'bounds stderr diagnostics and never reports stdout',
+  ]) {
+    assert.match(releaseTests, new RegExp(testName));
+  }
   assert.match(releaseTests, /isolationTampered/);
   assert.match(releaseTests, /sourceOmissionRejected/);
   assert.match(releaseTests, /sourcePathRejected/);
@@ -1844,6 +2463,7 @@ test('server recovery drill stays bounded, archived, and explicit about local-on
     runbook,
     evidenceRunner,
     evidenceHelper,
+    commandRunner,
     evidenceTests,
     evidenceManifest,
     evidenceVerify,
@@ -1853,6 +2473,7 @@ test('server recovery drill stays bounded, archived, and explicit about local-on
     readFile(path.join(repositoryRoot, 'docs', 'recovery', 'server-failure-matrix.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'server-recovery-evidence.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'lib', 'server-recovery-evidence.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'server-recovery-command.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, '__test__', 'node', 'server-recovery-evidence.test.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'evidence-manifest.mjs'), 'utf8'),
     readFile(path.join(repositoryRoot, 'scripts', 'evidence-verify.mjs'), 'utf8'),
@@ -1865,6 +2486,7 @@ test('server recovery drill stays bounded, archived, and explicit about local-on
   assert.equal(packageScripts['drill:server:evidence'], 'node scripts/server-recovery-evidence.mjs run');
   assert.equal(packageScripts['drill:server:verify'], 'node scripts/server-recovery-evidence.mjs verify');
   assert.match(packageScripts['test:node'], /server-recovery-evidence\.test\.mjs/);
+  assert.match(packageScripts['test:node'], /server-recovery-command\.test\.mjs/);
 
   const listed = runScript('scripts/server-recovery-drill.mjs', ['--list']);
   assert.equal(listed.status, 0, listed.stderr);
@@ -1904,6 +2526,14 @@ test('server recovery drill stays bounded, archived, and explicit about local-on
   assert.match(runbook, /RPO, or RTO/);
   assert.match(evidenceRunner, /buildServerRecoveryEvidenceReport/);
   assert.match(evidenceRunner, /writeServerRecoveryEvidenceChecksums/);
+  assert.match(evidenceRunner, /runServerRecoveryDrill/);
+  assert.doesNotMatch(evidenceRunner, /node:child_process|\bspawnSync\(/);
+  assert.match(commandRunner, /serverRecoveryEvidenceProcessTimeoutMs = 300_000/);
+  assert.match(commandRunner, /stdio: 'inherit'/);
+  assert.match(commandRunner, /shell: false/);
+  assert.match(commandRunner, /windowsHide: true/);
+  assert.match(commandRunner, /timeout: timeoutMs/);
+  assert.match(commandRunner, /killSignal: 'SIGTERM'/);
   assert.match(evidenceHelper, /local_server_recovery_evidence/);
   assert.match(evidenceHelper, /serverRecoveryScenarios/);
   assert.match(evidenceHelper, /checksumArtifactNames/);
@@ -2076,6 +2706,12 @@ test('OIDC browser evidence stays checksum-bound and explicitly local-only', asy
   assert.match(runner, /GOCACHE/);
   assert.match(runner, /GOTMPDIR/);
   assert.match(verifier, /local_oidc_browser_contract/);
+	assert.match(verifier, /oidcBrowserEvidenceSchemaVersion = 3/);
+	assert.match(verifier, /'\.\/auth',\s*'\.\/httpapi'/);
+	assert.match(verifier, /accessTokenHashBound/);
+	assert.match(verifier, /tokenEndpointAuthenticationNegotiated/);
+	assert.match(verifier, /tokenRequestCredentialsBound/);
+	assert.match(verifier, /oidcClientTests: 'Framework\/auth\/oidc_client_test\.go'/);
   assert.match(verifier, /stateCookieBoundCallback/);
   assert.match(verifier, /conditionalRoutesReserved/);
   assert.match(verifier, /evidence directory files must be exactly/);
@@ -2268,7 +2904,7 @@ test('SDK consumer matrix evidence stays repository-only, complete, and checksum
   assert.match(independentVerifier, /SDK consumer matrix evidence artifact is missing from the manifest/);
 });
 
-test('V25 repository work and target-environment boundaries match the weighted evaluation', async () => {
+test('V72 repository work and target-environment boundaries match the weighted evaluation', async () => {
   const [evaluation, v12Backlog, backlog, nextBacklog, currentBacklog, v16Backlog, v17Backlog, v18Backlog, v19Backlog, v20Backlog, v21Backlog, v22Backlog, lifecycleADR, publicAPIBoundaryADR, benchmark, app, appTests, fingerprint, middleware, tracing, tracingTests, httpClient, httpClientTests, responseBody, responseBodyTests, retry, retryTests, circuitBreaker, circuitBreakerTests, standardApplication, standardApplicationTests, exampleEntrypoint, billingEntrypoint, applicationEventStream, applicationEventStreamTests, applicationRoute, applicationRouteTests, sqlClient, sqlClientTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'docs', '评估', '项目架构与性能评估.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V12.md'), 'utf8'),
@@ -2322,32 +2958,279 @@ test('V25 repository work and target-environment boundaries match the weighted e
     path.join(repositoryRoot, 'docs', '待优化', '待优化V25.md'),
     'utf8',
   );
+  const v26Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V26.md'),
+    'utf8',
+  );
+  const v27Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V27.md'),
+    'utf8',
+  );
+  const v28Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V28.md'),
+    'utf8',
+  );
+  const v29Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V29.md'),
+    'utf8',
+  );
+  const v30Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V30.md'),
+    'utf8',
+  );
+  const v31Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V31.md'),
+    'utf8',
+  );
+  const v32Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V32.md'),
+    'utf8',
+  );
+  const v33Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V33.md'),
+    'utf8',
+  );
+  const v34Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V34.md'),
+    'utf8',
+  );
+  const v35Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V35.md'),
+    'utf8',
+  );
+  const v36Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V36.md'),
+    'utf8',
+  );
+  const v37Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V37.md'),
+    'utf8',
+  );
+  const v38Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V38.md'),
+    'utf8',
+  );
+  const v39Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V39.md'),
+    'utf8',
+  );
+  const v40Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V40.md'),
+    'utf8',
+  );
+  const v41Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V41.md'),
+    'utf8',
+  );
+  const v42Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V42.md'),
+    'utf8',
+  );
+  const v43Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V44.md'),
+    'utf8',
+  );
+  const v45Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V46.md'),
+    'utf8',
+  );
+  const v47Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V47.md'),
+    'utf8',
+  );
+  const v48Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V48.md'),
+    'utf8',
+  );
+  const v49Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V49.md'),
+    'utf8',
+  );
+  const v50Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V50.md'),
+    'utf8',
+  );
+  const v51Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V51.md'),
+    'utf8',
+  );
+  const v52Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V52.md'),
+    'utf8',
+  );
+  const v53Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V53.md'),
+    'utf8',
+  );
+  const v54Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V54.md'),
+    'utf8',
+  );
+  const v55Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V55.md'),
+    'utf8',
+  );
+  const v56Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V56.md'),
+    'utf8',
+  );
+  const v57Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V57.md'),
+    'utf8',
+  );
+  const v58Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V58.md'),
+    'utf8',
+  );
+  const v59Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V59.md'),
+    'utf8',
+  );
+  const v60Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V60.md'),
+    'utf8',
+  );
+  const v61Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V61.md'),
+    'utf8',
+  );
+  const v62Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V62.md'),
+    'utf8',
+  );
+  const v63Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V63.md'),
+    'utf8',
+  );
+  const v64Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V64.md'),
+    'utf8',
+  );
+  const v65Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V65.md'),
+    'utf8',
+  );
+  const v66Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V66.md'),
+    'utf8',
+  );
+  const v67Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V67.md'),
+    'utf8',
+  );
+  const v68Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V68.md'),
+    'utf8',
+  );
+  const v69Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V69.md'),
+    'utf8',
+  );
+  const v70Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V70.md'),
+    'utf8',
+  );
+  const v71Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V71.md'),
+    'utf8',
+  );
+  const v72Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V72.md'),
+    'utf8',
+  );
+  const [browserSessionStore, browserSessionStoreTests] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'browser_session_store.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'browser_session_store_test.go'), 'utf8'),
+  ]);
+  const [sessionStore, sessionStoreTests] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'session_store.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'session_store_test.go'), 'utf8'),
+  ]);
+  const [goProjectScript, goProjectCommand, goProjectCommandTests, packageDocument] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'scripts', 'go-project.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'go-project-command.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, '__test__', 'node', 'go-project-command.test.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'package.json'), 'utf8'),
+  ]);
+  const goSDK = await readFile(
+    path.join(repositoryRoot, 'scripts', 'go-sdk.mjs'),
+    'utf8',
+  );
+  const sdkGeneration = await readFile(
+    path.join(repositoryRoot, 'scripts', 'lib', 'sdk-generation.mjs'),
+    'utf8',
+  );
+  const sdkGenerationTests = await readFile(
+    path.join(repositoryRoot, '__test__', 'node', 'sdk-generation.test.mjs'),
+    'utf8',
+  );
+  const sdkRelease = await readFile(
+    path.join(repositoryRoot, 'scripts', 'lib', 'sdk-release.mjs'),
+    'utf8',
+  );
+  const sdkReleaseCLI = await readFile(
+    path.join(repositoryRoot, 'scripts', 'sdk-release.mjs'),
+    'utf8',
+  );
+  const sdkReleaseTests = await readFile(
+    path.join(repositoryRoot, '__test__', 'node', 'sdk-release.test.mjs'),
+    'utf8',
+  );
   const rows = [
-    ...evaluation.matchAll(/^\| (?!\*\*综合评分)([^|]+) \| (\d+)% \| ([\d.]+) \| ([\d.]+) \| ([\d.]+) \|/gm),
+    ...evaluation.matchAll(/^\| (?!\*\*综合评分)([^|]+) \| (\d+)% \| ([\d.]+) \| ([\d.]+) \| ([\d.]+) \| ([\d.]+) \|/gm),
   ];
 
-  assert.equal(rows.length, 18, 'current score table must contain 18 weighted dimensions');
+  assert.equal(rows.length, 17, 'current score table must contain 17 included weighted dimensions');
   const weightTotal = rows.reduce((total, row) => total + Number(row[2]), 0);
-  assert.equal(weightTotal, 100, 'current score weights must total 100%');
+  assert.equal(weightTotal, 94, 'current score weights must exclude the frontend dimension');
 
   let calculatedBaseline = 0;
-  let calculatedTarget = 0;
+  let calculatedCompleted = 0;
   for (const row of rows) {
-    const expectedContribution = (Number(row[2]) * Number(row[4])) / 100;
-    const documentedContribution = Number(row[5]);
+    const expectedContribution = (Number(row[2]) * Number(row[5])) / 100;
+    const documentedContribution = Number(row[6]);
     assert.ok(
       Math.abs(expectedContribution - documentedContribution) <= 0.0005 + Number.EPSILON,
       `${row[1].trim()} weighted score is inconsistent`,
     );
-    calculatedBaseline += (Number(row[2]) * Number(row[3])) / 100;
-    calculatedTarget += expectedContribution;
+    calculatedBaseline += (Number(row[2]) * Number(row[4])) / 100;
+    calculatedCompleted += expectedContribution;
   }
+  calculatedBaseline /= weightTotal / 100;
+  calculatedCompleted /= weightTotal / 100;
 
-  assert.match(evaluation, /V25 修复前复评基线：\*\*9\.840\/10\*\*，未舍入 \*\*9\.8404\/10\*\*/);
-  assert.match(evaluation, /V25-01 全部验收后的目标值：\*\*9\.849\/10\*\*，未舍入 \*\*9\.8488\/10\*\*/);
-  assert.match(evaluation, /当前综合评分：\*\*9\.849\/10\*\*，未舍入 \*\*9\.8488\/10\*\*/);
-  assert.equal(calculatedBaseline.toFixed(4), '9.8404');
-  assert.equal(calculatedTarget.toFixed(4), '9.8488');
+  assert.equal(calculatedBaseline.toFixed(4), '9.8896');
+  assert.equal(calculatedCompleted.toFixed(4), '9.8915');
+  assert.match(evaluation, /评估版本：V72（已完成）/);
+  assert.match(evaluation, /V71-01.*已完成并计分/s);
+  assert.match(evaluation, /协议与网络能力 \| 6% \| 8\.5750 \| 8\.5750 \| 8\.5750/);
+  assert.match(evaluation, /当前有效综合评分：\*\*9\.8915\/10（A-）\*\*/);
+  assert.match(v69Backlog, /V69-01 已完成/);
+  assert.match(v69Backlog, /9\.8880\/10/);
+  assert.match(v70Backlog, /状态：V70-01 已完成并计分/);
+  assert.match(v70Backlog, /duplicate-key JSON 校验/);
+  assert.match(v70Backlog, /OIDC schema 3 evidence/);
+  assert.match(v70Backlog, /9\.8888\/10/);
+  assert.match(v71Backlog, /状态：V71-01 已完成并计分/);
+  assert.match(v71Backlog, /listBrowserSessionsScript/);
+  assert.match(v71Backlog, /9\.8896\/10/);
+  assert.match(v71Backlog, /V71-02\/V71-03.*`not_recorded`/s);
+  assert.match(v72Backlog, /状态：V72-01 已完成并计分/);
+  assert.match(v72Backlog, /RotateSession/);
+  assert.match(v72Backlog, /9\.8915\/10/);
+  assert.match(v72Backlog, /V72-02\/V72-03.*`not_recorded`/s);
+  assert.match(browserSessionStore, /listBrowserSessionsScript = redis\.NewScript/);
+  assert.match(browserSessionStore, /ZREMRANGEBYSCORE/);
+  assert.match(browserSessionStore, /StringSlice\(\)/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionInventoryUsesOneAtomicSnapshotCommand/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionInventoryFailsClosedForMissingPayloadInSnapshot/);
+  assert.match(browserSessionStoreTests, /redis\.evalsha/);
+  assert.match(sessionStore, /rotateSessionScript = redis\.NewScript/);
+  assert.match(sessionStore, /sessionFamilyKeyPrefix/);
+  assert.match(sessionStore, /sessionUsedKeyPrefix/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionRotationUsesOneAtomicScriptCommand/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionRevokeUsesOneAtomicScriptCommand/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionRejectsMalformedFamilyMapping/);
   assert.match(v12Backlog, /V12-01/);
   assert.match(v12Backlog, /V12-10/);
   assert.match(v12Backlog, /状态：\*\*已完成\*\*/);
@@ -2359,6 +3242,137 @@ test('V25 repository work and target-environment boundaries match the weighted e
   assert.match(backlog, /V13-09/);
   assert.match(backlog, /V14-07/);
   assert.match(backlog, /V14-15/);
+  assert.match(v43Backlog, /V44-01/);
+  assert.match(v43Backlog, /状态：V43 仓库内项目已关闭；V44-01 仓库内完成；V44-02\/V44-03 继续 `not_recorded`/);
+  assert.match(v43Backlog, /V44-02\/V44-03 继续 `not_recorded`/);
+  assert.match(v43Backlog, /显式加入 `killSignal: 'SIGTERM'`/);
+  assert.match(v43Backlog, /9\.8676\/10/);
+  assert.match(v43Backlog, /9\.8666\/10/);
+  assert.match(v45Backlog, /V46-01/);
+  assert.match(v45Backlog, /V45-02\/V45-03.*`not_recorded`/s);
+  assert.match(v45Backlog, /根目录 Yarn 安装/);
+  assert.match(v45Backlog, /Go 下载元数据/);
+  assert.match(v47Backlog, /V47-01/);
+  assert.match(v47Backlog, /损坏\/不兼容候选不能改变既有基线/);
+  assert.match(v47Backlog, /writeFileAtomicallySync/);
+  assert.match(v47Backlog, /9\.8689\/10/);
+  assert.match(v48Backlog, /V48-01/);
+  assert.match(v48Backlog, /writeFilesWithRollbackSync/);
+  assert.match(v48Backlog, /baseline\/provenance 任一状态、摘要或语义漂移失败/);
+  assert.match(v48Backlog, /9\.8692\/10/);
+  assert.match(v48Backlog, /V48-01 已完成/);
+  assert.match(v49Backlog, /V49-01/);
+  assert.match(v49Backlog, /V49-01 已完成/);
+  assert.match(v49Backlog, /maxToMinRatio/);
+  assert.match(v49Backlog, /schema 5 只进入一次迁移空窗/);
+  assert.match(v49Backlog, /9\.8699\/10/);
+  assert.match(v50Backlog, /V50-01/);
+  assert.match(v50Backlog, /V50-01 已完成/);
+  assert.match(v50Backlog, /Tx\.EnqueueOutbox/);
+  assert.match(v50Backlog, /ErrOutboxEnqueue/);
+  assert.match(v50Backlog, /9\.8706\/10/);
+  assert.match(v51Backlog, /V51-01/);
+  assert.match(v51Backlog, /V51-01 已完成/);
+  assert.match(v51Backlog, /Retry-After/);
+  assert.match(v51Backlog, /9\.8714\/10/);
+  assert.match(v52Backlog, /V52-01/);
+  assert.match(v52Backlog, /V52-01 已完成/);
+  assert.match(v52Backlog, /有界正向 jitter/);
+  assert.match(v52Backlog, /MaxBackoff/);
+  assert.match(v52Backlog, /9\.8722\/10/);
+  assert.match(v53Backlog, /V53-01/);
+  assert.match(v53Backlog, /V53-01 已完成/);
+  assert.match(v53Backlog, /MinimumDeliveryLease/);
+  assert.match(v53Backlog, /最大 jitter/);
+  assert.match(v53Backlog, /9\.8730\/10/);
+  assert.match(v54Backlog, /V54-01/);
+  assert.match(v54Backlog, /V54-01 已完成/);
+  assert.match(v54Backlog, /PublishDeduplicated/);
+  assert.match(v54Backlog, /PubAck/);
+  assert.match(v54Backlog, /9\.8738\/10/);
+  assert.match(v55Backlog, /V55-01/);
+  assert.match(v55Backlog, /V55-01 已完成/);
+  assert.match(v55Backlog, /PubAck/);
+  assert.match(v55Backlog, /ErrDeadLetter/);
+  assert.match(v55Backlog, /9\.8746\/10/);
+  assert.match(v56Backlog, /V56-01/);
+  assert.match(v56Backlog, /V56-01 已完成并计分/);
+  assert.match(v56Backlog, /ErrConsumerNotPersistent/);
+  assert.match(v56Backlog, /ErrMaxDeliverTooLow/);
+  assert.match(v56Backlog, /schema 4/);
+  assert.match(v56Backlog, /9\.8762\/10/);
+  assert.match(v57Backlog, /V57-01/);
+  assert.match(v57Backlog, /V57-01 已完成并计分/);
+  assert.match(v57Backlog, /ErrConsumerPayloadUnavailable/);
+  assert.match(v57Backlog, /schema 5/);
+  assert.match(v57Backlog, /9\.8778\/10/);
+  assert.match(v58Backlog, /V58-01/);
+  assert.match(v58Backlog, /V58-01 已完成并计分/);
+  assert.match(v58Backlog, /ErrConsumerSubjectMismatch/);
+  assert.match(v58Backlog, /schema 6/);
+  assert.match(v58Backlog, /9\.8794\/10/);
+  assert.match(v59Backlog, /V59-01/);
+  assert.match(v59Backlog, /V59-01 已完成并计分/);
+  assert.match(v59Backlog, /maximumRetryResponseDrainBytes/);
+  assert.match(v59Backlog, /ContentLength\+1/);
+  assert.match(v59Backlog, /HTTP\/1\.1/);
+  assert.match(v59Backlog, /9\.8802\/10/);
+  assert.match(v60Backlog, /V60-01/);
+  assert.match(v60Backlog, /V60-01 已完成并计分/);
+  assert.match(v60Backlog, /ErrConsumerDeliveryPolicy/);
+  assert.match(v60Backlog, /DeliverAllPolicy/);
+  assert.match(v60Backlog, /schema 7/);
+  assert.match(v60Backlog, /9\.8810\/10/);
+  assert.match(v61Backlog, /V61-01/);
+  assert.match(v61Backlog, /V61-01 已完成并计分/);
+  assert.match(v61Backlog, /ErrConsumerReplayPolicy/);
+  assert.match(v61Backlog, /ReplayInstantPolicy/);
+  assert.match(v61Backlog, /schema 8/);
+  assert.match(v61Backlog, /9\.8818\/10/);
+  assert.match(v62Backlog, /V62-01/);
+  assert.match(v62Backlog, /V62-01 已完成并计分/);
+  assert.match(v62Backlog, /ErrConsumerRequestExpires/);
+  assert.match(v62Backlog, /MaxRequestExpires/);
+  assert.match(v62Backlog, /schema 9/);
+  assert.match(v62Backlog, /9\.8826\/10/);
+  assert.match(v63Backlog, /V63-01/);
+  assert.match(v63Backlog, /V63-01 已完成并计分/);
+  assert.match(v63Backlog, /ErrConsumerPaused/);
+  assert.match(v63Backlog, /PauseConsumer/);
+  assert.match(v63Backlog, /schema 10/);
+  assert.match(v63Backlog, /9\.8834\/10/);
+  assert.match(v64Backlog, /V64-01/);
+  assert.match(v64Backlog, /V64-01 已完成并计分/);
+  assert.match(v64Backlog, /ErrConsumerNotPull/);
+  assert.match(v64Backlog, /DeliverSubject/);
+  assert.match(v64Backlog, /schema 11/);
+  assert.match(v64Backlog, /9\.8841\/10/);
+  assert.match(v65Backlog, /V65-01/);
+  assert.match(v65Backlog, /V65-01 已完成并计分/);
+  assert.match(v65Backlog, /ErrConsumerPriorityPolicy/);
+  assert.match(v65Backlog, /PriorityPolicyNone/);
+  assert.match(v65Backlog, /schema 12/);
+  assert.match(v65Backlog, /9\.8849\/10/);
+  assert.match(v66Backlog, /V66-01/);
+  assert.match(v66Backlog, /V66-01 已完成并计分/);
+  assert.match(v66Backlog, /ErrConsumerAckPolicy/);
+  assert.match(v66Backlog, /AckExplicitPolicy/);
+  assert.match(v66Backlog, /schema 13/);
+  assert.match(v66Backlog, /9\.8857\/10/);
+  assert.match(v67Backlog, /V67-01/);
+  assert.match(v67Backlog, /V67-01 已完成并计分/);
+  assert.match(v67Backlog, /FetchContext/);
+  assert.match(v67Backlog, /schema 14/);
+  assert.match(v67Backlog, /9\.8865\/10/);
+  assert.match(v68Backlog, /V68-01/);
+  assert.match(v68Backlog, /V68-01 已完成并计分/);
+  assert.match(v68Backlog, /VerifyIDTokenWithAccessToken/);
+  assert.match(v68Backlog, /schema 2/);
+  assert.match(v68Backlog, /9\.8872\/10/);
+  assert.match(v69Backlog, /V69-01/);
+  assert.match(v69Backlog, /token_endpoint_auth_methods_supported/);
+  assert.match(v69Backlog, /schema 3/);
+  assert.match(v69Backlog, /9\.8880\/10/);
   assert.match(nextBacklog, /状态：\*\*已完结\*\*/);
   assert.match(nextBacklog, /当前精确综合评分：\*\*9\.831\/10\*\*/);
   assert.match(nextBacklog, /当前综合等级：\*\*A−\*\*/);
@@ -2440,14 +3454,38 @@ test('V25 repository work and target-environment boundaries match the weighted e
   assert.match(retry, /case "", http\.MethodGet, http\.MethodHead, http\.MethodOptions, http\.MethodTrace/);
   assert.match(retry, /config\.MaxAttempts > maximumRetryAttempts/);
   assert.match(retry, /time\.Now\(\)\.Add\(delay\)\.Before\(deadline\)/);
+  assert.match(retry, /func retryDelay\(/);
+  assert.match(retry, /response\.Header\.Get\("Retry-After"\)/);
+  assert.match(retry, /func parseRetryAfter\(/);
+  assert.match(retry, /http\.ParseTime\(value\)/);
+  assert.match(retry, /"math\/rand\/v2"/);
+  assert.match(retry, /randomInt64N func\(int64\) int64/);
+  assert.match(retry, /delay = transport\.jitteredRetryDelay\(delay\)/);
+  assert.match(retry, /func retryJitter\(/);
+  assert.match(retry, /window := min\(delay\/2, maximum-delay\)/);
+  assert.match(retry, /randomInt64N\(int64\(window\)\+1\)/);
+  assert.match(retry, /maximumRetryResponseDrainBytes\s+int64 = 32 \* 1024/);
+  assert.match(retry, /func closeRetryResponse\(response \*http\.Response\)/);
+  assert.match(retry, /response\.ContentLength >= 0 && response\.ContentLength <= maximumRetryResponseDrainBytes/);
+  assert.match(retry, /io\.CopyN\(io\.Discard, response\.Body, response\.ContentLength\+1\)/);
   for (const testName of [
     'TestClientRetriesReplayableSafeRequestWithinOneSpan',
     'TestClientDoesNotRetryUnsafeMethod',
     'TestClientDoesNotRetrySafeRequestWithNonReplayableBody',
     'TestRetryTransportClosesIntermediateResponseAndStopsAtMaximum',
+    'TestRetryTransportDrainsSmallResponseAndReusesHTTP1Connection',
+    'TestCloseRetryResponseBoundsDrainByDeclaredLength',
+    'TestCloseRetryResponseClosesAfterReadFailure',
     'TestRetryTransportCancellationInterruptsBackoff',
     'TestRetryTransportKeepsResponseWhenBackoffCannotFitDeadline',
+    'TestRetryTransportKeepsResponseWhenRetryAfterExceedsLocalBudget',
+    'TestRetryTransportKeepsResponseWhenRetryAfterCannotFitDeadline',
+    'TestRetryTransportKeepsResponseWhenJitterCannotFitDeadline',
     'TestRetryTransportReturnsBoundedBodyReplayError',
+    'TestRetryJitterUsesInclusivePositiveWindow',
+    'TestRetryJitterTruncatesWindowAtMaximumBackoff',
+    'TestRetryJitterSkipsSamplingWithoutWindow',
+    'TestRetryDelayHonorsValidRetryAfterWithinLocalBudget',
     'TestRetryPolicyUsesOnlySafeMethodsAndTransientStatuses',
   ]) {
     assert.match(retryTests, new RegExp(`func ${testName}`));
@@ -2518,6 +3556,245 @@ test('V25 repository work and target-environment boundaries match the weighted e
   for (const id of ['V25-02', 'V25-03', 'V25-04', 'V25-05', 'V25-06', 'V25-07', 'V25-08', 'V25-09', 'V25-10']) {
     assert.match(v25Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
   }
+  assert.match(v26Backlog, /V26-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v26Backlog, /9\.8466 -> 9\.8492/);
+  assert.match(v26Backlog, /Node 主阶段 \*\*167\/167\*\*、release 阶段 \*\*1\/1\*\*/);
+  assert.match(v26Backlog, /evidence input contract 覆盖 \*\*278 个输入\*\*/);
+  assert.match(v26Backlog, /总 manifest\/verify 覆盖 \*\*53 个制品\*\*/);
+  for (const id of ['V26-02', 'V26-03', 'V26-04', 'V26-05', 'V26-06', 'V26-07', 'V26-08', 'V26-09', 'V26-10']) {
+    assert.match(v26Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v27Backlog, /V27-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v27Backlog, /9\.8469 -> 9\.8496/);
+  assert.match(v27Backlog, /Node 主阶段 \*\*168\/168\*\*、release 阶段 \*\*1\/1\*\*/);
+  assert.match(v27Backlog, /evidence input contract 覆盖 \*\*279 个输入\*\*/);
+  assert.match(v27Backlog, /总 manifest\/verify 覆盖 \*\*53 个制品\*\*/);
+  for (const id of ['V27-02', 'V27-03', 'V27-04', 'V27-05', 'V27-06', 'V27-07', 'V27-08', 'V27-09', 'V27-10']) {
+    assert.match(v27Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v28Backlog, /V28-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v28Backlog, /9\.8480 -> 9\.8500/);
+  assert.match(v28Backlog, /输入目标由 279 增至 280/);
+  assert.match(v28Backlog, /Node 主阶段 \*\*169\/169\*\*、release 阶段 \*\*1\/1\*\*/);
+  assert.match(v28Backlog, /280 输入与 53 制品总 manifest\/verify/);
+  for (const id of ['V28-02', 'V28-03', 'V28-04', 'V28-05', 'V28-06', 'V28-07', 'V28-08', 'V28-09', 'V28-10']) {
+    assert.match(v28Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v29Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v29Backlog, /V29-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v29Backlog, /9\.8477 -> 9\.8511/);
+  assert.match(v29Backlog, /输入目标由 280 增至 281/);
+  assert.match(v29Backlog, /281 输入与 53 制品总 manifest\/verify/);
+  assert.match(v29Backlog, /Node 主阶段 \*\*170\/170\*\*、release 阶段 \*\*1\/1\*\*/);
+  for (const id of ['V29-02', 'V29-03', 'V29-04', 'V29-05', 'V29-06', 'V29-07', 'V29-08', 'V29-09', 'V29-10']) {
+    assert.match(v29Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v30Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v30Backlog, /V30-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v30Backlog, /9\.8474 -> 9\.8523/);
+  assert.match(v30Backlog, /输入由 281 增至 282/);
+  assert.match(v30Backlog, /Node 主阶段 \*\*171\/171\*\* 与 release 阶段 \*\*1\/1\*\*/);
+  for (const id of ['V30-02', 'V30-03', 'V30-04', 'V30-05', 'V30-06', 'V30-07', 'V30-08', 'V30-09', 'V30-10']) {
+    assert.match(v30Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v31Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v31Backlog, /V31-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v31Backlog, /9\.8491 -> 9\.8535/);
+  assert.match(v31Backlog, /输入由 282 增至 284/);
+  assert.match(v31Backlog, /Node 主阶段 \*\*172\/172\*\*、release 阶段 \*\*1\/1\*\*/);
+  for (const id of ['V31-02', 'V31-03', 'V31-04', 'V31-05', 'V31-06', 'V31-07', 'V31-08', 'V31-09', 'V31-10']) {
+    assert.match(v31Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v32Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v32Backlog, /V32-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v32Backlog, /9\.8499 -> 9\.8547/);
+  assert.match(v32Backlog, /输入由 284 增至 285/);
+  assert.match(v32Backlog, /Node 主阶段 \*\*173\/173\*\*、release 阶段 \*\*1\/1\*\*/);
+  for (const id of ['V32-02', 'V32-03', 'V32-04', 'V32-05', 'V32-06', 'V32-07', 'V32-08', 'V32-09', 'V32-10']) {
+    assert.match(v32Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v33Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v33Backlog, /V33-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v33Backlog, /9\.8502 -> 9\.8555/);
+  assert.match(v33Backlog, /输入由 285 增至 286/);
+  assert.match(v33Backlog, /Node 主阶段 \*\*174\/174\*\*、release 阶段 \*\*1\/1\*\*/);
+  for (const id of ['V33-02', 'V33-03', 'V33-04', 'V33-05', 'V33-06', 'V33-07', 'V33-08', 'V33-09', 'V33-10']) {
+    assert.match(v33Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v34Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v34Backlog, /V34-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v34Backlog, /9\.8507 -> 9\.8563/);
+  assert.match(v34Backlog, /输入由 286 增至 289/);
+  assert.match(v34Backlog, /Node 主阶段目标由 174 增至 179/);
+  for (const id of ['V34-02', 'V34-03', 'V34-04', 'V34-05', 'V34-06', 'V34-07', 'V34-08', 'V34-09', 'V34-10']) {
+    assert.match(v34Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v35Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v35Backlog, /V35-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v35Backlog, /9\.8518 -> 9\.8574/);
+  assert.match(v35Backlog, /输入由 289 增至 290/);
+  assert.match(v35Backlog, /Node 主阶段目标由 179 增至 183/);
+  for (const id of ['V35-02', 'V35-03', 'V35-04', 'V35-05', 'V35-06', 'V35-07', 'V35-08', 'V35-09', 'V35-10']) {
+    assert.match(v35Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v36Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v36Backlog, /V36-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v36Backlog, /9\.8529 -> 9\.8585/);
+  assert.match(v36Backlog, /输入由 290 增至 291/);
+  assert.match(v36Backlog, /Node 主阶段目标由 183 增至 187/);
+  for (const id of ['V36-02', 'V36-03', 'V36-04', 'V36-05', 'V36-06', 'V36-07', 'V36-08', 'V36-09', 'V36-10']) {
+    assert.match(v36Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assertEvidenceInput('docs/待优化/待优化V36.md');
+  assert.match(v37Backlog, /状态：\*\*仓库内可执行项已完成；目标环境证据待获取\*\*/);
+  assert.match(v37Backlog, /V37-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v37Backlog, /9\.8535 -> 9\.8599/);
+  assert.match(v37Backlog, /输入由 291 增至 293/);
+  assert.match(v37Backlog, /293 输入\/58 制品/);
+  assert.match(v37Backlog, /release 阶段由 1 增至 5/);
+  for (const id of ['V37-02', 'V37-03', 'V37-04', 'V37-05', 'V37-06', 'V37-07', 'V37-08', 'V37-09', 'V37-10']) {
+    assert.match(v37Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assertEvidenceInput('docs/待优化/待优化V37.md');
+  assert.match(v38Backlog, /状态：\*\*V38-01 仓库内优化已完成；目标环境证据待获取\*\*/);
+  assert.match(v38Backlog, /V38-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v38Backlog, /9\.8536 -> 9\.8610/);
+  assert.match(v38Backlog, /296 输入\/58 制品/);
+  for (const id of ['V38-02', 'V38-03', 'V38-04', 'V38-05', 'V38-06', 'V38-07', 'V38-08', 'V38-09', 'V38-10']) {
+    assert.match(v38Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v39Backlog, /状态：\*\*V39-01 仓库内优化已完成；目标环境证据保持 `not_recorded`\*\*/);
+  assert.match(v39Backlog, /V39-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v39Backlog, /9\.8548 -> 9\.8624/);
+  for (const id of ['V39-02', 'V39-03', 'V39-04', 'V39-05', 'V39-06', 'V39-07', 'V39-08', 'V39-09', 'V39-10']) {
+    assert.match(v39Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v40Backlog, /状态：\*\*V40-01 仓库内优化已完成；目标环境项目继续保持 `not_recorded`\*\*/);
+  assert.match(v40Backlog, /V40-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v40Backlog, /9\.8543 -> 9\.8636/);
+  for (const id of ['V40-02', 'V40-03', 'V40-04', 'V40-05', 'V40-06', 'V40-07', 'V40-08', 'V40-09', 'V40-10']) {
+    assert.match(v40Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v41Backlog, /状态：\*\*V41-01 仓库内优化已完成；目标环境项目继续保持 `not_recorded`\*\*/);
+  assert.match(v41Backlog, /V41-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v41Backlog, /9\.8528 -> 9\.8647/);
+  for (const id of ['V41-02', 'V41-03', 'V41-04', 'V41-05', 'V41-06', 'V41-07', 'V41-08', 'V41-09', 'V41-10']) {
+    assert.match(v41Backlog, new RegExp(`${id} [|] P[012] [|] ` + '`not_recorded`'));
+  }
+  assert.match(v42Backlog, /V42-01 [|] P1 [|] 仓库内完成/);
+  assert.match(v42Backlog, /V42-02 [|] P0 [|] `not_recorded`/);
+  assert.match(v42Backlog, /V42-03 [|] P1 [|] `not_recorded`/);
+  assert.match(v42Backlog, /9\.8647\/10/);
+  assert.match(v42Backlog, /9\.8660\/10/);
+  assert.match(goProjectScript, /createGoProjectCommandRunner/);
+  assert.match(goProjectScript, /goProjectTaskBudgetMs/);
+  assert.doesNotMatch(goProjectScript, /node:child_process|\bspawn\(/);
+  assert.match(goProjectScript, /budgetMs: goProjectTaskBudgetMs\[task\]/);
+  assert.match(goProjectCommand, /goProjectCommandMaximumDurationMs = 20 \* 60_000/);
+  assert.match(goProjectCommand, /goProjectCommandDiagnosticCharacterLimit = 4_096/);
+  assert.match(goProjectCommand, /shell: false/);
+  assert.match(goProjectCommand, /windowsHide: true/);
+  assert.match(goProjectCommand, /killSignal: 'SIGTERM'/);
+  assert.match(goProjectCommand, /budget exhausted/);
+  assert.match(goProjectCommand, /missing status/);
+  assert.match(goProjectCommand, /Go project command environment must be an object/);
+  assert.match(goProjectCommandTests, /decreasing total budget/);
+  assert.match(goProjectCommandTests, /explicitly has no timeout or kill signal/);
+  assert.match(goProjectCommandTests, /timeout requests SIGTERM/);
+  assert.match(goProjectCommandTests, /spawn, signal, missing-status, and nonzero failures/);
+  const [contractCommand, contractCommandTests, redisContractScript, postgresContractScript] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'contract-command.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, '__test__', 'node', 'contract-command.test.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'redis-sentinel-contract.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'postgres-recovery-contract.mjs'), 'utf8'),
+  ]);
+  assert.match(redisContractScript, /createContractCommandRunner\(\{ cwd: repositoryRoot \}\)/);
+  assert.doesNotMatch(redisContractScript, /node:child_process|\bspawn\(/);
+  assert.match(redisContractScript, /timeoutMs: 120_000/);
+  assert.match(redisContractScript, /timeoutMs: 150_000/);
+  assert.match(redisContractScript, /timeoutMs: 5_000/);
+  assert.match(postgresContractScript, /createContractCommandRunner\(\{ cwd: repositoryRoot \}\)/);
+  assert.doesNotMatch(postgresContractScript, /node:child_process|\bspawn\(/);
+  assert.match(postgresContractScript, /contractCommandMaximumOutputBytes/);
+  assert.match(postgresContractScript, /timeoutMs: 120_000/);
+  assert.match(postgresContractScript, /timeoutMs: 150_000/);
+  assert.match(postgresContractScript, /timeoutMs: 5_000/);
+  assert.match(contractCommand, /contractCommandMaximumOutputBytes = 8 \* 1024 \* 1024/);
+  assert.match(contractCommand, /contractCommandMaximumDurationMs = 150_000/);
+  assert.match(contractCommand, /shell: false/);
+  assert.match(contractCommand, /windowsHide: true/);
+  assert.match(contractCommand, /killSignal: 'SIGTERM'/);
+  assert.match(contractCommand, /output overflow/);
+  assert.match(contractCommand, /missing status/);
+  assert.match(contractCommandTests, /uses bounded non-shell options/);
+  assert.match(contractCommandTests, /classifies timeout/);
+  assert.match(contractCommandTests, /bounds output and diagnostics/);
+  assert.match(contractCommandTests, /allowFailure returns classified failures/);
+  assert.match(contractCommandTests, /output limit across stdout and stderr/);
+  assert.match(JSON.parse(packageDocument).scripts['test:node'], /go-project-command\.test\.mjs/);
+  assert.match(JSON.parse(packageDocument).scripts['test:node'], /contract-command\.test\.mjs/);
+  assertEvidenceInput('docs/待优化/待优化V38.md');
+  assertEvidenceInput('docs/待优化/待优化V39.md');
+  assertEvidenceInput('docs/待优化/待优化V40.md');
+  assertEvidenceInput('docs/待优化/待优化V41.md');
+  assertEvidenceInput('scripts/lib/go-project-command.mjs');
+  assertEvidenceInput('scripts/lib/contract-command.mjs');
+  assertEvidenceInput('__test__/node/go-project-command.test.mjs');
+  assertEvidenceInput('__test__/node/contract-command.test.mjs');
+  assert.match(goSDK, /import \{\s*formatGoFileWithCandidatesSync,\s*formatGeneratedGoSDKSourceSync,\s*publishGeneratedGoSDKSync,\s*\} from '\.\/lib\/sdk-generation\.mjs'/);
+  assert.match(goSDK, /formatGoFileWithCandidatesSync\(filePath, \{\s*candidates,\s*cwd: repositoryRoot,\s*\}\)/);
+  assert.match(goSDK, /formatGeneratedGoSDKSourceSync\(generated, \{\s*stagingRoot,\s*formatFile: gofmt,\s*\}\)/);
+  assert.match(goSDK, /publishGeneratedGoSDKSync\(\{\s*clientPath: targetPath,\s*versionPath,\s*formattedSource: formatted,\s*version: document\.info\.version,\s*\}\)/);
+  assert.doesNotMatch(goSDK, /sdk-check|gofmt\(targetPath\)|writeFileSync\(targetPath|\bspawnSync\b/);
+  assert.match(sdkGeneration, /maximumCommandDurationMs,\s*maximumCommandOutputBytes/);
+  assert.match(sdkGeneration, /retryableFormatterLaunchErrorCodes = new Set\(\['ENOENT', 'EINVAL'\]\)/);
+  assert.match(sdkGeneration, /maxBuffer: maximumCommandOutputBytes/);
+  assert.match(sdkGeneration, /timeout: maximumCommandDurationMs/);
+  assert.match(sdkGeneration, /killSignal: 'SIGTERM'/);
+  assert.match(sdkGeneration, /windowsHide: true/);
+  assert.match(sdkGeneration, /maximumFormatterDiagnosticCharacters = 4_096/);
+  assert.match(sdkGeneration, /mkdtempSync\(path\.join\(stagingRoot, 'go-sdk-'\)\)/);
+  assert.match(sdkGeneration, /writeOutput = writeFileAtomicallySync/);
+  assert.match(sdkGeneration, /for \(const output of published\.reverse\(\)\)/);
+  assert.match(sdkGeneration, /SDK publication failed and rollback was incomplete/);
+  for (const testName of [
+    'formats only a staged client and removes the staging directory',
+    'preserves canonical files and cleans staging when the formatter fails',
+    'uses a unique staging directory for every invocation',
+    'atomically replaces the generated client and version',
+    'rolls back the client when version publication fails',
+    'applies bounded non-shell process options',
+    'only falls back for missing or invalid launch candidates',
+    'does not fall back after timeout, signal, overflow, permission, or exit failure',
+    'bounds stderr included in failure diagnostics',
+  ]) {
+    assert.match(sdkGenerationTests, new RegExp(testName));
+  }
+  assert.match(sdkRelease, /import \{ writeFileAtomicallySync \} from '\.\/atomic-output\.mjs'/);
+  assert.match(sdkRelease, /writeOutput = writeFileAtomicallySync/);
+  assert.match(sdkRelease, /writeOutput\(manifestPath\(repositoryRoot, project\), encodedManifest\(manifest\), \{ encoding: 'utf8' \}\)/);
+  assert.doesNotMatch(sdkRelease, /\bwriteFileSync\b/);
+  assert.match(sdkRelease, /sdkReleaseCheckTimeoutMs = 90_000/);
+  assert.match(sdkRelease, /sdkReleaseCheckMaximumOutputBytes = 4 \* 1024 \* 1024/);
+  assert.match(sdkRelease, /sdkReleaseCheckDiagnosticCharacterLimit = 4_096/);
+  assert.match(sdkRelease, /const deadline = readSDKReleaseCheckClock\(now\) \+ timeoutMs/);
+  assert.match(sdkRelease, /timeout: remainingTimeoutMs/);
+  assert.match(sdkRelease, /maxBuffer: sdkReleaseCheckMaximumOutputBytes/);
+  assert.match(sdkRelease, /killSignal: 'SIGTERM'/);
+  assert.match(sdkRelease, /shell: false/);
+  assert.match(sdkReleaseCLI, /createSDKReleaseCheckRunner\(\{/);
+  assert.match(sdkReleaseCLI, /verifyGeneratedSDK\(project\.name\)/);
+  assert.doesNotMatch(sdkReleaseCLI, /\bspawnSync\b/);
+  assert.match(sdkReleaseTests, /atomically replaces an existing file and preserves it on publication failure/);
+  assert.match(sdkReleaseTests, /injected SDK release manifest publication failure/);
+  for (const testName of [
+    'applies bounded options and shares one decreasing deadline',
+    'rejects exhausted budgets and invalid clocks without spawning',
+    'classifies timeout, signal, overflow, spawn, and exit failures',
+    'bounds stderr diagnostics and never reports stdout',
+  ]) {
+    assert.match(sdkReleaseTests, new RegExp(testName));
+  }
   assert.match(httpClient, /CircuitBreaker\s+CircuitBreakerConfig/);
   assert.match(httpClient, /base = newCircuitBreakerTransport\(base, config\.CircuitBreaker\)/);
   assert.match(httpClient, /errors\.Is\(err, ErrCircuitOpen\)/);
@@ -2560,8 +3837,24 @@ test('V25 repository work and target-environment boundaries match the weighted e
   assertEvidenceInput('docs/待优化/待优化V23.md');
   assertEvidenceInput('docs/待优化/待优化V24.md');
   assertEvidenceInput('docs/待优化/待优化V25.md');
+  assertEvidenceInput('docs/待优化/待优化V26.md');
+  assertEvidenceInput('docs/待优化/待优化V27.md');
+  assertEvidenceInput('docs/待优化/待优化V28.md');
+  assertEvidenceInput('docs/待优化/待优化V29.md');
+  assertEvidenceInput('docs/待优化/待优化V30.md');
+  assertEvidenceInput('docs/待优化/待优化V31.md');
+  assertEvidenceInput('docs/待优化/待优化V32.md');
+  assertEvidenceInput('docs/待优化/待优化V33.md');
+  assertEvidenceInput('docs/待优化/待优化V34.md');
+  assertEvidenceInput('docs/待优化/待优化V35.md');
+  assertEvidenceInput('docs/待优化/待优化V36.md');
+  assertEvidenceInput('docs/待优化/待优化V37.md');
+  assertEvidenceInput('scripts/lib/atomic-output.mjs');
+  assertEvidenceInput('scripts/lib/sdk-generation.mjs');
+  assertEvidenceInput('__test__/node/sdk-generation.test.mjs');
   assertEvidenceInput('scripts/lib/bounded-command.mjs');
   assertEvidenceInput('scripts/lib/go-toolchain-environment.mjs');
+  assertEvidenceInput('scripts/lib/server-release-command.mjs');
   assert.match(standardApplication, /type HTTPApplication struct/);
   assert.match(standardApplication, /func NewHTTPApplication\(options Options\) \(\*HTTPApplication, error\)/);
   assert.match(standardApplication, /func \(application \*HTTPApplication\) ServeHTTP\(response http\.ResponseWriter, request \*http\.Request\)/);
@@ -2603,16 +3896,57 @@ test('V25 repository work and target-environment boundaries match the weighted e
   assertEvidenceInput('docs/adr/0003-http-public-api-boundary.md');
   assertEvidenceInput('Framework/sqlclient/client.go');
   assertEvidenceInput('Framework/sqlclient/client_test.go');
+  assertEvidenceInput('docs/待优化/待优化V50.md');
+  assertEvidenceInput('docs/待优化/待优化V51.md');
+  assertEvidenceInput('docs/待优化/待优化V52.md');
+  assertEvidenceInput('docs/待优化/待优化V53.md');
+  assertEvidenceInput('docs/待优化/待优化V54.md');
+  assertEvidenceInput('docs/待优化/待优化V55.md');
+  assertEvidenceInput('docs/待优化/待优化V56.md');
   assert.match(sqlClient, /ctx\.Err\(\)/);
   assert.match(sqlClient, /databaseTx\.Rollback\(\)/);
   assert.match(sqlClient, /callback could perform external side effects/);
   assert.match(sqlClient, /commit work after that cancellation/);
   assert.match(sqlClientTests, /func TestTransactionDoesNotEnterCallbackAfterBeginCancellation/);
   assert.match(sqlClientTests, /func TestTransactionRollsBackWhenCanceledBeforeCommit/);
+  assert.match(sqlClient, /var ErrOutboxEnqueue/);
+  assert.match(sqlClient, /func \(transaction \*Tx\) EnqueueOutbox/);
+  assert.doesNotMatch(sqlClient, /func \(client \*Client\) EnqueueOutbox/);
+  assert.match(sqlClientTests, /func TestTransactionEnqueueOutboxRejectsUncertainRowsAndRollsBack/);
   for (const id of ['V15-06', 'V15-07', 'V15-08', 'V15-09', 'V15-10', 'V15-11', 'V15-12', 'V15-13', 'V15-14']) {
     assert.match(currentBacklog, new RegExp(id));
   }
 });
+
+test('V55 JetStream DLQ settlement requires a confirmed publish before source acknowledgement', async () => {
+  const [adapter, adapterTests, integrationTests, deliveryEvidence, deliveryEvidenceTests, readme, changelog] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'natsjetstream', 'adapter.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'natsjetstream', 'adapter_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'natsjetstream', 'integration_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'scripts', 'lib', 'nats-delivery-evidence.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, '__test__', 'node', 'nats-delivery-evidence.test.mjs'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'README.md'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'CHANGELOG.md'), 'utf8'),
+  ]);
+
+  assert.match(adapter, /func validPublishAcknowledgement\(acknowledgement \*jetstream\.PubAck\) bool/);
+  assert.equal(
+    (adapter.match(/!validPublishAcknowledgement\(acknowledgement\)/g) ?? []).length,
+    3,
+    'ordinary/deduplicated publish and both DLQ call sites must share one PubAck invariant',
+  );
+  assert.match(adapterTests, /func TestAdapterDeadLetterRejectsInvalidPublishAcknowledgementBeforeSourceAck/);
+  assert.match(adapterTests, /func TestAdapterInvalidMessageQuarantineRejectsInvalidPublishAcknowledgementBeforeSourceAck/);
+  assert.match(adapterTests, /duplicate acknowledgement/);
+	assert.match(integrationTests, /SchemaVersion:\s+14/);
+  assert.match(integrationTests, /DLQPublishConfirmed:\s+true/);
+  assert.match(deliveryEvidence, /dlqPublishConfirmed: true/);
+  assert.match(deliveryEvidenceTests, /dlqAcknowledgementTamper\.dlqPublishConfirmed = false/);
+  assert.match(readme, /DLQ ack 畸形时返回固定 `ErrDeadLetter` 且不确认源消息/);
+  assert.match(changelog, /Nil, empty-stream, and zero-sequence acknowledgements fail closed as `ErrDeadLetter`/);
+  assertEvidenceInput('docs/待优化/待优化V55.md');
+});
+
 test('Example project queries and commands keep Fiber behind the Framework adapter', async () => {
   const [applicationAuthorization, applicationQuery, applicationCommand, applicationPrecondition, idempotencyFingerprint, middleware, eventStream, eventStreamTests, standardHandler, standardHandlerTests, standardApplication, standardApplicationTests, standardServer, standardServerTests, authMiddleware, routes, app, appTests, projectRoutes, projectService, entrypoint, billingEntrypoint, architectureTests, projectRouteTests, publicAPIBoundaryADR] = await Promise.all([
     readFile(path.join(repositoryRoot, 'Framework', 'httpapi', 'application_authorization.go'), 'utf8'),
@@ -2899,7 +4233,7 @@ test('Framework public API compatibility is versioned and compared with the targ
   assert.equal(snapshot.schemaVersion, 1);
   assert.equal(snapshot.module, 'github.com/zbxing/goexample/Framework');
   assert.equal(snapshot.version, version.trim());
-	assert.equal(Object.keys(snapshot.symbols).length, 356);
+  assert.equal(Object.keys(snapshot.symbols).length, 373);
   assert.ok(Object.keys(snapshot.symbols).every((key) => !key.includes('/internal/')));
 	assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/authorization::type Authorizer'], /Authorize\(context\.Context, Request\)/);
 	assert.match(snapshot.symbols['github.com/zbxing/goexample/Framework/authorization::type Resource'], /TenantID[\s\S]*Attributes/);
@@ -2909,9 +4243,45 @@ test('Framework public API compatibility is versioned and compared with the targ
 		snapshot.symbols['github.com/zbxing/goexample/Framework/httpclient::var ErrResponseBodyTooLarge'],
 		'var ErrResponseBodyTooLarge = errors.New("outbound HTTP response body exceeds the configured limit")',
 	);
+  assert.equal(
+    snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::var ErrConsumerPaused'],
+    'var ErrConsumerPaused = errors.New("nats jetstream consumer is paused")',
+  );
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::var ErrConsumerNotPull'],
+		'var ErrConsumerNotPull = errors.New("nats jetstream consumer is not pull based")',
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::var ErrConsumerPriorityPolicy'],
+		'var ErrConsumerPriorityPolicy = errors.New("nats jetstream consumer priority policy is incompatible")',
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::var ErrConsumerAckPolicy'],
+		'var ErrConsumerAckPolicy = errors.New("nats jetstream consumer acknowledgement policy is incompatible")',
+	);
 	assert.equal(
 		snapshot.symbols['github.com/zbxing/goexample/Framework/httpclient::func LimitResponseBody'],
 		'func LimitResponseBody(response *http.Response, maxBytes int64) error',
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::var ErrConsumerSubjectMismatch'],
+		'var ErrConsumerSubjectMismatch = errors.New("nats jetstream consumer subject does not match adapter")',
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::var ErrConsumerDeliveryPolicy'],
+		'var ErrConsumerDeliveryPolicy = errors.New("nats jetstream consumer delivery policy is not reliable")',
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::var ErrConsumerReplayPolicy'],
+		'var ErrConsumerReplayPolicy = errors.New("nats jetstream consumer replay policy is not reliable")',
+	);
+	assert.equal(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::var ErrConsumerRequestExpires'],
+		'var ErrConsumerRequestExpires = errors.New("nats jetstream consumer request expiration is incompatible")',
+	);
+	assert.match(
+		snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::method *Adapter.PreflightConsumer'],
+		/func \(adapter \*Adapter\) PreflightConsumer\(/,
 	);
 	assert.match(
 		snapshot.symbols['github.com/zbxing/goexample/Framework/httpclient::type RetryConfig'],
@@ -3006,6 +4376,10 @@ test('Framework public API compatibility is versioned and compared with the targ
   assert.match(
     snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::var ErrLeaseExtension'],
     /nats jetstream lease extension failed/,
+  );
+  assert.match(
+    snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::var ErrConsumerPayloadUnavailable'],
+    /nats jetstream consumer payload is unavailable/,
   );
   assert.match(
     snapshot.symbols['github.com/zbxing/goexample/Framework/queueclient/natsjetstream::type Config'],
@@ -3291,8 +4665,12 @@ test('Framework SQL client keeps pool, transaction, timeout, recovery, and trace
   assert.match(client, /func \(client \*Client\) Transaction/);
   assert.match(client, /func \(client \*Client\) RetryTransaction/);
   assert.match(client, /var ErrOptimisticConflict/);
+  assert.match(client, /var ErrOutboxEnqueue/);
   assert.match(client, /func \(client \*Client\) ExecVersioned/);
   assert.match(client, /func \(transaction \*Tx\) ExecVersioned/);
+  assert.match(client, /func \(transaction \*Tx\) EnqueueOutbox/);
+  assert.doesNotMatch(client, /func \(client \*Client\) EnqueueOutbox/);
+  assert.match(client, /ctx, span := startSpan\(ctx, tracer, "OUTBOX"\)/);
   assert.match(client, /affected == 0/);
   assert.match(client, /affected != 1/);
   assert.match(client, /case "40001", "40P01"/);
@@ -3313,6 +4691,11 @@ test('Framework SQL client keeps pool, transaction, timeout, recovery, and trace
   assert.match(clientTests, /TestRetryTransactionStopsForNonRetryableLimitAndUnsafeRollback/);
   assert.match(clientTests, /TestRetryTransactionBackoffSharesTransactionDeadline/);
   assert.match(clientTests, /TestVersionedExecRequiresExactlyOneAffectedRow/);
+  assert.match(clientTests, /TestTransactionEnqueueOutboxCommitsExactlyOnePrivateRow/);
+  assert.match(clientTests, /TestTransactionEnqueueOutboxRejectsUncertainRowsAndRollsBack/);
+  assert.match(clientTests, /TestTransactionEnqueueOutboxExecutionFailureAndTimeoutRollBack/);
+  assert.match(clientTests, /TestRetryTransactionReplaysTransactionalOutboxAfterCommitConflict/);
+  assert.match(clientTests, /TestTransactionEnqueueOutboxRollsBackAfterCallbackPanic/);
   assert.match(clientTests, /len\(span\.Attributes\(\)\) != 3/);
   assert.match(postgresTests, /TestRealPostgresRetryTransactionSerializationConflict/);
   assert.match(postgresTests, /TestRealPostgresRetryTransactionDeadlock/);
@@ -3329,6 +4712,10 @@ test('Framework SQL client keeps pool, transaction, timeout, recovery, and trace
   assert.match(postgresTests, /http\.StatusPreconditionFailed/);
   assert.match(postgresTests, /FOR UPDATE/);
   assert.match(postgresTests, /context\.DeadlineExceeded/);
+  assert.match(postgresTests, /transaction\.EnqueueOutbox/);
+  assert.match(postgresTests, /ON CONFLICT DO NOTHING/);
+  assert.match(postgresTests, /eventCount != 1 \|\| eventPayload != 2/);
+  assert.match(postgresTests, /value != 2 \|\| eventCount != 1/);
   assert.match(postgresTests, /github\.com\/jackc\/pgx\/v5\/stdlib/);
   assert.match(goMod, /github\.com\/jackc\/pgx\/v5 v5\.7\.6/);
   assert.match(goWorkflow, /postgres-contract:/);
@@ -3370,9 +4757,12 @@ test('Framework SQL client keeps pool, transaction, timeout, recovery, and trace
   assert.match(readme, /callback 可能执行多次/);
   assert.match(readme, /不能依赖该方法提供 exactly-once/);
   assert.match(readme, /ErrOptimisticConflict/);
+  assert.match(readme, /Tx\.EnqueueOutbox/);
+  assert.match(readme, /不提供 broker 原子 settlement 或 exactly-once/);
   assert.match(readme, /httpapi\.ErrPreconditionFailed/);
   assert.match(readme, /`If-Match`\/412\/`ETag`/);
   assert.match(changelog, /Bounded `database\/sql` PostgreSQL pool adapter/);
+  assert.match(changelog, /Transaction-only `sqlclient\.Tx\.EnqueueOutbox`/);
   assert.match(changelog, /Typed versioned JSON command adapters/);
   assertEvidenceInput('Framework/sqlclient/client.go');
   assertEvidenceInput('Framework/sqlclient/client_test.go');
@@ -3473,6 +4863,14 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(worker, /func \(group \*WorkerGroup\) extendDeliveryLease/);
   assert.match(worker, /func callDeliveryLeaseExtension/);
   assert.match(worker, /func deliveryBackoff/);
+  assert.match(worker, /"math\/rand\/v2"/);
+  assert.match(worker, /randomInt64N\s+func\(int64\) int64/);
+  assert.match(worker, /maximumDeliveryBackoff\(config, attempt\)/);
+  assert.match(worker, /group\.jitteredDeliveryBackoff\(attempt\)/);
+  assert.match(worker, /func deliveryRetryJitter\(/);
+  assert.match(worker, /func maximumDeliveryBackoff\(/);
+  assert.match(worker, /return min\(delay\/2, maximum-delay\)/);
+  assert.match(worker, /randomInt64N\(int64\(window\)\+1\)/);
   assert.match(worker, /func \(client \*Client\) MinimumDeliveryLease/);
   assert.match(worker, /addDeliveryBudget/);
   assert.match(worker, /maxWorkerCount\s*=\s*64/);
@@ -3498,6 +4896,10 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(workerTests, /TestWorkerGroupRejectsInvalidDeliveryAndIsolatesDeliveryObserverPanic/);
   assert.match(workerTests, /TestMinimumDeliveryLeaseUsesEffectiveRetryBudget/);
   assert.match(workerTests, /TestMinimumDeliveryLeaseRejectsInvalidAndOverflowingBudgets/);
+  assert.match(workerTests, /TestDeliveryRetryJitterUsesInclusivePositiveWindow/);
+  assert.match(workerTests, /TestDeliveryRetryJitterTruncatesWindowAtMaximumBackoff/);
+  assert.match(workerTests, /TestDeliveryRetryJitterSkipsSamplingWithoutWindow/);
+  assert.match(workerTests, /TestWorkerGroupUsesInjectedDeliveryRetryJitter/);
   assert.match(natsTests, /TestRealNATSPublishProcessTracePropagation/);
   assert.match(natsTests, /NATS_TEST_URL/);
   assert.match(natsTests, /connection\.SubscribeSync/);
@@ -3512,11 +4914,44 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(jetStreamAdapter, /func PreflightConsumer/);
   assert.match(jetStreamAdapter, /info\.Config\.BackOff/);
   assert.match(jetStreamAdapter, /ErrAckWaitTooShort = errors\.New/);
+  assert.match(jetStreamAdapter, /ErrConsumerNotPersistent = errors\.New/);
+  assert.match(jetStreamAdapter, /ErrMaxDeliverTooLow = errors\.New/);
+  assert.match(jetStreamAdapter, /ErrConsumerPayloadUnavailable = errors\.New/);
+  assert.match(jetStreamAdapter, /ErrConsumerDeliveryPolicy = errors\.New/);
+  assert.match(jetStreamAdapter, /ErrConsumerReplayPolicy = errors\.New/);
+  assert.match(jetStreamAdapter, /ErrConsumerSubjectMismatch = errors\.New/);
+  assert.match(jetStreamAdapter, /ErrConsumerPaused = errors\.New/);
+  assert.match(jetStreamAdapter, /if info\.Paused/);
+  assert.match(jetStreamAdapter, /info\.Config\.Durable == ""/);
+  assert.match(jetStreamAdapter, /info\.Config\.MemoryStorage/);
+  assert.match(jetStreamAdapter, /info\.Config\.InactiveThreshold != 0/);
+  assert.match(jetStreamAdapter, /info\.Config\.MaxDeliver != -1/);
+  assert.match(jetStreamAdapter, /info\.Config\.HeadersOnly/);
+  assert.match(jetStreamAdapter, /info\.Config\.DeliverPolicy != jetstream\.DeliverAllPolicy/);
+  assert.match(jetStreamAdapter, /info\.Config\.ReplayPolicy != jetstream\.ReplayInstantPolicy/);
+  assert.match(jetStreamAdapter, /func \(adapter \*Adapter\) PreflightConsumer/);
+  assert.match(jetStreamAdapter, /func consumerFiltersExactSubject/);
+  assert.match(jetStreamAdapter, /config\.FilterSubject == expectedSubject/);
+  assert.match(jetStreamAdapter, /len\(config\.FilterSubjects\) == 1/);
   assert.match(jetStreamAdapter, /DeadLetterSubject\s+string/);
   assert.match(jetStreamAdapter, /FetchMaxWait\s+time\.Duration/);
   assert.match(jetStreamAdapter, /func New\(publisher Publisher, consumer Consumer/);
   assert.match(jetStreamAdapter, /func \(adapter \*Adapter\) Publish/);
+  assert.match(jetStreamAdapter, /ErrInvalidMessageID = errors\.New/);
+  assert.match(jetStreamAdapter, /func \(adapter \*Adapter\) PublishDeduplicated/);
+  assert.match(jetStreamAdapter, /func validPublishMessageID/);
+  assert.match(jetStreamAdapter, /acknowledgement == nil/);
+  assert.match(jetStreamAdapter, /acknowledgement\.Stream == ""/);
+  assert.match(jetStreamAdapter, /acknowledgement\.Sequence == 0/);
   assert.match(jetStreamAdapter, /func \(adapter \*Adapter\) ReceiveDelivery/);
+  assert.match(jetStreamAdapter, /context\.WithTimeout\(ctx, maximumWait\)/);
+  assert.match(jetStreamAdapter, /consumer\.Next\(jetstream\.FetchContext\(fetchContext\)\)/);
+  assert.doesNotMatch(jetStreamAdapter, /consumer\.Next\(jetstream\.FetchContext\([^)]*\),\s*jetstream\.FetchMaxWait/);
+  assert.match(jetStreamAdapter, /if contextErr := ctx\.Err\(\); contextErr != nil/);
+  assert.match(jetStreamAdapter, /errors\.Is\(fetchContext\.Err\(\), context\.DeadlineExceeded\)/);
+  assert.match(jetStreamAdapterTests, /func TestAdapterReceiveUsesContextBoundedPull/);
+  assert.match(jetStreamAdapterTests, /func TestAdapterReceiveContinuesAfterInternalPullDeadline/);
+  assert.match(jetStreamAdapterTests, /func BenchmarkDeliveryPullOption/);
   assert.match(jetStreamAdapter, /brokerMessage\.DoubleAck\(settlementContext\)/);
   assert.match(jetStreamAdapter, /brokerMessage\.InProgress\(\)/);
   assert.match(jetStreamAdapter, /source\.DoubleAck\(ctx\)/);
@@ -3526,10 +4961,45 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(jetStreamAdapter, /ErrLeaseExtension = errors\.New/);
   assert.doesNotMatch(jetStreamAdapter, /fmt\.Errorf|slog\.|RecordError/);
   assert.match(jetStreamAdapterTests, /TestAdapterDeadLetterIsPublishBeforeAckAndDedupeStable/);
+  assert.match(jetStreamAdapterTests, /TestAdapterPublishDeduplicatedUsesOnlyBoundedTypedMessageID/);
+  assert.match(jetStreamAdapterTests, /TestAdapterPublishRequiresStructuredServerAcknowledgement/);
   assert.match(jetStreamAdapterTests, /TestAdapterErrorsAreFixedAndInvalidHeadersFailClosed/);
   assert.match(jetStreamAdapterTests, /TestPreflightConsumerUsesServerAckWaitAndBackoff/);
   assert.match(jetStreamAdapterTests, /TestPreflightConsumerRejectsInvalidOrUnavailableConfiguration/);
+  assert.match(jetStreamAdapterTests, /TestPreflightConsumerRequiresPersistentRedeliveryConfiguration/);
+  assert.match(jetStreamAdapterTests, /TestPreflightConsumerRequiresFullMessagePayload/);
+  assert.match(jetStreamAdapterTests, /TestPreflightConsumerRequiresCompleteDeliveryPolicy/);
+  assert.match(jetStreamAdapterTests, /TestPreflightConsumerRequiresInstantReplayPolicy/);
+  assert.match(jetStreamAdapterTests, /TestPreflightConsumerRejectsPausedState/);
+  assert.match(jetStreamAdapterTests, /TestPreflightConsumerRequiresPullMode/);
+  assert.match(jetStreamAdapter, /ErrConsumerNotPull = errors\.New/);
+  assert.match(jetStreamAdapter, /info\.Config\.DeliverSubject != ""/);
+  assert.match(jetStreamAdapterTests, /TestPreflightConsumerRequiresDefaultPriorityPolicy/);
+  assert.match(jetStreamAdapter, /ErrConsumerPriorityPolicy = errors\.New/);
+  assert.match(jetStreamAdapter, /info\.Config\.PriorityPolicy != jetstream\.PriorityPolicyNone/);
+  assert.match(jetStreamAdapterTests, /jetstream\.PriorityPolicyPinned/);
+  assert.match(jetStreamAdapterTests, /jetstream\.PriorityPolicyOverflow/);
+  assert.match(jetStreamAdapterTests, /jetstream\.PriorityPolicyPrioritized/);
+  assert.match(jetStreamAdapterTests, /jetstream\.PriorityPolicy\(255\)/);
+  assert.match(jetStreamAdapterTests, /TestPreflightConsumerRequiresExplicitAckPolicy/);
+  assert.match(jetStreamAdapter, /ErrConsumerAckPolicy = errors\.New/);
+  assert.match(jetStreamAdapter, /info\.Config\.AckPolicy != jetstream\.AckExplicitPolicy/);
+  assert.match(jetStreamAdapterTests, /jetstream\.AckAllPolicy/);
+  assert.match(jetStreamAdapterTests, /jetstream\.AckNonePolicy/);
+  assert.match(jetStreamAdapterTests, /jetstream\.AckFlowControlPolicy/);
+  assert.match(jetStreamAdapterTests, /jetstream\.AckPolicy\(255\)/);
+  assert.match(jetStreamAdapterTests, /jetstream\.DeliverLastPolicy/);
+  assert.match(jetStreamAdapterTests, /jetstream\.DeliverNewPolicy/);
+  assert.match(jetStreamAdapterTests, /jetstream\.DeliverByStartSequencePolicy/);
+  assert.match(jetStreamAdapterTests, /jetstream\.DeliverByStartTimePolicy/);
+  assert.match(jetStreamAdapterTests, /jetstream\.DeliverLastPerSubjectPolicy/);
+  assert.match(jetStreamAdapterTests, /jetstream\.ReplayOriginalPolicy/);
+  assert.match(jetStreamAdapterTests, /jetstream\.ReplayPolicy\(255\)/);
+  assert.match(jetStreamAdapterTests, /TestAdapterPreflightConsumerRequiresExactSubjectFilter/);
   assert.match(jetStreamIntegrationTests, /TestRealNATSJetStreamDurableDelivery/);
+  assert.match(jetStreamIntegrationTests, /PublishDeduplicated/);
+  assert.match(jetStreamIntegrationTests, /contractDeduplicatedPublishRuns\s+=\s+2/);
+  assert.match(jetStreamIntegrationTests, /deduplicationInfo\.State\.Msgs != contractDeduplicatedStored/);
   assert.match(jetStreamIntegrationTests, /jetstream\.FileStorage/);
   assert.match(jetStreamIntegrationTests, /metadata\.NumDelivered < 2/);
   assert.match(jetStreamIntegrationTests, /queueclient\.NewWorkerGroup/);
@@ -3539,6 +5009,49 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(jetStreamIntegrationTests, /NATS_DELIVERY_EVIDENCE_DIR/);
   assert.match(jetStreamIntegrationTests, /delivery-report\.json/);
   assert.match(jetStreamIntegrationTests, /DynamicRequiredLeaseNanos/);
+  assert.match(jetStreamIntegrationTests, /PreflightConsumer\(MaxDeliver=1\)/);
+  assert.match(jetStreamIntegrationTests, /PreflightConsumer\(DeliverNew\)/);
+  assert.match(jetStreamIntegrationTests, /CreateOrUpdateConsumer\(DeliverAll\)/);
+  assert.match(jetStreamIntegrationTests, /PreflightConsumer\(ReplayOriginal\)/);
+  assert.match(jetStreamIntegrationTests, /CreateOrUpdateConsumer\(ReplayInstant\)/);
+  assert.match(jetStreamIntegrationTests, /PauseConsumer\(testContext, sourceStream, sourceConsumerName/);
+  assert.match(jetStreamIntegrationTests, /ResumeConsumer\(testContext, sourceStream, sourceConsumerName\)/);
+  assert.match(jetStreamIntegrationTests, /PausedConsumerRejected/);
+  assert.match(jetStreamIntegrationTests, /ResumedConsumerPreflightPassed/);
+  assert.match(jetStreamIntegrationTests, /ConsumerPaused/);
+  assert.match(jetStreamIntegrationTests, /PushConsumerRejected/);
+  assert.match(jetStreamIntegrationTests, /RebuiltPullConsumerPreflightPassed/);
+  assert.match(jetStreamIntegrationTests, /ConsumerDeliverSubject/);
+  assert.match(jetStreamIntegrationTests, /AckAllConsumerRejected/);
+  assert.match(jetStreamIntegrationTests, /RebuiltExplicitAckPassed/);
+  assert.match(jetStreamIntegrationTests, /ConsumerAckPolicy/);
+  assert.match(jetStreamIntegrationTests, /waitContractConsumerWaiting/);
+  assert.match(jetStreamIntegrationTests, /ReceiveCancellationWaitingObserved:\s+true/);
+  assert.match(jetStreamIntegrationTests, /ReceiveCancellationPropagated:\s+receiveCancellationPropagated/);
+  assert.match(jetStreamIntegrationTests, /ReceiveCancellationError:\s+receiveCancellationError\.Error\(\)/);
+  assert.match(jetStreamIntegrationTests, /ReceiveCancellationLatencyNanos:\s+receiveCancellationLatency\.Nanoseconds\(\)/);
+  assert.match(jetStreamIntegrationTests, /ReceiveCancellationFetchWaitNanos:\s+contractCancellationFetchWait\.Nanoseconds\(\)/);
+  assert.match(jetStreamIntegrationTests, /ReceiveCancellationLimitNanos:\s+contractCancellationReturnLimit\.Nanoseconds\(\)/);
+  assert.match(jetStreamIntegrationTests, /PreflightConsumer\(HeadersOnly=true\)/);
+  assert.match(jetStreamIntegrationTests, /Adapter\.PreflightConsumer\(broad subject filter\)/);
+  assert.match(jetStreamIntegrationTests, /Adapter\.PreflightConsumer\(exact subject filter\)/);
+  assert.match(jetStreamIntegrationTests, /Publish\(testContext, foreignSubject/);
+  assert.match(jetStreamIntegrationTests, /PersistentConsumerPreflightPassed/);
+  assert.match(jetStreamIntegrationTests, /DeliverNewPolicyRejected/);
+  assert.match(jetStreamIntegrationTests, /DeliverAllPolicyPreflightPassed/);
+  assert.match(jetStreamIntegrationTests, /ConsumerDeliverPolicy/);
+  assert.match(jetStreamIntegrationTests, /ReplayOriginalPolicyRejected/);
+  assert.match(jetStreamIntegrationTests, /ReplayInstantPolicyPreflightPassed/);
+  assert.match(jetStreamIntegrationTests, /ConsumerReplayPolicy/);
+  assert.match(jetStreamIntegrationTests, /LimitedDeliveryRejected/);
+  assert.match(jetStreamIntegrationTests, /ConsumerMaxDeliver/);
+  assert.match(jetStreamIntegrationTests, /HeadersOnlyRejected/);
+  assert.match(jetStreamIntegrationTests, /FullPayloadPreflightPassed/);
+  assert.match(jetStreamIntegrationTests, /ConsumerHeadersOnly/);
+  assert.match(jetStreamIntegrationTests, /BroadSubjectFilterRejected/);
+  assert.match(jetStreamIntegrationTests, /ExactSubjectPreflightPassed/);
+  assert.match(jetStreamIntegrationTests, /ConsumerFilterSubject/);
+  assert.match(jetStreamIntegrationTests, /ForeignSubjectExcluded/);
   assert.match(jetStreamIntegrationTests, /goexample-dlq-/);
   assert.match(jetStreamRestartTests, /TestRealNATSJetStreamRestartRecovery/);
   assert.match(jetStreamRestartTests, /NATS_SERVER_BINARY/);
@@ -3656,9 +5169,12 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(readme, /不等于远端 job 已成功/);
   assert.match(readme, /Core NATS 不提供/);
   assert.match(readme, /`queueclient\/natsjetstream`/);
+  assert.match(readme, /`PublishDeduplicated`/);
+  assert.match(readme, /1\.\.256 bytes/);
   assert.match(readme, /NumDelivered/);
   assert.match(changelog, /Broker-neutral queue publish\/process instrumentation/);
   assert.match(changelog, /Optional fixed-cardinality `WorkerObserver` and `DeliveryObserver` callbacks/);
+  assert.match(changelog, /Typed JetStream `Adapter\.PublishDeduplicated`/);
   const packageScripts = JSON.parse(packageDocument).scripts;
   assert.match(packageScripts['test:node'], /nats-cluster-evidence\.test\.mjs/);
   assert.match(packageScripts['test:node'], /nats-delivery-evidence\.test\.mjs/);
@@ -3688,7 +5204,51 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(natsDeliveryEvidenceRunner, /buildNatsDeliveryEvidenceReport/);
   assert.match(natsDeliveryEvidenceRunner, /buildNatsDeliveryChecksums/);
   assert.match(natsDeliveryEvidenceRunner, /verifyNatsDeliveryEvidence/);
-  assert.match(natsDeliveryEvidenceHelper, /natsDeliveryEvidenceSchemaVersion = 1/);
+  assert.match(natsDeliveryEvidenceHelper, /natsDeliveryEvidenceSchemaVersion = 14/);
+  assert.match(natsDeliveryEvidenceHelper, /pushConsumerRejected !== expectedContract\.pushConsumerRejected/);
+  assert.match(natsDeliveryEvidenceHelper, /rebuiltPullConsumerPreflightPassed !== expectedContract\.rebuiltPullConsumerPreflightPassed/);
+  assert.match(natsDeliveryEvidenceHelper, /consumerDeliverSubject !== expectedContract\.consumerDeliverSubject/);
+  assert.match(natsDeliveryEvidenceHelper, /priorityConsumerRejected !== expectedContract\.priorityConsumerRejected/);
+  assert.match(natsDeliveryEvidenceHelper, /rebuiltDefaultPriorityConsumerPreflightPassed !== expectedContract\.rebuiltDefaultPriorityConsumerPreflightPassed/);
+  assert.match(natsDeliveryEvidenceHelper, /consumerPriorityPolicy !== expectedContract\.consumerPriorityPolicy/);
+  assert.match(natsDeliveryEvidenceHelper, /consumerPriorityGroupCount !== expectedContract\.consumerPriorityGroupCount/);
+  assert.match(natsDeliveryEvidenceHelper, /ackAllConsumerRejected !== expectedContract\.ackAllConsumerRejected/);
+  assert.match(natsDeliveryEvidenceHelper, /rebuiltExplicitAckConsumerPreflightPassed !== expectedContract\.rebuiltExplicitAckConsumerPreflightPassed/);
+  assert.match(natsDeliveryEvidenceHelper, /consumerAckPolicy !== expectedContract\.consumerAckPolicy/);
+  assert.match(natsDeliveryEvidenceHelper, /receiveCancellationWaitingObserved !== expectedContract\.receiveCancellationWaitingObserved/);
+  assert.match(natsDeliveryEvidenceHelper, /receiveCancellationPropagated !== expectedContract\.receiveCancellationPropagated/);
+  assert.match(natsDeliveryEvidenceHelper, /receiveCancellationError !== expectedContract\.receiveCancellationError/);
+  assert.match(natsDeliveryEvidenceHelper, /report\.receiveCancellationLatencyNanos < 0/);
+  assert.match(natsDeliveryEvidenceHelper, /report\.receiveCancellationLatencyNanos > report\.receiveCancellationReturnLimitNanos/);
+  assert.match(natsDeliveryEvidenceHelper, /report\.receiveCancellationLatencyNanos >= report\.receiveCancellationFetchMaxWaitNanos/);
+  assert.match(natsDeliveryEvidenceHelper, /persistentConsumerPreflightPassed !== expectedContract\.persistentConsumerPreflightPassed/);
+  assert.match(natsDeliveryEvidenceHelper, /deliverNewPolicyRejected !== expectedContract\.deliverNewPolicyRejected/);
+  assert.match(natsDeliveryEvidenceHelper, /deliverAllPolicyPreflightPassed !== expectedContract\.deliverAllPolicyPreflightPassed/);
+  assert.match(natsDeliveryEvidenceHelper, /consumerDeliverPolicy !== expectedContract\.consumerDeliverPolicy/);
+  assert.match(natsDeliveryEvidenceHelper, /replayOriginalPolicyRejected !== expectedContract\.replayOriginalPolicyRejected/);
+  assert.match(natsDeliveryEvidenceHelper, /replayInstantPolicyPreflightPassed !== expectedContract\.replayInstantPolicyPreflightPassed/);
+  assert.match(natsDeliveryEvidenceHelper, /consumerReplayPolicy !== expectedContract\.consumerReplayPolicy/);
+  assert.match(natsDeliveryEvidenceHelper, /brokerRequestExpiresRejected !== expectedContract\.brokerRequestExpiresRejected/);
+  assert.match(natsDeliveryEvidenceHelper, /shortRequestExpiresRejected !== expectedContract\.shortRequestExpiresRejected/);
+  assert.match(natsDeliveryEvidenceHelper, /compatibleRequestExpiresPreflightPassed !== expectedContract\.compatibleRequestExpiresPreflightPassed/);
+  assert.match(natsDeliveryEvidenceHelper, /adapterFetchMaxWaitNanos !== expectedContract\.adapterFetchMaxWaitNanos/);
+  assert.match(natsDeliveryEvidenceHelper, /consumerMaxRequestExpiresNanos !== expectedContract\.consumerMaxRequestExpiresNanos/);
+  assert.match(natsDeliveryEvidenceHelper, /pausedConsumerRejected !== expectedContract\.pausedConsumerRejected/);
+  assert.match(natsDeliveryEvidenceHelper, /resumedConsumerPreflightPassed !== expectedContract\.resumedConsumerPreflightPassed/);
+  assert.match(natsDeliveryEvidenceHelper, /consumerPaused !== expectedContract\.consumerPaused/);
+  assert.match(natsDeliveryEvidenceHelper, /limitedDeliveryRejected !== expectedContract\.limitedDeliveryRejected/);
+  assert.match(natsDeliveryEvidenceHelper, /consumerMaxDeliver !== expectedContract\.consumerMaxDeliver/);
+  assert.match(natsDeliveryEvidenceHelper, /headersOnlyRejected !== expectedContract\.headersOnlyRejected/);
+  assert.match(natsDeliveryEvidenceHelper, /fullPayloadPreflightPassed !== expectedContract\.fullPayloadPreflightPassed/);
+  assert.match(natsDeliveryEvidenceHelper, /consumerHeadersOnly !== expectedContract\.consumerHeadersOnly/);
+  assert.match(natsDeliveryEvidenceHelper, /broadSubjectFilterRejected !== expectedContract\.broadSubjectFilterRejected/);
+  assert.match(natsDeliveryEvidenceHelper, /exactSubjectPreflightPassed !== expectedContract\.exactSubjectPreflightPassed/);
+  assert.match(natsDeliveryEvidenceHelper, /consumerFilterSubjectPattern\.test\(report\.consumerFilterSubject\)/);
+  assert.match(natsDeliveryEvidenceHelper, /foreignSubjectExcluded !== expectedContract\.foreignSubjectExcluded/);
+  assert.match(natsDeliveryEvidenceHelper, /deduplicatedPublishAttempts !== expectedContract\.deduplicatedPublishAttempts/);
+  assert.match(natsDeliveryEvidenceHelper, /deduplicatedStoredMessages !== expectedContract\.deduplicatedStoredMessages/);
+  assert.match(natsDeliveryEvidenceHelper, /duplicateWindowNanos !== expectedContract\.duplicateWindowNanos/);
+  assert.match(natsDeliveryEvidenceHelper, /dlqPublishConfirmed !== expectedContract\.dlqPublishConfirmed/);
   assert.match(natsDeliveryEvidenceHelper, /redeliveryCount < 2/);
   assert.match(natsDeliveryEvidenceHelper, /dynamicRequiredLeaseNanos !== expectedContract\.dynamicRequiredLeaseNanos/);
   assert.match(natsDeliveryEvidenceHelper, /leaseExtensions < expectedContract\.minimumLeaseExtensions/);
@@ -3697,6 +5257,35 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(natsDeliveryEvidenceTests, /verified\.artifactPaths\.length, 9/);
   assert.match(natsDeliveryEvidenceTests, /scope no longer matches/);
   assert.match(natsDeliveryEvidenceTests, /path traversal and production-boundary drift/);
+  assert.match(natsDeliveryEvidenceTests, /persistentPreflightTamper/);
+  assert.match(natsDeliveryEvidenceTests, /missingDeliveryPolicy/);
+  assert.match(natsDeliveryEvidenceTests, /missingReplayPolicy/);
+  assert.match(natsDeliveryEvidenceTests, /missingConsumerPause/);
+  assert.match(natsDeliveryEvidenceTests, /missingConsumerMode/);
+  assert.match(natsDeliveryEvidenceTests, /pushConsumerRejected/);
+  assert.match(natsDeliveryEvidenceTests, /rebuiltPullConsumerPreflightPassed/);
+  assert.match(natsDeliveryEvidenceTests, /consumerDeliverSubject/);
+  assert.match(natsDeliveryEvidenceTests, /priorityConsumerRejected/);
+  assert.match(natsDeliveryEvidenceTests, /rebuiltDefaultPriorityConsumerPreflightPassed/);
+  assert.match(natsDeliveryEvidenceTests, /consumerPriorityPolicy/);
+  assert.match(natsDeliveryEvidenceTests, /consumerPriorityGroupCount/);
+  assert.match(natsDeliveryEvidenceTests, /missingPriorityPolicy/);
+  assert.match(natsDeliveryEvidenceTests, /ackAllConsumerRejected/);
+  assert.match(natsDeliveryEvidenceTests, /rebuiltExplicitAckConsumerPreflightPassed/);
+  assert.match(natsDeliveryEvidenceTests, /consumerAckPolicy/);
+  assert.match(natsDeliveryEvidenceTests, /missingAckPolicy/);
+  assert.match(natsDeliveryEvidenceTests, /receiveCancellationWaitingObserved/);
+  assert.match(natsDeliveryEvidenceTests, /receiveCancellationPropagated/);
+  assert.match(natsDeliveryEvidenceTests, /receiveCancellationError/);
+  assert.match(natsDeliveryEvidenceTests, /receiveCancellationLatencyNanos/);
+  assert.match(natsDeliveryEvidenceTests, /missingReceiveCancellation/);
+  assert.match(natsDeliveryEvidenceTests, /pausedConsumerRejected/);
+  assert.match(natsDeliveryEvidenceTests, /deliverNewPolicyRejected/);
+  assert.match(natsDeliveryEvidenceTests, /deliverAllPolicyPreflightPassed/);
+  assert.match(natsDeliveryEvidenceTests, /consumerDeliverPolicy/);
+  assert.match(natsDeliveryEvidenceTests, /replayOriginalPolicyRejected/);
+  assert.match(natsDeliveryEvidenceTests, /replayInstantPolicyPreflightPassed/);
+  assert.match(natsDeliveryEvidenceTests, /consumerReplayPolicy/);
   assert.match(natsRestartEvidenceRunner, /buildNatsRestartEvidenceReport/);
   assert.match(natsRestartEvidenceRunner, /buildNatsRestartChecksums/);
   assert.match(natsRestartEvidenceRunner, /verifyNatsRestartEvidence/);
@@ -3713,7 +5302,7 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(natsClusterEvidenceRunner, /verifyNatsClusterEvidence/);
   assert.match(natsClusterEvidenceHelper, /natsClusterEvidenceSchemaVersion = 1/);
   assert.match(natsClusterEvidenceHelper, /schemaVersion !== 6/);
-  assert.match(natsClusterEvidenceHelper, /requiredLeaseNanos !== 8_510_000_000/);
+  assert.match(natsClusterEvidenceHelper, /requiredLeaseNanos !== 8_515_000_000/);
   assert.match(natsClusterEvidenceHelper, /workerAckWaitNanos !== expectedContract\.workerAckWaitNanos/);
   assert.match(natsClusterEvidenceHelper, /natsBroker remains not_recorded/);
   assert.match(natsClusterEvidenceHelper, /exact ordered NATS cluster evidence artifact set/);
@@ -3739,6 +5328,9 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(readme, /ErrDeliveryLeaseExtension/);
   assert.match(changelog, /opt-in mutually exclusive delivery mode/);
   assert.match(changelog, /Opt-in Core NATS integration contract/);
+  assert.match(changelog, /Bounded positive jitter for reliable-delivery handler retries/);
+  assert.match(readme, /每次 retry 在基础等待之上增加/);
+  assert.match(readme, /每次 retry 的最大 jitter 等待/);
   assert.match(changelog, /NATS JetStream adapter/);
   assertEvidenceInput('Framework/queueclient/client.go');
   assertEvidenceInput('Framework/queueclient/client_test.go');
@@ -3838,6 +5430,9 @@ test('external OIDC/JWKS bearer verification stays bounded and separate from dem
   assert.match(verifier, /jwt\.WithExpirationRequired\(\)/);
   assert.match(verifier, /jwt\.WithNotBeforeRequired\(\)/);
   assert.match(verifier, /func \(verifier \*JWKSVerifier\) VerifyIDToken/);
+  assert.match(verifier, /func \(verifier \*JWKSVerifier\) VerifyIDTokenWithAccessToken/);
+  assert.match(verifier, /sha256\.Sum256\(\[\]byte\(accessToken\)\)/);
+  assert.match(verifier, /subtle\.ConstantTimeCompare/);
   assert.match(verifier, /validIDTokenClaims/);
 	assert.match(verifier, /validIDTokenAssurance/);
 	assert.match(verifier, /requiredACR == "" && len\(requiredAMR\) == 0/);
@@ -3850,6 +5445,7 @@ test('external OIDC/JWKS bearer verification stays bounded and separate from dem
   assert.match(verifierTests, /TestJWKSVerifierCollapsesUnknownKeyRefreshes/);
   assert.match(verifierTests, /TestJWKSVerifierFailsClosedOnExpiredCacheAndCanceledRefresh/);
   assert.match(verifierTests, /TestJWKSVerifierValidatesIDTokenNonceAudienceAndAge/);
+	assert.match(verifierTests, /TestJWKSVerifierBindsOptionalIDTokenAccessTokenHash/);
 	assert.match(verifierTests, /TestJWKSVerifierEnforcesIDTokenAssurancePolicy/);
   assert.match(verifierTests, /TestNewJWKSVerifierRejectsUnsafeConfigurationAndDocuments/);
   assert.match(session, /type SessionConfig struct/);
@@ -3935,14 +5531,28 @@ test('external OIDC/JWKS bearer verification stays bounded and separate from dem
   assert.match(oidcClient, /CheckRedirect/);
   assert.match(oidcClient, /maxOIDCMetadataBytes\s*=\s*64 << 10/);
   assert.match(oidcClient, /maxOIDCTokenResponseBytes\s*=\s*64 << 10/);
-  assert.match(oidcClient, /code_challenge_methods_supported/);
-  assert.match(oidcClientTests, /TestOIDCClientDiscoversAndExchangesAuthorizationCode/);
+	assert.match(oidcClient, /code_challenge_methods_supported/);
+	assert.match(oidcClient, /token_endpoint_auth_methods_supported/);
+	assert.match(oidcClient, /required == oidcTokenAuthClientSecretBasic/);
+	assert.match(oidcClient, /func unmarshalOIDCJSON/);
+	assert.match(oidcClient, /func scanOIDCJSONValue/);
+	assert.match(oidcClient, /duplicate keys/);
+	assert.match(oidcClient, /multiple top-level values/);
+	assert.match(oidcClient, /form\.Set\("client_id", client\.clientID\)/);
+	assert.match(oidcClient, /request\.SetBasicAuth\(url\.QueryEscape\(client\.clientID\), url\.QueryEscape\(client\.clientSecret\)\)/);
+	assert.match(oidcClientTests, /TestOIDCClientDiscoversAndExchangesAuthorizationCode/);
+	assert.match(oidcClientTests, /TestOIDCClientNegotiatesTokenEndpointAuthentication/);
+	assert.match(oidcClientTests, /TestOIDCClientBuildsCompliantTokenAuthenticationRequests/);
+	assert.match(oidcClientTests, /duplicate discovery key/);
+	assert.match(oidcClientTests, /duplicate token JSON/);
+	assert.match(oidcClientTests, /TestOIDCJSONRejectsAmbiguousDocuments/);
   assert.match(oidcClientTests, /TestNewOIDCClientRejectsUnsafeOrIncompleteDiscovery/);
   assert.match(oidcClientTests, /TestOIDCClientBoundsTokenExchangeAndStopsRedirects/);
   assert.match(oidcCallback, /func CompleteOIDCCallback/);
 	assert.match(oidcCallback, /manager\.CompleteContext\(ctx, state, code\)/);
-  assert.match(oidcCallback, /verifier\.VerifyIDToken\(ctx, tokens\.IDToken, authorization\.Nonce\)/);
+  assert.match(oidcCallback, /verifier\.VerifyIDTokenWithAccessToken\(ctx, tokens\.IDToken, authorization\.Nonce, tokens\.AccessToken\)/);
   assert.match(oidcCallbackTests, /TestCompleteOIDCCallbackConsumesStateAndBindsIDTokenNonce/);
+  assert.match(oidcCallbackTests, /TestCompleteOIDCCallbackRejectsMismatchedAccessTokenHash/);
   assert.match(oidcCallbackTests, /TestCompleteOIDCCallbackFailsClosedAndDoesNotLeakProviderErrors/);
 
 	assert.match(oidcBrowser, /type OIDCBrowser struct/);
@@ -3953,7 +5563,7 @@ test('external OIDC/JWKS bearer verification stays bounded and separate from dem
 	assert.match(oidcBrowser, /browser\.requests\.StartContext\(requestContext\)/);
 	assert.match(oidcBrowser, /browser\.requests\.CompleteContext\(requestContext, state, code\)/);
 	assert.match(oidcBrowser, /subtle\.ConstantTimeCompare/);
-	assert.match(oidcBrowser, /VerifyIDToken/);
+	assert.match(oidcBrowser, /VerifyIDTokenWithAccessToken/);
 	assert.match(oidcBrowser, /sameOIDCSubject/);
 	assert.match(oidcBrowser, /NewOIDCBrowserWithSessions/);
 	assert.match(oidcBrowser, /__Host-goexample-session/);
@@ -3976,6 +5586,7 @@ test('external OIDC/JWKS bearer verification stays bounded and separate from dem
 	assert.match(oidcBrowserTests, /TestOIDCBrowserRejectsMissingOrMismatchedCookieAndConsumesState/);
 	assert.match(oidcBrowserTests, /TestOIDCBrowserCollapsesProviderFailuresAndPrivateQueryValues/);
 	assert.match(oidcBrowserTests, /TestOIDCBrowserRequiresExternalAuthenticationMode/);
+	assert.match(oidcBrowserTests, /TestOIDCBrowserRejectsMismatchedAccessTokenHash/);
 	assert.match(oidcBrowserTests, /missing CSRF logout/);
 
   assert.match(app, /TokenVerifier\s+auth\.TokenVerifier/);
@@ -4224,6 +5835,12 @@ test('Nginx edge baseline stays pinned, bounded, archived, and target-explicit',
   assert.match(renderer, /error_page 494 = @header_too_large/);
 
   assert.match(realRunner, /process\.platform !== 'linux'/);
+  assert.match(realRunner, /createContractCommandRunner/);
+  assert.match(realRunner, /contractCommandMaximumOutputBytes/);
+  assert.match(realRunner, /edgeImagePullTimeoutMs = 120_000/);
+  assert.match(realRunner, /edgeCleanupTimeoutMs = 30_000/);
+  assert.doesNotMatch(realRunner, /node:child_process/);
+  assert.doesNotMatch(realRunner, /\bspawn\s*\(/);
   assert.match(realRunner, /docker.*nginx.*-t/s);
   assert.match(realRunner, /assert\.equal\(trace\.alpnProtocol, 'h2'\)/);
   assert.match(realRunner, /assert\.equal\(oversizedHeaders\.status, 431\)/);

@@ -301,6 +301,226 @@ func TestVersionedExecRequiresExactlyOneAffectedRow(t *testing.T) {
 	}
 }
 
+func TestTransactionEnqueueOutboxCommitsExactlyOnePrivateRow(t *testing.T) {
+	database, state := openScriptedDatabase(t)
+	client, recorder, provider := newTracedClient(t, database, Config{})
+	defer func() {
+		_ = client.Close()
+		_ = provider.Shutdown(context.Background())
+	}()
+
+	err := client.Transaction(context.Background(), nil, func(ctx context.Context, transaction *Tx) error {
+		return transaction.EnqueueOutbox(
+			ctx,
+			"OUTBOX private-statement",
+			"private-event-id",
+			"private-payload",
+		)
+	})
+	if err != nil {
+		t.Fatalf("Transaction(EnqueueOutbox) error = %v", err)
+	}
+	if state.commits.Load() != 1 || state.rollbacks.Load() != 0 {
+		t.Fatalf("commits/rollbacks = %d/%d, want 1/0", state.commits.Load(), state.rollbacks.Load())
+	}
+
+	spans := recorder.Ended()
+	if len(spans) != 2 {
+		t.Fatalf("ended spans = %d, want 2", len(spans))
+	}
+	if spans[0].Name() != "postgresql.outbox" || spans[1].Name() != "postgresql.transaction" {
+		t.Fatalf("span names = %q/%q", spans[0].Name(), spans[1].Name())
+	}
+	assertDatabaseSpanAttributes(t, spans[0], "success")
+	assertDatabaseSpanAttributes(t, spans[1], "success")
+	for _, span := range spans {
+		assertSpanExcludes(t, span, "private-statement", "private-event-id", "private-payload")
+	}
+}
+
+func TestTransactionEnqueueOutboxRejectsUncertainRowsAndRollsBack(t *testing.T) {
+	tests := []string{
+		"OUTBOX_NIL private-statement",
+		"OUTBOX_ZERO private-statement",
+		"OUTBOX_MULTI private-statement",
+		"OUTBOX_RESULT_FAIL private-statement",
+	}
+	for _, statement := range tests {
+		t.Run(strings.Fields(statement)[0], func(t *testing.T) {
+			database, state := openScriptedDatabase(t)
+			client, recorder, provider := newTracedClient(t, database, Config{})
+			defer func() {
+				_ = client.Close()
+				_ = provider.Shutdown(context.Background())
+			}()
+
+			err := client.Transaction(context.Background(), nil, func(ctx context.Context, transaction *Tx) error {
+				if _, err := transaction.Exec(ctx, "EXEC business-private-statement", "business-private-value"); err != nil {
+					return err
+				}
+				return transaction.EnqueueOutbox(ctx, statement, "private-event-id", "private-payload")
+			})
+			if !errors.Is(err, ErrOutboxEnqueue) {
+				t.Fatalf("Transaction(EnqueueOutbox) error = %v, want ErrOutboxEnqueue", err)
+			}
+			if state.rollbacks.Load() != 1 || state.commits.Load() != 0 {
+				t.Fatalf("rollbacks/commits = %d/%d, want 1/0", state.rollbacks.Load(), state.commits.Load())
+			}
+
+			spans := recorder.Ended()
+			if len(spans) != 3 {
+				t.Fatalf("ended spans = %d, want 3", len(spans))
+			}
+			assertDatabaseSpanAttributes(t, spans[0], "success")
+			assertDatabaseSpanAttributes(t, spans[1], "failure")
+			assertDatabaseSpanAttributes(t, spans[2], "failure")
+			for _, span := range spans {
+				assertSpanExcludes(
+					t,
+					span,
+					"business-private-statement",
+					"business-private-value",
+					"private-statement",
+					"private-event-id",
+					"private-payload",
+					"rows affected raw secret",
+				)
+			}
+		})
+	}
+}
+
+func TestTransactionEnqueueOutboxExecutionFailureAndTimeoutRollBack(t *testing.T) {
+	tests := []struct {
+		name         string
+		statement    string
+		config       Config
+		wantDeadline bool
+	}{
+		{name: "driver failure", statement: "OUTBOX_FAIL private-statement"},
+		{
+			name:         "timeout",
+			statement:    "OUTBOX_WAIT private-statement",
+			wantDeadline: true,
+			config: Config{
+				OperationTimeout:   20 * time.Millisecond,
+				TransactionTimeout: 100 * time.Millisecond,
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			database, state := openScriptedDatabase(t)
+			client, recorder, provider := newTracedClient(t, database, test.config)
+			defer func() {
+				_ = client.Close()
+				_ = provider.Shutdown(context.Background())
+			}()
+
+			err := client.Transaction(context.Background(), nil, func(ctx context.Context, transaction *Tx) error {
+				return transaction.EnqueueOutbox(ctx, test.statement, "private-event-id", "private-payload")
+			})
+			if test.wantDeadline {
+				if !errors.Is(err, context.DeadlineExceeded) {
+					t.Fatalf("Transaction(EnqueueOutbox) error = %v, want deadline", err)
+				}
+			} else if err == nil {
+				t.Fatal("Transaction(EnqueueOutbox) error = nil")
+			}
+			if state.rollbacks.Load() != 1 || state.commits.Load() != 0 {
+				t.Fatalf("rollbacks/commits = %d/%d, want 1/0", state.rollbacks.Load(), state.commits.Load())
+			}
+			spans := recorder.Ended()
+			if len(spans) != 2 {
+				t.Fatalf("ended spans = %d, want 2", len(spans))
+			}
+			result := "failure"
+			if test.wantDeadline {
+				result = "timeout"
+			}
+			assertDatabaseSpanAttributes(t, spans[0], result)
+			assertDatabaseSpanAttributes(t, spans[1], result)
+			for _, span := range spans {
+				assertSpanExcludes(t, span, "private-statement", "private-event-id", "private-payload", "raw-driver-secret")
+			}
+		})
+	}
+}
+
+func TestRetryTransactionReplaysTransactionalOutboxAfterCommitConflict(t *testing.T) {
+	database, state := openScriptedDatabase(t)
+	state.commitFailures.Store(1)
+	state.commitSQLState = "40001"
+	client, recorder, provider := newTracedClient(t, database, Config{
+		OperationTimeout:       50 * time.Millisecond,
+		TransactionTimeout:     500 * time.Millisecond,
+		TransactionMaxAttempts: 2,
+		RetryInitialBackoff:    time.Millisecond,
+		RetryMaxBackoff:        time.Millisecond,
+	})
+	defer func() {
+		_ = client.Close()
+		_ = provider.Shutdown(context.Background())
+	}()
+
+	attempts := 0
+	err := client.RetryTransaction(context.Background(), nil, func(ctx context.Context, transaction *Tx) error {
+		attempts++
+		return transaction.EnqueueOutbox(ctx, "OUTBOX private-statement", "stable-private-event-id", "private-payload")
+	})
+	if err != nil {
+		t.Fatalf("RetryTransaction(EnqueueOutbox) error = %v", err)
+	}
+	if attempts != 2 || state.commits.Load() != 2 {
+		t.Fatalf("attempts/commits = %d/%d, want 2/2", attempts, state.commits.Load())
+	}
+	spans := recorder.Ended()
+	if len(spans) != 4 {
+		t.Fatalf("ended spans = %d, want 4", len(spans))
+	}
+	wantResults := []string{"success", "failure", "success", "success"}
+	for index, span := range spans {
+		assertDatabaseSpanAttributes(t, span, wantResults[index])
+		assertSpanExcludes(t, span, "private-statement", "stable-private-event-id", "private-payload", "commit retry secret", "40001")
+	}
+}
+
+func TestTransactionEnqueueOutboxRollsBackAfterCallbackPanic(t *testing.T) {
+	database, state := openScriptedDatabase(t)
+	client, recorder, provider := newTracedClient(t, database, Config{})
+	defer func() {
+		_ = client.Close()
+		_ = provider.Shutdown(context.Background())
+	}()
+
+	panicValue := "outbox callback panic private value"
+	func() {
+		defer func() {
+			if recovered := recover(); recovered != panicValue {
+				t.Fatalf("recovered panic = %v", recovered)
+			}
+		}()
+		_ = client.Transaction(context.Background(), nil, func(ctx context.Context, transaction *Tx) error {
+			if err := transaction.EnqueueOutbox(ctx, "OUTBOX panic-private-statement", "private-event-id"); err != nil {
+				return err
+			}
+			panic(panicValue)
+		})
+	}()
+	if state.rollbacks.Load() != 1 || state.commits.Load() != 0 {
+		t.Fatalf("rollbacks/commits = %d/%d, want 1/0", state.rollbacks.Load(), state.commits.Load())
+	}
+	spans := recorder.Ended()
+	if len(spans) != 2 {
+		t.Fatalf("ended spans = %d, want 2", len(spans))
+	}
+	assertDatabaseSpanAttributes(t, spans[0], "success")
+	assertDatabaseSpanAttributes(t, spans[1], "failure")
+	for _, span := range spans {
+		assertSpanExcludes(t, span, "panic-private-statement", "private-event-id", panicValue)
+	}
+}
+
 func TestQueryAlwaysClosesRowsAndPropagatesConsumerError(t *testing.T) {
 	database, state := openScriptedDatabase(t)
 	client, recorder, provider := newTracedClient(t, database, Config{})
@@ -628,6 +848,9 @@ func TestNilReceiversAndContextsFailWithoutPanic(t *testing.T) {
 	if _, err := transaction.Exec(context.Background(), "EXEC"); err == nil {
 		t.Fatal("nil Tx.Exec() error = nil")
 	}
+	if err := transaction.EnqueueOutbox(context.Background(), "OUTBOX"); err == nil {
+		t.Fatal("nil Tx.EnqueueOutbox() error = nil")
+	}
 
 	database, _ := openScriptedDatabase(t)
 	validClient, err := New(database, Config{})
@@ -662,7 +885,7 @@ func assertDatabaseSpanAttributes(t *testing.T, span sdktrace.ReadOnlySpan, resu
 		t.Fatalf("db.system.name = %q", got)
 	}
 	operation := spanAttribute(span, "db.operation.name")
-	if !map[string]bool{"CHECK": true, "EXEC": true, "UPDATE": true, "QUERY": true, "LOCK": true, "TRANSACTION": true}[operation] {
+	if !map[string]bool{"CHECK": true, "EXEC": true, "UPDATE": true, "OUTBOX": true, "QUERY": true, "LOCK": true, "TRANSACTION": true}[operation] {
 		t.Fatalf("db.operation.name = %q", operation)
 	}
 	if got := spanAttribute(span, "goexample.database.result"); got != result {
@@ -772,6 +995,19 @@ func (connection *scriptedConnection) Ping(context.Context) error {
 
 func (connection *scriptedConnection) ExecContext(ctx context.Context, statement string, _ []driver.NamedValue) (driver.Result, error) {
 	switch {
+	case strings.HasPrefix(statement, "OUTBOX_FAIL"):
+		return nil, errors.New("outbox driver failure contains raw-driver-secret")
+	case strings.HasPrefix(statement, "OUTBOX_WAIT"):
+		<-ctx.Done()
+		return nil, ctx.Err()
+	case strings.HasPrefix(statement, "OUTBOX_NIL"):
+		return nil, nil
+	case strings.HasPrefix(statement, "OUTBOX_ZERO"):
+		return driver.RowsAffected(0), nil
+	case strings.HasPrefix(statement, "OUTBOX_MULTI"):
+		return driver.RowsAffected(2), nil
+	case strings.HasPrefix(statement, "OUTBOX_RESULT_FAIL"):
+		return scriptedResultError{}, nil
 	case strings.HasPrefix(statement, "FAIL"):
 		return nil, errors.New("driver failure contains raw-driver-secret")
 	case strings.HasPrefix(statement, "WAIT"):

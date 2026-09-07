@@ -37,7 +37,7 @@ func CompleteOIDCCallback(ctx context.Context, manager *AuthorizationRequestMana
 	if err != nil {
 		return OIDCCallbackResult{}, ErrOIDCCallbackExchange
 	}
-	claims, err := verifier.VerifyIDToken(ctx, tokens.IDToken, authorization.Nonce)
+	claims, err := verifier.VerifyIDTokenWithAccessToken(ctx, tokens.IDToken, authorization.Nonce, tokens.AccessToken)
 	if err != nil {
 		return OIDCCallbackResult{}, ErrOIDCCallbackInvalid
 	}

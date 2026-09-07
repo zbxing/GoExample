@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { performance } from 'node:perf_hooks';
 
 // A porcelain status line is normally well below 128 bytes. This permits
 // hundreds of thousands of paths while keeping each synchronous command bound
@@ -11,6 +12,8 @@ export const maximumCommandDurationMs = 30_000;
 const retryableLaunchErrorCodes = new Set(['ENOENT', 'EINVAL']);
 const goVersionPattern = /^go version go\d+\.\d+\.\d+ [a-z0-9]+\/[a-z0-9]+$/;
 const gitCommitPattern = /^[a-f0-9]{40}$/;
+const windowsShellTokenPattern = /^[A-Za-z0-9_.,\\/:=+@-]+$/;
+const monotonicNow = () => performance.now();
 
 function validateCommandDuration(timeoutMs) {
   if (
@@ -33,17 +36,60 @@ function isRetryableLaunchFailure(result) {
   return result.status === null && retryableLaunchErrorCodes.has(result.error?.code);
 }
 
+function readCommandClock(now) {
+  const timestamp = now();
+  if (!Number.isFinite(timestamp)) {
+    throw new TypeError('Command clock must return a finite number');
+  }
+  return timestamp;
+}
+
+function remainingCommandDuration(deadline, timeoutMs, now) {
+  const remaining = Math.min(timeoutMs, Math.ceil(deadline - readCommandClock(now)));
+  return remaining > 0 ? remaining : null;
+}
+
+function windowsShellCommand(command, args) {
+  const tokens = [command, ...args];
+  return tokens.every(
+    (token) => typeof token === 'string' && windowsShellTokenPattern.test(token),
+  )
+    ? tokens.join(' ')
+    : null;
+}
+
+function commandExecutionPlan(command, platform) {
+  if (platform !== 'win32') {
+    return { candidates: [command], shellFallback: false };
+  }
+
+  const extension = path.win32.extname(command).toLowerCase();
+  const isBatchCommand = extension === '.cmd' || extension === '.bat';
+  if (path.win32.isAbsolute(command) || extension !== '') {
+    return { candidates: [command], shellFallback: isBatchCommand };
+  }
+
+  return {
+    candidates: [command, `${command}.cmd`, `${command}.exe`],
+    shellFallback: true,
+  };
+}
+
 export function runBoundedCommand(command, args, {
   cwd,
+  env,
   raw = false,
   spawn = spawnSync,
   platform = process.platform,
   commandShell = process.env.ComSpec ?? 'cmd.exe',
   timeoutMs = maximumCommandDurationMs,
+  now = monotonicNow,
 } = {}) {
   validateCommandDuration(timeoutMs);
+  const deadline = readCommandClock(now) + timeoutMs;
   const spawnOptions = {
     cwd,
+    ...(env === undefined ? {} : { env }),
     encoding: 'utf8',
     shell: false,
     windowsHide: true,
@@ -51,11 +97,21 @@ export function runBoundedCommand(command, args, {
     timeout: timeoutMs,
     killSignal: 'SIGTERM',
   };
-  const candidates = platform === 'win32' && !path.isAbsolute(command)
-    ? [command, `${command}.cmd`, `${command}.exe`]
-    : [command];
-  for (const candidate of candidates) {
-    const result = spawn(candidate, args, spawnOptions);
+  const spawnWithinBudget = (candidate, candidateArgs) => {
+    const remainingTimeoutMs = remainingCommandDuration(deadline, timeoutMs, now);
+    return remainingTimeoutMs === null
+      ? null
+      : spawn(candidate, candidateArgs, {
+          ...spawnOptions,
+          timeout: remainingTimeoutMs,
+        });
+  };
+  const plan = commandExecutionPlan(command, platform);
+  for (const candidate of plan.candidates) {
+    const result = spawnWithinBudget(candidate, args);
+    if (result === null) {
+      return null;
+    }
     if (result.status === 0) {
       return commandOutput(result, raw);
     }
@@ -63,12 +119,18 @@ export function runBoundedCommand(command, args, {
       return null;
     }
   }
-  if (platform === 'win32' && !path.isAbsolute(command)) {
-    const result = spawn(
+  if (plan.shellFallback) {
+    const shellCommand = windowsShellCommand(command, args);
+    if (shellCommand === null) {
+      return null;
+    }
+    const result = spawnWithinBudget(
       commandShell,
-      ['/d', '/s', '/c', [command, ...args].join(' ')],
-      spawnOptions,
+      ['/d', '/s', '/v:off', '/c', shellCommand],
     );
+    if (result === null) {
+      return null;
+    }
     if (result.status === 0) {
       return commandOutput(result, raw);
     }
@@ -78,17 +140,21 @@ export function runBoundedCommand(command, args, {
 
 export function readBoundedGoVersion(command, {
   cwd,
+  env,
   run = runBoundedCommand,
 } = {}) {
-  const value = `${run(command, ['version'], { cwd }) ?? ''}`.trim();
+  const options = env === undefined ? { cwd } : { cwd, env };
+  const value = `${run(command, ['version'], options) ?? ''}`.trim();
   return goVersionPattern.test(value) ? value : null;
 }
 
 export function readBoundedGitCommit({
   cwd,
+  env,
   run = runBoundedCommand,
 } = {}) {
-  const value = `${run('git', ['rev-parse', 'HEAD'], { cwd }) ?? ''}`.trim();
+  const options = env === undefined ? { cwd } : { cwd, env };
+  const value = `${run('git', ['rev-parse', 'HEAD'], options) ?? ''}`.trim();
   return gitCommitPattern.test(value) ? value : null;
 }
 

@@ -21,8 +21,9 @@ function successfulOutput() {
       `=== RUN   ${name}`,
       `--- PASS: ${name} (0.00s)`,
     ]),
-    'PASS',
-    'ok  \tgithub.com/zbxing/goexample/Framework/httpapi\t0.010s',
+		'PASS',
+		'ok  \tgithub.com/zbxing/goexample/Framework/auth\t0.010s',
+		'ok  \tgithub.com/zbxing/goexample/Framework/httpapi\t0.010s',
     '',
   ].join('\n');
 }
@@ -72,7 +73,13 @@ test('OIDC browser evidence verifies the exact successful local contract', async
   const evidenceRoot = await createEvidence(root);
   const verified = verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot });
   assert.equal(verified.report.status, 'passed');
-  assert.equal(verified.report.contract.tests.length, 9);
+	assert.equal(verified.report.contract.tests.length, 12);
+	assert.equal(verified.report.contract.assertions.accessTokenHashBound, true);
+	assert.equal(verified.report.contract.assertions.tokenEndpointAuthenticationNegotiated, true);
+	assert.equal(verified.report.contract.assertions.tokenRequestCredentialsBound, true);
+	assert.ok(verified.report.source.jwksVerifier);
+	assert.ok(verified.report.source.jwksVerifierTests);
+	assert.ok(verified.report.source.oidcClientTests);
   assert.equal(verified.artifactPaths.length, 5);
 });
 
@@ -97,6 +104,33 @@ test('OIDC browser evidence rejects source, contract, scope, and semantic output
     () => verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot: sourceEvidence }),
     /source\.oidcBrowser\.sha256/,
   );
+
+  const schemaEvidence = await createEvidence(path.join(root, 'schema'));
+  await rewriteReport(schemaEvidence, (report) => {
+    report.schemaVersion = 1;
+  });
+  assert.throws(
+    () => verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot: schemaEvidence }),
+		/schemaVersion must equal 3/,
+  );
+
+	const assertionEvidence = await createEvidence(path.join(root, 'assertion'));
+  await rewriteReport(assertionEvidence, (report) => {
+    report.contract.assertions.accessTokenHashBound = false;
+  });
+  assert.throws(
+    () => verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot: assertionEvidence }),
+		/assertions must all be true/,
+	);
+
+	const authenticationSourceEvidence = await createEvidence(path.join(root, 'authentication-source'));
+	await rewriteReport(authenticationSourceEvidence, (report) => {
+		report.source.oidcClientTests.sha256 = '0'.repeat(64);
+	});
+	assert.throws(
+		() => verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot: authenticationSourceEvidence }),
+		/source\.oidcClientTests\.sha256/,
+	);
 
   const contractEvidence = await createEvidence(path.join(root, 'contract'));
   await rewriteReport(contractEvidence, (report) => {

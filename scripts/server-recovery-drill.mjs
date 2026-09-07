@@ -12,6 +12,7 @@ import {
   isolatedGoToolchainEnvironment,
   selectRepositoryToolCommand,
 } from './lib/go-toolchain-environment.mjs';
+import { readBoundedGitCommit, readBoundedGoVersion } from './lib/bounded-command.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -80,19 +81,11 @@ const environment = isolatedGoToolchainEnvironment(process.env, {
   GOWORK: path.join(repositoryRoot, 'go.work'),
   REDIS_TEST_URL: '',
 });
-const gitCommitResult = spawnSync('git', ['rev-parse', 'HEAD'], {
-  cwd: repositoryRoot,
-  encoding: 'utf8',
-  shell: false,
-  windowsHide: true,
-});
-const goVersionResult = spawnSync(goCommand, ['version'], {
+const gitCommit = readBoundedGitCommit({ cwd: repositoryRoot }) ?? 'unknown';
+const goVersion = readBoundedGoVersion(goCommand, {
   cwd: repositoryRoot,
   env: environment,
-  encoding: 'utf8',
-  shell: false,
-  windowsHide: true,
-});
+}) ?? 'unavailable';
 const results = [];
 
 for (const scenario of scenarios) {
@@ -106,6 +99,7 @@ for (const scenario of scenarios) {
     shell: false,
     windowsHide: true,
     timeout: 60_000,
+    killSignal: 'SIGTERM',
     maxBuffer: 4 * 1024 * 1024,
   });
   const stdout = result.stdout ?? '';
@@ -138,8 +132,8 @@ const summary = {
   generatedAt: new Date().toISOString(),
   scope: 'local_contract_only',
   status: passed ? 'passed' : 'failed',
-  repository: { gitCommit: gitCommitResult.status === 0 ? gitCommitResult.stdout.trim() : 'unknown' },
-  toolchain: { go: goVersionResult.status === 0 ? goVersionResult.stdout.trim() : 'unavailable' },
+  repository: { gitCommit },
+  toolchain: { go: goVersion },
   scenarios: results,
   limitations: [...serverRecoveryLimitations],
 };

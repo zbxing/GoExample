@@ -33,6 +33,7 @@ func TestRealPostgresRetryTransactionSerializationConflict(t *testing.T) {
 		RetryMaxBackoff:        5 * time.Millisecond,
 	})
 	table := createRealPostgresCounterTable(t, database, testContext)
+	outboxTable := createRealPostgresOutboxTable(t, database, testContext)
 
 	firstSnapshotRead := make(chan struct{})
 	competingCommit := make(chan error, 1)
@@ -73,6 +74,14 @@ func TestRealPostgresRetryTransactionSerializationConflict(t *testing.T) {
 				return fmt.Errorf("commit competing serializable transaction: %w", err)
 			}
 		}
+		if err := transaction.EnqueueOutbox(
+			ctx,
+			"INSERT INTO "+outboxTable+" (event_id, payload) VALUES ($1, $2)",
+			"counter.updated",
+			value+1,
+		); err != nil {
+			return err
+		}
 		_, err := transaction.Exec(ctx, "UPDATE "+table+" SET value = $1 WHERE id = 1", value+1)
 		return err
 	})
@@ -88,6 +97,59 @@ func TestRealPostgresRetryTransactionSerializationConflict(t *testing.T) {
 	}
 	if value != 2 {
 		t.Fatalf("final counter = %d, want 2", value)
+	}
+	var eventCount int
+	var eventPayload int
+	if err := client.ScanRow(
+		testContext,
+		"SELECT COUNT(*), COALESCE(MAX(payload), 0) FROM "+outboxTable+" WHERE event_id = $1",
+		[]any{"counter.updated"},
+		&eventCount,
+		&eventPayload,
+	); err != nil {
+		t.Fatalf("read retried outbox event: %v", err)
+	}
+	if eventCount != 1 || eventPayload != 2 {
+		t.Fatalf("retried outbox event = count %d/payload %d, want 1/2", eventCount, eventPayload)
+	}
+
+	err = client.Transaction(testContext, nil, func(ctx context.Context, transaction *Tx) error {
+		if _, err := transaction.Exec(ctx, "UPDATE "+table+" SET value = value + 100 WHERE id = 1"); err != nil {
+			return err
+		}
+		return transaction.EnqueueOutbox(
+			ctx,
+			"INSERT INTO "+outboxTable+" (event_id, payload) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+			"counter.updated",
+			102,
+		)
+	})
+	if !errors.Is(err, ErrOutboxEnqueue) {
+		t.Fatalf("duplicate outbox transaction error = %v, want ErrOutboxEnqueue", err)
+	}
+	err = client.Transaction(testContext, nil, func(ctx context.Context, transaction *Tx) error {
+		if _, err := transaction.Exec(ctx, "UPDATE "+table+" SET value = value + 100 WHERE id = 1"); err != nil {
+			return err
+		}
+		return transaction.EnqueueOutbox(
+			ctx,
+			"INSERT INTO "+outboxTable+" (event_id, payload) VALUES ($1, $3), ($2, $3)",
+			"counter.multi-one",
+			"counter.multi-two",
+			202,
+		)
+	})
+	if !errors.Is(err, ErrOutboxEnqueue) {
+		t.Fatalf("multi-row outbox transaction error = %v, want ErrOutboxEnqueue", err)
+	}
+	if err := client.ScanRow(testContext, "SELECT value FROM "+table+" WHERE id = 1", nil, &value); err != nil {
+		t.Fatalf("read counter after rejected outbox writes: %v", err)
+	}
+	if err := client.ScanRow(testContext, "SELECT COUNT(*) FROM "+outboxTable, nil, &eventCount); err != nil {
+		t.Fatalf("read outbox after rejected writes: %v", err)
+	}
+	if value != 2 || eventCount != 1 {
+		t.Fatalf("counter/outbox after rejected writes = %d/%d, want 2/1", value, eventCount)
 	}
 }
 
@@ -488,5 +550,22 @@ func createRealPostgresCounterTable(t *testing.T, database *sql.DB, ctx context.
 	if _, err := database.ExecContext(ctx, "INSERT INTO "+table+" (id, value) VALUES (1, 0)"); err != nil {
 		t.Fatalf("seed PostgreSQL table: %v", err)
 	}
+	return table
+}
+
+func createRealPostgresOutboxTable(t *testing.T, database *sql.DB, ctx context.Context) string {
+	t.Helper()
+	// The identifier consists only of this fixed prefix, the process ID, and decimal digits.
+	table := fmt.Sprintf("goexample_sqlclient_outbox_%d_%d", os.Getpid(), postgresIntegrationTableID.Add(1))
+	if _, err := database.ExecContext(ctx, "CREATE TABLE "+table+" (event_id text PRIMARY KEY, payload integer NOT NULL)"); err != nil {
+		t.Fatalf("create PostgreSQL outbox table: %v", err)
+	}
+	t.Cleanup(func() {
+		cleanupContext, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if _, err := database.ExecContext(cleanupContext, "DROP TABLE IF EXISTS "+table); err != nil {
+			t.Errorf("drop PostgreSQL outbox table: %v", err)
+		}
+	})
 	return table
 }

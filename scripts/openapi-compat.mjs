@@ -1,9 +1,9 @@
-import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findOpenAPIBreakingChanges } from './lib/openapi-compat.mjs';
 import {
+  createProjectContractGitRunner,
   normalizeProjectEntry,
   readProjectManifest,
   resolveProjectDocument,
@@ -12,6 +12,7 @@ import {
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const defaultDocument = 'docs/openapi/openapi.json';
+const projectGitRunner = createProjectContractGitRunner(repositoryRoot);
 
 function fail(message) {
   console.error(`OpenAPI compatibility: ${message}`);
@@ -73,19 +74,21 @@ function readRepositoryFile(requestedPath) {
 }
 
 function readFromGitPath(reference, requestedPath, { optional = false } = {}) {
-  const result = spawnSync('git', ['show', `${reference}:${requestedPath}`], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    shell: false,
-    windowsHide: true,
-  });
-  if (result.status !== 0) {
+  let content;
+  try {
+    content = projectGitRunner(['show', `${reference}:${requestedPath}`], {
+      allowFailure: optional,
+    });
+  } catch {
+    fail(`cannot read ${requestedPath} from ${reference} within the bounded Git operation`);
+  }
+  if (content === null) {
     if (optional) {
       return null;
     }
-    fail(`cannot read ${requestedPath} from ${reference}: ${(result.stderr ?? '').trim()}`);
+    fail(`cannot read ${requestedPath} from ${reference} within the bounded Git operation`);
   }
-  return result.stdout;
+  return content;
 }
 
 function readManifestAtRef(reference) {
@@ -114,7 +117,10 @@ function rawProjectEntry(manifest, selector) {
 
 function currentProjectDocument(project) {
   try {
-    return resolveProjectDocument(repositoryRoot, project, { fetchRemote: false });
+    return resolveProjectDocument(repositoryRoot, project, {
+      fetchRemote: false,
+      gitRunner: projectGitRunner,
+    });
   } catch (error) {
     fail(error.message);
   }
@@ -122,7 +128,11 @@ function currentProjectDocument(project) {
 
 function baselineProjectDocument(project) {
   try {
-    return resolveProjectDocument(repositoryRoot, project, { fetchRemote: true, verifyRef: false });
+    return resolveProjectDocument(repositoryRoot, project, {
+      fetchRemote: true,
+      verifyRef: false,
+      gitRunner: projectGitRunner,
+    });
   } catch (error) {
     fail(`${project.projectPath} baseline materialization failed: ${error.message}`);
   }

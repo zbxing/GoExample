@@ -2,12 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   buildRedisSentinelChecksums,
   buildRedisSentinelEvidenceReport,
 } from './lib/redis-sentinel-evidence.mjs';
+import { createContractCommandRunner } from './lib/contract-command.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, '..');
@@ -29,32 +29,7 @@ let gitCommit = 'unavailable';
 let goVersion = 'unavailable';
 let dockerVersion = 'unavailable';
 
-function run(command, args, options = {}) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd: repositoryRoot,
-      env: options.env ?? process.env,
-      shell: false,
-      windowsHide: true,
-    });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', (chunk) => { stdout += chunk; });
-    child.stderr.on('data', (chunk) => { stderr += chunk; });
-    child.on('error', reject);
-    child.on('exit', (code, signal) => {
-      const status = signal ? 1 : (code ?? 1);
-      const result = { status, stdout, stderr };
-      if (status !== 0 && !options.allowFailure) {
-        const error = new Error(`${command} exited with code ${status}`);
-        error.result = result;
-        reject(error);
-        return;
-      }
-      resolve(result);
-    });
-  });
-}
+const run = createContractCommandRunner({ cwd: repositoryRoot });
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -167,7 +142,7 @@ function dataCLI(containerName, port, ...commands) {
     'exec', '--env', `REDISCLI_AUTH=${dataPassword}`, containerName,
     'redis-cli', '--no-auth-warning', '-h', '127.0.0.1', '-p', `${port}`, '--user', dataUsername,
     ...commands,
-  ], { allowFailure: true });
+  ], { allowFailure: true, timeoutMs: 5_000 });
 }
 
 function sentinelCLI(containerName, port, ...commands) {
@@ -175,7 +150,7 @@ function sentinelCLI(containerName, port, ...commands) {
     'exec', '--env', `REDISCLI_AUTH=${sentinelPassword}`, containerName,
     'redis-cli', '--no-auth-warning', '-h', '127.0.0.1', '-p', `${port}`, '--user', sentinelUsername,
     ...commands,
-  ], { allowFailure: true });
+  ], { allowFailure: true, timeoutMs: 5_000 });
 }
 
 async function archive(environment, failure) {
@@ -183,7 +158,10 @@ async function archive(environment, failure) {
   const logDirectory = path.join(artifactDirectory, 'container-logs');
   await mkdir(logDirectory, { recursive: true });
   for (const container of containers) {
-    const result = await run('docker', ['logs', container.containerName], { allowFailure: true });
+    const result = await run('docker', ['logs', container.containerName], {
+      allowFailure: true,
+      timeoutMs: 30_000,
+    });
     await writeFile(path.join(logDirectory, `${container.name}.log`), `${result.stdout}${result.stderr}`);
   }
   await writeFile(path.join(artifactDirectory, 'environment.txt'), environment);
@@ -216,7 +194,10 @@ async function archive(environment, failure) {
 
 async function cleanup() {
   for (const container of [...containers].reverse()) {
-    await run('docker', ['rm', '--force', container.containerName], { allowFailure: true });
+    await run('docker', ['rm', '--force', container.containerName], {
+      allowFailure: true,
+      timeoutMs: 30_000,
+    });
   }
   await rm(runtimeDirectory, { recursive: true, force: true });
 }
@@ -238,7 +219,7 @@ try {
   goVersion = go.stdout.trim();
   dockerVersion = docker.stdout.trim();
   contractOutput.push(`docker server: ${dockerVersion}`);
-  const pull = await run('docker', ['pull', image]);
+  const pull = await run('docker', ['pull', image], { timeoutMs: 120_000 });
   contractOutput.push(pull.stdout.trim());
 
   ports = await reservePorts(5);
@@ -280,6 +261,7 @@ try {
     '-run', '^TestRedisSentinelFailoverReconnectsSharedStateClients$', './sharedstate',
   ], {
     allowFailure: true,
+    timeoutMs: 150_000,
     env: {
       ...process.env,
       REDIS_SENTINEL_TEST_ADDRESSES: sentinelPorts.map((port) => `127.0.0.1:${port}`).join(','),
