@@ -289,7 +289,7 @@ jobs:
 
       - name: Upload PostgreSQL contract evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: postgres-recovery-contract-${{ github.run_id }}-${{ github.run_attempt }}
           path: .temp/workflow-artifacts/postgres-recovery-contract
@@ -508,7 +508,7 @@ jobs:
 
       - name: Upload NATS contract evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: nats-contract-${{ github.run_id }}-${{ github.run_attempt }}
           path: .temp/workflow-artifacts/nats-contract
@@ -543,7 +543,7 @@ jobs:
 
       - name: Upload Redis Sentinel contract evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: redis-sentinel-contract-${{ github.run_id }}-${{ github.run_attempt }}
           path: .temp/workflow-artifacts/redis-sentinel-contract
@@ -588,7 +588,7 @@ jobs:
 
       - name: Upload recovery evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: server-recovery-drill-${{ github.run_id }}-${{ github.run_attempt }}
           path: .temp/recovery/server-local
@@ -635,7 +635,7 @@ jobs:
 
       - name: Upload audit chain evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: audit-chain-contract-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -684,7 +684,7 @@ jobs:
 
       - name: Upload resource authorization evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: authorization-policy-contract-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -733,7 +733,7 @@ jobs:
 
       - name: Upload OIDC browser evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: oidc-browser-contract-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -839,7 +839,7 @@ jobs:
 
       - name: Upload signed server release evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: goexample-server-release-${{ github.run_id }}-${{ github.run_attempt }}
           path: .temp/server-release
