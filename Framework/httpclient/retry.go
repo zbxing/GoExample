@@ -40,13 +40,22 @@ type retryTransport struct {
 }
 
 func (transport retryTransport) RoundTrip(request *http.Request) (*http.Response, error) {
-	if request == nil || !retryableRequest(request) {
+	if request == nil {
 		return transport.base.RoundTrip(request)
+	}
+	if contextErr := completedHTTPContextError(request.Context()); contextErr != nil {
+		closeHTTPRequestBody(request)
+		return nil, contextErr
+	}
+	if !retryableRequest(request) {
+		response, err := transport.base.RoundTrip(request)
+		return authoritativeHTTPResult(request.Context(), response, err)
 	}
 
 	attemptRequest := request
 	for attempt := 1; ; attempt++ {
 		response, err := transport.base.RoundTrip(attemptRequest)
+		response, err = authoritativeHTTPResult(request.Context(), response, err)
 		if attempt >= transport.config.MaxAttempts || !retryableResult(request.Context(), response, err) {
 			return response, err
 		}
@@ -99,7 +108,7 @@ func safeRetryMethod(method string) bool {
 }
 
 func retryableResult(ctx context.Context, response *http.Response, err error) bool {
-	if ctx.Err() != nil {
+	if completedHTTPContextError(ctx) != nil {
 		return false
 	}
 	if err != nil {

@@ -263,6 +263,64 @@ func TestRetryTransportCancellationInterruptsBackoff(t *testing.T) {
 	}
 }
 
+func TestRetryTransportRejectsLateNilResultsWithoutRetryOrJitter(t *testing.T) {
+	t.Run("canceled", func(t *testing.T) {
+		var attempts atomic.Int32
+		var samples atomic.Int32
+		responseBody := &countingHTTPBody{Reader: strings.NewReader("private response")}
+		ctx, cancel := context.WithCancel(context.Background())
+		transport := retryTransport{
+			base: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				attempts.Add(1)
+				cancel()
+				return &http.Response{StatusCode: http.StatusServiceUnavailable, Body: responseBody}, nil
+			}),
+			config: RetryConfig{MaxAttempts: 3, InitialBackoff: time.Second, MaxBackoff: time.Second},
+			randomInt64N: func(int64) int64 {
+				samples.Add(1)
+				return 0
+			},
+		}
+		request := httptest.NewRequest(http.MethodGet, "https://example.test/private", http.NoBody).WithContext(ctx)
+
+		response, err := transport.RoundTrip(request)
+		if response != nil || !errors.Is(err, context.Canceled) {
+			t.Fatalf("RoundTrip() response/error = %#v/%v, want nil/context.Canceled", response, err)
+		}
+		if attempts.Load() != 1 || samples.Load() != 0 || responseBody.closes.Load() != 1 {
+			t.Fatalf("attempts/samples/closes = %d/%d/%d, want 1/0/1", attempts.Load(), samples.Load(), responseBody.closes.Load())
+		}
+	})
+
+	t.Run("elapsed deadline", func(t *testing.T) {
+		var attempts atomic.Int32
+		var samples atomic.Int32
+		responseBody := &countingHTTPBody{Reader: strings.NewReader("private response")}
+		ctx := &mutableHTTPDeadlineContext{Context: context.Background(), deadline: time.Now().Add(time.Hour)}
+		transport := retryTransport{
+			base: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				attempts.Add(1)
+				ctx.deadline = time.Now().Add(-time.Second)
+				return &http.Response{StatusCode: http.StatusServiceUnavailable, Body: responseBody}, nil
+			}),
+			config: RetryConfig{MaxAttempts: 3, InitialBackoff: time.Second, MaxBackoff: time.Second},
+			randomInt64N: func(int64) int64 {
+				samples.Add(1)
+				return 0
+			},
+		}
+		request := httptest.NewRequest(http.MethodGet, "https://example.test/private", http.NoBody).WithContext(ctx)
+
+		response, err := transport.RoundTrip(request)
+		if response != nil || !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("RoundTrip() response/error = %#v/%v, want nil/context.DeadlineExceeded", response, err)
+		}
+		if attempts.Load() != 1 || samples.Load() != 0 || responseBody.closes.Load() != 1 {
+			t.Fatalf("attempts/samples/closes = %d/%d/%d, want 1/0/1", attempts.Load(), samples.Load(), responseBody.closes.Load())
+		}
+	})
+}
+
 func TestRetryTransportKeepsResponseWhenBackoffCannotFitDeadline(t *testing.T) {
 	body := &trackingReadCloser{Reader: strings.NewReader("busy")}
 	var attempts int

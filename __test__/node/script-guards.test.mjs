@@ -108,6 +108,14 @@ test('repository-managed Go entrypoints isolate inherited GOROOT through the sha
   assertEvidenceInput('docs/待优化/待优化V66.md');
   assertEvidenceInput('docs/待优化/待优化V67.md');
   assertEvidenceInput('docs/待优化/待优化V68.md');
+  assertEvidenceInput('docs/待优化/待优化V76.md');
+  assertEvidenceInput('docs/待优化/待优化V77.md');
+  assertEvidenceInput('docs/待优化/待优化V78.md');
+  assertEvidenceInput('docs/待优化/待优化V79.md');
+  assertEvidenceInput('docs/待优化/待优化V80.md');
+  assertEvidenceInput('docs/待优化/待优化V81.md');
+  assertEvidenceInput('docs/待优化/待优化V82.md');
+  assertEvidenceInput('docs/待优化/待优化V83.md');
   assertEvidenceInput('scripts/lib/transport-benchmark-stability.mjs');
   assertEvidenceInput('scripts/lib/environment-fetch.mjs');
   assertEvidenceInput('__test__/node/environment-fetch.test.mjs');
@@ -2711,6 +2719,11 @@ test('OIDC browser evidence stays checksum-bound and explicitly local-only', asy
 	assert.match(verifier, /accessTokenHashBound/);
 	assert.match(verifier, /tokenEndpointAuthenticationNegotiated/);
 	assert.match(verifier, /tokenRequestCredentialsBound/);
+	assert.match(verifier, /callerContextAuthoritative/);
+	assert.match(verifier, /refreshWaitCancelable/);
+	assert.match(verifier, /lateJWKSCacheRejected/);
+	assert.match(verifier, /authContext: 'Framework\/auth\/context\.go'/);
+	assert.match(verifier, /authContextTests: 'Framework\/auth\/context_boundary_test\.go'/);
 	assert.match(verifier, /oidcClientTests: 'Framework\/auth\/oidc_client_test\.go'/);
   assert.match(verifier, /stateCookieBoundCallback/);
   assert.match(verifier, /conditionalRoutesReserved/);
@@ -2720,6 +2733,8 @@ test('OIDC browser evidence stays checksum-bound and explicitly local-only', asy
   assert.match(behaviorTests, /retains a bounded failed run without declaring success/);
   assert.match(behaviorTests, /rejects source, contract, scope, and semantic output tampering/);
   assert.match(behaviorTests, /rejects limitation, checksum, and extra-artifact tampering/);
+	assert.match(behaviorTests, /contract\.tests\.length, 18/);
+	assert.match(behaviorTests, /source\.authContextTests\.sha256/);
   assert.match(workflow, /oidc-browser-contract:/);
   assert.match(workflow, /yarn oidc:browser:evidence/);
   assert.match(workflow, /yarn oidc:browser:verify/);
@@ -2904,7 +2919,7 @@ test('SDK consumer matrix evidence stays repository-only, complete, and checksum
   assert.match(independentVerifier, /SDK consumer matrix evidence artifact is missing from the manifest/);
 });
 
-test('V72 repository work and target-environment boundaries match the weighted evaluation', async () => {
+test('V84 repository work and target-environment boundaries match the weighted evaluation', async () => {
   const [evaluation, v12Backlog, backlog, nextBacklog, currentBacklog, v16Backlog, v17Backlog, v18Backlog, v19Backlog, v20Backlog, v21Backlog, v22Backlog, lifecycleADR, publicAPIBoundaryADR, benchmark, app, appTests, fingerprint, middleware, tracing, tracingTests, httpClient, httpClientTests, responseBody, responseBodyTests, retry, retryTests, circuitBreaker, circuitBreakerTests, standardApplication, standardApplicationTests, exampleEntrypoint, billingEntrypoint, applicationEventStream, applicationEventStreamTests, applicationRoute, applicationRouteTests, sqlClient, sqlClientTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'docs', '评估', '项目架构与性能评估.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V12.md'), 'utf8'),
@@ -3138,6 +3153,60 @@ test('V72 repository work and target-environment boundaries match the weighted e
     path.join(repositoryRoot, 'docs', '待优化', '待优化V72.md'),
     'utf8',
   );
+  const v73Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V73.md'),
+    'utf8',
+  );
+  const v74Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V74.md'),
+    'utf8',
+  );
+  const v75Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V75.md'),
+    'utf8',
+  );
+  const v76Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V76.md'),
+    'utf8',
+  );
+  const v77Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V77.md'),
+    'utf8',
+  );
+  const v78Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V78.md'),
+    'utf8',
+  );
+  const v79Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V79.md'),
+    'utf8',
+  );
+  const v80Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V80.md'),
+    'utf8',
+  );
+  const v81Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V81.md'),
+    'utf8',
+  );
+  const v82Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V82.md'),
+    'utf8',
+  );
+  const v83Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V83.md'),
+    'utf8',
+  );
+  const v84Backlog = await readFile(
+    path.join(repositoryRoot, 'docs', '待优化', '待优化V84.md'),
+    'utf8',
+  );
+  const [authContext, authContextTests, oidcClient, jwks] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'Framework', 'auth', 'context.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'auth', 'context_boundary_test.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'auth', 'oidc_client.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'auth', 'jwks.go'), 'utf8'),
+  ]);
   const [browserSessionStore, browserSessionStoreTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'browser_session_store.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'browser_session_store_test.go'), 'utf8'),
@@ -3145,6 +3214,14 @@ test('V72 repository work and target-environment boundaries match the weighted e
   const [sessionStore, sessionStoreTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'session_store.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'session_store_test.go'), 'utf8'),
+  ]);
+  const [authorizationRequestStore, authorizationRequestStoreTests] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'authorization_request_store.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'authorization_request_store_test.go'), 'utf8'),
+  ]);
+  const [redisTracing, redisTests] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'redis_tracing.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'redis_test.go'), 'utf8'),
   ]);
   const [goProjectScript, goProjectCommand, goProjectCommandTests, packageDocument] = await Promise.all([
     readFile(path.join(repositoryRoot, 'scripts', 'go-project.mjs'), 'utf8'),
@@ -3180,9 +3257,9 @@ test('V72 repository work and target-environment boundaries match the weighted e
     ...evaluation.matchAll(/^\| (?!\*\*综合评分)([^|]+) \| (\d+)% \| ([\d.]+) \| ([\d.]+) \| ([\d.]+) \| ([\d.]+) \|/gm),
   ];
 
-  assert.equal(rows.length, 17, 'current score table must contain 17 included weighted dimensions');
+  assert.equal(rows.length, 20, 'current score table must contain 20 non-frontend weighted dimensions');
   const weightTotal = rows.reduce((total, row) => total + Number(row[2]), 0);
-  assert.equal(weightTotal, 94, 'current score weights must exclude the frontend dimension');
+  assert.equal(weightTotal, 100, 'current non-frontend score weights must total 100 percent');
 
   let calculatedBaseline = 0;
   let calculatedCompleted = 0;
@@ -3196,15 +3273,12 @@ test('V72 repository work and target-environment boundaries match the weighted e
     calculatedBaseline += (Number(row[2]) * Number(row[4])) / 100;
     calculatedCompleted += expectedContribution;
   }
-  calculatedBaseline /= weightTotal / 100;
-  calculatedCompleted /= weightTotal / 100;
-
-  assert.equal(calculatedBaseline.toFixed(4), '9.8896');
-  assert.equal(calculatedCompleted.toFixed(4), '9.8915');
-  assert.match(evaluation, /评估版本：V72（已完成）/);
-  assert.match(evaluation, /V71-01.*已完成并计分/s);
-  assert.match(evaluation, /协议与网络能力 \| 6% \| 8\.5750 \| 8\.5750 \| 8\.5750/);
-  assert.match(evaluation, /当前有效综合评分：\*\*9\.8915\/10（A-）\*\*/);
+  assert.equal(calculatedBaseline.toFixed(5), '9.91755');
+  assert.equal(calculatedCompleted.toFixed(5), '9.91830');
+  assert.match(evaluation, /评估版本：V84（已完成）/);
+  assert.match(evaluation, /V83-01.*已完成并计分/s);
+  assert.match(evaluation, /身份、会话与认证治理 \| 6% \| 9\.9475 \| 9\.9475 \| 9\.9600/);
+  assert.match(evaluation, /当前有效评分为 \*\*9\.91830\/10（A-）\*\*/);
   assert.match(v69Backlog, /V69-01 已完成/);
   assert.match(v69Backlog, /9\.8880\/10/);
   assert.match(v70Backlog, /状态：V70-01 已完成并计分/);
@@ -3219,11 +3293,124 @@ test('V72 repository work and target-environment boundaries match the weighted e
   assert.match(v72Backlog, /RotateSession/);
   assert.match(v72Backlog, /9\.8915\/10/);
   assert.match(v72Backlog, /V72-02\/V72-03.*`not_recorded`/s);
+  assert.match(v73Backlog, /状态：V73-01 已完成并计分/);
+  assert.match(v73Backlog, /deleteBrowserSessionScript|token\/ID revoke/);
+  assert.match(v73Backlog, /9\.8928\/10/);
+  assert.match(v73Backlog, /V73-02\/V73-03.*`not_recorded`/s);
+  assert.match(v74Backlog, /状态：V74-01 已完成并计分/);
+  assert.match(v74Backlog, /deleteBrowserSessionsForSubjectScript|整 subject 撤销/);
+  assert.match(v74Backlog, /9\.8941\/10/);
+  assert.match(v74Backlog, /V74-02\/V74-03.*`not_recorded`/s);
+  assert.match(v75Backlog, /状态：V75-01 已完成并计分/);
+  assert.match(v75Backlog, /revokeSessionUserScript|activeSessionFamiliesScript/);
+  assert.match(v75Backlog, /9\.8953\/10/);
+  assert.match(v75Backlog, /V75-02\/V75-03.*`not_recorded`/s);
+  assert.match(v76Backlog, /状态：V76-01 已完成并计分/);
+  assert.match(v76Backlog, /rotateSessionScript|revokeSessionFamilyScript/);
+  assert.match(v76Backlog, /9\.8966\/10/);
+  assert.match(v76Backlog, /V76-02\/V76-03.*`not_recorded`/s);
+  assert.match(v77Backlog, /状态：V77-01 已完成并计分/);
+  assert.match(v77Backlog, /createAuthorizationRequestScript|consumeAuthorizationRequestScript/);
+  assert.match(v77Backlog, /9\.8973\/10/);
+  assert.match(v77Backlog, /V77-02\/V77-03.*`not_recorded`/s);
+  assert.match(v78Backlog, /状态：V78-01 已完成并计分/);
+  assert.match(v78Backlog, /createBrowserSessionScript|readBrowserSessionScript/);
+  assert.match(v78Backlog, /9\.8980\/10/);
+  assert.match(v78Backlog, /V78-02\/V78-03.*`not_recorded`/s);
+  assert.match(v79Backlog, /状态：V79-01 已完成并计分/);
+  assert.match(v79Backlog, /listBrowserSessionsScript|readBrowserSessionForDeviceUpdateScript/);
+  assert.match(v79Backlog, /9\.8988\/10/);
+  assert.match(v79Backlog, /V79-02\/V79-03.*`not_recorded`/s);
+  assert.match(v80Backlog, /状态：V80-01 已完成并计分/);
+  assert.match(v80Backlog, /completedContextError|deliveryCallbackResult/);
+  assert.match(v80Backlog, /9\.8995\/10/);
+  assert.match(v80Backlog, /V80-02\/V80-03.*`not_recorded`/s);
+  assert.match(v81Backlog, /状态：V81-01 已完成并计分/);
+  assert.match(v81Backlog, /completedContextError/);
+  assert.match(v81Backlog, /9\.9003\/10/);
+  assert.match(v81Backlog, /V81-02\/V81-03.*`not_recorded`/s);
+  assert.match(v82Backlog, /状态：V82-01 已完成并计分/);
+  assert.match(v82Backlog, /completedRedisContextError/);
+  assert.match(v82Backlog, /9\.91680\/10/);
+  assert.match(v82Backlog, /V82-02\/V82-03.*`not_recorded`/s);
+  assert.match(v83Backlog, /状态：V83-01 已完成并计分/);
+  assert.match(v83Backlog, /completedHTTPContextError|authoritativeHTTPResult/);
+  assert.match(v83Backlog, /9\.91755\/10/);
+  assert.match(v83Backlog, /V83-02\/V83-03.*`not_recorded`/s);
+  assert.match(v84Backlog, /状态：V84-01 已完成并计分/);
+  assert.match(v84Backlog, /completedAuthContextError|refresh gate/);
+  assert.match(v84Backlog, /9\.91830\/10/);
+  assert.match(v84Backlog, /V84-02\/V84-03.*`not_recorded`/s);
+  assert.match(authContext, /func completedAuthContextError\(ctx context\.Context\) error/);
+  assert.match(authContext, /!time\.Now\(\)\.Before\(deadline\)/);
+  assert.match(oidcClient, /completedAuthContextError\(requestContext\)/);
+  assert.match(jwks, /refreshGate chan struct\{\}/);
+  assert.match(jwks, /func \(verifier \*JWKSVerifier\) acquireRefresh\(ctx context\.Context\) bool/);
+  assert.doesNotMatch(jwks, /refreshMu\s+sync\.Mutex/);
+  for (const testName of [
+    'TestOIDCClientRejectsLateSuccessfulHTTPResults',
+    'TestAuthHTTPEntryPointsRejectPreCompletedContextWithoutTransport',
+    'TestJWKSVerifierRejectsCompletedContextWithCachedKey',
+    'TestJWKSRefreshRejectsLateResponseWithoutPublishingCache',
+    'TestJWKSRefreshWaitHonorsCallerCancellation',
+    'TestCompletedAuthContextErrorObservesCancellationAndElapsedDeadline',
+  ]) {
+    assert.match(authContextTests, new RegExp(`func ${testName}`));
+  }
+  assertEvidenceInput('Framework/auth/context.go');
+  assertEvidenceInput('Framework/auth/context_boundary_test.go');
+  assertEvidenceInput('docs/待优化/待优化V84.md');
+  assert.match(redisTracing, /func completedRedisContextError\(ctx context\.Context\) error/);
+  assert.match(redisTracing, /if connection != nil \{\s+_ = connection\.Close\(\)/);
+  assert.equal((redisTracing.match(/err = completedRedisContextError\(ctx\)/g) ?? []).length, 2);
+  assert.match(redisTests, /TestRedisTracingHooksRejectLateNilResults/);
+  assert.match(redisTests, /TestRedisTracingHooksObserveElapsedDeadlineAndPreserveExplicitErrors/);
+  assert.match(authorizationRequestStore, /redis\.call\("ZCARD", KEYS\[2\]\) > absoluteMaximum/);
+  assert.match(authorizationRequestStore, /redis\.call\("ZSCORE", KEYS\[2\], ARGV\[5\]\)/);
+  assert.match(authorizationRequestStore, /return \{2, payload, score\}/);
+  assert.match(authorizationRequestStore, /payload\.ExpiresAtMillis != indexExpiresAtMillis/);
+  assert.match(authorizationRequestStoreTests, /TestRedisAuthorizationRequestStoreUsesOneAtomicScriptCommand/);
+  assert.match(authorizationRequestStoreTests, /TestRedisAuthorizationRequestStoreRejectsInvalidInputsBeforeRedis/);
+  assert.match(authorizationRequestStoreTests, /TestRedisAuthorizationRequestCreateRejectsOversizedOrOrphanedIndex/);
+  assert.match(authorizationRequestStoreTests, /TestRedisAuthorizationRequestConsumeValidatesPayloadIndexExpiry/);
   assert.match(browserSessionStore, /listBrowserSessionsScript = redis\.NewScript/);
   assert.match(browserSessionStore, /ZREMRANGEBYSCORE/);
   assert.match(browserSessionStore, /StringSlice\(\)/);
   assert.match(browserSessionStoreTests, /TestRedisBrowserSessionInventoryUsesOneAtomicSnapshotCommand/);
   assert.match(browserSessionStoreTests, /TestRedisBrowserSessionInventoryFailsClosedForMissingPayloadInSnapshot/);
+  assert.match(browserSessionStore, /readBrowserSessionScript = redis\.NewScript/);
+  assert.match(browserSessionStore, /redis\.call\("ZCARD", KEYS\[2\]\) > absoluteMaximum/);
+  assert.match(browserSessionStore, /redis\.call\("ZCARD", KEYS\[3\]\) > absoluteMaximum/);
+  assert.match(browserSessionStore, /redis\.call\("STRLEN", KEYS\[1\]\)/);
+  assert.match(browserSessionStore, /redis\.call\("PTTL", idKey\) <= 0/);
+  assert.match(browserSessionStore, /globalExpiresMillis != subjectExpiresMillis/);
+  assert.match(browserSessionStore, /decoder\.DisallowUnknownFields\(\)/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionCreateAndReadUseOneAtomicScriptCommand/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionCreateAndReadRejectInvalidInputsBeforeRedis/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionCreateRejectsOversizedOrOrphanedIndexes/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionReadValidatesPayloadMappingsIndexesAndTTL/);
+  assert.match(browserSessionStore, /readBrowserSessionForDeviceUpdateScript = redis\.NewScript/);
+  assert.match(browserSessionStore, /redis\.call\("ZCARD", KEYS\[1\]\) > absoluteMaximum/);
+  assert.match(browserSessionStore, /return \{payload, token, globalScore, subjectScore\}/);
+  assert.match(browserSessionStore, /redis\.call\("ZSCORE", KEYS\[4\], token\) ~= ARGV\[7\]/);
+  assert.match(browserSessionStore, /len\(snapshot\)%4 != 0/);
+  assert.match(browserSessionStore, /decodeBrowserSessionSnapshot/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionInventoryRejectsOversizedIndexBeforeCleanup/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionInventoryValidatesMappingsIndexesTTLAndPayload/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionDeviceNameUpdateUsesTwoAtomicScriptCommands/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionDeviceNameUpdateRejectsStateChangesAfterSnapshot/);
+  assert.match(browserSessionStore, /local metadata = redis\.call\("GET", KEYS\[3\]\)/);
+  assert.match(browserSessionStore, /local mapping = redis\.call\("GET", KEYS\[1\]\)/);
+  assert.match(browserSessionStore, /browserSubjectSessionsKeyPrefix/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionRevocationsUseOneAtomicScriptCommand/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionRevocationsFailClosedForMalformedMappings/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionRevocationsFailClosedForInconsistentMappings/);
+  assert.match(browserSessionStore, /redis\.call\("ZCARD", KEYS\[1\]\) > maximum/);
+  assert.match(browserSessionStore, /redis\.call\("GET", ARGV\[4\] \.\. sessionID\) ~= subject \.\. ":" \.\. token/);
+  assert.match(browserSessionStore, /sessionIDs\[index\] = sessionID/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionRevokeAllUsesOneBoundedAtomicScriptCommand/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionRevokeAllValidatesEveryMappingBeforeDelete/);
+  assert.match(browserSessionStoreTests, /TestRedisBrowserSessionRevokeAllRejectsOversizedIndexBeforeCleanup/);
   assert.match(browserSessionStoreTests, /redis\.evalsha/);
   assert.match(sessionStore, /rotateSessionScript = redis\.NewScript/);
   assert.match(sessionStore, /sessionFamilyKeyPrefix/);
@@ -3231,6 +3418,27 @@ test('V72 repository work and target-environment boundaries match the weighted e
   assert.match(sessionStoreTests, /TestRedisRefreshSessionRotationUsesOneAtomicScriptCommand/);
   assert.match(sessionStoreTests, /TestRedisRefreshSessionRevokeUsesOneAtomicScriptCommand/);
   assert.match(sessionStoreTests, /TestRedisRefreshSessionRejectsMalformedFamilyMapping/);
+  assert.match(sessionStore, /maxRefreshSessionFamilyInventory\s*= 10000/);
+  assert.match(sessionStore, /redis\.call\("ZCARD", KEYS\[1\]\) > maximum/);
+  assert.match(sessionStore, /states\[index\] = \{id = familyID/);
+  assert.match(sessionStore, /owner ~= userHash/);
+  assert.match(sessionStore, /not globalScore or globalScore ~= absolute/);
+  assert.match(sessionStore, /validRefreshSessionFamilyID/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionUserScriptsUseOneBoundedAtomicCommand/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionCreateRejectsInvalidFamilyBoundaryBeforeRedis/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionUserScriptsValidateAllFamiliesBeforeMutation/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionUserScriptsRejectOversizedIndexBeforeCleanup/);
+  assert.match(sessionStore, /maxRefreshSessionHistory\s*= 1024/);
+  assert.match(sessionStore, /redis\.call\("SMEMBERS", usedKey\)/);
+  assert.match(sessionStore, /expired == "1" and revoked ~= "1"/);
+  assert.match(sessionStore, /redis\.call\("GET", ARGV\[8\] \.\. current\) ~= familyID/);
+  assert.match(sessionStore, /historyLimit > maxRefreshSessionHistory/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionSingleFamilyRejectsInvalidInputsBeforeRedis/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionSingleFamilyValidatesStateBeforeMutation/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionSingleFamilyValidatesBidirectionalTokenMappings/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionForgedMappingCannotRevokeValidFamily/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionRotationRejectsMappedNewTokenBeforeMutation/);
+  assert.match(sessionStoreTests, /TestRedisRefreshSessionSingleFamilyRejectsOversizedUsedIndexBeforeMutation/);
   assert.match(v12Backlog, /V12-01/);
   assert.match(v12Backlog, /V12-10/);
   assert.match(v12Backlog, /状态：\*\*已完成\*\*/);
@@ -3431,9 +3639,16 @@ test('V72 repository work and target-environment boundaries match the weighted e
   assert.match(currentBacklog, /2,592 \| 18/);
   assert.match(httpClient, /outbound := request\.WithContext\(ctx\)/);
   assert.match(httpClient, /outbound\.Header = request\.Header\.Clone\(\)/);
+  assert.match(httpClient, /var errInvalidTransportResponse = errors\.New/);
+  assert.match(httpClient, /func completedHTTPContextError\(ctx context\.Context\) error/);
+  assert.match(httpClient, /func authoritativeHTTPResult\(ctx context\.Context, response \*http\.Response, err error\)/);
+  assert.match(httpClient, /func closeHTTPRequestBody\(request \*http\.Request\)/);
+  assert.match(httpClient, /func closeHTTPResponseBody\(response \*http\.Response\)/);
   assert.match(httpClientTests, /func TestCloneRequestForPropagationOnlyIsolatesMutableHeaders/);
   assert.match(httpClientTests, /func BenchmarkCloneRequestForPropagation/);
   assert.match(httpClientTests, /legacy-deep-clone/);
+  assert.match(httpClientTests, /func TestTracingTransportRejectsCompletedContextResultsAndOwnsBodies/);
+  assert.match(httpClientTests, /func TestCompletedHTTPContextErrorObservesElapsedDeadlineWithoutAllocations/);
   assert.match(responseBody, /ErrResponseBodyTooLarge/);
   assert.match(responseBody, /func LimitResponseBody\(response \*http\.Response, maxBytes int64\) error/);
   assert.match(responseBody, /response\.ContentLength > maxBytes/);
@@ -3477,6 +3692,7 @@ test('V72 repository work and target-environment boundaries match the weighted e
     'TestCloseRetryResponseBoundsDrainByDeclaredLength',
     'TestCloseRetryResponseClosesAfterReadFailure',
     'TestRetryTransportCancellationInterruptsBackoff',
+    'TestRetryTransportRejectsLateNilResultsWithoutRetryOrJitter',
     'TestRetryTransportKeepsResponseWhenBackoffCannotFitDeadline',
     'TestRetryTransportKeepsResponseWhenRetryAfterExceedsLocalBudget',
     'TestRetryTransportKeepsResponseWhenRetryAfterCannotFitDeadline',
@@ -3819,6 +4035,7 @@ test('V72 repository work and target-environment boundaries match the weighted e
     'TestCircuitBreakerObserverReportsFixedSequence',
     'TestCircuitBreakerObserverPanicIsIsolatedAndRunsOutsideStateLock',
     'TestCircuitBreakerCountsLogicalRetryResultAndIgnoresCallerCancellation',
+    'TestCircuitBreakerRejectsCompletedRequestsWithoutPollutingState',
     'TestCircuitBreakerTracingUsesFixedOpenClassification',
     'TestNewValidatesAndDefaultsCircuitBreakerConfiguration',
   ]) {
@@ -3896,6 +4113,10 @@ test('V72 repository work and target-environment boundaries match the weighted e
   assertEvidenceInput('docs/adr/0003-http-public-api-boundary.md');
   assertEvidenceInput('Framework/sqlclient/client.go');
   assertEvidenceInput('Framework/sqlclient/client_test.go');
+  assertEvidenceInput('docs/待优化/待优化V81.md');
+  assertEvidenceInput('docs/待优化/待优化V82.md');
+  assertEvidenceInput('docs/待优化/待优化V83.md');
+  assertEvidenceInput('docs/待优化/待优化V84.md');
   assertEvidenceInput('docs/待优化/待优化V50.md');
   assertEvidenceInput('docs/待优化/待优化V51.md');
   assertEvidenceInput('docs/待优化/待优化V52.md');
@@ -3909,6 +4130,10 @@ test('V72 repository work and target-environment boundaries match the weighted e
   assert.match(sqlClient, /commit work after that cancellation/);
   assert.match(sqlClientTests, /func TestTransactionDoesNotEnterCallbackAfterBeginCancellation/);
   assert.match(sqlClientTests, /func TestTransactionRollsBackWhenCanceledBeforeCommit/);
+  assert.match(sqlClient, /func completedContextError\(ctx context\.Context\) error/);
+  assert.match(sqlClient, /!time\.Now\(\)\.Before\(deadline\)/);
+  assert.match(sqlClientTests, /func TestSQLClientRejectsLateNilDriverResults/);
+  assert.match(sqlClientTests, /func TestTransactionOutboxRejectsLateNilDriverResultAndRollsBack/);
   assert.match(sqlClient, /var ErrOutboxEnqueue/);
   assert.match(sqlClient, /func \(transaction \*Tx\) EnqueueOutbox/);
   assert.doesNotMatch(sqlClient, /func \(client \*Client\) EnqueueOutbox/);
@@ -4829,10 +5054,13 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(client, /messaging\.system\.name/);
   assert.match(client, /messaging\.operation\.type/);
   assert.match(client, /goexample\.messaging\.result/);
+  assert.match(client, /func completedContextError/);
+  assert.match(client, /completedContextError\(operationContext\)/);
   assert.doesNotMatch(client, /messaging\.destination|messaging\.message\.id|span\.RecordError/);
   assert.match(clientTests, /TestPublishClonesMessageAndInjectsCurrentTraceContext/);
   assert.match(clientTests, /TestProcessExtractsRemoteTraceContextAndClonesMessage/);
   assert.match(clientTests, /TestFailuresTimeoutsAndCancellationUseFixedPrivateResults/);
+  assert.match(clientTests, /TestQueueCallbacksRespectCancellationBeforeAndAfterInvocation/);
   assert.match(clientTests, /TestMessageLimitsRejectBeforeBrokerOrHandlerExecution/);
   assert.match(clientTests, /TestPublishCountsInjectedTraceHeadersAgainstConfiguredLimits/);
   assert.match(clientTests, /TestCallbackPanicEndsSpanAndIsRethrown/);
@@ -4862,6 +5090,7 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(worker, /ErrDeliveryLeaseExtension/);
   assert.match(worker, /func \(group \*WorkerGroup\) extendDeliveryLease/);
   assert.match(worker, /func callDeliveryLeaseExtension/);
+  assert.match(worker, /func deliveryCallbackResult/);
   assert.match(worker, /func deliveryBackoff/);
   assert.match(worker, /"math\/rand\/v2"/);
   assert.match(worker, /randomInt64N\s+func\(int64\) int64/);
@@ -4893,6 +5122,10 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(workerTests, /TestWorkerGroupBoundsAndRedactsLeaseExtensionFailure/);
   assert.match(workerTests, /TestWorkerGroupCancellationDuringRetryDoesNotSettleDelivery/);
   assert.match(workerTests, /TestWorkerGroupCancellationDuringSettlementIsANormalStop/);
+  assert.match(workerTests, /TestWorkerGroupRejectsLateSettlementResults/);
+  assert.match(workerTests, /TestDeliveryCallbackResultMakesChildDeadlineAuthoritative/);
+  assert.match(workerTests, /TestWorkerGroupRetriesLateNilHandlerAndDeadLetters/);
+  assert.match(workerTests, /TestWorkerGroupRejectsLateLeaseExtensionResult/);
   assert.match(workerTests, /TestWorkerGroupRejectsInvalidDeliveryAndIsolatesDeliveryObserverPanic/);
   assert.match(workerTests, /TestMinimumDeliveryLeaseUsesEffectiveRetryBudget/);
   assert.match(workerTests, /TestMinimumDeliveryLeaseRejectsInvalidAndOverflowingBudgets/);
@@ -5423,7 +5656,8 @@ test('external OIDC/JWKS bearer verification stays bounded and separate from dem
   assert.match(verifier, /maxJWKSResponseBytes\s*=\s*1 << 20/);
   assert.match(verifier, /maxJWKSKeys\s*=\s*100/);
   assert.match(verifier, /unknownKeyRefreshInterval\s*=\s*5 \* time\.Second/);
-  assert.match(verifier, /refreshMu\s+sync\.Mutex/);
+  assert.match(verifier, /refreshGate\s+chan struct\{\}/);
+  assert.doesNotMatch(verifier, /refreshMu\s+sync\.Mutex/);
   assert.match(verifier, /io\.LimitReader\(response\.Body, maxJWKSResponseBytes\+1\)/);
   assert.match(verifier, /jwt\.WithIssuer\(verifier\.issuer\)/);
   assert.match(verifier, /jwt\.WithAudience\(verifier\.audience\)/);

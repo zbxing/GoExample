@@ -175,7 +175,19 @@ func (client *Client) run(
 		}
 		finishSpan(operationContext, span, err)
 	}()
+	if contextErr := completedContextError(operationContext); contextErr != nil {
+		err = contextErr
+		return err
+	}
 	err = callback(operationContext)
+	if err == nil {
+		// A callback may return nil concurrently with its timeout. The
+		// operation budget is authoritative, so a late nil cannot become
+		// success (or an acknowledgement in reliable delivery mode).
+		if contextErr := completedContextError(operationContext); contextErr != nil {
+			err = contextErr
+		}
+	}
 	return err
 }
 
@@ -367,6 +379,19 @@ func classifyResult(ctx context.Context, err error) (string, string) {
 	default:
 		return "failure", "messaging operation failed"
 	}
+}
+
+// completedContextError also observes a deadline whose timer has elapsed but
+// whose Done channel has not been scheduled yet. This closes the narrow select
+// race at callback boundaries without changing normal context cancellation.
+func completedContextError(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if deadline, ok := ctx.Deadline(); ok && !time.Now().Before(deadline) {
+		return context.DeadlineExceeded
+	}
+	return nil
 }
 
 func withDefaults(config Config) Config {

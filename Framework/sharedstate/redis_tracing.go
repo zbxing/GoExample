@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel"
@@ -34,6 +35,15 @@ func (hook redisTracingHook) DialHook(next redis.DialHook) redis.DialHook {
 	return func(ctx context.Context, network, address string) (net.Conn, error) {
 		ctx, span := hook.start(ctx, "connect")
 		connection, err := next(ctx, network, address)
+		if err == nil {
+			if contextErr := completedRedisContextError(ctx); contextErr != nil {
+				if connection != nil {
+					_ = connection.Close()
+				}
+				connection = nil
+				err = contextErr
+			}
+		}
 		finishRedisSpan(ctx, span, err)
 		return connection, err
 	}
@@ -47,6 +57,9 @@ func (hook redisTracingHook) ProcessHook(next redis.ProcessHook) redis.ProcessHo
 		}
 		ctx, span := hook.start(ctx, operation)
 		err := next(ctx, command)
+		if err == nil {
+			err = completedRedisContextError(ctx)
+		}
 		finishRedisSpan(ctx, span, err)
 		return err
 	}
@@ -65,9 +78,25 @@ func (hook redisTracingHook) ProcessPipelineHook(next redis.ProcessPipelineHook)
 			),
 		)
 		err := next(ctx, commands)
+		if err == nil {
+			err = completedRedisContextError(ctx)
+		}
 		finishRedisSpan(ctx, span, err)
 		return err
 	}
+}
+
+// completedRedisContextError also observes a deadline whose timer has elapsed
+// but whose Done channel has not been scheduled yet. Hooks use it only after a
+// nil dependency result, so explicit backend errors remain authoritative.
+func completedRedisContextError(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if deadline, ok := ctx.Deadline(); ok && !time.Now().Before(deadline) {
+		return context.DeadlineExceeded
+	}
+	return nil
 }
 
 func (hook redisTracingHook) start(ctx context.Context, operation string) (context.Context, trace.Span) {

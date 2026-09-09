@@ -133,6 +133,9 @@ func (client *Client) Check(ctx context.Context) error {
 	defer cancel()
 	ctx, span := startSpan(ctx, client.tracer, "CHECK")
 	err = client.db.PingContext(ctx)
+	if err == nil {
+		err = completedContextError(ctx)
+	}
 	finishSpan(ctx, span, err)
 	return err
 }
@@ -249,7 +252,7 @@ func (client *Client) transactionAttempt(ctx context.Context, options *sql.TxOpt
 	// A driver may successfully begin a transaction while the caller is
 	// canceled concurrently. Do not enter user code in that state: the
 	// callback could perform external side effects before its first SQL call.
-	if ctxErr := ctx.Err(); ctxErr != nil {
+	if ctxErr := completedContextError(ctx); ctxErr != nil {
 		rollbackErr := databaseTx.Rollback()
 		if rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
 			ctxErr = errors.Join(ctxErr, rollbackErr)
@@ -282,7 +285,7 @@ func (client *Client) transactionAttempt(ctx context.Context, options *sql.TxOpt
 	// A callback may finish successfully just as the caller is canceled. Do not
 	// commit work after that cancellation: some drivers can still accept
 	// Commit even though the transaction context is already done.
-	if ctxErr := ctx.Err(); ctxErr != nil {
+	if ctxErr := completedContextError(ctx); ctxErr != nil {
 		rollbackErr := databaseTx.Rollback()
 		if rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
 			ctxErr = errors.Join(ctxErr, rollbackErr)
@@ -392,6 +395,12 @@ func exec(ctx context.Context, target executor, tracer trace.Tracer, timeout tim
 	defer cancel()
 	ctx, span := startSpan(ctx, tracer, operation)
 	result, err := target.ExecContext(ctx, statement, arguments...)
+	if err == nil {
+		if contextErr := completedContextError(ctx); contextErr != nil {
+			result = nil
+			err = contextErr
+		}
+	}
 	finishSpan(ctx, span, err)
 	return result, err
 }
@@ -405,8 +414,14 @@ func execVersioned(ctx context.Context, target executor, tracer trace.Tracer, ti
 	ctx, span := startSpan(ctx, tracer, "UPDATE")
 	result, err := target.ExecContext(ctx, statement, arguments...)
 	if err == nil {
+		err = completedContextError(ctx)
+	}
+	if err == nil {
 		var affected int64
 		affected, err = rowsAffected(result)
+		if err == nil {
+			err = completedContextError(ctx)
+		}
 		if err == nil {
 			switch {
 			case affected == 0:
@@ -429,10 +444,16 @@ func enqueueOutbox(ctx context.Context, target executor, tracer trace.Tracer, ti
 	ctx, span := startSpan(ctx, tracer, "OUTBOX")
 	result, err := target.ExecContext(ctx, statement, arguments...)
 	if err == nil {
+		err = completedContextError(ctx)
+	}
+	if err == nil {
 		affected, rowsErr := rowsAffected(result)
+		contextErr := completedContextError(ctx)
 		switch {
 		case rowsErr != nil:
 			err = errors.Join(ErrOutboxEnqueue, rowsErr)
+		case contextErr != nil:
+			err = contextErr
 		case affected != 1:
 			err = ErrOutboxEnqueue
 		}
@@ -482,7 +503,13 @@ func query(ctx context.Context, target queryer, tracer trace.Tracer, timeout tim
 		err = errors.Join(err, rows.Close(), rows.Err())
 		finishSpan(ctx, span, err)
 	}()
+	if contextErr := completedContextError(ctx); contextErr != nil {
+		return contextErr
+	}
 	err = consume(rows)
+	if err == nil {
+		err = completedContextError(ctx)
+	}
 	return err
 }
 
@@ -494,6 +521,9 @@ func scanRow(ctx context.Context, target queryer, tracer trace.Tracer, timeout t
 	defer cancel()
 	ctx, span := startSpan(ctx, tracer, operation)
 	err = target.QueryRowContext(ctx, statement, arguments...).Scan(destinations...)
+	if err == nil {
+		err = completedContextError(ctx)
+	}
 	finishSpan(ctx, span, err)
 	return err
 }
@@ -589,6 +619,20 @@ func boundedContext(ctx context.Context, timeout time.Duration) (context.Context
 	}
 	bounded, cancel := context.WithTimeout(ctx, timeout)
 	return bounded, cancel, nil
+}
+
+// completedContextError also observes a deadline whose timer has elapsed but
+// whose Done channel has not been scheduled yet. Callers use it only at
+// operation result boundaries, so an explicit driver or consumer error remains
+// authoritative while a late nil result cannot be reported as success.
+func completedContextError(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if deadline, ok := ctx.Deadline(); ok && !time.Now().Before(deadline) {
+		return context.DeadlineExceeded
+	}
+	return nil
 }
 
 func withDefaults(config Config) Config {

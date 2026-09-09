@@ -24,6 +24,8 @@ import (
 
 const instrumentationName = "github.com/zbxing/goexample/Framework/httpclient"
 
+var errInvalidTransportResponse = errors.New("outbound HTTP transport returned no response")
+
 // Config defines finite request, connection, pooling, and response-header
 // budgets for an outbound HTTP client. Zero values select conservative
 // defaults; negative values are rejected.
@@ -120,11 +122,20 @@ func (transport tracingTransport) RoundTrip(request *http.Request) (*http.Respon
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(attribute.String("http.request.method", method)),
 	)
+	if contextErr := completedHTTPContextError(ctx); contextErr != nil {
+		closeHTTPRequestBody(request)
+		errorType, description := classifyError(ctx, contextErr)
+		span.SetAttributes(attribute.String("error.type", errorType))
+		span.SetStatus(codes.Error, description)
+		span.End()
+		return nil, contextErr
+	}
 
 	outbound := cloneRequestForPropagation(request, ctx)
 	transport.propagator.Inject(ctx, propagation.HeaderCarrier(outbound.Header))
 
 	response, err := transport.base.RoundTrip(outbound)
+	response, err = authoritativeHTTPResult(ctx, response, err)
 	if err != nil {
 		errorType, description := classifyError(ctx, err)
 		span.SetAttributes(attribute.String("error.type", errorType))
@@ -136,7 +147,7 @@ func (transport tracingTransport) RoundTrip(request *http.Request) (*http.Respon
 		span.SetAttributes(attribute.String("error.type", "invalid_response"))
 		span.SetStatus(codes.Error, "outbound request returned no response")
 		span.End()
-		return nil, nil
+		return nil, errInvalidTransportResponse
 	}
 
 	span.SetAttributes(attribute.Int("http.response.status_code", response.StatusCode))
@@ -155,6 +166,45 @@ func (transport tracingTransport) RoundTrip(request *http.Request) (*http.Respon
 		}
 	}
 	return response, nil
+}
+
+// completedHTTPContextError also observes a deadline whose timer has elapsed
+// but whose Done channel has not been scheduled yet.
+func completedHTTPContextError(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if deadline, ok := ctx.Deadline(); ok && !time.Now().Before(deadline) {
+		return context.DeadlineExceeded
+	}
+	return nil
+}
+
+// authoritativeHTTPResult is used only at RoundTripper boundaries. Explicit
+// transport errors remain authoritative; responses that cannot be returned are
+// closed by the first layer that rejects them.
+func authoritativeHTTPResult(ctx context.Context, response *http.Response, err error) (*http.Response, error) {
+	if err != nil {
+		closeHTTPResponseBody(response)
+		return nil, err
+	}
+	if contextErr := completedHTTPContextError(ctx); contextErr != nil {
+		closeHTTPResponseBody(response)
+		return nil, contextErr
+	}
+	return response, nil
+}
+
+func closeHTTPRequestBody(request *http.Request) {
+	if request != nil && request.Body != nil {
+		_ = request.Body.Close()
+	}
+}
+
+func closeHTTPResponseBody(response *http.Response) {
+	if response != nil && response.Body != nil {
+		_ = response.Body.Close()
+	}
 }
 
 func cloneRequestForPropagation(request *http.Request, ctx context.Context) *http.Request {

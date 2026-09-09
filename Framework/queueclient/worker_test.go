@@ -835,7 +835,7 @@ func TestWorkerGroupCancellationDuringSettlementIsANormalStop(t *testing.T) {
 		t.Fatalf("New() error = %v", err)
 	}
 	settling := make(chan struct{})
-	var settlementCanceled atomic.Bool
+	settlementCanceled := make(chan struct{})
 	workerObserver := &workerObserverRecorder{}
 	deliveryObserver := &deliveryObserverRecorder{}
 	group, err := NewWorkerGroup(client, WorkerConfig{
@@ -845,7 +845,7 @@ func TestWorkerGroupCancellationDuringSettlementIsANormalStop(t *testing.T) {
 				Acknowledge: func(ctx context.Context) error {
 					close(settling)
 					<-ctx.Done()
-					settlementCanceled.Store(true)
+					close(settlementCanceled)
 					return ctx.Err()
 				},
 				DeadLetter: func(context.Context) error {
@@ -876,8 +876,10 @@ func TestWorkerGroupCancellationDuringSettlementIsANormalStop(t *testing.T) {
 	if err := group.Wait(); err != nil {
 		t.Fatalf("Wait() error = %v", err)
 	}
-	if !settlementCanceled.Load() {
-		t.Fatal("settlement callback did not observe cancellation")
+	select {
+	case <-settlementCanceled:
+	case <-time.After(time.Second):
+		t.Fatal("settlement callback did not observe cancellation within the test budget")
 	}
 	if events := deliveryObserver.snapshot(); events["acknowledged"] != 0 || events["retried"] != 0 ||
 		events["dead_lettered"] != 0 || events["settlement_failed"] != 0 {
@@ -885,6 +887,158 @@ func TestWorkerGroupCancellationDuringSettlementIsANormalStop(t *testing.T) {
 	}
 	if workerObserver.failed.Load() != 0 {
 		t.Fatalf("worker failures after cancellation = %d", workerObserver.failed.Load())
+	}
+}
+
+func TestWorkerGroupRejectsLateSettlementResults(t *testing.T) {
+	for _, name := range []string{"ack", "dead-letter"} {
+		t.Run(name, func(t *testing.T) {
+			client, err := New(Config{System: SystemNATS})
+			if err != nil {
+				t.Fatalf("New() error = %v", err)
+			}
+			observer := &deliveryObserverRecorder{}
+			group, err := NewWorkerGroup(client, WorkerConfig{
+				ReceiveDelivery:  func(context.Context) (Delivery, error) { return Delivery{}, nil },
+				Handle:           func(context.Context, Message) error { return nil },
+				DeliveryObserver: observer,
+				Retry: DeliveryRetryConfig{
+					MaxAttempts:       1,
+					InitialBackoff:    time.Millisecond,
+					MaxBackoff:        time.Millisecond,
+					SettlementTimeout: 5 * time.Millisecond,
+				},
+			})
+			if err != nil {
+				t.Fatalf("NewWorkerGroup() error = %v", err)
+			}
+			settlement := func(ctx context.Context) error {
+				<-ctx.Done()
+				return nil
+			}
+			delivery := Delivery{Acknowledge: settlement, DeadLetter: settlement}
+			var success int32
+			var callback func(context.Context) error
+			if name == "ack" {
+				callback = delivery.Acknowledge
+			} else {
+				callback = delivery.DeadLetter
+			}
+			if err := group.settleDelivery(context.Background(), callback, func() { success++ }); !errors.Is(err, ErrDeliverySettlement) {
+				t.Fatalf("late settlement error = %v, want ErrDeliverySettlement", err)
+			}
+			if success != 0 || observer.settlementFailed.Load() != 1 || observer.acknowledged.Load() != 0 || observer.deadLettered.Load() != 0 {
+				t.Fatalf("late settlement events = success:%d observer:%+v", success, observer.snapshot())
+			}
+		})
+	}
+}
+
+func TestDeliveryCallbackResultMakesChildDeadlineAuthoritative(t *testing.T) {
+	expired, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Millisecond))
+	<-expired.Done()
+	defer cancel()
+	if err := deliveryCallbackResult(context.Background(), expired, nil, ErrDeliverySettlement); !errors.Is(err, ErrDeliverySettlement) {
+		t.Fatalf("expired child result = %v, want ErrDeliverySettlement", err)
+	}
+
+	parent, cancelParent := context.WithCancel(context.Background())
+	cancelParent()
+	if err := deliveryCallbackResult(parent, context.Background(), nil, ErrDeliverySettlement); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled parent result = %v, want context.Canceled", err)
+	}
+
+	if err := deliveryCallbackResult(context.Background(), context.Background(), errors.New("private callback failure"), ErrDeliverySettlement); !errors.Is(err, ErrDeliverySettlement) {
+		t.Fatalf("callback failure result = %v, want ErrDeliverySettlement", err)
+	}
+}
+
+func TestWorkerGroupRetriesLateNilHandlerAndDeadLetters(t *testing.T) {
+	client, err := New(Config{System: SystemNATS, ProcessTimeout: 5 * time.Millisecond})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	observer := &deliveryObserverRecorder{}
+	deadLettered := make(chan struct{})
+	var attempts atomic.Int32
+	var acknowledgements atomic.Int32
+	var receives atomic.Int32
+	groupContext, cancelGroup := context.WithCancel(context.Background())
+	defer cancelGroup()
+	group, err := NewWorkerGroup(client, WorkerConfig{
+		ReceiveDelivery: func(ctx context.Context) (Delivery, error) {
+			if receives.Add(1) > 1 {
+				<-ctx.Done()
+				return Delivery{}, ctx.Err()
+			}
+			return Delivery{
+				Message: Message{Body: []byte("late handler")},
+				Acknowledge: func(context.Context) error {
+					acknowledgements.Add(1)
+					return nil
+				},
+				DeadLetter: func(context.Context) error {
+					close(deadLettered)
+					return nil
+				},
+			}, nil
+		},
+		Handle: func(ctx context.Context, _ Message) error {
+			attempts.Add(1)
+			<-ctx.Done()
+			return nil
+		},
+		DeliveryObserver: observer,
+		Retry: DeliveryRetryConfig{
+			MaxAttempts:       2,
+			InitialBackoff:    time.Millisecond,
+			MaxBackoff:        time.Millisecond,
+			SettlementTimeout: time.Second,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewWorkerGroup() error = %v", err)
+	}
+	if err := group.Start(groupContext); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	select {
+	case <-deadLettered:
+	case <-time.After(time.Second):
+		t.Fatal("late handler delivery was not dead-lettered")
+	}
+	waitForAtomicInt32(t, &observer.deadLettered, 1, "late handler dead-letter observation")
+	cancelGroup()
+	if err := group.Wait(); err != nil {
+		t.Fatalf("Wait() error = %v", err)
+	}
+	if attempts.Load() != 2 || acknowledgements.Load() != 0 || observer.retried.Load() != 1 || observer.deadLettered.Load() != 1 {
+		t.Fatalf("late handler attempts/acks/events = %d/%d/%+v", attempts.Load(), acknowledgements.Load(), observer.snapshot())
+	}
+}
+
+func TestWorkerGroupRejectsLateLeaseExtensionResult(t *testing.T) {
+	client, err := New(Config{System: SystemNATS})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	group, err := NewWorkerGroup(client, WorkerConfig{
+		ReceiveDelivery: func(context.Context) (Delivery, error) { return Delivery{}, nil },
+		Handle:          func(context.Context, Message) error { return nil },
+		Retry: DeliveryRetryConfig{
+			LeaseExtensionInterval: 10 * time.Millisecond,
+			LeaseExtensionTimeout:  5 * time.Millisecond,
+		},
+	})
+	if err != nil {
+		t.Fatalf("NewWorkerGroup() error = %v", err)
+	}
+	err = group.callDeliveryLeaseExtension(context.Background(), func(ctx context.Context) error {
+		<-ctx.Done()
+		return nil
+	})
+	if !errors.Is(err, ErrDeliveryLeaseExtension) {
+		t.Fatalf("late lease extension error = %v, want ErrDeliveryLeaseExtension", err)
 	}
 }
 

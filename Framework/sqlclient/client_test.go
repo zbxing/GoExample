@@ -836,6 +836,161 @@ func TestTransactionRollsBackWhenCanceledBeforeCommit(t *testing.T) {
 	}
 }
 
+func TestCompletedContextErrorObservesCancellationAndElapsedDeadline(t *testing.T) {
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := completedContextError(canceled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled context error = %v, want context.Canceled", err)
+	}
+
+	elapsed := deadlineOnlyContext{
+		Context:  context.Background(),
+		deadline: time.Now().Add(-time.Millisecond),
+	}
+	if err := completedContextError(elapsed); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("elapsed deadline error = %v, want context.DeadlineExceeded", err)
+	}
+	if err := completedContextError(context.Background()); err != nil {
+		t.Fatalf("live context error = %v, want nil", err)
+	}
+}
+
+func TestSQLClientRejectsLateNilDriverResults(t *testing.T) {
+	tests := []struct {
+		name string
+		run  func(*Client, *scriptedState, context.Context, context.CancelFunc) (bool, error)
+	}{
+		{
+			name: "check",
+			run: func(client *Client, state *scriptedState, ctx context.Context, cancel context.CancelFunc) (bool, error) {
+				state.pingCancel = cancel
+				return true, client.Check(ctx)
+			},
+		},
+		{
+			name: "exec",
+			run: func(client *Client, state *scriptedState, ctx context.Context, cancel context.CancelFunc) (bool, error) {
+				state.execCancel = cancel
+				result, err := client.Exec(ctx, "EXEC late-private-statement", "late-private-argument")
+				return result == nil, err
+			},
+		},
+		{
+			name: "versioned",
+			run: func(client *Client, state *scriptedState, ctx context.Context, cancel context.CancelFunc) (bool, error) {
+				state.execCancel = cancel
+				return true, client.ExecVersioned(ctx, "VERSIONED late-private-statement", "late-private-argument")
+			},
+		},
+		{
+			name: "versioned rows affected",
+			run: func(client *Client, state *scriptedState, ctx context.Context, cancel context.CancelFunc) (bool, error) {
+				state.rowsAffectedCancel = cancel
+				return true, client.ExecVersioned(ctx, "VERSIONED_LATE_ROWS private-statement", "late-private-argument")
+			},
+		},
+		{
+			name: "query",
+			run: func(client *Client, state *scriptedState, ctx context.Context, cancel context.CancelFunc) (bool, error) {
+				state.queryCancel = cancel
+				consumerCalls := 0
+				err := client.Query(ctx, "ROWS late-private-statement", []any{"late-private-argument"}, func(*sql.Rows) error {
+					consumerCalls++
+					return nil
+				})
+				return consumerCalls == 0 && state.rowsClosed.Load() == 1, err
+			},
+		},
+		{
+			name: "scan",
+			run: func(client *Client, state *scriptedState, ctx context.Context, cancel context.CancelFunc) (bool, error) {
+				state.queryCancel = cancel
+				var value int64
+				return true, client.ScanRow(ctx, "ROW late-private-statement", []any{"late-private-argument"}, &value)
+			},
+		},
+		{
+			name: "lock",
+			run: func(client *Client, state *scriptedState, ctx context.Context, cancel context.CancelFunc) (bool, error) {
+				state.queryCancel = cancel
+				var value int64
+				return true, client.LockRow(ctx, "LOCK late-private-statement", []any{"late-private-argument"}, &value)
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			database, state := openScriptedDatabase(t)
+			client, recorder, provider := newTracedClient(t, database, Config{})
+			defer func() {
+				_ = client.Close()
+				_ = provider.Shutdown(context.Background())
+			}()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			ownershipOK, err := test.run(client, state, ctx, cancel)
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("operation error = %v, want context.Canceled", err)
+			}
+			if !ownershipOK {
+				t.Fatal("late result retained a result, entered the consumer, or failed to close rows")
+			}
+			spans := recorder.Ended()
+			if len(spans) != 1 {
+				t.Fatalf("ended spans = %d, want 1", len(spans))
+			}
+			assertDatabaseSpanAttributes(t, spans[0], "canceled")
+			assertSpanExcludes(t, spans[0], "late-private-statement", "late-private-argument")
+		})
+	}
+}
+
+func TestTransactionOutboxRejectsLateNilDriverResultAndRollsBack(t *testing.T) {
+	for _, boundary := range []string{"exec result", "rows affected"} {
+		t.Run(boundary, func(t *testing.T) {
+			database, state := openScriptedDatabase(t)
+			client, recorder, provider := newTracedClient(t, database, Config{})
+			defer func() {
+				_ = client.Close()
+				_ = provider.Shutdown(context.Background())
+			}()
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			err := client.Transaction(ctx, nil, func(transactionContext context.Context, transaction *Tx) error {
+				statement := "OUTBOX late-private-statement"
+				if boundary == "exec result" {
+					state.execCancel = cancel
+				} else {
+					state.rowsAffectedCancel = cancel
+					statement = "OUTBOX_LATE_ROWS private-statement"
+				}
+				return transaction.EnqueueOutbox(transactionContext, statement, "late-private-payload")
+			})
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("Transaction(EnqueueOutbox) error = %v, want context.Canceled", err)
+			}
+			rollbackDeadline := time.Now().Add(time.Second)
+			for state.rollbacks.Load() == 0 && time.Now().Before(rollbackDeadline) {
+				time.Sleep(time.Millisecond)
+			}
+			if state.commits.Load() != 0 || state.rollbacks.Load() != 1 {
+				t.Fatalf("commits/rollbacks = %d/%d, want 0/1", state.commits.Load(), state.rollbacks.Load())
+			}
+			spans := recorder.Ended()
+			if len(spans) != 2 {
+				t.Fatalf("ended spans = %d, want 2", len(spans))
+			}
+			for _, span := range spans {
+				assertDatabaseSpanAttributes(t, span, "canceled")
+				assertSpanExcludes(t, span, "late-private-statement", "late-private-payload")
+			}
+		})
+	}
+}
+
 func TestNilReceiversAndContextsFailWithoutPanic(t *testing.T) {
 	var client *Client
 	if err := client.Check(context.Background()); !errors.Is(err, errNilClient) {
@@ -948,18 +1103,31 @@ func (scripted *scriptedDriver) Open(name string) (driver.Conn, error) {
 }
 
 type scriptedState struct {
-	pings            atomic.Int64
-	closes           atomic.Int64
-	commits          atomic.Int64
-	rollbacks        atomic.Int64
-	rowsClosed       atomic.Int64
-	serializable     atomic.Bool
-	readOnly         atomic.Bool
-	commitFailures   atomic.Int64
-	rollbackFailures atomic.Int64
-	commitSQLState   string
-	beginCancel      context.CancelFunc
+	pings              atomic.Int64
+	closes             atomic.Int64
+	commits            atomic.Int64
+	rollbacks          atomic.Int64
+	rowsClosed         atomic.Int64
+	serializable       atomic.Bool
+	readOnly           atomic.Bool
+	commitFailures     atomic.Int64
+	rollbackFailures   atomic.Int64
+	commitSQLState     string
+	beginCancel        context.CancelFunc
+	pingCancel         context.CancelFunc
+	execCancel         context.CancelFunc
+	queryCancel        context.CancelFunc
+	rowsAffectedCancel context.CancelFunc
 }
+
+type deadlineOnlyContext struct {
+	context.Context
+	deadline time.Time
+}
+
+func (ctx deadlineOnlyContext) Deadline() (time.Time, bool) { return ctx.deadline, true }
+func (deadlineOnlyContext) Done() <-chan struct{}           { return nil }
+func (deadlineOnlyContext) Err() error                      { return nil }
 
 type scriptedConnection struct {
 	state *scriptedState
@@ -990,10 +1158,18 @@ func (connection *scriptedConnection) BeginTx(_ context.Context, options driver.
 
 func (connection *scriptedConnection) Ping(context.Context) error {
 	connection.state.pings.Add(1)
+	if connection.state.pingCancel != nil {
+		connection.state.pingCancel()
+		connection.state.pingCancel = nil
+	}
 	return nil
 }
 
 func (connection *scriptedConnection) ExecContext(ctx context.Context, statement string, _ []driver.NamedValue) (driver.Result, error) {
+	if connection.state.execCancel != nil {
+		connection.state.execCancel()
+		connection.state.execCancel = nil
+	}
 	switch {
 	case strings.HasPrefix(statement, "OUTBOX_FAIL"):
 		return nil, errors.New("outbox driver failure contains raw-driver-secret")
@@ -1008,6 +1184,8 @@ func (connection *scriptedConnection) ExecContext(ctx context.Context, statement
 		return driver.RowsAffected(2), nil
 	case strings.HasPrefix(statement, "OUTBOX_RESULT_FAIL"):
 		return scriptedResultError{}, nil
+	case strings.HasPrefix(statement, "OUTBOX_LATE_ROWS"):
+		return scriptedCancelingResult{cancel: connection.takeRowsAffectedCancel()}, nil
 	case strings.HasPrefix(statement, "FAIL"):
 		return nil, errors.New("driver failure contains raw-driver-secret")
 	case strings.HasPrefix(statement, "WAIT"):
@@ -1019,12 +1197,27 @@ func (connection *scriptedConnection) ExecContext(ctx context.Context, statement
 		return driver.RowsAffected(2), nil
 	case strings.HasPrefix(statement, "VERSIONED_RESULT_FAIL"):
 		return scriptedResultError{}, nil
+	case strings.HasPrefix(statement, "VERSIONED_LATE_ROWS"):
+		return scriptedCancelingResult{cancel: connection.takeRowsAffectedCancel()}, nil
 	default:
 		return driver.RowsAffected(1), nil
 	}
 }
 
 type scriptedResultError struct{}
+
+type scriptedCancelingResult struct {
+	cancel context.CancelFunc
+}
+
+func (scriptedCancelingResult) LastInsertId() (int64, error) { return 0, nil }
+
+func (result scriptedCancelingResult) RowsAffected() (int64, error) {
+	if result.cancel != nil {
+		result.cancel()
+	}
+	return 1, nil
+}
 
 func (scriptedResultError) LastInsertId() (int64, error) {
 	return 0, errors.New("last insert ID raw secret")
@@ -1035,6 +1228,10 @@ func (scriptedResultError) RowsAffected() (int64, error) {
 }
 
 func (connection *scriptedConnection) QueryContext(ctx context.Context, statement string, _ []driver.NamedValue) (driver.Rows, error) {
+	if connection.state.queryCancel != nil {
+		connection.state.queryCancel()
+		connection.state.queryCancel = nil
+	}
 	switch {
 	case strings.HasPrefix(statement, "FAIL"):
 		return nil, errors.New("driver failure contains raw-driver-secret")
@@ -1050,6 +1247,12 @@ func (connection *scriptedConnection) QueryContext(ctx context.Context, statemen
 	default:
 		return &scriptedRows{state: connection.state, values: [][]driver.Value{{int64(42)}}}, nil
 	}
+}
+
+func (connection *scriptedConnection) takeRowsAffectedCancel() context.CancelFunc {
+	cancel := connection.state.rowsAffectedCancel
+	connection.state.rowsAffectedCancel = nil
+	return cancel
 }
 
 type scriptedTransaction struct {

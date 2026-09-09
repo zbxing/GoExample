@@ -4,9 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"io"
+	"net"
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -470,6 +473,167 @@ func TestRedisTraceClassificationIsBounded(t *testing.T) {
 		t.Fatalf("bounded pipeline size = %d", size)
 	}
 }
+
+func TestRedisTracingHooksRejectLateNilResults(t *testing.T) {
+	recorder, provider := newRedisTestTracerProvider(t)
+	hook := newRedisTracingHook(provider).(redisTracingHook)
+
+	t.Run("dial", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		connection := &countingRedisTestConnection{}
+		wrapped := hook.DialHook(func(context.Context, string, string) (net.Conn, error) {
+			cancel()
+			return connection, nil
+		})
+
+		result, err := wrapped(ctx, "tcp", "private-redis-address")
+		if result != nil || !errors.Is(err, context.Canceled) {
+			t.Fatalf("late dial connection/error = %#v/%v, want nil/context.Canceled", result, err)
+		}
+		if connection.closes.Load() != 1 {
+			t.Fatalf("late dial close count = %d, want 1", connection.closes.Load())
+		}
+	})
+
+	t.Run("command", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		wrapped := hook.ProcessHook(func(context.Context, redis.Cmder) error {
+			cancel()
+			return nil
+		})
+		err := wrapped(ctx, redis.NewCmd(ctx, "GET", "private-key"))
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("late command error = %v, want context.Canceled", err)
+		}
+	})
+
+	t.Run("pipeline", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		wrapped := hook.ProcessPipelineHook(func(context.Context, []redis.Cmder) error {
+			cancel()
+			return nil
+		})
+		err := wrapped(ctx, []redis.Cmder{redis.NewCmd(ctx, "GET", "private-key")})
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("late pipeline error = %v, want context.Canceled", err)
+		}
+	})
+
+	var sawDial, sawCommand, sawPipeline bool
+	for _, span := range recorder.Ended() {
+		result := redisSpanAttributes(span)["goexample.redis.result"].AsString()
+		if result != "canceled" {
+			t.Fatalf("late nil span %q result = %q, want canceled", span.Name(), result)
+		}
+		switch span.Name() {
+		case "redis.connect":
+			sawDial = true
+		case "redis.get":
+			sawCommand = true
+		case "redis.pipeline":
+			sawPipeline = true
+		}
+	}
+	if !sawDial || !sawCommand || !sawPipeline {
+		t.Fatalf("late nil span coverage: dial=%t command=%t pipeline=%t", sawDial, sawCommand, sawPipeline)
+	}
+}
+
+func TestRedisTracingHooksObserveElapsedDeadlineAndPreserveExplicitErrors(t *testing.T) {
+	recorder, provider := newRedisTestTracerProvider(t)
+	hook := newRedisTracingHook(provider).(redisTracingHook)
+	elapsed := redisDeadlineOnlyContext{
+		Context:  context.Background(),
+		deadline: time.Now().Add(-time.Millisecond),
+	}
+
+	if err := completedRedisContextError(context.Background()); err != nil {
+		t.Fatalf("live context error = %v, want nil", err)
+	}
+	canceled, cancelCanceled := context.WithCancel(context.Background())
+	cancelCanceled()
+	if err := completedRedisContextError(canceled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled context error = %v, want context.Canceled", err)
+	}
+	if err := completedRedisContextError(elapsed); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("elapsed context error = %v, want context.DeadlineExceeded", err)
+	}
+	if allocations := testing.AllocsPerRun(1000, func() {
+		if completedRedisContextError(context.Background()) != nil {
+			t.Fatal("live context unexpectedly completed")
+		}
+	}); allocations != 0 {
+		t.Fatalf("completed context allocations = %v, want 0", allocations)
+	}
+	wrapped := hook.ProcessHook(func(context.Context, redis.Cmder) error { return nil })
+	if err := wrapped(elapsed, redis.NewCmd(elapsed, "GET", "private-key")); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("elapsed command error = %v, want context.DeadlineExceeded", err)
+	}
+	spans := recorder.Ended()
+	if len(spans) != 1 || redisSpanAttributes(spans[0])["goexample.redis.result"].AsString() != "timeout" {
+		t.Fatalf("elapsed command spans = %#v, want one timeout", spans)
+	}
+
+	backendErr := errors.New("private backend error")
+	ctx, cancel := context.WithCancel(context.Background())
+	preserve := hook.ProcessHook(func(context.Context, redis.Cmder) error {
+		cancel()
+		return backendErr
+	})
+	if err := preserve(ctx, redis.NewCmd(ctx, "GET", "private-key")); !errors.Is(err, backendErr) {
+		t.Fatalf("explicit backend error = %v, want original error", err)
+	}
+
+	nilDial := hook.DialHook(func(context.Context, string, string) (net.Conn, error) {
+		return nil, nil
+	})
+	if connection, err := nilDial(elapsed, "tcp", "private-redis-address"); connection != nil || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("nil elapsed dial connection/error = %#v/%v", connection, err)
+	}
+	closeErr := errors.New("private close error")
+	closeFailureConnection := &countingRedisTestConnection{closeErr: closeErr}
+	closeFailureDial := hook.DialHook(func(context.Context, string, string) (net.Conn, error) {
+		return closeFailureConnection, nil
+	})
+	if connection, err := closeFailureDial(elapsed, "tcp", "private-redis-address"); connection != nil ||
+		!errors.Is(err, context.DeadlineExceeded) || errors.Is(err, closeErr) {
+		t.Fatalf("close-failing elapsed dial connection/error = %#v/%v", connection, err)
+	}
+	if closeFailureConnection.closes.Load() != 1 {
+		t.Fatalf("close-failing dial close count = %d, want 1", closeFailureConnection.closes.Load())
+	}
+}
+
+type redisDeadlineOnlyContext struct {
+	context.Context
+	deadline time.Time
+}
+
+func (ctx redisDeadlineOnlyContext) Deadline() (time.Time, bool) { return ctx.deadline, true }
+func (redisDeadlineOnlyContext) Done() <-chan struct{}           { return nil }
+func (redisDeadlineOnlyContext) Err() error                      { return nil }
+
+type countingRedisTestConnection struct {
+	closes   atomic.Int32
+	closeErr error
+}
+
+func (*countingRedisTestConnection) Read([]byte) (int, error)         { return 0, io.EOF }
+func (*countingRedisTestConnection) Write(buffer []byte) (int, error) { return len(buffer), nil }
+func (connection *countingRedisTestConnection) Close() error {
+	connection.closes.Add(1)
+	return connection.closeErr
+}
+func (*countingRedisTestConnection) LocalAddr() net.Addr              { return redisTestAddress("local") }
+func (*countingRedisTestConnection) RemoteAddr() net.Addr             { return redisTestAddress("remote") }
+func (*countingRedisTestConnection) SetDeadline(time.Time) error      { return nil }
+func (*countingRedisTestConnection) SetReadDeadline(time.Time) error  { return nil }
+func (*countingRedisTestConnection) SetWriteDeadline(time.Time) error { return nil }
+
+type redisTestAddress string
+
+func (address redisTestAddress) Network() string { return string(address) }
+func (address redisTestAddress) String() string  { return string(address) }
 
 func TestRealRedisIntegration(t *testing.T) {
 	url := strings.TrimSpace(os.Getenv("REDIS_TEST_URL"))

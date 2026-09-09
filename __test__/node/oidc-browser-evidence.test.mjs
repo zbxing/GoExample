@@ -73,13 +73,18 @@ test('OIDC browser evidence verifies the exact successful local contract', async
   const evidenceRoot = await createEvidence(root);
   const verified = verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot });
   assert.equal(verified.report.status, 'passed');
-	assert.equal(verified.report.contract.tests.length, 12);
-	assert.equal(verified.report.contract.assertions.accessTokenHashBound, true);
-	assert.equal(verified.report.contract.assertions.tokenEndpointAuthenticationNegotiated, true);
-	assert.equal(verified.report.contract.assertions.tokenRequestCredentialsBound, true);
-	assert.ok(verified.report.source.jwksVerifier);
-	assert.ok(verified.report.source.jwksVerifierTests);
-	assert.ok(verified.report.source.oidcClientTests);
+  assert.equal(verified.report.contract.tests.length, 18);
+  assert.equal(verified.report.contract.assertions.accessTokenHashBound, true);
+  assert.equal(verified.report.contract.assertions.tokenEndpointAuthenticationNegotiated, true);
+  assert.equal(verified.report.contract.assertions.tokenRequestCredentialsBound, true);
+  assert.equal(verified.report.contract.assertions.callerContextAuthoritative, true);
+  assert.equal(verified.report.contract.assertions.refreshWaitCancelable, true);
+  assert.equal(verified.report.contract.assertions.lateJWKSCacheRejected, true);
+  assert.ok(verified.report.source.authContext);
+  assert.ok(verified.report.source.authContextTests);
+  assert.ok(verified.report.source.jwksVerifier);
+  assert.ok(verified.report.source.jwksVerifierTests);
+  assert.ok(verified.report.source.oidcClientTests);
   assert.equal(verified.artifactPaths.length, 5);
 });
 
@@ -131,6 +136,15 @@ test('OIDC browser evidence rejects source, contract, scope, and semantic output
 		() => verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot: authenticationSourceEvidence }),
 		/source\.oidcClientTests\.sha256/,
 	);
+
+  const contextBoundarySourceEvidence = await createEvidence(path.join(root, 'context-boundary-source'));
+  await rewriteReport(contextBoundarySourceEvidence, (report) => {
+    report.source.authContextTests.sha256 = '0'.repeat(64);
+  });
+  assert.throws(
+    () => verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot: contextBoundarySourceEvidence }),
+    /source\.authContextTests\.sha256/,
+  );
 
   const contractEvidence = await createEvidence(path.join(root, 'contract'));
   await rewriteReport(contractEvidence, (report) => {

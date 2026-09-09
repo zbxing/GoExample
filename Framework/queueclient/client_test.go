@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -331,6 +332,96 @@ func TestFailuresTimeoutsAndCancellationUseFixedPrivateResults(t *testing.T) {
 	}
 	if spans[0].Status().Description != "messaging operation failed" {
 		t.Fatalf("failure description = %q", spans[0].Status().Description)
+	}
+}
+
+func TestQueueCallbacksRespectCancellationBeforeAndAfterInvocation(t *testing.T) {
+	client, err := New(Config{
+		System:         SystemKafka,
+		PublishTimeout: 20 * time.Millisecond,
+		ProcessTimeout: 20 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	for _, test := range []struct {
+		name string
+		ctx  context.Context
+		want error
+	}{
+		func() struct {
+			name string
+			ctx  context.Context
+			want error
+		} {
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			return struct {
+				name string
+				ctx  context.Context
+				want error
+			}{name: "publish canceled", ctx: ctx, want: context.Canceled}
+		}(),
+		func() struct {
+			name string
+			ctx  context.Context
+			want error
+		} {
+			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Millisecond))
+			<-ctx.Done()
+			cancel()
+			return struct {
+				name string
+				ctx  context.Context
+				want error
+			}{name: "process deadline", ctx: ctx, want: context.DeadlineExceeded}
+		}(),
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var calls atomic.Int32
+			callback := func(context.Context, Message) error {
+				calls.Add(1)
+				return nil
+			}
+			var got error
+			if strings.HasPrefix(test.name, "publish") {
+				got = client.Publish(test.ctx, Message{}, callback)
+			} else {
+				got = client.Process(test.ctx, Message{}, callback)
+			}
+			if !errors.Is(got, test.want) {
+				t.Fatalf("callback result = %v, want %v", got, test.want)
+			}
+			if calls.Load() != 0 {
+				t.Fatalf("callback calls = %d, want 0", calls.Load())
+			}
+		})
+	}
+
+	for _, test := range []struct {
+		name string
+		call func(context.Context, Message, func(context.Context, Message) error) error
+	}{
+		{name: "publish", call: client.Publish},
+		{name: "process", call: client.Process},
+	} {
+		t.Run(test.name+" late nil", func(t *testing.T) {
+			started := make(chan struct{})
+			got := test.call(context.Background(), Message{}, func(ctx context.Context, _ Message) error {
+				close(started)
+				<-ctx.Done()
+				return nil
+			})
+			if !errors.Is(got, context.DeadlineExceeded) {
+				t.Fatalf("late nil result = %v, want deadline exceeded", got)
+			}
+			select {
+			case <-started:
+			default:
+				t.Fatal("callback did not start")
+			}
+		})
 	}
 }
 

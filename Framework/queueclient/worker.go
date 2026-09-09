@@ -489,13 +489,7 @@ func (group *WorkerGroup) callDeliveryLeaseExtension(ctx context.Context, callba
 		}
 		return ErrDeliveryLeaseExtension
 	case err := <-result:
-		if contextErr := ctx.Err(); contextErr != nil {
-			return contextErr
-		}
-		if err != nil {
-			return ErrDeliveryLeaseExtension
-		}
-		return nil
+		return deliveryCallbackResult(ctx, extensionContext, err, ErrDeliveryLeaseExtension)
 	}
 }
 
@@ -528,16 +522,29 @@ func (group *WorkerGroup) settleDelivery(ctx context.Context, callback func(cont
 		group.observeSettlementFailed()
 		return ErrDeliverySettlement
 	case err := <-result:
-		if contextErr := ctx.Err(); contextErr != nil {
-			return contextErr
-		}
-		if err != nil {
+		resultErr := deliveryCallbackResult(ctx, settlementContext, err, ErrDeliverySettlement)
+		if errors.Is(resultErr, ErrDeliverySettlement) {
 			group.observeSettlementFailed()
-			return ErrDeliverySettlement
+		}
+		if resultErr != nil {
+			return resultErr
 		}
 		success()
 		return nil
 	}
+}
+
+func deliveryCallbackResult(parent, operation context.Context, callbackErr, failure error) error {
+	if contextErr := completedContextError(parent); contextErr != nil {
+		return contextErr
+	}
+	if contextErr := completedContextError(operation); contextErr != nil {
+		return failure
+	}
+	if callbackErr != nil {
+		return failure
+	}
+	return nil
 }
 
 func callDeliverySettlement(ctx context.Context, callback func(context.Context) error) (err error) {

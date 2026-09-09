@@ -237,8 +237,6 @@ func TestCircuitBreakerObserverReportsFixedSequence(t *testing.T) {
 		{State: circuitBreakerStateOpen, Event: circuitBreakerEventOpened},
 		{State: circuitBreakerStateOpen, Event: circuitBreakerEventRejected},
 		{State: circuitBreakerStateHalfOpen, Event: circuitBreakerEventProbeStarted},
-		{State: circuitBreakerStateOpen, Event: circuitBreakerEventProbeCanceled},
-		{State: circuitBreakerStateHalfOpen, Event: circuitBreakerEventProbeStarted},
 		{State: circuitBreakerStateOpen, Event: circuitBreakerEventProbeFailed},
 		{State: circuitBreakerStateOpen, Event: circuitBreakerEventRejected},
 		{State: circuitBreakerStateHalfOpen, Event: circuitBreakerEventProbeStarted},
@@ -349,6 +347,66 @@ func TestCircuitBreakerCountsLogicalRetryResultAndIgnoresCallerCancellation(t *t
 	}
 	if calls.Load() != 4 {
 		t.Fatalf("underlying attempts = %d, want 4", calls.Load())
+	}
+}
+
+func TestCircuitBreakerRejectsCompletedRequestsWithoutPollutingState(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	var calls atomic.Int32
+	observer := &recordingCircuitBreakerObserver{}
+	lateBody := &countingHTTPBody{}
+	deadlineContext := &mutableHTTPDeadlineContext{Context: context.Background(), deadline: time.Now().Add(time.Hour)}
+	transport := newCircuitBreakerTransport(
+		roundTripFunc(func(*http.Request) (*http.Response, error) {
+			switch calls.Add(1) {
+			case 1:
+				return circuitTestResponse(http.StatusServiceUnavailable), nil
+			case 2:
+				deadlineContext.deadline = time.Now().Add(-time.Second)
+				return &http.Response{StatusCode: http.StatusNoContent, Body: lateBody}, nil
+			default:
+				return circuitTestResponse(http.StatusNoContent), nil
+			}
+		}),
+		CircuitBreakerConfig{FailureThreshold: 1, OpenTimeout: time.Second, Observer: observer.observe},
+	)
+	transport.breaker.now = func() time.Time { return now }
+
+	request := httptest.NewRequest(http.MethodGet, "https://example.test/private", http.NoBody)
+	response, err := transport.RoundTrip(request)
+	if err != nil || response == nil || response.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("opening response/error = %#v/%v", response, err)
+	}
+	response.Body.Close()
+
+	requestBody := &countingHTTPBody{}
+	rejected := httptest.NewRequest(http.MethodPost, "https://example.test/private", requestBody)
+	if response, err := transport.RoundTrip(rejected); response != nil || !errors.Is(err, ErrCircuitOpen) {
+		t.Fatalf("open response/error = %#v/%v, want ErrCircuitOpen", response, err)
+	}
+	if requestBody.closes.Load() != 1 {
+		t.Fatalf("open rejection request closes = %d, want 1", requestBody.closes.Load())
+	}
+
+	now = now.Add(time.Second)
+	probe := request.WithContext(deadlineContext)
+	if response, err := transport.RoundTrip(probe); response != nil || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("elapsed probe response/error = %#v/%v, want context.DeadlineExceeded", response, err)
+	}
+	if lateBody.closes.Load() != 1 {
+		t.Fatalf("elapsed probe response closes = %d, want 1", lateBody.closes.Load())
+	}
+	if transport.breaker.openedAt.IsZero() || transport.breaker.failures != transport.breaker.config.FailureThreshold {
+		t.Fatalf("elapsed probe changed open state: openedAt=%s failures=%d", transport.breaker.openedAt, transport.breaker.failures)
+	}
+	want := []CircuitBreakerObservation{
+		{State: circuitBreakerStateOpen, Event: circuitBreakerEventOpened},
+		{State: circuitBreakerStateOpen, Event: circuitBreakerEventRejected},
+		{State: circuitBreakerStateHalfOpen, Event: circuitBreakerEventProbeStarted},
+		{State: circuitBreakerStateOpen, Event: circuitBreakerEventProbeCanceled},
+	}
+	if got := observer.snapshot(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("observations = %#v, want %#v", got, want)
 	}
 }
 

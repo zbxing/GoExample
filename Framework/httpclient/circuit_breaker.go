@@ -86,12 +86,18 @@ func (transport *circuitBreakerTransport) RoundTrip(request *http.Request) (*htt
 	if request == nil {
 		return transport.base.RoundTrip(request)
 	}
+	if contextErr := completedHTTPContextError(request.Context()); contextErr != nil {
+		closeHTTPRequestBody(request)
+		return nil, contextErr
+	}
 	permit, allowed, observation := transport.breaker.allow()
 	transport.breaker.observe(observation)
 	if !allowed {
+		closeHTTPRequestBody(request)
 		return nil, ErrCircuitOpen
 	}
 	response, err := transport.base.RoundTrip(request)
+	response, err = authoritativeHTTPResult(request.Context(), response, err)
 	transport.breaker.observe(transport.breaker.record(permit, request.Context(), response, err))
 	return response, err
 }
@@ -129,7 +135,7 @@ func (breaker *circuitBreaker) record(permit circuitPermit, ctx context.Context,
 	if permit.probe {
 		breaker.probeInFlight = false
 		if !relevant {
-			if ctx.Err() != nil {
+			if completedHTTPContextError(ctx) != nil {
 				return CircuitBreakerObservation{
 					State: circuitBreakerStateOpen,
 					Event: circuitBreakerEventProbeCanceled,
@@ -182,7 +188,7 @@ func (breaker *circuitBreaker) observe(observation CircuitBreakerObservation) {
 }
 
 func circuitBreakerResult(ctx context.Context, response *http.Response, err error) (failure bool, relevant bool) {
-	if ctx.Err() != nil {
+	if completedHTTPContextError(ctx) != nil {
 		return false, false
 	}
 	if err != nil || response == nil {

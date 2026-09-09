@@ -78,7 +78,7 @@ type JWKSVerifier struct {
 	httpClient      *http.Client
 	now             func() time.Time
 
-	refreshMu   sync.Mutex
+	refreshGate chan struct{}
 	stateMu     sync.RWMutex
 	keys        map[string]*rsa.PublicKey
 	refreshedAt time.Time
@@ -127,6 +127,7 @@ func NewJWKSVerifier(ctx context.Context, config JWKSConfig) (*JWKSVerifier, err
 		maxAuthAge:      config.MaxAuthAge,
 		httpClient:      client,
 		now:             config.Now,
+		refreshGate:     make(chan struct{}, 1),
 	}
 	if err := verifier.refresh(ctx, refreshInitial); err != nil {
 		return nil, err
@@ -139,12 +140,12 @@ func (verifier *JWKSVerifier) Enabled() bool {
 }
 
 func (verifier *JWKSVerifier) VerifyToken(ctx context.Context, rawToken string) (Claims, error) {
-	if !verifier.Enabled() || ctx == nil || len(rawToken) == 0 || len(rawToken) > maxAccessTokenBytes {
+	if !verifier.Enabled() || ctx == nil || len(rawToken) == 0 || len(rawToken) > maxAccessTokenBytes || completedAuthContextError(ctx) != nil {
 		return Claims{}, ErrInvalidToken
 	}
 	claims := &Claims{}
 	token, err := verifier.parseSignedClaims(ctx, rawToken, claims, true)
-	if err != nil || !token.Valid || !validClaims(*claims, verifier.now().UTC(), verifier.maxTokenAge) {
+	if err != nil || !token.Valid || !validClaims(*claims, verifier.now().UTC(), verifier.maxTokenAge) || completedAuthContextError(ctx) != nil {
 		return Claims{}, ErrInvalidToken
 	}
 	return *claims, nil
@@ -163,18 +164,19 @@ func (verifier *JWKSVerifier) VerifyIDToken(ctx context.Context, rawToken, expec
 // present, binds it to the access token returned by the same token response.
 // The current RS256-only verifier uses the corresponding SHA-256 hash.
 func (verifier *JWKSVerifier) VerifyIDTokenWithAccessToken(ctx context.Context, rawToken, expectedNonce, accessToken string) (IDTokenClaims, error) {
-	if !boundedToken(accessToken, maxAccessTokenBytes) {
+	if !boundedToken(accessToken, maxAccessTokenBytes) || ctx == nil || completedAuthContextError(ctx) != nil {
 		return IDTokenClaims{}, ErrInvalidToken
 	}
 	claims, accessTokenHash, err := verifier.verifyIDToken(ctx, rawToken, expectedNonce)
-	if err != nil || !validAccessTokenHash(accessTokenHash, accessToken) {
+	if err != nil || !validAccessTokenHash(accessTokenHash, accessToken) || completedAuthContextError(ctx) != nil {
 		return IDTokenClaims{}, ErrInvalidToken
 	}
 	return claims, nil
 }
 
 func (verifier *JWKSVerifier) verifyIDToken(ctx context.Context, rawToken, expectedNonce string) (IDTokenClaims, json.RawMessage, error) {
-	if !verifier.Enabled() || ctx == nil || len(rawToken) == 0 || len(rawToken) > maxAccessTokenBytes || !boundedNonEmpty(expectedNonce) {
+	if !verifier.Enabled() || ctx == nil || len(rawToken) == 0 || len(rawToken) > maxAccessTokenBytes ||
+		!boundedNonEmpty(expectedNonce) || completedAuthContextError(ctx) != nil {
 		return IDTokenClaims{}, nil, ErrInvalidToken
 	}
 	claims := &idTokenWireClaims{}
@@ -188,7 +190,7 @@ func (verifier *JWKSVerifier) verifyIDToken(ctx context.Context, rawToken, expec
 		verifier.requiredACR,
 		verifier.requiredAMR,
 		verifier.maxAuthAge,
-	) {
+	) || completedAuthContextError(ctx) != nil {
 		return IDTokenClaims{}, nil, ErrInvalidToken
 	}
 	return claims.IDTokenClaims, claims.AccessTokenHash, nil
@@ -314,8 +316,14 @@ const (
 )
 
 func (verifier *JWKSVerifier) key(ctx context.Context, keyID string) (*rsa.PublicKey, error) {
+	if completedAuthContextError(ctx) != nil {
+		return nil, ErrInvalidToken
+	}
 	key, refreshedAt := verifier.cachedKey(keyID)
 	if key != nil && verifier.now().UTC().Sub(refreshedAt) < verifier.refreshInterval {
+		if completedAuthContextError(ctx) != nil {
+			return nil, ErrInvalidToken
+		}
 		return key, nil
 	}
 	reason := refreshExpired
@@ -329,6 +337,9 @@ func (verifier *JWKSVerifier) key(ctx context.Context, keyID string) (*rsa.Publi
 	if key == nil {
 		return nil, ErrInvalidToken
 	}
+	if completedAuthContextError(ctx) != nil {
+		return nil, ErrInvalidToken
+	}
 	return key, nil
 }
 
@@ -339,18 +350,29 @@ func (verifier *JWKSVerifier) cachedKey(keyID string) (*rsa.PublicKey, time.Time
 }
 
 func (verifier *JWKSVerifier) refresh(ctx context.Context, reason refreshReason) error {
-	verifier.refreshMu.Lock()
-	defer verifier.refreshMu.Unlock()
+	if completedAuthContextError(ctx) != nil || !verifier.acquireRefresh(ctx) {
+		return ErrJWKSUnavailable
+	}
+	defer verifier.releaseRefresh()
+	if completedAuthContextError(ctx) != nil {
+		return ErrJWKSUnavailable
+	}
 
 	_, refreshedAt := verifier.cachedKey("")
 	age := verifier.now().UTC().Sub(refreshedAt)
 	switch reason {
 	case refreshExpired:
 		if !refreshedAt.IsZero() && age < verifier.refreshInterval {
+			if completedAuthContextError(ctx) != nil {
+				return ErrJWKSUnavailable
+			}
 			return nil
 		}
 	case refreshUnknownKey:
 		if !refreshedAt.IsZero() && age < unknownKeyRefreshInterval {
+			if completedAuthContextError(ctx) != nil {
+				return ErrJWKSUnavailable
+			}
 			return nil
 		}
 	}
@@ -367,6 +389,9 @@ func (verifier *JWKSVerifier) refresh(ctx context.Context, reason refreshReason)
 		return ErrJWKSUnavailable
 	}
 	defer response.Body.Close()
+	if completedAuthContextError(requestContext) != nil {
+		return ErrJWKSUnavailable
+	}
 	if response.StatusCode != http.StatusOK {
 		return ErrJWKSUnavailable
 	}
@@ -374,15 +399,42 @@ func (verifier *JWKSVerifier) refresh(ctx context.Context, reason refreshReason)
 	if err != nil || len(body) == 0 || len(body) > maxJWKSResponseBytes {
 		return ErrJWKSUnavailable
 	}
+	if completedAuthContextError(requestContext) != nil {
+		return ErrJWKSUnavailable
+	}
 	keys, err := parseJWKS(body)
 	if err != nil {
 		return ErrJWKSUnavailable
 	}
 	verifier.stateMu.Lock()
+	if completedAuthContextError(requestContext) != nil {
+		verifier.stateMu.Unlock()
+		return ErrJWKSUnavailable
+	}
 	verifier.keys = keys
 	verifier.refreshedAt = verifier.now().UTC()
 	verifier.stateMu.Unlock()
+	if completedAuthContextError(requestContext) != nil {
+		return ErrJWKSUnavailable
+	}
 	return nil
+}
+
+func (verifier *JWKSVerifier) acquireRefresh(ctx context.Context) bool {
+	select {
+	case verifier.refreshGate <- struct{}{}:
+		if completedAuthContextError(ctx) != nil {
+			verifier.releaseRefresh()
+			return false
+		}
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+func (verifier *JWKSVerifier) releaseRefresh() {
+	<-verifier.refreshGate
 }
 
 func parseJWKS(body []byte) (map[string]*rsa.PublicKey, error) {

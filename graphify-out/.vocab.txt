@@ -110,6 +110,7 @@ auth
 authenticate
 authenticated
 authentication
+authoritative
 authorization
 authorize
 authorized
@@ -139,6 +140,7 @@ begin
 bench
 benchmark
 benchmarks
+bidirectional
 billing
 billingapi
 billingapp
@@ -196,6 +198,7 @@ calls
 can
 cancel
 canceled
+canceling
 cancellation
 cancels
 candidate
@@ -307,6 +310,7 @@ complete
 completed
 completes
 completion
+compliant
 composes
 composition
 compression
@@ -405,6 +409,7 @@ decl
 declaration
 declared
 decode
+decoder
 decrement
 dedupe
 deduplicated
@@ -518,6 +523,7 @@ editor
 effective
 effects
 egress
+elapsed
 element
 elf
 embedded
@@ -560,6 +566,7 @@ escape
 eslint
 eslintrc
 etag
+eval
 evaluate
 evaluation
 event
@@ -681,6 +688,7 @@ for
 forbidden
 force
 forces
+forged
 form
 format
 formats
@@ -810,6 +818,7 @@ incrementally
 indent
 independent
 index
+indexes
 info
 infrastructure
 ingress
@@ -949,7 +958,6 @@ logical
 login
 logout
 long
-lookup
 loop
 loopback
 loss
@@ -958,6 +966,7 @@ lower
 lucide
 main
 make
+makes
 malformed
 managed
 management
@@ -965,6 +974,9 @@ manager
 managers
 manifest
 map
+mapped
+mapping
+mappings
 maps
 masquerade
 master
@@ -1053,6 +1065,7 @@ navigate
 navigation
 needs
 negative
+negotiates
 neo
 nest
 nestjs
@@ -1088,8 +1101,10 @@ observability
 observation
 observe
 observer
+observes
 obsidian
 oidc
+oidcjson
 oidcjwks
 oidcurl
 once
@@ -1114,6 +1129,7 @@ order
 ordered
 origin
 origins
+orphaned
 otel
 others
 otlp
@@ -1405,6 +1421,7 @@ residual
 resolution
 resolve
 resource
+respect
 response
 responses
 restart
@@ -1428,6 +1445,7 @@ reuses
 review
 revision
 revocation
+revocations
 revoke
 revokes
 rewrite
@@ -1769,6 +1787,7 @@ trusted
 tsconfig
 tsx
 ttl
+two
 type
 typecheck
 typed
@@ -1785,6 +1804,7 @@ universal
 unknown
 unlinked
 unlock
+unmarshal
 unregister
 unreleased
 unsafe
@@ -2040,6 +2060,8 @@ zod
 完成后
 完成定义
 完成状态与
+完成状态与证据边界
+完成结果与评分
 完成结果与验证证据
 完成记录与评分更新
 完成评分
@@ -2050,8 +2072,11 @@ zod
 实施与评分状态
 实施与验收记录
 实施与验证状态
+实施与验证结果
 实施新的待优化文档
+实施约束
 实施结果
+实施要求
 实施记录
 实施设计
 实施项
@@ -2094,6 +2119,7 @@ zod
 强标签等价单值
 当前优化基线
 当前实现与命令
+当前执行状态
 当前技术栈
 当前状态
 当前结论
@@ -2113,6 +2139,7 @@ zod
 性能与诚实边界
 性能与资源边界
 性能与边界
+性能与非目标
 性能基线与证据发布缺口
 总预算
 恢复与长稳
@@ -2153,6 +2180,7 @@ zod
 方案与非目标
 无效消息隔离
 时间与输出双重边界
+明确不声称
 明确非目标
 显式安全方法有限重试
 暂存与格式化协议
@@ -2301,8 +2329,10 @@ zod
 评估结论
 评分与迁移说明
 评分关闭规则
+评分变化
 评分基线与目标
 评分影响
+评分目标
 评分表
 评分规则
 评分规则与诚实边界
@@ -2352,6 +2382,7 @@ zod
 镜像与供应链复现
 长稳与交付证明
 长稳与故障注入
+门禁与证据结果
 门禁与评分规则
 防回归与证据
 降低探针日志噪声

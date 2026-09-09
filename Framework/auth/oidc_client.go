@@ -163,6 +163,9 @@ func (client *OIDCClient) ExchangeCode(ctx context.Context, authorization Author
 		!validAuthorizationCode(authorization) {
 		return OIDCTokenResponse{}, ErrOIDCTokenExchange
 	}
+	if completedAuthContextError(ctx) != nil {
+		return OIDCTokenResponse{}, ErrOIDCTokenExchange
+	}
 	form := url.Values{
 		"grant_type":    {"authorization_code"},
 		"code":          {authorization.Code},
@@ -192,6 +195,9 @@ func (client *OIDCClient) ExchangeCode(ctx context.Context, authorization Author
 		return OIDCTokenResponse{}, ErrOIDCTokenExchange
 	}
 	defer response.Body.Close()
+	if completedAuthContextError(requestContext) != nil {
+		return OIDCTokenResponse{}, ErrOIDCTokenExchange
+	}
 	if response.StatusCode != http.StatusOK || !isJSONResponse(response.Header.Get("Content-Type")) {
 		return OIDCTokenResponse{}, ErrOIDCTokenExchange
 	}
@@ -199,14 +205,23 @@ func (client *OIDCClient) ExchangeCode(ctx context.Context, authorization Author
 	if err != nil {
 		return OIDCTokenResponse{}, ErrOIDCTokenExchange
 	}
+	if completedAuthContextError(requestContext) != nil {
+		return OIDCTokenResponse{}, ErrOIDCTokenExchange
+	}
 	var tokens OIDCTokenResponse
 	if err := unmarshalOIDCJSON(body, &tokens); err != nil || !validOIDCTokenResponse(tokens) {
+		return OIDCTokenResponse{}, ErrOIDCTokenExchange
+	}
+	if completedAuthContextError(requestContext) != nil {
 		return OIDCTokenResponse{}, ErrOIDCTokenExchange
 	}
 	return tokens, nil
 }
 
 func (client *OIDCClient) discover(ctx context.Context) (OIDCProviderMetadata, error) {
+	if completedAuthContextError(ctx) != nil {
+		return OIDCProviderMetadata{}, ErrOIDCProviderUnavailable
+	}
 	discoveryURL := strings.TrimRight(client.issuer, "/") + "/.well-known/openid-configuration"
 	requestContext, cancel := context.WithTimeout(ctx, client.httpTimeout)
 	defer cancel()
@@ -220,11 +235,17 @@ func (client *OIDCClient) discover(ctx context.Context) (OIDCProviderMetadata, e
 		return OIDCProviderMetadata{}, ErrOIDCProviderUnavailable
 	}
 	defer response.Body.Close()
+	if completedAuthContextError(requestContext) != nil {
+		return OIDCProviderMetadata{}, ErrOIDCProviderUnavailable
+	}
 	if response.StatusCode != http.StatusOK || !isJSONResponse(response.Header.Get("Content-Type")) {
 		return OIDCProviderMetadata{}, ErrOIDCProviderUnavailable
 	}
 	body, err := readOIDCResponse(response.Body, maxOIDCMetadataBytes)
 	if err != nil {
+		return OIDCProviderMetadata{}, ErrOIDCProviderUnavailable
+	}
+	if completedAuthContextError(requestContext) != nil {
 		return OIDCProviderMetadata{}, ErrOIDCProviderUnavailable
 	}
 	var document oidcProviderMetadataDocument
@@ -234,6 +255,9 @@ func (client *OIDCClient) discover(ctx context.Context) (OIDCProviderMetadata, e
 	metadata := document.metadata()
 	if !validOIDCProviderMetadata(metadata, client.issuer) ||
 		!validOIDCTokenEndpointAuthMethods(document.TokenEndpointAuthMethodsSupported, client.tokenAuth) {
+		return OIDCProviderMetadata{}, ErrOIDCProviderUnavailable
+	}
+	if completedAuthContextError(requestContext) != nil {
 		return OIDCProviderMetadata{}, ErrOIDCProviderUnavailable
 	}
 	return metadata, nil

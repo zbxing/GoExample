@@ -118,6 +118,162 @@ func TestCloneRequestForPropagationOnlyIsolatesMutableHeaders(t *testing.T) {
 	}
 }
 
+func TestTracingTransportRejectsCompletedContextResultsAndOwnsBodies(t *testing.T) {
+	t.Run("pre-canceled request", func(t *testing.T) {
+		recorder, provider := testTracerProvider(t)
+		var calls atomic.Int32
+		requestBody := &countingHTTPBody{Reader: strings.NewReader("private request")}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		request, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://example.test/private", requestBody)
+		if err != nil {
+			t.Fatalf("NewRequestWithContext() error = %v", err)
+		}
+		transport := tracingTransport{
+			base: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				calls.Add(1)
+				return &http.Response{StatusCode: http.StatusNoContent, Body: http.NoBody}, nil
+			}),
+			tracer:     provider.Tracer(instrumentationName),
+			propagator: propagation.TraceContext{},
+		}
+
+		response, err := transport.RoundTrip(request)
+		if response != nil || !errors.Is(err, context.Canceled) {
+			t.Fatalf("RoundTrip() response/error = %#v/%v, want nil/context.Canceled", response, err)
+		}
+		if calls.Load() != 0 || requestBody.closes.Load() != 1 {
+			t.Fatalf("base calls/request closes = %d/%d, want 0/1", calls.Load(), requestBody.closes.Load())
+		}
+		span := onlyEndedSpan(t, recorder)
+		if got := spanAttributes(span)["error.type"].AsString(); got != "canceled" {
+			t.Fatalf("pre-canceled span error.type = %q, want canceled", got)
+		}
+	})
+
+	t.Run("late canceled response", func(t *testing.T) {
+		recorder, provider := testTracerProvider(t)
+		responseBody := &countingHTTPBody{Reader: strings.NewReader("private response")}
+		ctx, cancel := context.WithCancel(context.Background())
+		request := httptest.NewRequest(http.MethodGet, "https://example.test/private", http.NoBody).WithContext(ctx)
+		transport := tracingTransport{
+			base: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				cancel()
+				return &http.Response{StatusCode: http.StatusOK, Body: responseBody}, nil
+			}),
+			tracer:     provider.Tracer(instrumentationName),
+			propagator: propagation.TraceContext{},
+		}
+
+		response, err := transport.RoundTrip(request)
+		if response != nil || !errors.Is(err, context.Canceled) {
+			t.Fatalf("RoundTrip() response/error = %#v/%v, want nil/context.Canceled", response, err)
+		}
+		if responseBody.closes.Load() != 1 {
+			t.Fatalf("late response closes = %d, want 1", responseBody.closes.Load())
+		}
+		attributes := spanAttributes(onlyEndedSpan(t, recorder))
+		if attributes["error.type"].AsString() != "canceled" {
+			t.Fatalf("late response span attributes = %#v, want canceled", attributes)
+		}
+		if _, exists := attributes["http.response.status_code"]; exists {
+			t.Fatalf("rejected late response recorded a status code: %#v", attributes)
+		}
+	})
+
+	t.Run("elapsed deadline response", func(t *testing.T) {
+		recorder, provider := testTracerProvider(t)
+		responseBody := &countingHTTPBody{Reader: strings.NewReader("private response")}
+		ctx := &mutableHTTPDeadlineContext{Context: context.Background(), deadline: time.Now().Add(time.Hour)}
+		request := httptest.NewRequest(http.MethodGet, "https://example.test/private", http.NoBody).WithContext(ctx)
+		transport := tracingTransport{
+			base: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				ctx.deadline = time.Now().Add(-time.Second)
+				return &http.Response{StatusCode: http.StatusOK, Body: responseBody}, nil
+			}),
+			tracer:     provider.Tracer(instrumentationName),
+			propagator: propagation.TraceContext{},
+		}
+
+		response, err := transport.RoundTrip(request)
+		if response != nil || !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("RoundTrip() response/error = %#v/%v, want nil/context.DeadlineExceeded", response, err)
+		}
+		if responseBody.closes.Load() != 1 {
+			t.Fatalf("elapsed response closes = %d, want 1", responseBody.closes.Load())
+		}
+		if got := spanAttributes(onlyEndedSpan(t, recorder))["error.type"].AsString(); got != "timeout" {
+			t.Fatalf("elapsed response span error.type = %q, want timeout", got)
+		}
+	})
+
+	t.Run("explicit error owns invalid response", func(t *testing.T) {
+		recorder, provider := testTracerProvider(t)
+		backendErr := errors.New("private transport error")
+		responseBody := &countingHTTPBody{Reader: strings.NewReader("private response")}
+		request := httptest.NewRequest(http.MethodGet, "https://example.test/private", http.NoBody)
+		transport := tracingTransport{
+			base: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: http.StatusOK, Body: responseBody}, backendErr
+			}),
+			tracer:     provider.Tracer(instrumentationName),
+			propagator: propagation.TraceContext{},
+		}
+
+		response, err := transport.RoundTrip(request)
+		if response != nil || !errors.Is(err, backendErr) {
+			t.Fatalf("RoundTrip() response/error = %#v/%v, want nil/original error", response, err)
+		}
+		if responseBody.closes.Load() != 1 {
+			t.Fatalf("invalid response closes = %d, want 1", responseBody.closes.Load())
+		}
+		span := onlyEndedSpan(t, recorder)
+		if strings.Contains(span.Status().Description, "private") {
+			t.Fatalf("explicit error leaked through span status: %q", span.Status().Description)
+		}
+	})
+
+	t.Run("nil response and nil error", func(t *testing.T) {
+		recorder, provider := testTracerProvider(t)
+		request := httptest.NewRequest(http.MethodGet, "https://example.test/private", http.NoBody)
+		transport := tracingTransport{
+			base:       roundTripFunc(func(*http.Request) (*http.Response, error) { return nil, nil }),
+			tracer:     provider.Tracer(instrumentationName),
+			propagator: propagation.TraceContext{},
+		}
+
+		response, err := transport.RoundTrip(request)
+		if response != nil || !errors.Is(err, errInvalidTransportResponse) {
+			t.Fatalf("RoundTrip() response/error = %#v/%v, want nil/invalid-response error", response, err)
+		}
+		if got := spanAttributes(onlyEndedSpan(t, recorder))["error.type"].AsString(); got != "invalid_response" {
+			t.Fatalf("nil response span error.type = %q, want invalid_response", got)
+		}
+	})
+}
+
+func TestCompletedHTTPContextErrorObservesElapsedDeadlineWithoutAllocations(t *testing.T) {
+	if err := completedHTTPContextError(context.Background()); err != nil {
+		t.Fatalf("live context error = %v, want nil", err)
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := completedHTTPContextError(canceled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled context error = %v, want context.Canceled", err)
+	}
+	elapsed := &mutableHTTPDeadlineContext{Context: context.Background(), deadline: time.Now().Add(-time.Second)}
+	if err := completedHTTPContextError(elapsed); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("elapsed context error = %v, want context.DeadlineExceeded", err)
+	}
+	if allocations := testing.AllocsPerRun(1000, func() {
+		if completedHTTPContextError(context.Background()) != nil {
+			t.Fatal("live context unexpectedly completed")
+		}
+	}); allocations != 0 {
+		t.Fatalf("completed context allocations = %v, want 0", allocations)
+	}
+}
+
 var benchmarkOutboundRequest *http.Request
 
 func BenchmarkCloneRequestForPropagation(b *testing.B) {
@@ -435,4 +591,24 @@ func spanAttributes(span sdktrace.ReadOnlySpan) map[string]attribute.Value {
 		result[string(item.Key)] = item.Value
 	}
 	return result
+}
+
+type mutableHTTPDeadlineContext struct {
+	context.Context
+	deadline time.Time
+}
+
+func (ctx *mutableHTTPDeadlineContext) Deadline() (time.Time, bool) { return ctx.deadline, true }
+func (*mutableHTTPDeadlineContext) Done() <-chan struct{}           { return nil }
+func (*mutableHTTPDeadlineContext) Err() error                      { return nil }
+
+type countingHTTPBody struct {
+	io.Reader
+	closes   atomic.Int32
+	closeErr error
+}
+
+func (body *countingHTTPBody) Close() error {
+	body.closes.Add(1)
+	return body.closeErr
 }

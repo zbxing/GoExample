@@ -6,9 +6,15 @@ import { selectRepositoryToolCommand } from './go-toolchain-environment.mjs';
 
 export const oidcBrowserEvidenceSchemaVersion = 3;
 export const oidcBrowserTests = Object.freeze([
-	'TestOIDCClientNegotiatesTokenEndpointAuthentication',
-	'TestOIDCClientBuildsCompliantTokenAuthenticationRequests',
-	'TestOIDCBrowserCompletesStateCookieBoundCallbackOnce',
+  'TestOIDCClientNegotiatesTokenEndpointAuthentication',
+  'TestOIDCClientBuildsCompliantTokenAuthenticationRequests',
+  'TestOIDCClientRejectsLateSuccessfulHTTPResults',
+  'TestAuthHTTPEntryPointsRejectPreCompletedContextWithoutTransport',
+  'TestJWKSVerifierRejectsCompletedContextWithCachedKey',
+  'TestJWKSRefreshRejectsLateResponseWithoutPublishingCache',
+  'TestJWKSRefreshWaitHonorsCallerCancellation',
+  'TestCompletedAuthContextErrorObservesCancellationAndElapsedDeadline',
+  'TestOIDCBrowserCompletesStateCookieBoundCallbackOnce',
   'TestOIDCBrowserSessionInventoryAndSubjectBoundRevocation',
   'TestOIDCBrowserSessionDeviceNameRequiresCSRFAndScopesUpdates',
   'TestOIDCBrowserSessionInventoryFailsClosedForLegacyStore',
@@ -25,11 +31,11 @@ export const oidcBrowserGoArguments = Object.freeze([
   '-count=1',
   '-timeout=60s',
   `-run=^(${oidcBrowserTests.join('|')})$`,
-	'./auth',
-	'./httpapi',
+  './auth',
+  './httpapi',
 ]);
 export const oidcBrowserLimitations = Object.freeze([
-	'proves repository-local httptest token-endpoint client authentication negotiation and request shape, OIDC browser routing, state, cookie and optional at_hash binding, session inventory, revocation, CSRF device metadata, and fail-closed behavior only',
+  'proves repository-local httptest caller-context authority, cancelable JWKS refresh waiting, rejection of late OIDC and JWKS results without cache publication, token-endpoint client authentication negotiation and request shape, OIDC browser routing, state, cookie and optional at_hash binding, session inventory, revocation, CSRF device metadata, and fail-closed behavior only',
   'does not establish target IdP discovery, MFA enrollment, challenge, recovery, claim mapping, key rotation, or production browser compatibility',
   'does not establish production Redis HA, KMS or Vault custody, policy deployment, device fingerprinting or UI, remote provenance, or identity incident recovery',
 ]);
@@ -180,6 +186,8 @@ function sourcePaths() {
     frameworkGoMod: 'Framework/go.mod',
     frameworkGoSum: 'Framework/go.sum',
     tokenVerifier: 'Framework/auth/service.go',
+    authContext: 'Framework/auth/context.go',
+    authContextTests: 'Framework/auth/context_boundary_test.go',
     jwksVerifier: 'Framework/auth/jwks.go',
     jwksVerifierTests: 'Framework/auth/jwks_test.go',
 		oidcFlow: 'Framework/auth/oidc_flow.go',
@@ -338,6 +346,9 @@ export function buildOIDCBrowserEvidenceReport({ repositoryRoot, evidenceRoot, e
       timeoutMs: executionTimeoutMs,
       tests: [...oidcBrowserTests],
       assertions: {
+        callerContextAuthoritative: true,
+        refreshWaitCancelable: true,
+        lateJWKSCacheRejected: true,
         stateCookieBoundCallback: true,
         singleUseState: true,
         subjectBoundSessionInventory: true,
@@ -428,11 +439,12 @@ export function verifyOIDCBrowserEvidence({ repositoryRoot, evidenceRoot }) {
   const assertions = requireExactKeys(
     contract.assertions,
     [
-      'backendOutageCollapsed', 'conditionalRoutesReserved', 'csrfProtectedDeviceName',
-		'externalAuthModeRequired', 'legacyStoreFailsClosed', 'providerErrorsRedacted',
-		'singleUseState', 'stateCookieBoundCallback', 'subjectBoundRevocation',
-		'subjectBoundSessionInventory', 'accessTokenHashBound',
-		'tokenEndpointAuthenticationNegotiated', 'tokenRequestCredentialsBound',
+      'accessTokenHashBound', 'backendOutageCollapsed', 'callerContextAuthoritative',
+      'conditionalRoutesReserved', 'csrfProtectedDeviceName', 'externalAuthModeRequired',
+      'lateJWKSCacheRejected', 'legacyStoreFailsClosed', 'providerErrorsRedacted',
+      'refreshWaitCancelable', 'singleUseState', 'stateCookieBoundCallback',
+      'subjectBoundRevocation', 'subjectBoundSessionInventory',
+      'tokenEndpointAuthenticationNegotiated', 'tokenRequestCredentialsBound',
     ],
     'report.contract.assertions',
   );
