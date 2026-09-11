@@ -243,11 +243,14 @@ func preflightConsumer(
 	if err != nil {
 		return 0, ErrInvalidConfiguration
 	}
+	if contextErr := completedAdapterContextError(ctx); contextErr != nil {
+		return 0, contextErr
+	}
 	info, err := consumer.Info(ctx)
+	if contextErr := completedAdapterContextError(ctx); contextErr != nil {
+		return 0, contextErr
+	}
 	if err != nil {
-		if contextErr := ctx.Err(); contextErr != nil {
-			return 0, contextErr
-		}
 		return 0, ErrConsumerPreflight
 	}
 	if info == nil {
@@ -299,6 +302,9 @@ func preflightConsumer(
 			return required, ErrAckWaitTooShort
 		}
 	}
+	if contextErr := completedAdapterContextError(ctx); contextErr != nil {
+		return 0, contextErr
+	}
 	return required, nil
 }
 
@@ -342,6 +348,9 @@ func (adapter *Adapter) publish(
 	if requireMessageID && !validPublishMessageID(messageID) {
 		return ErrInvalidMessageID
 	}
+	if completedAdapterContextError(ctx) != nil {
+		return ErrPublish
+	}
 	brokerMessage := nats.NewMsg(adapter.subject)
 	brokerMessage.Data = bytes.Clone(message.Body)
 	copyApplicationHeaders(brokerMessage.Header, message.Headers)
@@ -350,6 +359,9 @@ func (adapter *Adapter) publish(
 	}
 	acknowledgement, err := adapter.publisher.PublishMsg(ctx, brokerMessage)
 	if err != nil || !validPublishAcknowledgement(acknowledgement) {
+		return ErrPublish
+	}
+	if completedAdapterContextError(ctx) != nil {
 		return ErrPublish
 	}
 	return nil
@@ -365,12 +377,12 @@ func (adapter *Adapter) ReceiveDelivery(ctx context.Context) (queueclient.Delive
 		return queueclient.Delivery{}, ErrInvalidContext
 	}
 	for {
-		if err := ctx.Err(); err != nil {
+		if err := completedAdapterContextError(ctx); err != nil {
 			return queueclient.Delivery{}, err
 		}
 		brokerMessage, err := receiveNext(ctx, adapter.consumer, adapter.fetchMaxWait)
 		if err != nil {
-			if contextErr := ctx.Err(); contextErr != nil {
+			if contextErr := completedAdapterContextError(ctx); contextErr != nil {
 				return queueclient.Delivery{}, contextErr
 			}
 			if errors.Is(err, jetstream.ErrNoMessages) || errors.Is(err, nats.ErrTimeout) {
@@ -379,6 +391,9 @@ func (adapter *Adapter) ReceiveDelivery(ctx context.Context) (queueclient.Delive
 			return queueclient.Delivery{}, ErrReceive
 		}
 		message, err := fromJetStreamMessage(brokerMessage)
+		if contextErr := completedAdapterContextError(ctx); contextErr != nil {
+			return queueclient.Delivery{}, contextErr
+		}
 		if err != nil {
 			if errors.Is(err, ErrInvalidMessage) {
 				if quarantineErr := adapter.quarantineInvalidMessage(ctx, brokerMessage); quarantineErr != nil {
@@ -394,13 +409,13 @@ func (adapter *Adapter) ReceiveDelivery(ctx context.Context) (queueclient.Delive
 				if extensionContext == nil {
 					return ErrInvalidContext
 				}
-				if err := extensionContext.Err(); err != nil {
+				if err := completedAdapterContextError(extensionContext); err != nil {
 					return err
 				}
 				if err := brokerMessage.InProgress(); err != nil {
 					return ErrLeaseExtension
 				}
-				if err := extensionContext.Err(); err != nil {
+				if err := completedAdapterContextError(extensionContext); err != nil {
 					return err
 				}
 				return nil
@@ -409,7 +424,13 @@ func (adapter *Adapter) ReceiveDelivery(ctx context.Context) (queueclient.Delive
 				if settlementContext == nil {
 					return ErrInvalidContext
 				}
+				if completedAdapterContextError(settlementContext) != nil {
+					return ErrAcknowledge
+				}
 				if err := brokerMessage.DoubleAck(settlementContext); err != nil {
+					return ErrAcknowledge
+				}
+				if completedAdapterContextError(settlementContext) != nil {
 					return ErrAcknowledge
 				}
 				return nil
@@ -425,11 +446,14 @@ func receiveNext(ctx context.Context, consumer Consumer, maximumWait time.Durati
 	fetchContext, cancel := context.WithTimeout(ctx, maximumWait)
 	defer cancel()
 	message, err := consumer.Next(jetstream.FetchContext(fetchContext))
-	if contextErr := ctx.Err(); contextErr != nil {
+	if contextErr := completedAdapterContextError(ctx); contextErr != nil {
 		return nil, contextErr
 	}
-	if errors.Is(err, context.DeadlineExceeded) && errors.Is(fetchContext.Err(), context.DeadlineExceeded) {
-		return nil, jetstream.ErrNoMessages
+	if fetchErr := completedAdapterContextError(fetchContext); fetchErr != nil {
+		if errors.Is(fetchErr, context.DeadlineExceeded) {
+			return nil, jetstream.ErrNoMessages
+		}
+		return nil, fetchErr
 	}
 	return message, err
 }
@@ -438,7 +462,13 @@ func (adapter *Adapter) quarantineInvalidMessage(ctx context.Context, source jet
 	if source == nil {
 		return ErrInvalidMessage
 	}
+	if contextErr := completedAdapterContextError(ctx); contextErr != nil {
+		return contextErr
+	}
 	metadata, err := source.Metadata()
+	if contextErr := completedAdapterContextError(ctx); contextErr != nil {
+		return contextErr
+	}
 	if err != nil || metadata == nil || metadata.Stream == "" || metadata.Sequence.Stream == 0 {
 		return ErrInvalidMessage
 	}
@@ -452,16 +482,17 @@ func (adapter *Adapter) quarantineInvalidMessage(ctx context.Context, source jet
 	}
 	dlqMessage.Header.Set(jetstream.MsgIDHeader, deadLetterID(metadata))
 	acknowledgement, err := adapter.publisher.PublishMsg(ctx, dlqMessage)
+	if contextErr := completedAdapterContextError(ctx); contextErr != nil {
+		return contextErr
+	}
 	if err != nil || !validPublishAcknowledgement(acknowledgement) {
-		if contextErr := ctx.Err(); contextErr != nil {
-			return contextErr
-		}
 		return ErrDeadLetter
 	}
-	if err := source.DoubleAck(ctx); err != nil {
-		if contextErr := ctx.Err(); contextErr != nil {
-			return contextErr
-		}
+	acknowledgeErr := source.DoubleAck(ctx)
+	if contextErr := completedAdapterContextError(ctx); contextErr != nil {
+		return contextErr
+	}
+	if acknowledgeErr != nil {
 		return ErrDeadLetter
 	}
 	return nil
@@ -471,7 +502,13 @@ func (adapter *Adapter) deadLetter(ctx context.Context, source jetstream.Msg, me
 	if ctx == nil {
 		return ErrInvalidContext
 	}
+	if completedAdapterContextError(ctx) != nil {
+		return ErrDeadLetter
+	}
 	metadata, err := source.Metadata()
+	if completedAdapterContextError(ctx) != nil {
+		return ErrDeadLetter
+	}
 	if err != nil || metadata == nil || metadata.Stream == "" || metadata.Sequence.Stream == 0 {
 		return ErrInvalidMessage
 	}
@@ -483,7 +520,13 @@ func (adapter *Adapter) deadLetter(ctx context.Context, source jetstream.Msg, me
 	if err != nil || !validPublishAcknowledgement(acknowledgement) {
 		return ErrDeadLetter
 	}
+	if completedAdapterContextError(ctx) != nil {
+		return ErrDeadLetter
+	}
 	if err := source.DoubleAck(ctx); err != nil {
+		return ErrDeadLetter
+	}
+	if completedAdapterContextError(ctx) != nil {
 		return ErrDeadLetter
 	}
 	return nil
@@ -549,6 +592,16 @@ func validPublishAcknowledgement(acknowledgement *jetstream.PubAck) bool {
 		return false
 	}
 	return true
+}
+
+func completedAdapterContextError(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if deadline, ok := ctx.Deadline(); ok && !time.Now().Before(deadline) {
+		return context.DeadlineExceeded
+	}
+	return nil
 }
 
 func deadLetterID(metadata *jetstream.MsgMetadata) string {

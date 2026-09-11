@@ -5,7 +5,7 @@
   "sdkPath": "SDK/GoExample",
   "modulePath": "github.com/zbxing/goexample/SDK/GoExample",
   "sdkVersion": "1.4.0",
-  "sourceCommit": "816a4cbb5c5e0a9b30a28d65597812eef575022c",
+  "sourceCommit": "1adecede1abc639b815208f414e935d92745e470",
   "expectedTag": "SDK/GoExample/v1.4.0",
   "publication": "not_checked",
   "openapi": {
@@ -175,7 +175,7 @@
   "artifacts": {
     "generatedClient": {
       "path": "client.gen.go",
-      "sha256": "d8420a335648ac2bd885eaaff491112c943ddeeb885c068027d4f2998aa767e8"
+      "sha256": "3a43509122109128ad00c16d518670792e3acc4e913d3318571c065bc7ebdcc4"
     },
     "goMod": {
       "path": "go.mod",

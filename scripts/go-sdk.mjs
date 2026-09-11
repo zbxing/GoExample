@@ -370,15 +370,52 @@ import (
 \t"errors"
 \t"fmt"
 \t"io"
+\t"net"
 \t"net/http"
 \t"net/url"
 ${usesStrconv ? '\t"strconv"\n' : ''}\t"strings"
+\t"time"
 )
 
 const APIVersion = ${JSON.stringify(version)}
 const DefaultMaxResponseBytes int64 = 1 << 20
+const defaultSDKHTTPTimeout = 30 * time.Second
+const defaultSDKConnectTimeout = 5 * time.Second
+const defaultSDKResponseHeaderTimeout = 10 * time.Second
+const defaultSDKIdleConnectionTimeout = 90 * time.Second
+const defaultSDKMaxConnections = 100
+const defaultSDKMaxIdleConnectionsPerHost = 10
 
 var ErrResponseTooLarge = errors.New("goexample SDK response exceeds configured size limit")
+
+var errInvalidHTTPResponse = errors.New("goexample SDK received an invalid HTTP response")
+
+func preserveSDKRedirectResponse(_ *http.Request, _ []*http.Request) error {
+\treturn http.ErrUseLastResponse
+}
+
+var defaultSDKHTTPTransport = &http.Transport{
+\tProxy: http.ProxyFromEnvironment,
+\tDialContext: (&net.Dialer{
+\t\tTimeout:   defaultSDKConnectTimeout,
+\t\tKeepAlive: 30 * time.Second,
+\t}).DialContext,
+\tForceAttemptHTTP2:      true,
+\tMaxIdleConns:           defaultSDKMaxConnections,
+\tMaxIdleConnsPerHost:    defaultSDKMaxIdleConnectionsPerHost,
+\tMaxConnsPerHost:        defaultSDKMaxConnections,
+\tIdleConnTimeout:        defaultSDKIdleConnectionTimeout,
+\tTLSHandshakeTimeout:    defaultSDKConnectTimeout,
+\tExpectContinueTimeout:  time.Second,
+\tResponseHeaderTimeout:  defaultSDKResponseHeaderTimeout,
+\tMaxResponseHeaderBytes: DefaultMaxResponseBytes,
+}
+
+var defaultSDKHTTPClient = &http.Client{
+\tTransport:     defaultSDKHTTPTransport,
+	Timeout:       defaultSDKHTTPTimeout,
+	CheckRedirect: preserveSDKRedirectResponse,
+}
 
 type HTTPClient interface {
 \tDo(*http.Request) (*http.Response, error)
@@ -410,6 +447,44 @@ type Response struct {
 \tHeader       http.Header
 \tBody         []byte
 \tHTTPResponse *http.Response
+}
+
+func completedSDKContextError(ctx context.Context) error {
+\tif err := ctx.Err(); err != nil {
+\t\treturn err
+\t}
+\tif deadline, ok := ctx.Deadline(); ok && !time.Now().Before(deadline) {
+\t\treturn context.DeadlineExceeded
+\t}
+\treturn nil
+}
+
+func closeSDKRequestBody(request *http.Request) {
+\tif request != nil && request.Body != nil {
+\t\t_ = request.Body.Close()
+\t}
+}
+
+func closeSDKResponseBody(response *http.Response) {
+\tif response != nil && response.Body != nil {
+\t\t_ = response.Body.Close()
+\t}
+}
+
+func authoritativeSDKHTTPResult(ctx context.Context, response *http.Response, err error) (*http.Response, error) {
+\tif err != nil {
+\t\tcloseSDKResponseBody(response)
+\t\treturn nil, err
+\t}
+\tif contextErr := completedSDKContextError(ctx); contextErr != nil {
+\t\tcloseSDKResponseBody(response)
+\t\treturn nil, contextErr
+\t}
+\tif response == nil || response.Body == nil {
+\t\tcloseSDKResponseBody(response)
+\t\treturn nil, errInvalidHTTPResponse
+\t}
+\treturn response, nil
 }
 
 func PublishedOperations() []Operation {
@@ -460,7 +535,7 @@ func NewClient(server string, options ...ClientOption) (*Client, error) {
 \tbaseURL.Path = strings.TrimRight(baseURL.Path, "/")
 \tclient := &Client{
 \t\tbaseURL:          baseURL,
-\t\thttpClient:       http.DefaultClient,
+\t\thttpClient:       defaultSDKHTTPClient,
 \t\tmaxResponseBytes: DefaultMaxResponseBytes,
 \t}
 \tfor _, option := range options {
@@ -497,6 +572,9 @@ func (c *Client) do(ctx context.Context, method, routePath string, query url.Val
 \tif ctx == nil {
 \t\treturn nil, errors.New("goexample SDK request context cannot be nil")
 \t}
+\tif contextErr := completedSDKContextError(ctx); contextErr != nil {
+\t\treturn nil, fmt.Errorf("execute goexample SDK request: %w", contextErr)
+\t}
 \tendpoint := *c.baseURL
 \tescapedPath := c.baseURL.EscapedPath() + routePath
 \tdecodedPath, err := url.PathUnescape(escapedPath)
@@ -524,13 +602,28 @@ func (c *Client) do(ctx context.Context, method, routePath string, query url.Val
 \t}
 \tfor _, editor := range append(append([]RequestEditorFn{}, c.requestEditors...), editors...) {
 \t\tif editor == nil {
+\t\t\tcloseSDKRequestBody(request)
 \t\t\treturn nil, errors.New("goexample SDK request editor cannot be nil")
 \t\t}
+\t\tif contextErr := completedSDKContextError(ctx); contextErr != nil {
+\t\t\tcloseSDKRequestBody(request)
+\t\t\treturn nil, fmt.Errorf("execute goexample SDK request: %w", contextErr)
+\t\t}
 \t\tif err := editor(ctx, request); err != nil {
+\t\t\tcloseSDKRequestBody(request)
 \t\t\treturn nil, fmt.Errorf("edit goexample SDK request: %w", err)
 \t\t}
+\t\tif contextErr := completedSDKContextError(ctx); contextErr != nil {
+\t\t\tcloseSDKRequestBody(request)
+\t\t\treturn nil, fmt.Errorf("execute goexample SDK request: %w", contextErr)
+\t\t}
+\t}
+\tif contextErr := completedSDKContextError(ctx); contextErr != nil {
+\t\tcloseSDKRequestBody(request)
+\t\treturn nil, fmt.Errorf("execute goexample SDK request: %w", contextErr)
 \t}
 \thttpResponse, err := c.httpClient.Do(request)
+\thttpResponse, err = authoritativeSDKHTTPResult(ctx, httpResponse, err)
 \tif err != nil {
 \t\treturn nil, fmt.Errorf("execute goexample SDK request: %w", err)
 \t}
@@ -542,10 +635,17 @@ func (c *Client) do(ctx context.Context, method, routePath string, query url.Val
 \tif int64(len(responseBody)) > c.maxResponseBytes {
 \t\treturn nil, ErrResponseTooLarge
 \t}
+\tif contextErr := completedSDKContextError(ctx); contextErr != nil {
+\t\treturn nil, fmt.Errorf("execute goexample SDK request: %w", contextErr)
+\t}
+\tresponseHeader := httpResponse.Header.Clone()
+\tif contextErr := completedSDKContextError(ctx); contextErr != nil {
+\t\treturn nil, fmt.Errorf("execute goexample SDK request: %w", contextErr)
+\t}
 \thttpResponse.Body = io.NopCloser(bytes.NewReader(responseBody))
 \treturn &Response{
 \t\tStatusCode:   httpResponse.StatusCode,
-\t\tHeader:       httpResponse.Header.Clone(),
+\t\tHeader:       responseHeader,
 \t\tBody:         responseBody,
 \t\tHTTPResponse: httpResponse,
 \t}, nil

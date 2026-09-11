@@ -17,6 +17,8 @@ const (
 
 type Check func(context.Context) error
 
+var errHealthCheckPanic = errors.New("health check panicked")
+
 type Report struct {
 	Ready  bool              `json:"-"`
 	Status string            `json:"status"`
@@ -143,7 +145,7 @@ func (c *Checker) runChecks(ctx context.Context) Report {
 	results := make(chan result, len(checks))
 	for name, check := range checks {
 		go func() {
-			results <- result{name: name, err: check(checkCtx)}
+			results <- result{name: name, err: callCheck(checkCtx, check)}
 		}()
 	}
 
@@ -181,6 +183,19 @@ func (c *Checker) runChecks(ctx context.Context) Report {
 		report.Status = "not_ready"
 	}
 	return report
+}
+
+// callCheck isolates a health-check callback from the process. Checks are
+// extension points (often backed by optional dependencies), so a panic must
+// degrade readiness to a failed check instead of terminating its goroutine's
+// process.
+func callCheck(ctx context.Context, check Check) (err error) {
+	defer func() {
+		if recover() != nil {
+			err = errHealthCheckPanic
+		}
+	}()
+	return check(ctx)
 }
 
 func (c *Checker) refreshCache(ctx context.Context, revision uint64, refresh chan struct{}) {

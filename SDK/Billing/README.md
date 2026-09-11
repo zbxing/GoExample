@@ -11,6 +11,8 @@ yarn sdk:generate --project Billing
 yarn sdk:check --project Billing
 ```
 
+The built-in HTTP client applies a 30-second total request timeout and returns the first redirect response without following it, preserving the status, `Location`, `Set-Cookie`, and bounded body for explicit caller handling; a client supplied through `WithHTTPClient` retains its own timeout and redirect policy. Shorter caller cancellation and elapsed deadlines are authoritative before request editors, after each editor, after the injected HTTP client, after the bounded response read, and before the final response is returned. Rejected request/response bodies are closed by the layer that owns them; a nil response or nil body fails with a fixed error instead of panicking. Cancellation cannot retract a request already accepted by a remote server.
+
 ## Release readiness
 
 Prepare and verify the deterministic release manifest from the repository root:

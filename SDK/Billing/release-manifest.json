@@ -5,7 +5,7 @@
   "sdkPath": "SDK/Billing",
   "modulePath": "github.com/zbxing/goexample/SDK/Billing",
   "sdkVersion": "1.0.0",
-  "sourceCommit": "816a4cbb5c5e0a9b30a28d65597812eef575022c",
+  "sourceCommit": "1adecede1abc639b815208f414e935d92745e470",
   "expectedTag": "SDK/Billing/v1.0.0",
   "publication": "not_checked",
   "openapi": {
@@ -103,7 +103,7 @@
   "artifacts": {
     "generatedClient": {
       "path": "client.gen.go",
-      "sha256": "df74fc95687ce596b037d8fb9d4a514963f8aca2dd5fffb7df543a9a99099518"
+      "sha256": "852327d877054ebe5ef9c282dc17c7754dc5a9c81d4355db5be8f0e2b3f43ec7"
     },
     "goMod": {
       "path": "go.mod",

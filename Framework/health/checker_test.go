@@ -197,6 +197,20 @@ func TestReadinessCheckTimeout(t *testing.T) {
 	}
 }
 
+func TestReadinessContainsPanickingChecks(t *testing.T) {
+	checker := New(time.Second)
+	if err := checker.Register("extension", func(context.Context) error {
+		panic("private dependency detail")
+	}); err != nil {
+		t.Fatalf("Register(extension) error = %v", err)
+	}
+
+	report := checker.Readiness(context.Background())
+	if report.Ready || report.Status != "not_ready" || report.Checks["extension"] != "failed" {
+		t.Fatalf("panic report = %#v", report)
+	}
+}
+
 func TestRegisterRejectsInvalidChecks(t *testing.T) {
 	checker := New(time.Second)
 	if err := checker.Register("", func(context.Context) error { return nil }); err == nil {

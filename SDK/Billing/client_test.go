@@ -8,7 +8,9 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestGeneratedClientCoversBillingOperations(t *testing.T) {
@@ -205,5 +207,110 @@ func TestGeneratedClientRejectsUnsafeServerAndOversizedResponse(t *testing.T) {
 	}
 	if _, err := client.GetReadiness(context.Background()); !errors.Is(err, ErrResponseTooLarge) {
 		t.Fatalf("GetReadiness() error = %v, want ErrResponseTooLarge", err)
+	}
+}
+
+func TestGeneratedClientDefaultHTTPClientPreservesRedirectResponse(t *testing.T) {
+	var redirectTargetCalls atomic.Int32
+	redirectTarget := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		redirectTargetCalls.Add(1)
+		writer.WriteHeader(http.StatusOK)
+		_, _ = writer.Write([]byte("redirect target"))
+	}))
+	defer redirectTarget.Close()
+
+	const responseBody = "redirect response"
+	const stateCookie = "__Host-goexample_oidc_state=opaque; Path=/; Secure; HttpOnly; SameSite=Lax"
+	redirectSource := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Location", redirectTarget.URL+"/authorize")
+		writer.Header().Set("Set-Cookie", stateCookie)
+		writer.WriteHeader(http.StatusFound)
+		_, _ = writer.Write([]byte(responseBody))
+	}))
+	defer redirectSource.Close()
+
+	client, err := NewClient(redirectSource.URL)
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	response, err := client.GetReadiness(context.Background())
+	if err != nil {
+		t.Fatalf("GetReadiness() error = %v", err)
+	}
+	if response.StatusCode != http.StatusFound {
+		t.Errorf("status = %d, want %d", response.StatusCode, http.StatusFound)
+	}
+	if location := response.Header.Get("Location"); location != redirectTarget.URL+"/authorize" {
+		t.Errorf("Location = %q, want redirect target", location)
+	}
+	if cookie := response.Header.Get("Set-Cookie"); cookie != stateCookie {
+		t.Errorf("Set-Cookie = %q, want state cookie", cookie)
+	}
+	if body := string(response.Body); body != responseBody {
+		t.Errorf("body = %q, want %q", body, responseBody)
+	}
+	if calls := redirectTargetCalls.Load(); calls != 0 {
+		t.Errorf("redirect target calls = %d, want 0", calls)
+	}
+}
+
+func TestGeneratedClientDefaultHTTPClientHasBoundedTransport(t *testing.T) {
+	client, err := NewClient("https://example.com")
+	if err != nil {
+		t.Fatalf("NewClient() error = %v", err)
+	}
+	defaultClient, ok := client.httpClient.(*http.Client)
+	if !ok {
+		t.Fatalf("default HTTP client type = %T, want *http.Client", client.httpClient)
+	}
+	if defaultClient != defaultSDKHTTPClient {
+		t.Fatal("NewClient() did not select the package default HTTP client")
+	}
+	if timeout := defaultClient.Timeout; timeout != 30*time.Second {
+		t.Errorf("default HTTP client timeout = %s, want 30s", timeout)
+	}
+	transport, ok := defaultClient.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("default HTTP transport type = %T, want *http.Transport", defaultClient.Transport)
+	}
+	if transport == http.DefaultTransport {
+		t.Fatal("default HTTP transport aliases the process-wide transport")
+	}
+	if !transport.ForceAttemptHTTP2 {
+		t.Error("default HTTP transport does not attempt HTTP/2")
+	}
+	if transport.MaxConnsPerHost != 100 || transport.MaxIdleConns != 100 || transport.MaxIdleConnsPerHost != 10 {
+		t.Errorf(
+			"default HTTP connection limits = per-host:%d idle:%d idle-per-host:%d, want 100/100/10",
+			transport.MaxConnsPerHost,
+			transport.MaxIdleConns,
+			transport.MaxIdleConnsPerHost,
+		)
+	}
+	if transport.ResponseHeaderTimeout != 10*time.Second || transport.MaxResponseHeaderBytes != 1<<20 {
+		t.Errorf(
+			"default HTTP response-header limits = %s/%d, want 10s/%d",
+			transport.ResponseHeaderTimeout,
+			transport.MaxResponseHeaderBytes,
+			1<<20,
+		)
+	}
+	if transport.Proxy == nil || transport.DialContext == nil {
+		t.Error("default HTTP transport must preserve environment proxy and bounded dialing")
+	}
+	if err := defaultClient.CheckRedirect(nil, nil); !errors.Is(err, http.ErrUseLastResponse) {
+		t.Errorf("default redirect policy error = %v, want http.ErrUseLastResponse", err)
+	}
+
+	customHTTPClient := &http.Client{}
+	customClient, err := NewClient("https://example.com", WithHTTPClient(customHTTPClient))
+	if err != nil {
+		t.Fatalf("NewClient(WithHTTPClient()) error = %v", err)
+	}
+	if customClient.httpClient != customHTTPClient {
+		t.Fatal("WithHTTPClient() did not preserve the caller HTTP client")
+	}
+	if timeout := customHTTPClient.Timeout; timeout != 0 {
+		t.Errorf("custom HTTP client timeout = %s, want caller value 0s", timeout)
 	}
 }

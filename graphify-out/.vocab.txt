@@ -151,6 +151,7 @@ bindings
 binds
 block
 blocking
+bodies
 body
 bool
 bottom
@@ -308,6 +309,7 @@ compatible
 compiler
 complete
 completed
+completedhttpcontexterror
 completes
 completion
 compliant
@@ -1060,6 +1062,7 @@ namespaces
 nanos
 native
 nats
+natsjetstream
 nav
 navigate
 navigation
@@ -1158,6 +1161,7 @@ oversized
 overview
 owner
 ownership
+owns
 package
 page
 pager
@@ -1220,9 +1224,11 @@ plugins
 plus
 pod
 pointer
+points
 policies
 policy
 pollute
+polluting
 pool
 popover
 port
@@ -1238,6 +1244,7 @@ postgre
 postgres
 posture
 pprof
+pre
 precondition
 preconditions
 predicate
@@ -1301,6 +1308,7 @@ publish
 published
 publisher
 publishes
+publishing
 pull
 purpose
 push
@@ -1510,6 +1518,7 @@ scripted
 scripts
 scrollbar
 sdk
+sdkhttp
 search
 seconds
 secret
@@ -1945,6 +1954,7 @@ zod
 仓库内确定性证据
 仓库托管
 任务预算与兼容边界
+优先级
 优先级总表
 优化原则
 优化并提高综合评分
@@ -1956,13 +1966,16 @@ zod
 低基数状态观测
 例如真实硬件或设备等等
 供应链交付证明
+依赖与状态
 修复前证据
+停止规则与允许终止接受条件
 健康接口弃用契约
 健康检查与停机
 健康检查刷新与
 入站请求
 全量优缺点扫描
 全面复评发现
+全面非前端复评并继续优化
 共享严格身份读取器
 共享环境约束
 共享短探测边界
@@ -2075,6 +2088,7 @@ zod
 实施与验证结果
 实施新的待优化文档
 实施约束
+实施约束与非目标
 实施结果
 实施要求
 实施记录
@@ -2143,6 +2157,8 @@ zod
 性能基线与证据发布缺口
 总预算
 恢复与长稳
+所以评分维度尽可能全面一点
+所需证据与完成标准
 执行与验收记录
 执行与验收顺序
 执行前事实核验
@@ -2263,6 +2279,7 @@ zod
 版本关闭结论
 版本目标与边界
 版本边界
+版本边界与互斥判定
 状态定义
 状态迁移
 独立命令
@@ -2300,6 +2317,8 @@ zod
 继续提高综合评分
 继续评估最新
 缓存与并发合并
+而且前端维度不再参与评分
+而且综合评分权重不要除以
 自动阻断
 自定义路由与
 若完成则重新全面评估
@@ -2387,6 +2406,7 @@ zod
 防回归与证据
 降低探针日志噪声
 限流头与
+除了前端
 随后按文档优化
 隔离是否覆盖全部可执行入口
 需要完善
@@ -2400,6 +2420,7 @@ zod
 验收与评分规则
 验收矩阵
 验收结果
+验收结果与完成评分
 验收记录
 验收顺序与完成结果
 验收顺序与当前状态

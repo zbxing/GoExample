@@ -116,6 +116,11 @@ test('repository-managed Go entrypoints isolate inherited GOROOT through the sha
   assertEvidenceInput('docs/待优化/待优化V81.md');
   assertEvidenceInput('docs/待优化/待优化V82.md');
   assertEvidenceInput('docs/待优化/待优化V83.md');
+	assertEvidenceInput('docs/待优化/待优化V84.md');
+	assertEvidenceInput('docs/待优化/待优化V85.md');
+	assertEvidenceInput('docs/待优化/待优化V86.md');
+	assertEvidenceInput('docs/待优化/待优化V87.md');
+	assertEvidenceInput('docs/待优化/待优化V88.md');
   assertEvidenceInput('scripts/lib/transport-benchmark-stability.mjs');
   assertEvidenceInput('scripts/lib/environment-fetch.mjs');
   assertEvidenceInput('__test__/node/environment-fetch.test.mjs');
@@ -2919,7 +2924,7 @@ test('SDK consumer matrix evidence stays repository-only, complete, and checksum
   assert.match(independentVerifier, /SDK consumer matrix evidence artifact is missing from the manifest/);
 });
 
-test('V84 repository work and target-environment boundaries match the weighted evaluation', async () => {
+test('V90 repository work and target-environment boundaries match the weighted evaluation', async () => {
   const [evaluation, v12Backlog, backlog, nextBacklog, currentBacklog, v16Backlog, v17Backlog, v18Backlog, v19Backlog, v20Backlog, v21Backlog, v22Backlog, lifecycleADR, publicAPIBoundaryADR, benchmark, app, appTests, fingerprint, middleware, tracing, tracingTests, httpClient, httpClientTests, responseBody, responseBodyTests, retry, retryTests, circuitBreaker, circuitBreakerTests, standardApplication, standardApplicationTests, exampleEntrypoint, billingEntrypoint, applicationEventStream, applicationEventStreamTests, applicationRoute, applicationRouteTests, sqlClient, sqlClientTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'docs', '评估', '项目架构与性能评估.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V12.md'), 'utf8'),
@@ -3201,6 +3206,40 @@ test('V84 repository work and target-environment boundaries match the weighted e
     path.join(repositoryRoot, 'docs', '待优化', '待优化V84.md'),
     'utf8',
   );
+	const v85Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V85.md'),
+		'utf8',
+	);
+	const v86Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V86.md'),
+		'utf8',
+	);
+	const v87Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V87.md'),
+		'utf8',
+	);
+	const v88Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V88.md'),
+		'utf8',
+	);
+	const v89Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V89.md'),
+		'utf8',
+	);
+	const v90Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V90.md'),
+		'utf8',
+	);
+	const [exampleSDKClient, billingSDKClient, exampleSDKTests, billingSDKTests] = await Promise.all([
+		readFile(path.join(repositoryRoot, 'SDK', 'GoExample', 'client.gen.go'), 'utf8'),
+		readFile(path.join(repositoryRoot, 'SDK', 'Billing', 'client.gen.go'), 'utf8'),
+		readFile(path.join(repositoryRoot, 'SDK', 'GoExample', 'client_test.go'), 'utf8'),
+		readFile(path.join(repositoryRoot, 'SDK', 'Billing', 'client_test.go'), 'utf8'),
+	]);
+	const [natsAdapter, natsContextTests] = await Promise.all([
+		readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'natsjetstream', 'adapter.go'), 'utf8'),
+		readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'natsjetstream', 'context_boundary_test.go'), 'utf8'),
+	]);
   const [authContext, authContextTests, oidcClient, jwks] = await Promise.all([
     readFile(path.join(repositoryRoot, 'Framework', 'auth', 'context.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'auth', 'context_boundary_test.go'), 'utf8'),
@@ -3273,12 +3312,12 @@ test('V84 repository work and target-environment boundaries match the weighted e
     calculatedBaseline += (Number(row[2]) * Number(row[4])) / 100;
     calculatedCompleted += expectedContribution;
   }
-  assert.equal(calculatedBaseline.toFixed(5), '9.91755');
-  assert.equal(calculatedCompleted.toFixed(5), '9.91830');
-  assert.match(evaluation, /评估版本：V84（已完成）/);
-  assert.match(evaluation, /V83-01.*已完成并计分/s);
-  assert.match(evaluation, /身份、会话与认证治理 \| 6% \| 9\.9475 \| 9\.9475 \| 9\.9600/);
-  assert.match(evaluation, /当前有效评分为 \*\*9\.91830\/10（A-）\*\*/);
+	assert.equal(calculatedBaseline.toFixed(5), '9.92080');
+	assert.equal(calculatedCompleted.toFixed(5), '9.92143');
+	assert.match(evaluation, /评估版本：V90（已完成）/);
+	assert.match(evaluation, /V90-01.*已完成/s);
+	assert.match(evaluation, /协议与网络能力 \| 5% \| 8\.6275 \| 8\.6275 \| 8\.6400/);
+	assert.match(evaluation, /V90 完成评分：\*\*9\.92143\/10（A-）\*\*/);
   assert.match(v69Backlog, /V69-01 已完成/);
   assert.match(v69Backlog, /9\.8880\/10/);
   assert.match(v70Backlog, /状态：V70-01 已完成并计分/);
@@ -3341,6 +3380,99 @@ test('V84 repository work and target-environment boundaries match the weighted e
   assert.match(v84Backlog, /completedAuthContextError|refresh gate/);
   assert.match(v84Backlog, /9\.91830\/10/);
   assert.match(v84Backlog, /V84-02\/V84-03.*`not_recorded`/s);
+	assert.match(v85Backlog, /状态：V85-01 已完成并计分/);
+	assert.match(v85Backlog, /completedAdapterContextError/);
+	assert.match(v85Backlog, /9\.91893\/10/);
+	assert.match(v85Backlog, /V85-02\/V85-03.*`not_recorded`/s);
+	assert.match(natsAdapter, /func completedAdapterContextError\(ctx context\.Context\) error/);
+	assert.match(natsAdapter, /!time\.Now\(\)\.Before\(deadline\)/);
+	assert.match(natsAdapter, /fetchErr := completedAdapterContextError\(fetchContext\)/);
+	assert.match(natsAdapter, /acknowledgement, err := adapter\.publisher\.PublishMsg\(ctx, dlqMessage\)[\s\S]*completedAdapterContextError\(ctx\)[\s\S]*source\.DoubleAck\(ctx\)/);
+	for (const testName of [
+		'TestAdapterRejectsCompletedContextsWithoutBrokerCalls',
+		'TestAdapterRejectsLateSuccessfulBrokerResults',
+		'TestCompletedAdapterContextErrorObservesCancellationAndElapsedDeadline',
+		'TestReceiveNextRejectsResultAfterInternalFetchDeadline',
+	]) {
+		assert.match(natsContextTests, new RegExp(`func ${testName}`));
+	}
+	assertEvidenceInput('Framework/queueclient/natsjetstream/context_boundary_test.go');
+	assertEvidenceInput('docs/待优化/待优化V85.md');
+	assert.match(v86Backlog, /状态：V86-01 已完成并计分/);
+	assert.match(v86Backlog, /completedSDKContextError|authoritativeSDKHTTPResult/);
+	assert.match(v86Backlog, /9\.91955\/10/);
+	assert.match(v86Backlog, /V86-02\/V86-03.*`not_recorded`/s);
+	for (const client of [exampleSDKClient, billingSDKClient]) {
+		assert.match(client, /func completedSDKContextError\(ctx context\.Context\) error/);
+		assert.match(client, /!time\.Now\(\)\.Before\(deadline\)/);
+		assert.match(client, /func authoritativeSDKHTTPResult\(ctx context\.Context, response \*http\.Response, err error\)/);
+		assert.match(client, /httpResponse, err = authoritativeSDKHTTPResult\(ctx, httpResponse, err\)/);
+		assert.match(client, /responseHeader := httpResponse\.Header\.Clone\(\)[\s\S]*completedSDKContextError\(ctx\)/);
+		assert.match(client, /func preserveSDKRedirectResponse\(_ \*http\.Request, _ \[\]\*http\.Request\) error/);
+		assert.match(client, /return http\.ErrUseLastResponse/);
+		assert.match(client, /var defaultSDKHTTPClient = &http\.Client\{[\s\S]*Timeout:\s+defaultSDKHTTPTimeout,[\s\S]*CheckRedirect: preserveSDKRedirectResponse,[\s\S]*\}/);
+		assert.match(client, /httpClient:\s+defaultSDKHTTPClient/);
+	}
+	assert.match(goSDK, /func completedSDKContextError\(ctx context\.Context\) error/);
+	assert.match(goSDK, /func authoritativeSDKHTTPResult\(ctx context\.Context, response \*http\.Response, err error\)/);
+	assert.match(goSDK, /func preserveSDKRedirectResponse\(_ \*http\.Request, _ \[\]\*http\.Request\) error/);
+	assert.match(goSDK, /httpClient:\s+defaultSDKHTTPClient/);
+	assert.match(exampleSDKTests, /func TestGeneratedClientRejectsCompletedContextAcrossRequestLifecycle/);
+	assert.match(exampleSDKTests, /func TestCompletedSDKContextErrorFastPath/);
+	for (const tests of [exampleSDKTests, billingSDKTests]) {
+		assert.match(tests, /func TestGeneratedClientDefaultHTTPClientPreservesRedirectResponse/);
+		assert.match(tests, /redirectTargetCalls\.Load\(\)/);
+	}
+	assert.match(exampleSDKTests, /client\.StartOIDCBrowserAuthorization\(context\.Background\(\)\)/);
+	assertEvidenceInput('SDK/GoExample/client_test.go');
+	assertEvidenceInput('SDK/Billing/client.gen.go');
+	assertEvidenceInput('docs/待优化/待优化V86.md');
+	assert.match(v87Backlog, /状态：V87-01 已完成并计分/);
+	assert.match(v87Backlog, /preserveSDKRedirectResponse|http\.ErrUseLastResponse/);
+	assert.match(v87Backlog, /9\.92018\/10/);
+	assert.match(v87Backlog, /V87-02\/V87-03.*`not_recorded`/s);
+	assertEvidenceInput('SDK/Billing/client_test.go');
+	assertEvidenceInput('docs/待优化/待优化V87.md');
+	assert.match(v88Backlog, /状态：V88-01 已完成并计分/);
+	assert.match(v88Backlog, /defaultSDKHTTPTimeout|30 秒|30s/);
+	assert.match(v88Backlog, /9\.92080\/10/);
+	assert.match(v88Backlog, /V88-02\/V88-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V88.md');
+	assert.match(v89Backlog, /状态：V89-01 已完成/);
+	assert.match(v89Backlog, /callCheck|panic/);
+	assert.match(v89Backlog, /9\.92080\/10/);
+	assert.match(v89Backlog, /V89-02\/V89-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V89.md');
+	assert.match(v90Backlog, /状态：V90-01 已完成/);
+	assert.match(v90Backlog, /defaultSDKHTTPTransport|MaxConnsPerHost/);
+	assert.match(v90Backlog, /9\.92143\/10/);
+	assert.match(v90Backlog, /V90-02\/V90-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V90.md');
+	for (const client of [exampleSDKClient, billingSDKClient]) {
+		assert.match(client, /const defaultSDKHTTPTimeout = 30 \* time\.Second/);
+		assert.match(client, /Timeout:\s+defaultSDKHTTPTimeout/);
+	}
+	assert.match(goSDK, /const defaultSDKHTTPTimeout = 30 \* time\.Second/);
+	assert.match(goSDK, /Timeout:\s+defaultSDKHTTPTimeout/);
+	for (const tests of [exampleSDKTests, billingSDKTests]) {
+		assert.match(tests, /func TestGeneratedClientDefaultHTTPClientHasBoundedTransport/);
+		assert.match(tests, /defaultClient\.Timeout; timeout != 30\*time\.Second/);
+		assert.match(tests, /defaultClient\.Transport/);
+		assert.match(tests, /WithHTTPClient/);
+	}
+	const [healthChecker, healthTests, healthBenchmark] = await Promise.all([
+		readFile(path.join(repositoryRoot, 'Framework', 'health', 'checker.go'), 'utf8'),
+		readFile(path.join(repositoryRoot, 'Framework', 'health', 'checker_test.go'), 'utf8'),
+		readFile(path.join(repositoryRoot, 'Framework', 'health', 'benchmark_test.go'), 'utf8'),
+	]);
+	assert.match(healthChecker, /func callCheck\(ctx context\.Context, check Check\) \(err error\)/);
+	assert.match(healthChecker, /if recover\(\) != nil/);
+	assert.match(healthChecker, /err = errHealthCheckPanic/);
+	assert.match(healthTests, /func TestReadinessContainsPanickingChecks/);
+	assert.match(healthBenchmark, /func BenchmarkReadiness/);
+	assertEvidenceInput('Framework/health/checker.go');
+	assertEvidenceInput('Framework/health/checker_test.go');
+	assertEvidenceInput('Framework/health/benchmark_test.go');
   assert.match(authContext, /func completedAuthContextError\(ctx context\.Context\) error/);
   assert.match(authContext, /!time\.Now\(\)\.Before\(deadline\)/);
   assert.match(oidcClient, /completedAuthContextError\(requestContext\)/);
@@ -5180,8 +5312,9 @@ test('Framework queue client keeps bounded W3C messaging spans broker-neutral an
   assert.match(jetStreamAdapter, /context\.WithTimeout\(ctx, maximumWait\)/);
   assert.match(jetStreamAdapter, /consumer\.Next\(jetstream\.FetchContext\(fetchContext\)\)/);
   assert.doesNotMatch(jetStreamAdapter, /consumer\.Next\(jetstream\.FetchContext\([^)]*\),\s*jetstream\.FetchMaxWait/);
-  assert.match(jetStreamAdapter, /if contextErr := ctx\.Err\(\); contextErr != nil/);
-  assert.match(jetStreamAdapter, /errors\.Is\(fetchContext\.Err\(\), context\.DeadlineExceeded\)/);
+  assert.match(jetStreamAdapter, /func completedAdapterContextError\(ctx context\.Context\) error/);
+  assert.match(jetStreamAdapter, /fetchErr := completedAdapterContextError\(fetchContext\)/);
+  assert.match(jetStreamAdapter, /errors\.Is\(fetchErr, context\.DeadlineExceeded\)/);
   assert.match(jetStreamAdapterTests, /func TestAdapterReceiveUsesContextBoundedPull/);
   assert.match(jetStreamAdapterTests, /func TestAdapterReceiveContinuesAfterInternalPullDeadline/);
   assert.match(jetStreamAdapterTests, /func BenchmarkDeliveryPullOption/);
