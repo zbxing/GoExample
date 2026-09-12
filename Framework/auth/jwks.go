@@ -107,7 +107,7 @@ func NewJWKSVerifier(ctx context.Context, config JWKSConfig) (*JWKSVerifier, err
 	if err := validateJWKSConfig(config); err != nil {
 		return nil, err
 	}
-	client := &http.Client{}
+	client := &http.Client{Transport: defaultAuthHTTPTransport}
 	if config.HTTPClient != nil {
 		*client = *config.HTTPClient
 	}

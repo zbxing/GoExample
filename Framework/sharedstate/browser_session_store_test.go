@@ -10,6 +10,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -266,6 +267,36 @@ func TestRedisBrowserSessionCreateAndReadUseOneAtomicScriptCommand(t *testing.T)
 	spans = recorder.Ended()[before:]
 	if len(spans) != 1 || spans[0].Name() != "redis.evalsha" {
 		t.Fatalf("browser read Redis spans = %v, want one redis.evalsha span", spanNames(spans))
+	}
+}
+
+func TestRedisBrowserSessionExpiredReadDoesNotDetachCanceledCleanup(t *testing.T) {
+	server := miniredis.RunT(t)
+	recorder, provider := newRedisTestTracerProvider(t)
+	state := newTestRedisWithProvider(t, context.Background(), server, "goexample:browser-expired-context:", provider)
+	defer state.Close()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	manager := newRedisBrowserSessionManagerWithSubjectLimit(t, &now, 2, 2, state)
+	credentials, err := manager.Start(context.Background(), redisBrowserClaims(now))
+	if err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	tokenHash := sha256.Sum256([]byte(credentials.SessionToken))
+	if _, err := state.ReadBrowserSession(context.Background(), tokenHash, now); err != nil {
+		t.Fatalf("warm ReadBrowserSession() error = %v", err)
+	}
+	readContext := &lateCancelContext{Context: context.Background()}
+	state.client.AddHook(&afterFirstEvalSHAHook{after: func() { readContext.canceled.Store(true) }})
+	before := len(recorder.Ended())
+	if _, err := state.ReadBrowserSession(readContext, tokenHash, now.Add(time.Hour)); !errors.Is(err, auth.ErrBrowserSessionExpired) {
+		t.Fatalf("expired ReadBrowserSession() error = %v", err)
+	}
+	spans := recorder.Ended()[before:]
+	if len(spans) != 1 || spans[0].Name() != "redis.evalsha" {
+		t.Fatalf("expired canceled cleanup Redis spans = %v, want one read span", spanNames(spans))
+	}
+	if exists, err := state.client.Exists(context.Background(), state.browserSessionKey(hex.EncodeToString(tokenHash[:]))).Result(); err != nil || exists != 1 {
+		t.Fatalf("expired session cleanup state = %d, %v; canceled caller must not detach cleanup", exists, err)
 	}
 }
 
@@ -848,6 +879,18 @@ func spanNames(spans []sdktrace.ReadOnlySpan) []string {
 type afterFirstEvalSHAHook struct {
 	once  sync.Once
 	after func()
+}
+
+type lateCancelContext struct {
+	context.Context
+	canceled atomic.Bool
+}
+
+func (ctx *lateCancelContext) Err() error {
+	if ctx.canceled.Load() {
+		return context.Canceled
+	}
+	return ctx.Context.Err()
 }
 
 func (hook *afterFirstEvalSHAHook) DialHook(next redis.DialHook) redis.DialHook {

@@ -401,7 +401,12 @@ func (s *Redis) ReadBrowserSession(ctx context.Context, tokenHash [sha256.Size]b
 		return auth.BrowserSessionRecord{}, auth.ErrBrowserSessionInvalid
 	}
 	if !record.ExpiresAt.After(time.UnixMilli(nowMillis).UTC()) {
-		_ = s.deleteBrowserSessionByHash(context.Background(), tokenHex)
+		// Expiry cleanup is best effort, but it remains owned by the caller's
+		// request. Do not detach a canceled request and issue a background
+		// mutation after the read has already observed cancellation.
+		if completedRedisContextError(ctx) == nil {
+			_ = s.deleteBrowserSessionByHash(ctx, tokenHex)
+		}
 		return auth.BrowserSessionRecord{}, auth.ErrBrowserSessionExpired
 	}
 	return record, nil

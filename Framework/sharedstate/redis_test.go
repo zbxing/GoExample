@@ -52,6 +52,46 @@ func TestRedisStorageTTLAndNamespaceReset(t *testing.T) {
 	}
 }
 
+func TestRedisContextBoundariesRejectNilBeforeRedis(t *testing.T) {
+	server := miniredis.RunT(t)
+	recorder, provider := newRedisTestTracerProvider(t)
+	state := newTestRedisWithProvider(t, context.Background(), server, "goexample:nil-context:", provider)
+	defer state.Close()
+
+	tests := []struct {
+		name string
+		run  func() error
+	}{
+		{name: "get", run: func() error { _, err := state.GetWithContext(nil, "key"); return err }},
+		{name: "set", run: func() error { return state.SetWithContext(nil, "key", []byte("value"), time.Minute) }},
+		{name: "delete", run: func() error { return state.DeleteWithContext(nil, "key") }},
+		{name: "reset", run: func() error { return state.ResetWithContext(nil) }},
+		{name: "check", run: func() error { return state.Check(nil) }},
+		{name: "take", run: func() error { _, err := state.Take(nil, "key", 1, time.Minute); return err }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			before := len(recorder.Ended())
+			if err := test.run(); !errors.Is(err, errRedisNilContext) {
+				t.Fatalf("nil context error = %v", err)
+			}
+			if spans := recorder.Ended()[before:]; len(spans) != 0 {
+				t.Fatalf("nil context reached Redis: %v", spanNames(spans))
+			}
+		})
+	}
+	if server.Exists("goexample:nil-context:key") {
+		t.Fatal("nil context created a Redis key")
+	}
+}
+
+func TestNewRedisRejectsNilContextBeforeBackendDial(t *testing.T) {
+	_, err := NewRedis(nil, RedisConfig{URL: "redis://127.0.0.1:1/0", KeyPrefix: "goexample:nil-constructor:"})
+	if !errors.Is(err, errRedisNilContext) {
+		t.Fatalf("NewRedis(nil) error = %v", err)
+	}
+}
+
 func TestRedisAtomicRateLimitAcrossClients(t *testing.T) {
 	server := miniredis.RunT(t)
 	first := newTestRedis(t, server, "goexample:rate:")

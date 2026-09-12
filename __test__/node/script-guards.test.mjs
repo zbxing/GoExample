@@ -2924,7 +2924,7 @@ test('SDK consumer matrix evidence stays repository-only, complete, and checksum
   assert.match(independentVerifier, /SDK consumer matrix evidence artifact is missing from the manifest/);
 });
 
-test('V90 repository work and target-environment boundaries match the weighted evaluation', async () => {
+test('V93 repository work and target-environment boundaries match the weighted evaluation', async () => {
   const [evaluation, v12Backlog, backlog, nextBacklog, currentBacklog, v16Backlog, v17Backlog, v18Backlog, v19Backlog, v20Backlog, v21Backlog, v22Backlog, lifecycleADR, publicAPIBoundaryADR, benchmark, app, appTests, fingerprint, middleware, tracing, tracingTests, httpClient, httpClientTests, responseBody, responseBodyTests, retry, retryTests, circuitBreaker, circuitBreakerTests, standardApplication, standardApplicationTests, exampleEntrypoint, billingEntrypoint, applicationEventStream, applicationEventStreamTests, applicationRoute, applicationRouteTests, sqlClient, sqlClientTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'docs', '评估', '项目架构与性能评估.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V12.md'), 'utf8'),
@@ -3230,6 +3230,18 @@ test('V90 repository work and target-environment boundaries match the weighted e
 		path.join(repositoryRoot, 'docs', '待优化', '待优化V90.md'),
 		'utf8',
 	);
+	const v91Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V91.md'),
+		'utf8',
+	);
+	const v92Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V92.md'),
+		'utf8',
+	);
+	const v93Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V93.md'),
+		'utf8',
+	);
 	const [exampleSDKClient, billingSDKClient, exampleSDKTests, billingSDKTests] = await Promise.all([
 		readFile(path.join(repositoryRoot, 'SDK', 'GoExample', 'client.gen.go'), 'utf8'),
 		readFile(path.join(repositoryRoot, 'SDK', 'Billing', 'client.gen.go'), 'utf8'),
@@ -3240,11 +3252,13 @@ test('V90 repository work and target-environment boundaries match the weighted e
 		readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'natsjetstream', 'adapter.go'), 'utf8'),
 		readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'natsjetstream', 'context_boundary_test.go'), 'utf8'),
 	]);
-  const [authContext, authContextTests, oidcClient, jwks] = await Promise.all([
+  const [authContext, authContextTests, oidcClient, jwks, authTransport, authTransportTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'Framework', 'auth', 'context.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'auth', 'context_boundary_test.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'auth', 'oidc_client.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'auth', 'jwks.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'auth', 'http_transport.go'), 'utf8'),
+    readFile(path.join(repositoryRoot, 'Framework', 'auth', 'http_transport_test.go'), 'utf8'),
   ]);
   const [browserSessionStore, browserSessionStoreTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'browser_session_store.go'), 'utf8'),
@@ -3258,7 +3272,8 @@ test('V90 repository work and target-environment boundaries match the weighted e
     readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'authorization_request_store.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'authorization_request_store_test.go'), 'utf8'),
   ]);
-  const [redisTracing, redisTests] = await Promise.all([
+  const [redisStore, redisTracing, redisTests] = await Promise.all([
+    readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'redis.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'redis_tracing.go'), 'utf8'),
     readFile(path.join(repositoryRoot, 'Framework', 'sharedstate', 'redis_test.go'), 'utf8'),
   ]);
@@ -3312,12 +3327,15 @@ test('V90 repository work and target-environment boundaries match the weighted e
     calculatedBaseline += (Number(row[2]) * Number(row[4])) / 100;
     calculatedCompleted += expectedContribution;
   }
-	assert.equal(calculatedBaseline.toFixed(5), '9.92080');
-	assert.equal(calculatedCompleted.toFixed(5), '9.92143');
-	assert.match(evaluation, /评估版本：V90（已完成）/);
+	assert.equal(calculatedBaseline.toFixed(5), '9.92293');
+	assert.equal(calculatedCompleted.toFixed(5), '9.92368');
+	assert.match(evaluation, /评估版本：V93（已完成）/);
 	assert.match(evaluation, /V90-01.*已完成/s);
-	assert.match(evaluation, /协议与网络能力 \| 5% \| 8\.6275 \| 8\.6275 \| 8\.6400/);
-	assert.match(evaluation, /V90 完成评分：\*\*9\.92143\/10（A-）\*\*/);
+	assert.match(evaluation, /协议与网络能力 \| 5% \| 8\.6400 \| 8\.6400 \| 8\.6400/);
+	assert.match(evaluation, /身份、会话与认证治理 \| 6% \| 9\.9725 \| 9\.9725 \| 9\.9725/);
+	assert.match(evaluation, /V92 完成评分：9\.92293\/10（A-）/);
+	assert.match(evaluation, /数据一致性与持久化 \| 6% \| 9\.9325 \| 9\.9325 \| 9\.9450/);
+	assert.match(evaluation, /V93 完成评分：\*\*9\.92368\/10（A-）\*\*/);
   assert.match(v69Backlog, /V69-01 已完成/);
   assert.match(v69Backlog, /9\.8880\/10/);
   assert.match(v70Backlog, /状态：V70-01 已完成并计分/);
@@ -3448,6 +3466,21 @@ test('V90 repository work and target-environment boundaries match the weighted e
 	assert.match(v90Backlog, /9\.92143\/10/);
 	assert.match(v90Backlog, /V90-02\/V90-03.*`not_recorded`/s);
 	assertEvidenceInput('docs/待优化/待优化V90.md');
+	assert.match(v91Backlog, /状态：V91-01 已完成并完成验收/);
+	assert.match(v91Backlog, /defaultAuthHTTPTransport|defaultAuthConnectTimeout/);
+	assert.match(v91Backlog, /9\.92218\/10/);
+	assert.match(v91Backlog, /V91-02\/V91-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V91.md');
+	assert.match(v92Backlog, /状态：V92-01 已完成并完成验收/);
+	assert.match(v92Backlog, /errRedisNilContext|Redis context.*fail closed/);
+	assert.match(v92Backlog, /9\.92293\/10/);
+	assert.match(v92Backlog, /V92-02\/V92-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V92.md');
+	assert.match(v93Backlog, /状态：V93-01 已完成并完成验收/);
+	assert.match(v93Backlog, /ReadBrowserSession|detached cleanup|caller context/);
+	assert.match(v93Backlog, /9\.92368\/10/);
+	assert.match(v93Backlog, /V93-02\/V93-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V93.md');
 	for (const client of [exampleSDKClient, billingSDKClient]) {
 		assert.match(client, /const defaultSDKHTTPTimeout = 30 \* time\.Second/);
 		assert.match(client, /Timeout:\s+defaultSDKHTTPTimeout/);
@@ -3479,6 +3512,17 @@ test('V90 repository work and target-environment boundaries match the weighted e
   assert.match(jwks, /refreshGate chan struct\{\}/);
   assert.match(jwks, /func \(verifier \*JWKSVerifier\) acquireRefresh\(ctx context\.Context\) bool/);
   assert.doesNotMatch(jwks, /refreshMu\s+sync\.Mutex/);
+  assert.match(oidcClient, /Transport: defaultAuthHTTPTransport/);
+  assert.match(jwks, /Transport: defaultAuthHTTPTransport/);
+  assert.match(authTransport, /var defaultAuthHTTPTransport = &http\.Transport/);
+  assert.match(authTransport, /Proxy: http\.ProxyFromEnvironment/);
+  assert.match(authTransport, /ForceAttemptHTTP2:\s+true/);
+  assert.match(authTransport, /TLSHandshakeTimeout:\s+defaultAuthConnectTimeout/);
+  assert.match(authTransport, /ResponseHeaderTimeout:\s+defaultAuthResponseHeaderLimit/);
+  assert.match(authTransportTests, /func TestAuthDefaultHTTPClientsUseBoundedPrivateTransport/);
+  assert.match(authTransportTests, /defaultAuthHTTPTransport/);
+  assertEvidenceInput('Framework/auth/http_transport.go');
+  assertEvidenceInput('Framework/auth/http_transport_test.go');
   for (const testName of [
     'TestOIDCClientRejectsLateSuccessfulHTTPResults',
     'TestAuthHTTPEntryPointsRejectPreCompletedContextWithoutTransport',
@@ -3495,6 +3539,16 @@ test('V90 repository work and target-environment boundaries match the weighted e
   assert.match(redisTracing, /func completedRedisContextError\(ctx context\.Context\) error/);
   assert.match(redisTracing, /if connection != nil \{\s+_ = connection\.Close\(\)/);
   assert.equal((redisTracing.match(/err = completedRedisContextError\(ctx\)/g) ?? []).length, 2);
+  assert.match(redisStore, /errRedisNilContext = errors\.New\("Redis operation context is nil"\)/);
+  assert.match(redisStore, /func NewRedis\(ctx context\.Context, config RedisConfig\)/);
+  assert.match(redisStore, /if ctx == nil \{\s+return nil, errRedisNilContext/);
+  assert.match(redisStore, /func \(s \*Redis\) GetWithContext\(ctx context\.Context, key string\)/);
+  assert.match(redisStore, /func \(s \*Redis\) Take\(ctx context\.Context, key string, limit int, window time.Duration\)/);
+  assert.match(redisTests, /TestRedisContextBoundariesRejectNilBeforeRedis/);
+  assert.match(redisTests, /TestNewRedisRejectsNilContextBeforeBackendDial/);
+  assert.match(sessionStore, /ctx == nil \|\| userID == ""/);
+  assert.match(sessionStoreTests, /RevokeUser\(nil, "user-1"/);
+  assert.match(sessionStoreTests, /ActiveFamilies\(nil, "user-1"/);
   assert.match(redisTests, /TestRedisTracingHooksRejectLateNilResults/);
   assert.match(redisTests, /TestRedisTracingHooksObserveElapsedDeadlineAndPreserveExplicitErrors/);
   assert.match(authorizationRequestStore, /redis\.call\("ZCARD", KEYS\[2\]\) > absoluteMaximum/);

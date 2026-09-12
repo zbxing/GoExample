@@ -24,9 +24,9 @@
     "semantic_hash": ""
   },
   "Framework/auth/jwks.go": {
-    "mtime": 1788944669.4497914,
-    "seen": 1788949591.9971602,
-    "ast_hash": "d56da3ce05b858ea69d8908314498256",
+    "mtime": 1789124403.538909,
+    "seen": 1789126861.3652751,
+    "ast_hash": "c138db4f30ef2e3f1b5d7d35fc19dd20",
     "semantic_hash": ""
   },
   "Framework/auth/jwks_test.go": {
@@ -48,9 +48,9 @@
     "semantic_hash": ""
   },
   "Framework/auth/oidc_client.go": {
-    "mtime": 1788944727.22801,
-    "seen": 1788949591.9971602,
-    "ast_hash": "5bdf74af452fcb11fa92e436247c3b95",
+    "mtime": 1789124403.538909,
+    "seen": 1789126861.3652751,
+    "ast_hash": "910969627612b2f787a3ddb9b2356bb6",
     "semantic_hash": ""
   },
   "Framework/auth/oidc_client_test.go": {
@@ -516,21 +516,21 @@
     "semantic_hash": ""
   },
   "Framework/sharedstate/browser_session_store.go": {
-    "mtime": 1788915828.9561863,
-    "seen": 1788918792.2223032,
-    "ast_hash": "13977f2fc33bbb22d63d28ba1ef01028",
+    "mtime": 1789181282.403263,
+    "seen": 1789182648.4595044,
+    "ast_hash": "6554ad8892bbf4596556ff0ca76ca532",
     "semantic_hash": ""
   },
   "Framework/sharedstate/browser_session_store_test.go": {
-    "mtime": 1788916659.4821236,
-    "seen": 1788918792.2223032,
-    "ast_hash": "878fa2484a78ccc86e77c81a14dc69be",
+    "mtime": 1789181373.3347378,
+    "seen": 1789182648.4595044,
+    "ast_hash": "1d565a7da29ffa69ce47d4380321a3c4",
     "semantic_hash": ""
   },
   "Framework/sharedstate/redis.go": {
-    "mtime": 1787407311.5358133,
-    "seen": 1787581915.2026258,
-    "ast_hash": "5228a49b658145a47295e4a8e251b7de",
+    "mtime": 1789130584.9711761,
+    "seen": 1789131502.773964,
+    "ast_hash": "feabf45e4fa432d2b58fce3dd72eee19",
     "semantic_hash": ""
   },
   "Framework/sharedstate/redis_sentinel_integration_test.go": {
@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "Framework/sharedstate/redis_test.go": {
-    "mtime": 1788936954.49974,
-    "seen": 1788938798.5776312,
-    "ast_hash": "221bed452f926fb3e401981acaac17ee",
+    "mtime": 1789130652.9320872,
+    "seen": 1789131502.773964,
+    "ast_hash": "b1c3c887321f7f72e9fd56236ff11702",
     "semantic_hash": ""
   },
   "Framework/sharedstate/redis_tracing.go": {
@@ -552,15 +552,15 @@
     "semantic_hash": ""
   },
   "Framework/sharedstate/session_store.go": {
-    "mtime": 1788864751.527889,
-    "seen": 1788866605.6891587,
-    "ast_hash": "fc44a704dd102069ea6d75e35117b5b7",
+    "mtime": 1789130584.9721737,
+    "seen": 1789131502.773964,
+    "ast_hash": "b26505d06a95f3007fdee59865699af0",
     "semantic_hash": ""
   },
   "Framework/sharedstate/session_store_test.go": {
-    "mtime": 1788865151.8017347,
-    "seen": 1788866605.6891587,
-    "ast_hash": "e8473b32dc1bca90c3d300e85c80032d",
+    "mtime": 1789130977.7525053,
+    "seen": 1789131502.773964,
+    "ast_hash": "ab24409b68c2a912381cd7b54e8cbd4e",
     "semantic_hash": ""
   },
   "Framework/sqlclient/client.go": {
@@ -3012,9 +3012,9 @@
     "semantic_hash": ""
   },
   "__test__/node/script-guards.test.mjs": {
-    "mtime": 1789121271.0261154,
-    "seen": 1789122107.616477,
-    "ast_hash": "4da1ae85038b0435d666d2e8241fe15e",
+    "mtime": 1789181576.2654214,
+    "seen": 1789182648.4595044,
+    "ast_hash": "3897c36dc58a6d0154984dd4697bfd46",
     "semantic_hash": ""
   },
   "__test__/node/server-release.test.mjs": {
@@ -3552,9 +3552,9 @@
     "semantic_hash": ""
   },
   "docs/\u8bc4\u4f30/\u9879\u76ee\u67b6\u6784\u4e0e\u6027\u80fd\u8bc4\u4f30.md": {
-    "mtime": 1789121657.3685768,
-    "seen": 1789122107.616477,
-    "ast_hash": "c3e136d587674bbb85000b652ead0bef",
+    "mtime": 1789183019.5775223,
+    "seen": 1789183133.3929203,
+    "ast_hash": "5e89c8e0e00eee0c1a7723ff72c2ad5b",
     "semantic_hash": ""
   },
   "support/api-contracts/.github/workflows/contract.yml": {
@@ -3846,15 +3846,15 @@
     "semantic_hash": ""
   },
   "SDK/Billing/release-manifest.json": {
-    "mtime": 1789121724.9010785,
-    "seen": 1789122107.616477,
-    "ast_hash": "90cce6cffe0726b7c3c3bac346b78ce0",
+    "mtime": 1789122575.702665,
+    "seen": 1789126861.3672702,
+    "ast_hash": "22dd57e30f2b5bad3e009faa3caa31e8",
     "semantic_hash": ""
   },
   "SDK/GoExample/release-manifest.json": {
-    "mtime": 1789121724.4497354,
-    "seen": 1789122107.616477,
-    "ast_hash": "b87d1903e326cf2e7fc1a528eca6fe54",
+    "mtime": 1789122575.0414155,
+    "seen": 1789126861.3672702,
+    "ast_hash": "74838b6e5c25efca61a7a5006742ff91",
     "semantic_hash": ""
   },
   "__test__/node/sdk-release.test.mjs": {
@@ -4512,9 +4512,9 @@
     "semantic_hash": ""
   },
   "scripts/lib/evidence-manifest-contract.mjs": {
-    "mtime": 1789121258.2292037,
-    "seen": 1789122107.616477,
-    "ast_hash": "695bf9fabc563c84a86035070953c9b9",
+    "mtime": 1789181600.2796018,
+    "seen": 1789182648.4595044,
+    "ast_hash": "ec8b2fe64be60ebf1b2608181d2f335c",
     "semantic_hash": ""
   },
   "graphify-out/memory/query_20260830_011042_\u6700\u65b0\u7684\u5f85\u4f18\u5316\u6587\u6863\u5168\u90e8\u5b8c\u6210\u4e86\u5417_\u6ca1\u6709\u8bf7\u7ee7\u7eed_\u5426\u5219\u8bf7\u7ee7\u7eed\u8bc4\u4f30\u5e76\u751f\u6210\u65b0\u7684\u5f85\u4f18\u5316\u6587\u6863_msfront\u9664\u5916.md": {
@@ -5943,6 +5943,36 @@
     "mtime": 1789121592.9061763,
     "seen": 1789122107.616477,
     "ast_hash": "bdd4f6b921e3fd57762789d3844439e3",
+    "semantic_hash": ""
+  },
+  "Framework/auth/http_transport.go": {
+    "mtime": 1789124403.5379107,
+    "seen": 1789126861.3652751,
+    "ast_hash": "0add8138c2151a533b02124174c10298",
+    "semantic_hash": ""
+  },
+  "Framework/auth/http_transport_test.go": {
+    "mtime": 1789124484.9385755,
+    "seen": 1789126861.3652751,
+    "ast_hash": "85da24e69ea6786a173c2726f34e5511",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V91.md": {
+    "mtime": 1789128041.4397626,
+    "seen": 1789128111.960445,
+    "ast_hash": "45cd212c54b139bcae2e1a6056a5b178",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V92.md": {
+    "mtime": 1789182807.9814448,
+    "seen": 1789182972.8384173,
+    "ast_hash": "ca6b7eb8332845a88492af2240b112fc",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V93.md": {
+    "mtime": 1789181483.2380695,
+    "seen": 1789182648.4609537,
+    "ast_hash": "9e9cb385c03ffabd7708740b6f471dc0",
     "semantic_hash": ""
   }
 }

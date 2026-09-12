@@ -400,7 +400,7 @@ func (s *Redis) RevokeFamily(ctx context.Context, tokenHash [sha256.Size]byte, n
 }
 
 func (s *Redis) RevokeUser(ctx context.Context, userID string, now time.Time) (int, error) {
-	if s == nil || userID == "" {
+	if s == nil || ctx == nil || userID == "" {
 		return 0, errors.New("invalid session store user")
 	}
 	userHash := sha256.Sum256([]byte(userID))
@@ -420,7 +420,7 @@ func (s *Redis) RevokeUser(ctx context.Context, userID string, now time.Time) (i
 }
 
 func (s *Redis) ActiveFamilies(ctx context.Context, userID string, now time.Time) (int, error) {
-	if s == nil || userID == "" {
+	if s == nil || ctx == nil || userID == "" {
 		return 0, errors.New("invalid session store user")
 	}
 	userHash := sha256.Sum256([]byte(userID))

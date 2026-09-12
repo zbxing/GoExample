@@ -142,6 +142,17 @@ func TestRedisRefreshSessionSingleFamilyRejectsInvalidInputsBeforeRedis(t *testi
 	if keys := server.Keys(); len(keys) != 0 {
 		t.Fatalf("invalid requests wrote Redis keys: %v", keys)
 	}
+
+	before = len(recorder.Ended())
+	if _, err := state.RevokeUser(nil, "user-1", now); err == nil {
+		t.Fatal("RevokeUser() succeeded with nil context")
+	}
+	if _, err := state.ActiveFamilies(nil, "user-1", now); err == nil {
+		t.Fatal("ActiveFamilies() succeeded with nil context")
+	}
+	if spans := recorder.Ended()[before:]; len(spans) != 0 {
+		t.Fatalf("nil user session contexts reached Redis: %v", spanNames(spans))
+	}
 }
 
 func TestRedisRefreshSessionSingleFamilyValidatesStateBeforeMutation(t *testing.T) {

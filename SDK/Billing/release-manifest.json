@@ -5,7 +5,7 @@
   "sdkPath": "SDK/Billing",
   "modulePath": "github.com/zbxing/goexample/SDK/Billing",
   "sdkVersion": "1.0.0",
-  "sourceCommit": "1adecede1abc639b815208f414e935d92745e470",
+  "sourceCommit": "34b54d1c2367e78bc2c69bb1282d1912fdf784f0",
   "expectedTag": "SDK/Billing/v1.0.0",
   "publication": "not_checked",
   "openapi": {

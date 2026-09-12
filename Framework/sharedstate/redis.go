@@ -34,6 +34,8 @@ const (
 )
 
 var (
+	errRedisNilContext = errors.New("Redis operation context is nil")
+
 	unlockScript = redis.NewScript(`
 if redis.call("GET", KEYS[1]) == ARGV[1] then
   return redis.call("DEL", KEYS[1])
@@ -116,6 +118,9 @@ type Redis struct {
 // NewRedis creates and verifies a Redis shared-state backend. Configuration
 // errors deliberately do not include the URL, which may contain credentials.
 func NewRedis(ctx context.Context, config RedisConfig) (*Redis, error) {
+	if ctx == nil {
+		return nil, errRedisNilContext
+	}
 	config = withDefaults(config)
 	if err := validateConfig(config); err != nil {
 		return nil, err
@@ -334,6 +339,9 @@ func (s *Redis) operationContext(parent context.Context) (context.Context, conte
 }
 
 func (s *Redis) GetWithContext(ctx context.Context, key string) ([]byte, error) {
+	if ctx == nil {
+		return nil, errRedisNilContext
+	}
 	if key == "" {
 		return nil, nil
 	}
@@ -354,6 +362,9 @@ func (s *Redis) Get(key string) ([]byte, error) {
 }
 
 func (s *Redis) SetWithContext(ctx context.Context, key string, value []byte, expiration time.Duration) error {
+	if ctx == nil {
+		return errRedisNilContext
+	}
 	if key == "" || len(value) == 0 {
 		return nil
 	}
@@ -370,6 +381,9 @@ func (s *Redis) Set(key string, value []byte, expiration time.Duration) error {
 }
 
 func (s *Redis) DeleteWithContext(ctx context.Context, key string) error {
+	if ctx == nil {
+		return errRedisNilContext
+	}
 	if key == "" {
 		return nil
 	}
@@ -388,6 +402,9 @@ func (s *Redis) Delete(key string) error {
 // ResetWithContext deletes only this adapter's key prefix; it never flushes
 // the Redis database shared with other applications.
 func (s *Redis) ResetWithContext(ctx context.Context) error {
+	if ctx == nil {
+		return errRedisNilContext
+	}
 	operationCtx, cancel := s.operationContext(ctx)
 	defer cancel()
 	var cursor uint64
@@ -415,6 +432,9 @@ func (s *Redis) Reset() error {
 // Check verifies that Redis can serve commands within the caller and adapter
 // deadlines. It is suitable for startup and readiness checks.
 func (s *Redis) Check(ctx context.Context) error {
+	if ctx == nil {
+		return errRedisNilContext
+	}
 	operationCtx, cancel := s.operationContext(ctx)
 	defer cancel()
 	if err := s.client.Ping(operationCtx).Err(); err != nil {
@@ -433,6 +453,9 @@ func (s *Redis) Close() error {
 
 // Take atomically increments one fixed-window counter and returns its TTL.
 func (s *Redis) Take(ctx context.Context, key string, limit int, window time.Duration) (RateLimitResult, error) {
+	if ctx == nil {
+		return RateLimitResult{}, errRedisNilContext
+	}
 	if key == "" || limit <= 0 || window <= 0 {
 		return RateLimitResult{}, errors.New("rate limit key, limit, and window must be positive")
 	}

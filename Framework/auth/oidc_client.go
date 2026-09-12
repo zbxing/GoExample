@@ -116,7 +116,7 @@ func NewOIDCClient(ctx context.Context, config OIDCClientConfig) (*OIDCClient, e
 	if err != nil {
 		return nil, err
 	}
-	client := &http.Client{}
+	client := &http.Client{Transport: defaultAuthHTTPTransport}
 	if config.HTTPClient != nil {
 		*client = *config.HTTPClient
 	}
