@@ -69,7 +69,7 @@ func readExampleOpenAPI(t *testing.T) []byte {
 		}
 		return content
 	}
-		t.Fatal("Solutions/Example is missing from project contract manifest")
+	t.Fatal("Solutions/Example is missing from project contract manifest")
 	return nil
 }
 

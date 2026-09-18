@@ -118,6 +118,125 @@ func TestCloneRequestForPropagationOnlyIsolatesMutableHeaders(t *testing.T) {
 	}
 }
 
+func TestPrepareRequestForPropagationSkipsNoopTraceContext(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "https://example.test/items", http.NoBody)
+	request.Header.Set("X-Caller", "unchanged")
+	ctx := context.Background()
+
+	outbound, inject := prepareRequestForPropagation(request, ctx, propagation.TraceContext{})
+	if inject {
+		t.Fatal("invalid standard trace context unexpectedly requested injection")
+	}
+	if outbound == request || outbound.Context() != ctx {
+		t.Fatal("request value/context was not copied")
+	}
+	outbound.Header.Set("X-Shared-Probe", "shared")
+	if request.Header.Get("X-Shared-Probe") != "shared" {
+		t.Fatal("no-op standard trace path unexpectedly cloned headers")
+	}
+	delete(request.Header, "X-Shared-Probe")
+	if got := outbound.Header.Get("X-Caller"); got != "unchanged" {
+		t.Fatalf("shared no-op header value = %q", got)
+	}
+
+	tracer := trace.NewNoopTracerProvider().Tracer(instrumentationName)
+	var received *http.Request
+	transport := tracingTransport{
+		base: roundTripFunc(func(outbound *http.Request) (*http.Response, error) {
+			received = outbound
+			return &http.Response{StatusCode: http.StatusNoContent, Body: http.NoBody}, nil
+		}),
+		tracer:     tracer,
+		propagator: propagation.TraceContext{},
+	}
+	response, err := transport.RoundTrip(request)
+	if err != nil {
+		t.Fatalf("RoundTrip() error = %v", err)
+	}
+	response.Body.Close()
+	if received == nil {
+		t.Fatal("base transport did not receive a request")
+	}
+	if received.Header.Get("traceparent") != "" {
+		t.Fatalf("no-op trace request headers = %#v", received.Header)
+	}
+	if request.Header.Get("X-Caller") != "unchanged" {
+		t.Fatalf("caller header changed = %#v", request.Header)
+	}
+}
+
+func TestPrepareRequestForPropagationKeepsCustomPropagatorIsolation(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "https://example.test/items", http.NoBody)
+	request.Header.Set("X-Caller", "unchanged")
+	propagator := testHTTPPropagator{}
+	outbound, inject := prepareRequestForPropagation(request, context.Background(), propagator)
+	if !inject {
+		t.Fatal("custom propagator did not receive an isolated header clone")
+	}
+	outbound.Header.Set("X-Clone-Probe", "isolated")
+	if request.Header.Get("X-Clone-Probe") != "" {
+		t.Fatal("custom propagator request headers were not isolated")
+	}
+	propagator.Inject(context.Background(), propagation.HeaderCarrier(outbound.Header))
+	if outbound.Header.Get("x-custom-trace") != "injected" || request.Header.Get("x-custom-trace") != "" {
+		t.Fatalf("custom propagation isolation failed: outbound=%#v caller=%#v", outbound.Header, request.Header)
+	}
+}
+
+func TestPropagationNeedsInjectionDoesNotReadSpanContextForCustomPropagator(t *testing.T) {
+	ctx := panicValueContext{Context: context.Background()}
+	if !propagationNeedsInjection(testHTTPPropagator{}, ctx) {
+		t.Fatal("custom propagator unexpectedly skipped injection")
+	}
+}
+
+func TestPrepareRequestForPropagationTreatsNilPropagatorAsNoop(t *testing.T) {
+	request := httptest.NewRequest(http.MethodGet, "https://example.test/items", http.NoBody)
+	request.Header.Set("X-Caller", "unchanged")
+	var typedNilCustom *typedNilHTTPPropagator
+
+	tests := []struct {
+		name       string
+		propagator propagation.TextMapPropagator
+	}{
+		{name: "nil-interface", propagator: nil},
+		{name: "typed-nil-trace-context", propagator: (*propagation.TraceContext)(nil)},
+		{name: "typed-nil-custom", propagator: typedNilCustom},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			outbound, inject := prepareRequestForPropagation(request, context.Background(), test.propagator)
+			if inject {
+				t.Fatal("nil propagator unexpectedly requested injection")
+			}
+			if outbound == request || outbound.Context() != context.Background() {
+				t.Fatal("request value/context was not copied")
+			}
+			outbound.Header.Set("X-Shared-Probe", "shared")
+			if request.Header.Get("X-Shared-Probe") != "shared" {
+				t.Fatal("nil propagator no-op should preserve the existing no-clone contract")
+			}
+			delete(request.Header, "X-Shared-Probe")
+
+			transport := tracingTransport{
+				base: roundTripFunc(func(outbound *http.Request) (*http.Response, error) {
+					if outbound.Header.Get("X-Caller") != "unchanged" {
+						t.Fatalf("caller header = %#v", outbound.Header)
+					}
+					return &http.Response{StatusCode: http.StatusNoContent, Body: http.NoBody}, nil
+				}),
+				tracer:     trace.NewNoopTracerProvider().Tracer(instrumentationName),
+				propagator: test.propagator,
+			}
+			response, err := transport.RoundTrip(request)
+			if err != nil {
+				t.Fatalf("RoundTrip() error = %v", err)
+			}
+			response.Body.Close()
+		})
+	}
+}
+
 func TestTracingTransportRejectsCompletedContextResultsAndOwnsBodies(t *testing.T) {
 	t.Run("pre-canceled request", func(t *testing.T) {
 		recorder, provider := testTracerProvider(t)
@@ -300,6 +419,24 @@ func BenchmarkCloneRequestForPropagation(b *testing.B) {
 				outbound.Header = make(http.Header)
 			}
 			benchmarkOutboundRequest = outbound
+		}
+	})
+}
+
+func BenchmarkPrepareRequestForPropagation(b *testing.B) {
+	request := httptest.NewRequest(http.MethodGet, "https://example.test/items", http.NoBody)
+	request.Header.Set("X-Caller", "value")
+	ctx := context.Background()
+	b.Run("standard-noop", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			benchmarkOutboundRequest, _ = prepareRequestForPropagation(request, ctx, propagation.TraceContext{})
+		}
+	})
+	b.Run("custom-isolated", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			benchmarkOutboundRequest, _ = prepareRequestForPropagation(request, ctx, testHTTPPropagator{})
 		}
 	})
 }
@@ -607,6 +744,40 @@ type countingHTTPBody struct {
 	closes   atomic.Int32
 	closeErr error
 }
+
+type testHTTPPropagator struct{}
+
+type typedNilHTTPPropagator struct{}
+
+type panicValueContext struct {
+	context.Context
+}
+
+func (panicValueContext) Value(any) any {
+	panic("custom propagator must not read span context")
+}
+
+func (*typedNilHTTPPropagator) Inject(context.Context, propagation.TextMapCarrier) {
+	panic("typed-nil propagator must not be invoked")
+}
+
+func (*typedNilHTTPPropagator) Extract(context.Context, propagation.TextMapCarrier) context.Context {
+	panic("typed-nil propagator must not be invoked")
+}
+
+func (*typedNilHTTPPropagator) Fields() []string {
+	panic("typed-nil propagator must not be invoked")
+}
+
+func (testHTTPPropagator) Inject(_ context.Context, carrier propagation.TextMapCarrier) {
+	carrier.Set("x-custom-trace", "injected")
+}
+
+func (testHTTPPropagator) Extract(ctx context.Context, _ propagation.TextMapCarrier) context.Context {
+	return ctx
+}
+
+func (testHTTPPropagator) Fields() []string { return []string{"x-custom-trace"} }
 
 func (body *countingHTTPBody) Close() error {
 	body.closes.Add(1)

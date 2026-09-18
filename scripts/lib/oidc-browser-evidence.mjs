@@ -27,6 +27,7 @@ export const oidcBrowserTests = Object.freeze([
 ]);
 export const oidcBrowserGoArguments = Object.freeze([
   'test',
+  '-p=1',
   '-v',
   '-count=1',
   '-timeout=60s',

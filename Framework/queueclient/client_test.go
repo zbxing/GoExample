@@ -152,7 +152,7 @@ func TestTraceCarrierLazilyAllocatesOnlyForTraceHeaders(t *testing.T) {
 		"TraceState":  "vendor=value",
 		"Tenant":      "tenant",
 	})
-	if carrier["traceparent"] == "" || carrier["tracestate"] != "vendor=value" {
+	if carrier.Get("traceparent") == "" || carrier.Get("tracestate") != "vendor=value" {
 		t.Fatalf("traceCarrier = %#v", carrier)
 	}
 	mixedCase := map[string]string{
@@ -161,12 +161,44 @@ func TestTraceCarrierLazilyAllocatesOnlyForTraceHeaders(t *testing.T) {
 	}
 	allocations := testing.AllocsPerRun(1000, func() {
 		carrier := traceCarrier(mixedCase)
-		if carrier[traceparentHeader] == "" || carrier[tracestateHeader] == "" {
+		if carrier.Get(traceparentHeader) == "" || carrier.Get(tracestateHeader) == "" {
 			t.Fatal("mixed-case trace headers were not canonicalized")
 		}
 	})
-	if allocations != 2 {
-		t.Fatalf("traceCarrier mixed-case allocations = %.1f, want map-only 2", allocations)
+	if allocations != 0 {
+		t.Fatalf("traceCarrier mixed-case allocations = %.1f, want 0", allocations)
+	}
+}
+
+func TestCanonicalTraceHeaderMatchesLegacy(t *testing.T) {
+	for _, canonical := range []string{traceparentHeader, tracestateHeader} {
+		for mask := 0; mask < 1<<len(canonical); mask++ {
+			name := []byte(canonical)
+			for index := range name {
+				if mask&(1<<index) != 0 {
+					name[index] -= 'a' - 'A'
+				}
+			}
+			input := string(name)
+			if got, want := canonicalTraceHeader(input), canonicalTraceHeaderLegacy(input); got != want {
+				t.Fatalf("canonicalTraceHeader(%q) = %q, want %q", input, got, want)
+			}
+		}
+	}
+
+	for _, input := range []string{
+		"",
+		"traceparentx",
+		"tracestatex",
+		"TRACEPARENT\x00",
+		"traceparent-",
+		"tracestate-",
+		"tracéparent",
+		"\u212A" + strings.Repeat("x", len(traceparentHeader)-1),
+	} {
+		if got, want := canonicalTraceHeader(input), canonicalTraceHeaderLegacy(input); got != want {
+			t.Fatalf("canonicalTraceHeader(%q) = %q, want %q", input, got, want)
+		}
 	}
 }
 
@@ -217,10 +249,74 @@ func TestValidateHeadersLazilyAllocatesDuplicateSet(t *testing.T) {
 	}); allocations != 0 {
 		t.Fatalf("validateHeaders with four headers allocations = %.1f, want 0", allocations)
 	}
+	fiveHeaders := map[string]string{
+		"Tenant": "tenant",
+		"Region": "region",
+		"Zone":   "zone",
+		"Shard":  "shard",
+		"Locale": "locale",
+	}
+	if allocations := testing.AllocsPerRun(1000, func() {
+		if err := validateHeaders(fiveHeaders, defaultMaxHeaders, defaultMaxHeaderBytes); err != nil {
+			t.Fatalf("validateHeaders(five headers) error = %v", err)
+		}
+	}); allocations != 0 {
+		t.Fatalf("validateHeaders with five headers allocations = %.1f, want 0", allocations)
+	}
+	eightHeaders := map[string]string{
+		"Tenant":   "tenant",
+		"Region":   "region",
+		"Zone":     "zone",
+		"Shard":    "shard",
+		"Locale":   "locale",
+		"Version":  "version",
+		"Priority": "priority",
+		"Source":   "source",
+	}
+	if allocations := testing.AllocsPerRun(1000, func() {
+		if err := validateHeaders(eightHeaders, defaultMaxHeaders, defaultMaxHeaderBytes); err != nil {
+			t.Fatalf("validateHeaders(eight headers) error = %v", err)
+		}
+	}); allocations != 0 {
+		t.Fatalf("validateHeaders with eight headers allocations = %.1f, want 0", allocations)
+	}
+	for _, count := range []int{9, 16, 64} {
+		headers := mixedCaseHeaderSet(count)
+		if allocations := testing.AllocsPerRun(1000, func() {
+			if err := validateHeaders(headers, defaultMaxHeaders, defaultMaxHeaderBytes); err != nil {
+				t.Fatalf("validateHeaders(%d headers) error = %v", count, err)
+			}
+		}); allocations != 0 {
+			t.Fatalf("validateHeaders with %d headers allocations = %.1f, want 0", count, allocations)
+		}
+	}
 
 	duplicateCandidates := map[string]string{"Tenant": "tenant", "tenant": "tenant"}
 	if err := validateHeaders(duplicateCandidates, defaultMaxHeaders, defaultMaxHeaderBytes); !errors.Is(err, ErrInvalidHeader) {
 		t.Fatalf("validateHeaders duplicate names error = %v, want ErrInvalidHeader", err)
+	}
+	for name, headers := range map[string]map[string]string{
+		"five headers": {
+			"Tenant": "tenant",
+			"tenant": "duplicate",
+			"Region": "region",
+			"Zone":   "zone",
+			"Shard":  "shard",
+		},
+		"eight headers": {
+			"Tenant":   "tenant",
+			"tenant":   "duplicate",
+			"Region":   "region",
+			"Zone":     "zone",
+			"Shard":    "shard",
+			"Locale":   "locale",
+			"Priority": "priority",
+			"Source":   "source",
+		},
+	} {
+		if err := validateHeaders(headers, defaultMaxHeaders, defaultMaxHeaderBytes); !errors.Is(err, ErrInvalidHeader) {
+			t.Fatalf("validateHeaders duplicate names with %s error = %v, want ErrInvalidHeader", name, err)
+		}
 	}
 	for name, headers := range map[string]map[string]string{
 		"control":   {"Tenant\n": "tenant"},
@@ -230,13 +326,197 @@ func TestValidateHeadersLazilyAllocatesDuplicateSet(t *testing.T) {
 			t.Fatalf("validateHeaders %s name error = %v, want ErrInvalidHeader", name, err)
 		}
 	}
+	for name, testCase := range map[string]struct {
+		headers    map[string]string
+		maxHeaders int
+		maxBytes   int
+		want       error
+	}{
+		"five headers invalid name": {
+			headers:    map[string]string{"Tenant\n": "tenant", "Region": "region", "Zone": "zone", "Shard": "shard", "Locale": "locale"},
+			maxHeaders: defaultMaxHeaders,
+			maxBytes:   defaultMaxHeaderBytes,
+			want:       ErrInvalidHeader,
+		},
+		"eight headers invalid name": {
+			headers:    map[string]string{"Tenant\n": "tenant", "Region": "region", "Zone": "zone", "Shard": "shard", "Locale": "locale", "Version": "version", "Priority": "priority", "Source": "source"},
+			maxHeaders: defaultMaxHeaders,
+			maxBytes:   defaultMaxHeaderBytes,
+			want:       ErrInvalidHeader,
+		},
+		"five headers invalid value": {
+			headers:    map[string]string{"Tenant": "tenant\r", "Region": "region", "Zone": "zone", "Shard": "shard", "Locale": "locale"},
+			maxHeaders: defaultMaxHeaders,
+			maxBytes:   defaultMaxHeaderBytes,
+			want:       ErrInvalidHeader,
+		},
+		"eight headers invalid value": {
+			headers:    map[string]string{"Tenant": "tenant\x00", "Region": "region", "Zone": "zone", "Shard": "shard", "Locale": "locale", "Version": "version", "Priority": "priority", "Source": "source"},
+			maxHeaders: defaultMaxHeaders,
+			maxBytes:   defaultMaxHeaderBytes,
+			want:       ErrInvalidHeader,
+		},
+		"five headers byte limit": {
+			headers:    fiveHeaders,
+			maxHeaders: defaultMaxHeaders,
+			maxBytes:   1,
+			want:       ErrHeadersTooLarge,
+		},
+		"eight headers byte limit": {
+			headers:    eightHeaders,
+			maxHeaders: defaultMaxHeaders,
+			maxBytes:   1,
+			want:       ErrHeadersTooLarge,
+		},
+		"five headers count limit": {
+			headers:    fiveHeaders,
+			maxHeaders: 4,
+			maxBytes:   defaultMaxHeaderBytes,
+			want:       ErrHeadersTooLarge,
+		},
+		"eight headers count limit": {
+			headers:    eightHeaders,
+			maxHeaders: 7,
+			maxBytes:   defaultMaxHeaderBytes,
+			want:       ErrHeadersTooLarge,
+		},
+	} {
+		if err := validateHeaders(testCase.headers, testCase.maxHeaders, testCase.maxBytes); !errors.Is(err, testCase.want) {
+			t.Fatalf("validateHeaders %s error = %v, want %v", name, err, testCase.want)
+		}
+	}
+}
+
+func TestValidateHeadersLargeSetCollisionAndConfiguredFallback(t *testing.T) {
+	first, second := collidingHeaderNames()
+	headers := mixedCaseHeaderSet(7)
+	headers[first] = "first"
+	headers[second] = "second"
+	if err := validateHeaders(headers, defaultMaxHeaders, defaultMaxHeaderBytes); err != nil {
+		t.Fatalf("validateHeaders(colliding names) error = %v", err)
+	}
+	headers[strings.ToLower(first)] = "duplicate"
+	if err := validateHeaders(headers, defaultMaxHeaders, defaultMaxHeaderBytes); !errors.Is(err, ErrInvalidHeader) {
+		t.Fatalf("validateHeaders(colliding names with duplicate) error = %v, want ErrInvalidHeader", err)
+	}
+
+	configuredHeaders := mixedCaseHeaderSet(defaultMaxHeaders + 1)
+	if err := validateHeaders(configuredHeaders, defaultMaxHeaders+1, defaultMaxHeaderBytes); err != nil {
+		t.Fatalf("validateHeaders(custom maximum) error = %v", err)
+	}
+	configuredHeaders[strings.ToLower("X-Mixed-Header-00")] = "duplicate"
+	if err := validateHeaders(configuredHeaders, defaultMaxHeaders+2, defaultMaxHeaderBytes); !errors.Is(err, ErrInvalidHeader) {
+		t.Fatalf("validateHeaders(custom maximum duplicate) error = %v, want ErrInvalidHeader", err)
+	}
+}
+
+func TestValidateHeadersLargeSetErrorContracts(t *testing.T) {
+	for _, count := range []int{9, 16, 64} {
+		t.Run(fmt.Sprintf("%d headers", count), func(t *testing.T) {
+			duplicate := mixedCaseHeaderSet(count - 2)
+			duplicate["X-Duplicate"] = "first"
+			duplicate["x-duplicate"] = "second"
+			if err := validateHeaders(duplicate, defaultMaxHeaders, defaultMaxHeaderBytes); !errors.Is(err, ErrInvalidHeader) {
+				t.Fatalf("duplicate error = %v, want ErrInvalidHeader", err)
+			}
+
+			invalidName := mixedCaseHeaderSet(count - 1)
+			invalidName["X-Invalid\n"] = "value"
+			if err := validateHeaders(invalidName, defaultMaxHeaders, defaultMaxHeaderBytes); !errors.Is(err, ErrInvalidHeader) {
+				t.Fatalf("invalid name error = %v, want ErrInvalidHeader", err)
+			}
+
+			invalidValue := mixedCaseHeaderSet(count)
+			invalidValue["X-Mixed-Header-00"] = "value\x00"
+			if err := validateHeaders(invalidValue, defaultMaxHeaders, defaultMaxHeaderBytes); !errors.Is(err, ErrInvalidHeader) {
+				t.Fatalf("invalid value error = %v, want ErrInvalidHeader", err)
+			}
+
+			valid := mixedCaseHeaderSet(count)
+			if err := validateHeaders(valid, count-1, defaultMaxHeaderBytes); !errors.Is(err, ErrHeadersTooLarge) {
+				t.Fatalf("count limit error = %v, want ErrHeadersTooLarge", err)
+			}
+			if err := validateHeaders(valid, defaultMaxHeaders, 1); !errors.Is(err, ErrHeadersTooLarge) {
+				t.Fatalf("byte limit error = %v, want ErrHeadersTooLarge", err)
+			}
+		})
+	}
+}
+
+func TestValidHeaderValueMatchesLegacyAndAllValidationBranches(t *testing.T) {
+	for value := 0; value <= 255; value++ {
+		input := string([]byte{byte(value)})
+		want := !strings.ContainsAny(input, "\r\n\x00")
+		if got := validHeaderValue(input); got != want {
+			t.Fatalf("validHeaderValue(%#x) = %t, want %t", value, got, want)
+		}
+	}
+
+	for name, value := range map[string]string{
+		"empty":           "",
+		"ascii":           "tenant-a",
+		"utf8":            "tenant-租户",
+		"invalid utf8":    string([]byte{0xff, 0xfe, 'a'}),
+		"nul prefix":      "\x00value",
+		"linefeed middle": "value\nvalue",
+		"return suffix":   "value\r",
+		"long":            strings.Repeat("header-value-", 256),
+	} {
+		want := !strings.ContainsAny(value, "\r\n\x00")
+		if got := validHeaderValue(value); got != want {
+			t.Fatalf("validHeaderValue(%s) = %t, want %t", name, got, want)
+		}
+	}
+
+	for _, count := range []int{2, 8, 9, defaultMaxHeaders + 1} {
+		headers := mixedCaseHeaderSet(count)
+		headers["X-Mixed-Header-00"] = "invalid\nvalue"
+		maxHeaders := defaultMaxHeaders
+		if count > maxHeaders {
+			maxHeaders = count
+		}
+		if err := validateHeaders(headers, maxHeaders, defaultMaxHeaderBytes); !errors.Is(err, ErrInvalidHeader) {
+			t.Fatalf("validateHeaders(%d headers) error = %v, want ErrInvalidHeader", count, err)
+		}
+	}
+
+	valid := "tenant-a"
+	if allocations := testing.AllocsPerRun(1000, func() {
+		if !validHeaderValue(valid) {
+			t.Fatal("validHeaderValue rejected a valid value")
+		}
+	}); allocations != 0 {
+		t.Fatalf("validHeaderValue allocations = %.1f, want 0", allocations)
+	}
+}
+
+func mixedCaseHeaderSet(count int) map[string]string {
+	headers := make(map[string]string, count)
+	for index := range count {
+		headers[fmt.Sprintf("X-Mixed-Header-%02d", index)] = "value"
+	}
+	return headers
+}
+
+func collidingHeaderNames() (string, string) {
+	var names [defaultMaxHeaders * 2]string
+	for index := 0; ; index++ {
+		name := fmt.Sprintf("X-Collision-%d", index)
+		bucket := foldedHeaderNameHash(name) % uint64(len(names))
+		if previous := names[bucket]; previous != "" {
+			return previous, name
+		}
+		names[bucket] = name
+	}
 }
 
 func BenchmarkValidateHeaders(b *testing.B) {
 	b.ReportAllocs()
 	cases := map[string]map[string]string{
-		"empty":  nil,
-		"single": {"Tenant": "tenant"},
+		"empty": nil,
+		"single": {
+			"Tenant": "tenant",
+		},
 		"multiple": {
 			"Tenant": "tenant",
 			"Region": "region",
@@ -246,6 +526,26 @@ func BenchmarkValidateHeaders(b *testing.B) {
 			"Region": "region",
 			"Zone":   "zone",
 		},
+		"five": {
+			"Tenant": "tenant",
+			"Region": "region",
+			"Zone":   "zone",
+			"Shard":  "shard",
+			"Locale": "locale",
+		},
+		"eight": {
+			"Tenant":   "tenant",
+			"Region":   "region",
+			"Zone":     "zone",
+			"Shard":    "shard",
+			"Locale":   "locale",
+			"Version":  "version",
+			"Priority": "priority",
+			"Source":   "source",
+		},
+		"nine":       mixedCaseHeaderSet(9),
+		"sixteen":    mixedCaseHeaderSet(16),
+		"sixty-four": mixedCaseHeaderSet(64),
 	}
 	for name, headers := range cases {
 		b.Run(name, func(b *testing.B) {
@@ -257,6 +557,75 @@ func BenchmarkValidateHeaders(b *testing.B) {
 			}
 		})
 	}
+	for name, headers := range map[string]map[string]string{
+		"legacy-five":       cases["five"],
+		"legacy-eight":      cases["eight"],
+		"legacy-nine":       cases["nine"],
+		"legacy-sixteen":    cases["sixteen"],
+		"legacy-sixty-four": cases["sixty-four"],
+	} {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if err := validateHeadersLegacyMap(headers, defaultMaxHeaders, defaultMaxHeaderBytes); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func BenchmarkValidHeaderValue(b *testing.B) {
+	for name, value := range map[string]string{
+		"short":  "tenant-a",
+		"medium": strings.Repeat("header-value-", 8),
+		"large":  strings.Repeat("header-value-", 32),
+		"long":   strings.Repeat("header-value-", 256),
+	} {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if !validHeaderValue(value) {
+					b.Fatal("validHeaderValue rejected a valid value")
+				}
+			}
+		})
+		b.Run(name+"-legacy", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if strings.ContainsAny(value, "\r\n\x00") {
+					b.Fatal("legacy validation rejected a valid value")
+				}
+			}
+		})
+	}
+}
+
+func validateHeadersLegacyMap(headers map[string]string, maxHeaders, maxBytes int) error {
+	if len(headers) > maxHeaders {
+		return ErrHeadersTooLarge
+	}
+	seen := make(map[string]struct{}, len(headers))
+	totalBytes := 0
+	for name, value := range headers {
+		if !validHeaderName(name) || strings.ContainsAny(value, "\r\n\x00") {
+			return ErrInvalidHeader
+		}
+		normalizedName := strings.ToLower(name)
+		if _, exists := seen[normalizedName]; exists {
+			return ErrInvalidHeader
+		}
+		seen[normalizedName] = struct{}{}
+		if len(name) > maxBytes-totalBytes {
+			return ErrHeadersTooLarge
+		}
+		totalBytes += len(name)
+		if len(value) > maxBytes-totalBytes {
+			return ErrHeadersTooLarge
+		}
+		totalBytes += len(value)
+	}
+	return nil
 }
 
 func BenchmarkTraceCarrier(b *testing.B) {
@@ -289,6 +658,74 @@ func BenchmarkTraceCarrier(b *testing.B) {
 			_ = traceCarrier(mixedCaseTrace)
 		}
 	})
+	legacyBenchmarks := map[string]map[string]string{
+		"with-trace-legacy":      withTrace,
+		"with-mixed-case-legacy": mixedCaseTrace,
+	}
+	for name, headers := range legacyBenchmarks {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				_ = traceCarrierLegacy(headers)
+			}
+		})
+	}
+}
+
+func BenchmarkCanonicalTraceHeader(b *testing.B) {
+	inputs := map[string]string{
+		"canonical-traceparent": traceparentHeader,
+		"canonical-tracestate":  tracestateHeader,
+		"mixed-traceparent":     "TraceParent",
+		"mixed-tracestate":      "TraceState",
+	}
+	for name, input := range inputs {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if canonicalTraceHeader(input) == "" {
+					b.Fatal("trace header was not recognized")
+				}
+			}
+		})
+		b.Run(name+"-legacy", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if canonicalTraceHeaderLegacy(input) == "" {
+					b.Fatal("trace header was not recognized")
+				}
+			}
+		})
+	}
+}
+
+func canonicalTraceHeaderLegacy(name string) string {
+	switch len(name) {
+	case len(traceparentHeader):
+		if strings.EqualFold(name, traceparentHeader) {
+			return traceparentHeader
+		}
+	case len(tracestateHeader):
+		if strings.EqualFold(name, tracestateHeader) {
+			return tracestateHeader
+		}
+	}
+	return ""
+}
+
+func traceCarrierLegacy(headers map[string]string) traceHeaderCarrier {
+	var carrier traceHeaderCarrier
+	for name, value := range headers {
+		if canonical := canonicalTraceHeaderLegacy(name); canonical != "" {
+			switch canonical {
+			case traceparentHeader:
+				carrier.traceparent = value
+			case tracestateHeader:
+				carrier.tracestate = value
+			}
+		}
+	}
+	return carrier
 }
 
 func TestFailuresTimeoutsAndCancellationUseFixedPrivateResults(t *testing.T) {

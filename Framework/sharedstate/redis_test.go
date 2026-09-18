@@ -514,6 +514,66 @@ func TestRedisTraceClassificationIsBounded(t *testing.T) {
 	}
 }
 
+func TestRedisSpanOperationUsesStableVocabulary(t *testing.T) {
+	tests := []struct {
+		name     string
+		span     string
+		database string
+	}{
+		{name: "get", span: "get", database: "GET"},
+		{name: "GET", span: "get", database: "GET"},
+		{name: "eVaLsHa", span: "evalsha", database: "EVALSHA"},
+		{name: "PRIVATE-COMMAND", span: "_other", database: "_OTHER"},
+	}
+	for _, test := range tests {
+		span := redisSpanOperation(test.name)
+		if span != test.span {
+			t.Fatalf("redisSpanOperation(%q) = %q, want %q", test.name, span, test.span)
+		}
+		if database := redisDatabaseOperationName(span); database != test.database {
+			t.Fatalf("redisDatabaseOperationName(%q) = %q, want %q", span, database, test.database)
+		}
+	}
+
+	for _, name := range []string{"get", "GET", "PRIVATE-COMMAND"} {
+		if allocations := testing.AllocsPerRun(1000, func() {
+			redisOperationBenchmarkSpan = redisSpanOperation(name)
+			redisOperationBenchmarkDatabase = redisDatabaseOperationName(redisOperationBenchmarkSpan)
+		}); allocations != 0 {
+			t.Fatalf("Redis operation vocabulary %q allocations = %.1f, want 0", name, allocations)
+		}
+	}
+}
+
+var redisOperationBenchmarkSpan string
+var redisOperationBenchmarkDatabase string
+
+func BenchmarkRedisSpanOperation(b *testing.B) {
+	for _, name := range []string{"get", "GET", "PRIVATE-COMMAND"} {
+		b.Run(name+"/legacy", func(b *testing.B) {
+			for b.Loop() {
+				redisOperationBenchmarkSpan, redisOperationBenchmarkDatabase = legacyRedisSpanOperation(name)
+			}
+		})
+		b.Run(name+"/v115", func(b *testing.B) {
+			for b.Loop() {
+				redisOperationBenchmarkSpan = redisSpanOperation(name)
+				redisOperationBenchmarkDatabase = redisDatabaseOperationName(redisOperationBenchmarkSpan)
+			}
+		})
+	}
+}
+
+func legacyRedisSpanOperation(name string) (string, string) {
+	switch strings.ToLower(name) {
+	case "auth", "client", "del", "eval", "evalsha", "get", "hello", "ping", "scan", "select", "set":
+		operation := strings.ToLower(name)
+		return operation, strings.ToUpper(operation)
+	default:
+		return "_other", strings.ToUpper("_other")
+	}
+}
+
 func TestRedisTracingHooksRejectLateNilResults(t *testing.T) {
 	recorder, provider := newRedisTestTracerProvider(t)
 	hook := newRedisTracingHook(provider).(redisTracingHook)

@@ -28,6 +28,52 @@ func init() {
 	sql.Register(scriptedDriverName, registeredScriptedDriver)
 }
 
+func TestPostgresOperationNameUsesStableLowercaseVocabulary(t *testing.T) {
+	tests := map[string]string{
+		"CHECK":       "check",
+		"EXEC":        "exec",
+		"QUERY":       "query",
+		"LOCK":        "lock",
+		"UPDATE":      "update",
+		"OUTBOX":      "outbox",
+		"TRANSACTION": "transaction",
+	}
+	for operation, expected := range tests {
+		if actual := postgresOperationName(operation); actual != expected {
+			t.Fatalf("postgresOperationName(%q) = %q, want %q", operation, actual, expected)
+		}
+	}
+	if allocations := testing.AllocsPerRun(1000, func() {
+		if postgresOperationName("QUERY") != "query" {
+			t.Fatal("QUERY operation was not normalized")
+		}
+	}); allocations != 0 {
+		t.Fatalf("fixed operation normalization allocations = %.1f, want 0", allocations)
+	}
+	if actual := postgresOperationName("CUSTOM_OP"); actual != "custom_op" {
+		t.Fatalf("fallback normalization = %q, want custom_op", actual)
+	}
+}
+
+func BenchmarkPostgresOperationName(b *testing.B) {
+	b.Run("fixed", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			_ = postgresOperationName("QUERY")
+		}
+	})
+	b.Run("legacy", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			_ = legacyPostgresOperationName("QUERY")
+		}
+	})
+}
+
+func legacyPostgresOperationName(operation string) string {
+	return strings.ToLower(operation)
+}
+
 func TestNewValidatesAndAppliesFinitePoolConfiguration(t *testing.T) {
 	if _, err := New(nil, Config{}); err == nil {
 		t.Fatal("New(nil) error = nil")

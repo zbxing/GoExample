@@ -26,6 +26,8 @@ const (
 	defaultMaxMessageBytes = 1 << 20
 	defaultMaxHeaderBytes  = 16 << 10
 	defaultMaxHeaders      = 64
+	headerNameIndexSlots   = defaultMaxHeaders * 2
+	headerValueScanLimit   = 64
 )
 
 var (
@@ -45,6 +47,8 @@ var (
 	// case-insensitively duplicated header.
 	ErrInvalidHeader = errors.New("queue message contains an invalid header")
 )
+
+var invalidHeaderValueBytes = [256]bool{0: true, '\n': true, '\r': true}
 
 // System is a bounded messaging-system identifier used for trace attributes.
 type System string
@@ -220,7 +224,7 @@ func validateHeaders(headers map[string]string, maxHeaders, maxBytes int) error 
 		var firstName string
 		totalBytes := 0
 		for name, value := range headers {
-			if !validHeaderName(name) || strings.ContainsAny(value, "\r\n\x00") {
+			if !validHeaderName(name) || !validHeaderValue(value) {
 				return ErrInvalidHeader
 			}
 			if len(name) > maxBytes-totalBytes {
@@ -242,12 +246,12 @@ func validateHeaders(headers map[string]string, maxHeaders, maxBytes int) error 
 	// A duplicate header is impossible with zero or one entries. Keep those
 	// common paths allocation-free. Small sets use a stack-backed pairwise
 	// check; larger sets build one normalized-name map.
-	if len(headers) > 2 && len(headers) <= 4 {
-		var names [4]string
+	if len(headers) > 2 && len(headers) <= 8 {
+		var names [8]string
 		index := 0
 		totalBytes := 0
 		for name, value := range headers {
-			if !validHeaderName(name) || strings.ContainsAny(value, "\r\n\x00") {
+			if !validHeaderName(name) || !validHeaderValue(value) {
 				return ErrInvalidHeader
 			}
 			for _, previous := range names[:index] {
@@ -268,15 +272,21 @@ func validateHeaders(headers map[string]string, maxHeaders, maxBytes int) error 
 		}
 		return nil
 	}
-	// For larger sets, build the normalized-name set once to detect
-	// case-insensitive duplicates.
+	// Keep the default bounded set stack-backed. Open addressing avoids both
+	// normalized-name strings and a map bucket while EqualFold resolves hash
+	// collisions without weakening case-insensitive duplicate detection.
+	if len(headers) > 8 && len(headers) <= defaultMaxHeaders {
+		return validateBoundedHeaders(headers, maxBytes)
+	}
+	// Preserve configurations above the default maximum with the normalized
+	// map path instead of imposing the fixed index as a new public hard limit.
 	var seen map[string]struct{}
 	if len(headers) > 2 {
 		seen = make(map[string]struct{}, len(headers))
 	}
 	totalBytes := 0
 	for name, value := range headers {
-		if !validHeaderName(name) || strings.ContainsAny(value, "\r\n\x00") {
+		if !validHeaderName(name) || !validHeaderValue(value) {
 			return ErrInvalidHeader
 		}
 		if seen != nil {
@@ -296,6 +306,73 @@ func validateHeaders(headers map[string]string, maxHeaders, maxBytes int) error 
 		totalBytes += len(value)
 	}
 	return nil
+}
+
+func validateBoundedHeaders(headers map[string]string, maxBytes int) error {
+	var names [headerNameIndexSlots]string
+	totalBytes := 0
+	for name, value := range headers {
+		if !validHeaderName(name) || !validHeaderValue(value) {
+			return ErrInvalidHeader
+		}
+		if !insertFoldedHeaderName(&names, name) {
+			return ErrInvalidHeader
+		}
+		if len(name) > maxBytes-totalBytes {
+			return ErrHeadersTooLarge
+		}
+		totalBytes += len(name)
+		if len(value) > maxBytes-totalBytes {
+			return ErrHeadersTooLarge
+		}
+		totalBytes += len(value)
+	}
+	return nil
+}
+
+func insertFoldedHeaderName(names *[headerNameIndexSlots]string, name string) bool {
+	index := int(foldedHeaderNameHash(name) & uint64(len(names)-1))
+	for range names {
+		previous := names[index]
+		if previous == "" {
+			names[index] = name
+			return true
+		}
+		if strings.EqualFold(previous, name) {
+			return false
+		}
+		index = (index + 1) & (len(names) - 1)
+	}
+	return false
+}
+
+func foldedHeaderNameHash(name string) uint64 {
+	const (
+		offset = uint64(14695981039346656037)
+		prime  = uint64(1099511628211)
+	)
+	hash := offset
+	for index := 0; index < len(name); index++ {
+		character := name[index]
+		if character >= 'A' && character <= 'Z' {
+			character += 'a' - 'A'
+		}
+		hash ^= uint64(character)
+		hash *= prime
+	}
+	return hash
+}
+
+func validHeaderValue(value string) bool {
+	if len(value) > headerValueScanLimit {
+		return !strings.ContainsAny(value, "\r\n\x00")
+	}
+	for index := 0; index < len(value); index++ {
+		if invalidHeaderValueBytes[value[index]] {
+			return false
+		}
+	}
+	return true
 }
 
 func validHeaderName(name string) bool {
@@ -321,16 +398,43 @@ func removeTraceHeaders(headers map[string]string) {
 	}
 }
 
-func traceCarrier(headers map[string]string) propagation.MapCarrier {
-	var carrier propagation.MapCarrier
+// traceHeaderCarrier is a read-only TextMapCarrier used only while extracting
+// W3C trace context. Keeping the two standard headers in fields avoids the
+// temporary map and its bucket allocation on the message-processing hot path.
+// Set and Keys intentionally remain inert because Process only performs
+// extraction; propagation.TraceContext currently calls Get exclusively.
+type traceHeaderCarrier struct {
+	traceparent string
+	tracestate  string
+}
+
+func (carrier traceHeaderCarrier) Get(key string) string {
+	switch key {
+	case traceparentHeader:
+		return carrier.traceparent
+	case tracestateHeader:
+		return carrier.tracestate
+	default:
+		return ""
+	}
+}
+
+func (traceHeaderCarrier) Set(string, string) {}
+
+func (traceHeaderCarrier) Keys() []string { return nil }
+
+func traceCarrier(headers map[string]string) traceHeaderCarrier {
+	var carrier traceHeaderCarrier
 	for name, value := range headers {
 		if canonical := canonicalTraceHeader(name); canonical != "" {
-			if carrier == nil {
-				carrier = make(propagation.MapCarrier, 2)
-			}
 			// Use immutable canonical keys instead of strings.ToLower(name),
 			// which allocates when callers use mixed-case header names.
-			carrier[canonical] = value
+			switch canonical {
+			case traceparentHeader:
+				carrier.traceparent = value
+			case tracestateHeader:
+				carrier.tracestate = value
+			}
 		}
 	}
 	return carrier
@@ -343,14 +447,15 @@ func isTraceHeader(name string) bool {
 func canonicalTraceHeader(name string) string {
 	// Header names are ASCII tokens. Reject other lengths before invoking the
 	// case-insensitive comparison so ordinary application headers take the
-	// constant-time fast path through this helper.
+	// constant-time fast path through this helper. Canonical W3C keys avoid the
+	// general Unicode fold used only for mixed-case input.
 	switch len(name) {
 	case len(traceparentHeader):
-		if strings.EqualFold(name, traceparentHeader) {
+		if name == traceparentHeader || strings.EqualFold(name, traceparentHeader) {
 			return traceparentHeader
 		}
 	case len(tracestateHeader):
-		if strings.EqualFold(name, tracestateHeader) {
+		if name == tracestateHeader || strings.EqualFold(name, tracestateHeader) {
 			return tracestateHeader
 		}
 	default:

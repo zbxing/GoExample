@@ -3,12 +3,17 @@ package natsjetstream
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+	"unicode"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -48,6 +53,42 @@ func TestNewValidatesDependenciesSubjectsAndFetchBudget(t *testing.T) {
 	}
 	if adapter.fetchMaxWait != defaultFetchMaxWait {
 		t.Fatalf("default fetch wait = %s", adapter.fetchMaxWait)
+	}
+}
+
+func TestValidLiteralSubjectPreservesBoundaries(t *testing.T) {
+	valid := []string{
+		"events.primary",
+		"事件.主題",
+		"events._private",
+		"events." + string([]byte{0xff}),
+	}
+	for _, subject := range valid {
+		if !validLiteralSubject(subject) {
+			t.Errorf("validLiteralSubject(%q) = false, want true", subject)
+		}
+	}
+	invalid := []string{
+		"",
+		".events",
+		"events.",
+		"events..primary",
+		"*events.primary",
+		"events*primary.orders",
+		"events.*",
+		">events.primary",
+		"events>primary.orders",
+		"events.>",
+		"events with-space",
+		"events.\u0000primary",
+		"events.\u007fprimary",
+		"events.\u2003primary",
+		strings.Repeat("a", 256),
+	}
+	for _, subject := range invalid {
+		if validLiteralSubject(subject) {
+			t.Errorf("validLiteralSubject(%q) = true, want false", subject)
+		}
 	}
 }
 
@@ -1336,6 +1377,38 @@ func TestDeadLetterIDUsesStableDigestInput(t *testing.T) {
 	}
 }
 
+func TestDeadLetterIDUsesBoundedAllocations(t *testing.T) {
+	metadata := &jetstream.MsgMetadata{
+		Stream:   "EVENTS",
+		Consumer: "WORKER",
+		Sequence: jetstream.SequencePair{Stream: 123},
+	}
+	if allocations := testing.AllocsPerRun(1000, func() {
+		_ = deadLetterID(metadata)
+	}); allocations > 1 {
+		t.Fatalf("deadLetterID allocations = %.1f, want at most 1", allocations)
+	}
+}
+
+func TestDeadLetterIDPreservesLongMetadataContract(t *testing.T) {
+	metadata := &jetstream.MsgMetadata{
+		Stream:   strings.Repeat("S", 300),
+		Consumer: strings.Repeat("C", 300),
+		Sequence: jetstream.SequencePair{Stream: 987654321},
+	}
+	digest := sha256.New()
+	_, _ = digest.Write([]byte(metadata.Stream))
+	_, _ = digest.Write([]byte{0})
+	_, _ = digest.Write([]byte(metadata.Consumer))
+	_, _ = digest.Write([]byte{0})
+	var sequence [20]byte
+	_, _ = digest.Write(strconv.AppendUint(sequence[:0], metadata.Sequence.Stream, 10))
+	want := "goexample-dlq-" + hex.EncodeToString(digest.Sum(nil))
+	if got := deadLetterID(metadata); got != want {
+		t.Fatalf("deadLetterID(long metadata) = %q, want %q", got, want)
+	}
+}
+
 func BenchmarkDeadLetterID(b *testing.B) {
 	metadata := &jetstream.MsgMetadata{
 		Stream:   "EVENTS",
@@ -1426,6 +1499,55 @@ func TestJetStreamControlHeaderAcceptsCanonicalAndMixedCaseNames(t *testing.T) {
 	}
 }
 
+func TestFromJetStreamMessageControlOnlyHeadersRemainNil(t *testing.T) {
+	message := &fakeMessage{
+		data:    []byte("payload"),
+		headers: nats.Header{jetstream.MsgIDHeader: []string{"message-id"}},
+	}
+	result, err := fromJetStreamMessage(message)
+	if err != nil {
+		t.Fatalf("fromJetStreamMessage() error = %v", err)
+	}
+	if result.Headers != nil {
+		t.Fatalf("control-only headers = %#v, want nil", result.Headers)
+	}
+}
+
+func TestFromJetStreamMessageMultipleControlHeadersRemainNil(t *testing.T) {
+	headers := nats.Header{
+		strings.ToUpper(jetstream.MsgIDHeader[:1]) + strings.ToLower(jetstream.MsgIDHeader[1:]):                         []string{"message-id"},
+		strings.ToUpper(jetstream.ExpectedStreamHeader[:1]) + strings.ToLower(jetstream.ExpectedStreamHeader[1:]):       []string{"stream"},
+		strings.ToUpper(jetstream.ExpectedLastSeqHeader[:1]) + strings.ToLower(jetstream.ExpectedLastSeqHeader[1:]):     []string{"7"},
+		strings.ToUpper(jetstream.ExpectedLastMsgIDHeader[:1]) + strings.ToLower(jetstream.ExpectedLastMsgIDHeader[1:]): []string{"previous-id"},
+	}
+	result, err := fromJetStreamMessage(&fakeMessage{data: []byte("payload"), headers: headers})
+	if err != nil {
+		t.Fatalf("fromJetStreamMessage() error = %v", err)
+	}
+	if result.Headers != nil {
+		t.Fatalf("multiple control headers = %#v, want nil", result.Headers)
+	}
+	if string(result.Body) != "payload" {
+		t.Fatalf("body = %q, want payload", result.Body)
+	}
+}
+
+func TestFromJetStreamMessageRejectsMultiValueBeforeBodyClone(t *testing.T) {
+	result, err := fromJetStreamMessage(&fakeMessage{
+		data: []byte("private-payload"),
+		headers: nats.Header{
+			"Tenant": []string{"tenant-a"},
+			"Region": []string{"one", "two"},
+		},
+	})
+	if !errors.Is(err, ErrInvalidMessage) {
+		t.Fatalf("fromJetStreamMessage() error = %v, want invalid message", err)
+	}
+	if result.Body != nil || result.Headers != nil {
+		t.Fatalf("invalid message retained data: body=%q headers=%v", result.Body, result.Headers)
+	}
+}
+
 func BenchmarkCopyApplicationHeaders(b *testing.B) {
 	cases := map[string]map[string]string{
 		"empty":    nil,
@@ -1467,9 +1589,87 @@ func BenchmarkJetStreamControlHeader(b *testing.B) {
 	}
 }
 
+func BenchmarkValidLiteralSubject(b *testing.B) {
+	cases := map[string]string{
+		"valid":          "events.primary.orders",
+		"unicode":        "事件.订单.创建",
+		"empty-token":    "events..orders",
+		"whitespace":     "events.\u2003orders",
+		"wildcard-start": "*events.primary.orders",
+		"wildcard-token": "events.primary*orders",
+		"wildcard-end":   "events.primary.orders>",
+	}
+	for name, subject := range cases {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				benchmarkSubjectResult = validLiteralSubject(subject)
+			}
+		})
+		b.Run(name+"-v122", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				benchmarkSubjectResult = v122ValidLiteralSubject(subject)
+			}
+		})
+		b.Run(name+"-v121", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				benchmarkSubjectResult = legacyValidLiteralSubject(subject)
+			}
+		})
+	}
+}
+
+var benchmarkSubjectResult bool
+
+func v122ValidLiteralSubject(subject string) bool {
+	if len(subject) == 0 || len(subject) > 255 || strings.ContainsAny(subject, "*>") {
+		return false
+	}
+	tokenHasCharacter := false
+	for _, character := range subject {
+		if character == '.' {
+			if !tokenHasCharacter {
+				return false
+			}
+			tokenHasCharacter = false
+			continue
+		}
+		if unicode.IsSpace(character) || unicode.IsControl(character) {
+			return false
+		}
+		tokenHasCharacter = true
+	}
+	return tokenHasCharacter
+}
+
+func legacyValidLiteralSubject(subject string) bool {
+	if len(subject) == 0 || len(subject) > 255 || strings.ContainsAny(subject, "*>") {
+		return false
+	}
+	for _, token := range strings.Split(subject, ".") {
+		if token == "" {
+			return false
+		}
+		for _, character := range token {
+			if unicode.IsSpace(character) || unicode.IsControl(character) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func BenchmarkFromJetStreamMessage(b *testing.B) {
 	cases := map[string]nats.Header{
-		"empty":     nil,
+		"empty":        nil,
+		"control-only": {jetstream.MsgIDHeader: []string{"message-id"}},
+		"control-batch": {
+			jetstream.MsgIDHeader:           []string{"message-id"},
+			jetstream.ExpectedStreamHeader:  []string{"stream"},
+			jetstream.ExpectedLastSeqHeader: []string{"7"},
+		},
 		"single":    {"Tenant": []string{"tenant-a"}},
 		"multiple":  {"Tenant": []string{"tenant-a"}, "Region": []string{"region-a"}},
 		"sixteen":   benchmarkHeaders(16),
@@ -1494,6 +1694,93 @@ func BenchmarkFromJetStreamMessage(b *testing.B) {
 			}
 		})
 	}
+	invalid := &fakeMessage{
+		data: []byte("payload"),
+		headers: nats.Header{
+			"Tenant": []string{"one"},
+			"Region": []string{"one", "two"},
+		},
+	}
+	b.Run("invalid-multi", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			if _, err := fromJetStreamMessage(invalid); !errors.Is(err, ErrInvalidMessage) {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run("invalid-multi-v120", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			if _, err := legacyFromJetStreamMessageV120(invalid); !errors.Is(err, ErrInvalidMessage) {
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
+func legacyFromJetStreamMessageV120(message jetstream.Msg) (queueclient.Message, error) {
+	if message == nil {
+		return queueclient.Message{}, ErrInvalidMessage
+	}
+	headers := message.Headers()
+	if len(headers) == 0 {
+		return queueclient.Message{Body: bytes.Clone(message.Data())}, nil
+	}
+	if len(headers) == 1 {
+		for name, values := range headers {
+			if jetStreamControlHeader(name) {
+				return queueclient.Message{Body: bytes.Clone(message.Data())}, nil
+			}
+			if len(values) != 1 {
+				return queueclient.Message{}, ErrInvalidMessage
+			}
+			return queueclient.Message{
+				Body:    bytes.Clone(message.Data()),
+				Headers: map[string]string{name: values[0]},
+			}, nil
+		}
+	}
+	if len(headers) <= len(jetStreamControlHeaders) {
+		controlOnly := true
+		for name := range headers {
+			if !jetStreamControlHeader(name) {
+				controlOnly = false
+				break
+			}
+		}
+		if controlOnly {
+			return queueclient.Message{Body: bytes.Clone(message.Data())}, nil
+		}
+	}
+	var clonedHeaders map[string]string
+	if len(headers) > initialHeaderMapCapacity {
+		applicationHeaderCount := 0
+		for name := range headers {
+			if !jetStreamControlHeader(name) {
+				applicationHeaderCount++
+			}
+		}
+		if applicationHeaderCount > 0 {
+			clonedHeaders = make(map[string]string, applicationHeaderCount)
+		}
+	} else {
+		clonedHeaders = make(map[string]string)
+	}
+	result := queueclient.Message{
+		Body:    bytes.Clone(message.Data()),
+		Headers: clonedHeaders,
+	}
+	for name, values := range headers {
+		if jetStreamControlHeader(name) {
+			continue
+		}
+		if len(values) != 1 {
+			return queueclient.Message{}, ErrInvalidMessage
+		}
+		result.Headers[name] = values[0]
+	}
+	return result, nil
 }
 
 func benchmarkHeaders(count int) nats.Header {
@@ -1591,6 +1878,35 @@ func TestAdapterReceiveContinuesAfterInternalPullDeadline(t *testing.T) {
 	}
 }
 
+func TestReceiveNextUsesFetchMaxWaitOnlyForNonCancelableContext(t *testing.T) {
+	background := &optionRecordingConsumer{nextResult: &fakeMessage{}}
+	if _, err := receiveNext(context.Background(), background, time.Second); err != nil {
+		t.Fatalf("receiveNext(background) error = %v", err)
+	}
+	if background.optionKind != "max-wait" {
+		t.Fatalf("receiveNext(background) option = %q, want max-wait", background.optionKind)
+	}
+
+	cancellableContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cancellable := &optionRecordingConsumer{nextResult: &fakeMessage{}}
+	if _, err := receiveNext(cancellableContext, cancellable, time.Second); err != nil {
+		t.Fatalf("receiveNext(cancellable) error = %v", err)
+	}
+	if cancellable.optionKind != "context" {
+		t.Fatalf("receiveNext(cancellable) option = %q, want context", cancellable.optionKind)
+	}
+
+	deadlineOnly := &deadlineOnlyContext{deadline: time.Now().Add(time.Second)}
+	deadlineConsumer := &optionRecordingConsumer{nextResult: &fakeMessage{}}
+	if _, err := receiveNext(deadlineOnly, deadlineConsumer, time.Second); err != nil {
+		t.Fatalf("receiveNext(deadline-only) error = %v", err)
+	}
+	if deadlineConsumer.optionKind != "context" {
+		t.Fatalf("receiveNext(deadline-only) option = %q, want context", deadlineConsumer.optionKind)
+	}
+}
+
 func BenchmarkDeliveryPullOption(b *testing.B) {
 	consumer := &fakeConsumer{next: func(...jetstream.FetchOpt) (jetstream.Msg, error) {
 		return &fakeMessage{}, nil
@@ -1599,6 +1915,16 @@ func BenchmarkDeliveryPullOption(b *testing.B) {
 		b.ReportAllocs()
 		for range b.N {
 			if _, err := receiveNext(context.Background(), consumer, defaultFetchMaxWait); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	cancellableContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	b.Run("context-cancellable", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			if _, err := receiveNext(cancellableContext, consumer, defaultFetchMaxWait); err != nil {
 				b.Fatal(err)
 			}
 		}
@@ -1612,6 +1938,46 @@ func BenchmarkDeliveryPullOption(b *testing.B) {
 		}
 	})
 }
+
+type optionRecordingConsumer struct {
+	nextResult jetstream.Msg
+	optionKind string
+}
+
+func (consumer *optionRecordingConsumer) Next(options ...jetstream.FetchOpt) (jetstream.Msg, error) {
+	if len(options) != 1 {
+		return nil, fmt.Errorf("got %d options, want 1", len(options))
+	}
+	consumer.optionKind = classifyFetchOption(options[0])
+	return consumer.nextResult, nil
+}
+
+func classifyFetchOption(option jetstream.FetchOpt) string {
+	// FetchOpt operates on nats.go's private pull request type. Reflection lets
+	// this package test inspect the option contract without naming that private
+	// type or relying on unstable closure code pointers.
+	optionValue := reflect.ValueOf(option)
+	requestType := optionValue.Type().In(0)
+	request := reflect.New(requestType.Elem())
+	optionValue.Call([]reflect.Value{request})
+	requestValue := request.Elem()
+	if contextField := requestValue.FieldByName("ctx"); contextField.IsValid() && !contextField.IsNil() {
+		return "context"
+	}
+	if maxWaitSet := requestValue.FieldByName("maxWaitSet"); maxWaitSet.IsValid() && maxWaitSet.Bool() {
+		return "max-wait"
+	}
+	return "unknown"
+}
+
+type deadlineOnlyContext struct {
+	context.Context
+	deadline time.Time
+}
+
+func (context *deadlineOnlyContext) Deadline() (time.Time, bool) { return context.deadline, true }
+func (*deadlineOnlyContext) Done() <-chan struct{}               { return nil }
+func (*deadlineOnlyContext) Err() error                          { return nil }
 
 type fakePublisher struct {
 	mu         sync.Mutex

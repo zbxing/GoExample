@@ -27,7 +27,7 @@ func readBillingOpenAPI(t *testing.T) map[string]map[string]billingOpenAPIOperat
 		t.Fatalf("read Billing OpenAPI document: %v", err)
 	}
 	var document struct {
-		OpenAPI string                                      `json:"openapi"`
+		OpenAPI string                                        `json:"openapi"`
 		Paths   map[string]map[string]billingOpenAPIOperation `json:"paths"`
 	}
 	if err := json.Unmarshal(content, &document); err != nil {

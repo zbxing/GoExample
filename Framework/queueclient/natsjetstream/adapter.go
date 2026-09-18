@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -443,6 +444,23 @@ func (adapter *Adapter) ReceiveDelivery(ctx context.Context) (queueclient.Delive
 }
 
 func receiveNext(ctx context.Context, consumer Consumer, maximumWait time.Duration) (jetstream.Msg, error) {
+	// A context with neither cancellation nor a deadline cannot change while a
+	// pull is in flight. FetchMaxWait provides the same bounded request expiry
+	// without allocating a short-lived child context and timer for every pull.
+	// Keep FetchContext for every context that can complete independently so
+	// caller cancellation and deadline precedence remain authoritative.
+	if ctx.Done() == nil {
+		if _, hasDeadline := ctx.Deadline(); !hasDeadline {
+			startedAt := time.Now()
+			message, err := consumer.Next(jetstream.FetchMaxWait(maximumWait))
+			// FetchMaxWait bounds a real broker request. Keep the adapter's
+			// authoritative local boundary for test doubles and late SDK results.
+			if time.Since(startedAt) >= maximumWait {
+				return nil, jetstream.ErrNoMessages
+			}
+			return message, err
+		}
+	}
 	fetchContext, cancel := context.WithTimeout(ctx, maximumWait)
 	defer cancel()
 	message, err := consumer.Next(jetstream.FetchContext(fetchContext))
@@ -537,9 +555,44 @@ func fromJetStreamMessage(message jetstream.Msg) (queueclient.Message, error) {
 		return queueclient.Message{}, ErrInvalidMessage
 	}
 	headers := message.Headers()
+	if len(headers) == 0 {
+		return queueclient.Message{Body: bytes.Clone(message.Data())}, nil
+	}
+	if len(headers) == 1 {
+		for name, values := range headers {
+			if jetStreamControlHeader(name) {
+				return queueclient.Message{Body: bytes.Clone(message.Data())}, nil
+			}
+			if len(values) != 1 {
+				return queueclient.Message{}, ErrInvalidMessage
+			}
+			return queueclient.Message{
+				Body:    bytes.Clone(message.Data()),
+				Headers: map[string]string{name: values[0]},
+			}, nil
+		}
+	}
+	// Small control-only batches are common on JetStream metadata messages.
+	// Scan them before allocating an application map; the larger path below
+	// already performs the same lazy count when it can benefit from a capacity
+	// hint. Control headers are intentionally accepted without inspecting their
+	// value cardinality, matching the existing filtering contract.
+	if len(headers) <= len(jetStreamControlHeaders) {
+		controlOnly := true
+		for name := range headers {
+			if !jetStreamControlHeader(name) {
+				controlOnly = false
+				break
+			}
+		}
+		if controlOnly {
+			return queueclient.Message{Body: bytes.Clone(message.Data())}, nil
+		}
+	}
 	var clonedHeaders map[string]string
 	// Common small sets can be copied in one pass. Only scan first when a large
-	// incoming map benefits from an exact capacity hint.
+	// incoming map benefits from an exact capacity hint; keep control-only
+	// messages lazy so broker metadata does not force an application map.
 	if len(headers) > initialHeaderMapCapacity {
 		applicationHeaderCount := 0
 		for name := range headers {
@@ -547,14 +600,13 @@ func fromJetStreamMessage(message jetstream.Msg) (queueclient.Message, error) {
 				applicationHeaderCount++
 			}
 		}
-		clonedHeaders = make(map[string]string, applicationHeaderCount)
+		if applicationHeaderCount > 0 {
+			clonedHeaders = make(map[string]string, applicationHeaderCount)
+		}
 	} else {
 		clonedHeaders = make(map[string]string)
 	}
-	result := queueclient.Message{
-		Body:    bytes.Clone(message.Data()),
-		Headers: clonedHeaders,
-	}
+	result := queueclient.Message{Headers: clonedHeaders}
 	for name, values := range headers {
 		if jetStreamControlHeader(name) {
 			continue
@@ -564,6 +616,10 @@ func fromJetStreamMessage(message jetstream.Msg) (queueclient.Message, error) {
 		}
 		result.Headers[name] = values[0]
 	}
+	// Delay cloning the body until every header has passed validation. Invalid
+	// deliveries are quarantined from the broker message and never expose a
+	// queueclient body, so this avoids retaining an otherwise discarded clone.
+	result.Body = bytes.Clone(message.Data())
 	return result, nil
 }
 
@@ -605,17 +661,27 @@ func completedAdapterContextError(ctx context.Context) error {
 }
 
 func deadLetterID(metadata *jetstream.MsgMetadata) string {
-	digest := sha256.New()
-	digest.Write([]byte(metadata.Stream))
-	digest.Write([]byte{0})
-	digest.Write([]byte(metadata.Consumer))
-	digest.Write([]byte{0})
-	// Keep sequence formatting on the stack. DLQ retries can invoke this path
-	// repeatedly, and converting through a temporary string and byte slice is
-	// unnecessary while preserving the exact hash input.
-	var sequence [20]byte
-	digest.Write(strconv.AppendUint(sequence[:0], metadata.Sequence.Stream, 10))
-	return "goexample-dlq-" + hex.EncodeToString(digest.Sum(nil))
+	// Keep the common subject/consumer values on the stack and hash the exact
+	// same NUL-delimited input. The fallback append path preserves behavior for
+	// unusually long metadata without imposing a new length limit.
+	var input [256]byte
+	encoded := input[:0]
+	encoded = append(encoded, metadata.Stream...)
+	encoded = append(encoded, 0)
+	encoded = append(encoded, metadata.Consumer...)
+	encoded = append(encoded, 0)
+	encoded = strconv.AppendUint(encoded, metadata.Sequence.Stream, 10)
+	digest := sha256.Sum256(encoded)
+	var encodedDigest [sha256.Size * 2]byte
+	hex.Encode(encodedDigest[:], digest[:])
+
+	// strings.Builder owns one final result buffer, avoiding intermediate hex
+	// and concatenation strings while keeping the public ID byte-for-byte stable.
+	var result strings.Builder
+	result.Grow(len("goexample-dlq-") + len(encodedDigest))
+	result.WriteString("goexample-dlq-")
+	_, _ = result.Write(encodedDigest[:])
+	return result.String()
 }
 
 func jetStreamControlHeader(name string) bool {
@@ -650,20 +716,39 @@ func jetStreamControlHeader(name string) bool {
 }
 
 func validLiteralSubject(subject string) bool {
-	if len(subject) == 0 || len(subject) > 255 || strings.ContainsAny(subject, "*>") {
+	if len(subject) == 0 || len(subject) > 255 {
 		return false
 	}
-	for _, token := range strings.Split(subject, ".") {
-		if token == "" {
+	// Keep wildcard, token, and Unicode classification in one UTF-8-aware scan.
+	tokenHasCharacter := false
+	for offset := 0; offset < len(subject); {
+		character := subject[offset]
+		offset++
+		if character == '*' || character == '>' {
 			return false
 		}
-		for _, character := range token {
-			if unicode.IsSpace(character) || unicode.IsControl(character) {
+		if character == '.' {
+			if !tokenHasCharacter {
 				return false
 			}
+			tokenHasCharacter = false
+			continue
 		}
+		if character < utf8.RuneSelf {
+			if character <= ' ' || character == '\x7f' {
+				return false
+			}
+			tokenHasCharacter = true
+			continue
+		}
+		decoded, size := utf8.DecodeRuneInString(subject[offset-1:])
+		offset += size - 1
+		if unicode.IsSpace(decoded) || unicode.IsControl(decoded) {
+			return false
+		}
+		tokenHasCharacter = true
 	}
-	return true
+	return tokenHasCharacter
 }
 
 func nilInterface(value any) bool {

@@ -563,3 +563,67 @@ func mutateOIDCClaims(now time.Time, mutate func(*Claims)) Claims {
 	mutate(&claims)
 	return claims
 }
+
+var benchmarkAssuranceResult bool
+
+func BenchmarkValidIDTokenAssurance(b *testing.B) {
+	actual := make([]string, maxOIDCAssuranceValues)
+	for index := range actual {
+		actual[index] = fmt.Sprintf("method-%d", index)
+	}
+	required := []string{"method-1", "method-7", "method-15"}
+	cases := []struct {
+		name      string
+		actualAMR []string
+		required  []string
+	}{
+		{name: "full", actualAMR: actual, required: required},
+		{name: "single", actualAMR: actual[:1], required: actual[:1]},
+		{name: "invalid-duplicate", actualAMR: []string{"method-1", "method-1"}, required: required[:1]},
+	}
+	for _, test := range cases {
+		b.Run(test.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				benchmarkAssuranceResult = validIDTokenAssurance("", test.actualAMR, "", test.required)
+			}
+		})
+		b.Run(test.name+"-legacy", func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				benchmarkAssuranceResult = legacyValidIDTokenAssurance("", test.actualAMR, "", test.required)
+			}
+		})
+	}
+}
+
+func legacyValidIDTokenAssurance(actualACR string, actualAMR []string, requiredACR string, requiredAMR []string) bool {
+	if requiredACR == "" && len(requiredAMR) == 0 {
+		return true
+	}
+	if actualACR != "" && !validOIDCAssuranceValue(actualACR) {
+		return false
+	}
+	if requiredACR != "" && actualACR != requiredACR {
+		return false
+	}
+	if len(actualAMR) > maxOIDCAssuranceValues {
+		return false
+	}
+	seen := make(map[string]struct{}, len(actualAMR))
+	for _, method := range actualAMR {
+		if !validOIDCAssuranceValue(method) {
+			return false
+		}
+		if _, exists := seen[method]; exists {
+			return false
+		}
+		seen[method] = struct{}{}
+	}
+	for _, method := range requiredAMR {
+		if _, exists := seen[method]; !exists {
+			return false
+		}
+	}
+	return true
+}

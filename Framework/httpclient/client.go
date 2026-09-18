@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -131,8 +132,10 @@ func (transport tracingTransport) RoundTrip(request *http.Request) (*http.Respon
 		return nil, contextErr
 	}
 
-	outbound := cloneRequestForPropagation(request, ctx)
-	transport.propagator.Inject(ctx, propagation.HeaderCarrier(outbound.Header))
+	outbound, inject := prepareRequestForPropagation(request, ctx, transport.propagator)
+	if inject {
+		transport.propagator.Inject(ctx, propagation.HeaderCarrier(outbound.Header))
+	}
 
 	response, err := transport.base.RoundTrip(outbound)
 	response, err = authoritativeHTTPResult(ctx, response, err)
@@ -209,14 +212,61 @@ func closeHTTPResponseBody(response *http.Response) {
 
 func cloneRequestForPropagation(request *http.Request, ctx context.Context) *http.Request {
 	// WithContext copies the request value without deep-copying read-only URL,
-	// trailer, transfer-encoding, and form state. Only Header must be isolated
-	// because trace propagation mutates it.
+	// trailer, transfer-encoding, and form state. This helper intentionally
+	// preserves the legacy always-isolated behavior used by direct callers and
+	// benchmarks; RoundTrip uses prepareRequestForPropagation for its no-op fast
+	// path.
 	outbound := request.WithContext(ctx)
 	outbound.Header = request.Header.Clone()
 	if outbound.Header == nil {
 		outbound.Header = make(http.Header)
 	}
 	return outbound
+}
+
+// prepareRequestForPropagation copies the request value and only clones its
+// mutable headers when the propagator may write them. The built-in W3C
+// propagator is a no-op without a valid span context; custom propagators are
+// always isolated because their injection behavior is extensible.
+func prepareRequestForPropagation(request *http.Request, ctx context.Context, propagator propagation.TextMapPropagator) (*http.Request, bool) {
+	inject := propagationNeedsInjection(propagator, ctx)
+	// WithContext copies the request value without deep-copying read-only URL,
+	// trailer, transfer-encoding, and form state. Only Header must be isolated
+	// when trace propagation may mutate it.
+	outbound := request.WithContext(ctx)
+	if inject {
+		outbound.Header = request.Header.Clone()
+		if outbound.Header == nil {
+			outbound.Header = make(http.Header)
+		}
+	}
+	return outbound, inject
+}
+
+func propagationNeedsInjection(propagator propagation.TextMapPropagator, ctx context.Context) bool {
+	// A nil propagator is an internal misconfiguration. Treat it as a
+	// no-op instead of calling through a nil interface/typed-nil pointer and
+	// panicking on an outbound request. New always installs TraceContext, but
+	// this guard keeps the transport fail-closed for package-level composition
+	// and tests that provide a custom transport.
+	if propagator == nil {
+		return false
+	}
+	switch value := propagator.(type) {
+	case propagation.TraceContext:
+		return trace.SpanContextFromContext(ctx).IsValid()
+	case *propagation.TraceContext:
+		return value != nil && trace.SpanContextFromContext(ctx).IsValid()
+	default:
+		reflected := reflect.ValueOf(propagator)
+		switch reflected.Kind() {
+		case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+			if reflected.IsNil() {
+				return false
+			}
+		}
+		return true
+	}
 }
 
 type spanBody struct {

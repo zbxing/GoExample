@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/valyala/fasthttp"
 
 	"github.com/zbxing/goexample/Framework/auth"
 	"github.com/zbxing/goexample/Framework/health"
@@ -2213,6 +2215,188 @@ func TestWriteFingerprintPartReusesLengthBufferWithoutAllocating(t *testing.T) {
 	if allocations != 0 {
 		t.Fatalf("write fingerprint parts allocations = %.1f, want 0", allocations)
 	}
+}
+
+func TestIdempotencyRequestFingerprintUsesResultBuffer(t *testing.T) {
+	app := fiber.New()
+	requestContext := &fasthttp.RequestCtx{}
+	requestContext.Request.Header.SetMethod(http.MethodPost)
+	requestContext.Request.SetRequestURI("/api/v1/example/echo")
+	requestContext.Request.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	requestContext.Request.SetBodyString(`{"answer":1}`)
+	c := app.AcquireCtx(requestContext)
+	defer app.ReleaseCtx(c)
+
+	first := idempotencyRequestFingerprint(c)
+	allocations := testing.AllocsPerRun(1000, func() {
+		if got := idempotencyRequestFingerprint(c); got != first {
+			t.Fatal("fingerprint changed between runs")
+		}
+	})
+	legacyAllocations := testing.AllocsPerRun(1000, func() {
+		if got := legacyIdempotencyRequestFingerprint(c); got != first {
+			t.Fatal("legacy fingerprint changed between runs")
+		}
+	})
+	if allocations >= legacyAllocations {
+		t.Fatalf("idempotencyRequestFingerprint allocations = %.1f, legacy = %.1f", allocations, legacyAllocations)
+	}
+}
+
+func BenchmarkIdempotencyRequestFingerprint(b *testing.B) {
+	app := fiber.New()
+	requestContext := &fasthttp.RequestCtx{}
+	requestContext.Request.Header.SetMethod(http.MethodPost)
+	requestContext.Request.SetRequestURI("/api/v1/example/echo")
+	requestContext.Request.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	requestContext.Request.Header.Set(fiber.HeaderIfMatch, `"v1"`)
+	requestContext.Request.SetBodyString(`{"answer":1}`)
+	c := app.AcquireCtx(requestContext)
+	defer app.ReleaseCtx(c)
+
+	for _, test := range []struct {
+		name string
+		fn   func(fiber.Ctx)
+	}{
+		{name: "optimized", fn: func(ctx fiber.Ctx) { _ = idempotencyRequestFingerprint(ctx, fiber.HeaderIfMatch) }},
+		{name: "legacy", fn: func(ctx fiber.Ctx) { _ = legacyIdempotencyRequestFingerprint(ctx, fiber.HeaderIfMatch) }},
+	} {
+		b.Run(test.name, func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for range b.N {
+				test.fn(c)
+			}
+		})
+	}
+}
+
+func legacyIdempotencyRequestFingerprint(c fiber.Ctx, fingerprintHeaders ...string) [sha256.Size]byte {
+	digest := sha256.New()
+	var length [8]byte
+	writeFingerprintPart(digest, &length, []byte(c.Method()))
+	writeFingerprintPart(digest, &length, []byte(c.OriginalURL()))
+	writeFingerprintPart(digest, &length, []byte(idempotencyPrincipal(c)))
+	writeFingerprintPart(digest, &length, []byte(legacyNormalizedMediaType(c.Get(fiber.HeaderContentType))))
+	for _, header := range fingerprintHeaders {
+		writeFingerprintPart(digest, &length, []byte(strings.ToLower(header)))
+		writeFingerprintPart(digest, &length, []byte(c.Get(header)))
+	}
+	writeFingerprintPart(digest, &length, c.Body())
+
+	var result [sha256.Size]byte
+	copy(result[:], digest.Sum(nil))
+	return result
+}
+
+func TestNormalizedFingerprintHeaderNamePreservesCanonicalBytes(t *testing.T) {
+	for _, test := range []struct {
+		value string
+		want  string
+	}{
+		{value: fiber.HeaderIfMatch, want: "if-match"},
+		{value: "IF-MATCH", want: "if-match"},
+		{value: "iF-mAtCh", want: "if-match"},
+		{value: "X-Custom-Header", want: "x-custom-header"},
+		{value: "x-custom-header", want: "x-custom-header"},
+	} {
+		t.Run(test.value, func(t *testing.T) {
+			if got := normalizedFingerprintHeaderName(test.value); got != test.want {
+				t.Fatalf("normalizedFingerprintHeaderName(%q) = %q, want %q", test.value, got, test.want)
+			}
+		})
+	}
+}
+
+func TestIdempotencyFingerprintHeaderFastPathPreservesDigestBytes(t *testing.T) {
+	app := fiber.New()
+	requestContext := &fasthttp.RequestCtx{}
+	requestContext.Request.Header.SetMethod(http.MethodPost)
+	requestContext.Request.SetRequestURI("/api/v1/example/echo")
+	requestContext.Request.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	requestContext.Request.Header.Set(fiber.HeaderIfMatch, `"v1"`)
+	requestContext.Request.Header.Set("X-Custom-Header", "custom")
+	requestContext.Request.SetBodyString(`{"answer":1}`)
+	c := app.AcquireCtx(requestContext)
+	defer app.ReleaseCtx(c)
+
+	for _, header := range []string{fiber.HeaderIfMatch, "IF-MATCH", "iF-mAtCh", "X-Custom-Header"} {
+		if got, want := idempotencyRequestFingerprint(c, header), legacyIdempotencyRequestFingerprint(c, header); got != want {
+			t.Fatalf("fingerprint for header %q changed: got %x, want %x", header, got, want)
+		}
+	}
+}
+
+func TestIdempotencyFingerprintInlineEncodingPreservesDigestBytes(t *testing.T) {
+	app := fiber.New()
+	requestContext := &fasthttp.RequestCtx{}
+	requestContext.Request.Header.SetMethod(http.MethodPost)
+	requestContext.Request.SetRequestURI("/api/v1/example/echo")
+	requestContext.Request.Header.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+	requestContext.Request.Header.Set(fiber.HeaderIfMatch, `"v1"`)
+	requestContext.Request.SetBodyString(`{"answer":1}`)
+	c := app.AcquireCtx(requestContext)
+	defer app.ReleaseCtx(c)
+
+	if got, want := idempotencyRequestFingerprint(c, fiber.HeaderIfMatch), legacyIdempotencyRequestFingerprint(c, fiber.HeaderIfMatch); got != want {
+		t.Fatalf("inline fingerprint changed: got %x, want %x", got, want)
+	}
+
+	requestContext.Request.SetBodyString(strings.Repeat("x", inlineFingerprintCapacity))
+	if got, want := idempotencyRequestFingerprint(c, fiber.HeaderIfMatch), legacyIdempotencyRequestFingerprint(c, fiber.HeaderIfMatch); got != want {
+		t.Fatalf("fallback fingerprint changed: got %x, want %x", got, want)
+	}
+}
+
+func TestNormalizedMediaTypeFastPathPreservesCanonicalBytes(t *testing.T) {
+	for _, value := range []string{fiber.MIMEApplicationJSON, fiber.MIMEApplicationJSONCharsetUTF8} {
+		if got, want := normalizedMediaType(value), legacyNormalizedMediaType(value); got != want {
+			t.Fatalf("normalizedMediaType(%q) = %q, want %q", value, got, want)
+		}
+	}
+	for _, value := range []string{
+		"APPLICATION/JSON",
+		"application/json; charset=UTF-8",
+		"text/plain; charset=utf-8",
+		"invalid media type",
+	} {
+		if got, want := normalizedMediaType(value), legacyNormalizedMediaType(value); got != want {
+			t.Fatalf("normalizedMediaType(%q) = %q, want legacy %q", value, got, want)
+		}
+	}
+}
+
+func BenchmarkNormalizedMediaType(b *testing.B) {
+	for _, test := range []struct {
+		name   string
+		value  string
+		legacy bool
+	}{
+		{name: "optimized_json", value: fiber.MIMEApplicationJSON},
+		{name: "legacy_json", value: fiber.MIMEApplicationJSON, legacy: true},
+		{name: "optimized_json_charset", value: fiber.MIMEApplicationJSONCharsetUTF8},
+		{name: "legacy_json_charset", value: fiber.MIMEApplicationJSONCharsetUTF8, legacy: true},
+	} {
+		b.Run(test.name, func(b *testing.B) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			for range b.N {
+				if test.legacy {
+					_ = legacyNormalizedMediaType(test.value)
+				} else {
+					_ = normalizedMediaType(test.value)
+				}
+			}
+		})
+	}
+}
+
+func legacyNormalizedMediaType(value string) string {
+	mediaType, parameters, err := mime.ParseMediaType(value)
+	if err != nil {
+		return strings.TrimSpace(value)
+	}
+	return mime.FormatMediaType(strings.ToLower(mediaType), parameters)
 }
 
 func TestIdempotencyReplaysSameRequestAndRejectsFingerprintConflict(t *testing.T) {

@@ -55,6 +55,60 @@ func TestRedisBrowserSessionStoreSharesAndRevokesHashOnlySession(t *testing.T) {
 	}
 }
 
+func TestValidSHA256HexPreservesCanonicalContract(t *testing.T) {
+	valid := strings.Repeat("0", sha256.Size*2)
+	cases := map[string]struct {
+		value string
+		want  bool
+	}{
+		"valid":     {value: valid, want: true},
+		"mixed":     {value: valid[:sha256.Size] + strings.Repeat("a", sha256.Size), want: true},
+		"uppercase": {value: strings.Repeat("A", sha256.Size*2)},
+		"non-hex":   {value: valid[:sha256.Size*2-1] + "g"},
+		"short":     {value: valid[:sha256.Size*2-1]},
+		"long":      {value: valid + "0"},
+		"unicode":   {value: valid[:sha256.Size*2-1] + "\u00e9"},
+	}
+	for name, testCase := range cases {
+		t.Run(name, func(t *testing.T) {
+			if got := validSHA256Hex(testCase.value); got != testCase.want {
+				t.Fatalf("validSHA256Hex(%q) = %t, want %t", testCase.value, got, testCase.want)
+			}
+			if got := legacyValidSHA256Hex(testCase.value); got != testCase.want {
+				t.Fatalf("legacyValidSHA256Hex(%q) = %t, want %t", testCase.value, got, testCase.want)
+			}
+		})
+	}
+}
+
+func BenchmarkValidSHA256Hex(b *testing.B) {
+	value := strings.Repeat("a0", sha256.Size)
+	b.Run("optimized", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			if !validSHA256Hex(value) {
+				b.Fatal("optimized validation rejected valid input")
+			}
+		}
+	})
+	b.Run("legacy", func(b *testing.B) {
+		b.ReportAllocs()
+		for range b.N {
+			if !legacyValidSHA256Hex(value) {
+				b.Fatal("legacy validation rejected valid input")
+			}
+		}
+	})
+}
+
+func legacyValidSHA256Hex(value string) bool {
+	if len(value) != sha256.Size*2 {
+		return false
+	}
+	decoded, err := hex.DecodeString(value)
+	return err == nil && len(decoded) == sha256.Size && hex.EncodeToString(decoded) == value
+}
+
 func TestRedisBrowserSessionInventoryUsesOneAtomicSnapshotCommand(t *testing.T) {
 	server := miniredis.RunT(t)
 	recorder, provider := newRedisTestTracerProvider(t)

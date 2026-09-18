@@ -9,7 +9,6 @@ import (
 	"errors"
 	"math/rand/v2"
 	"net"
-	"strings"
 	"sync"
 	"time"
 
@@ -531,13 +530,55 @@ func scanRow(ctx context.Context, target queryer, tracer trace.Tracer, timeout t
 func startSpan(ctx context.Context, tracer trace.Tracer, operation string) (context.Context, trace.Span) {
 	return tracer.Start(
 		ctx,
-		"postgresql."+strings.ToLower(operation),
+		"postgresql."+postgresOperationName(operation),
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
 			semconv.DBSystemNamePostgreSQL,
 			semconv.DBOperationName(operation),
 		),
 	)
+}
+
+// postgresOperationName maps the fixed internal operation vocabulary to
+// immutable lowercase strings. SQL operations create a span on every request;
+// avoiding strings.ToLower on the uppercase internal constants removes a
+// temporary string allocation from that hot path while retaining a defensive
+// lowercase fallback for package-local future callers.
+func postgresOperationName(operation string) string {
+	switch operation {
+	case "CHECK":
+		return "check"
+	case "EXEC":
+		return "exec"
+	case "QUERY":
+		return "query"
+	case "LOCK":
+		return "lock"
+	case "UPDATE":
+		return "update"
+	case "OUTBOX":
+		return "outbox"
+	case "TRANSACTION":
+		return "transaction"
+	default:
+		return lowerASCII(operation)
+	}
+}
+
+func lowerASCII(value string) string {
+	for index := 0; index < len(value); index++ {
+		if value[index] >= 'A' && value[index] <= 'Z' {
+			buffer := make([]byte, len(value))
+			copy(buffer, value)
+			for position := index; position < len(buffer); position++ {
+				if buffer[position] >= 'A' && buffer[position] <= 'Z' {
+					buffer[position] += 'a' - 'A'
+				}
+			}
+			return string(buffer)
+		}
+	}
+	return value
 }
 
 func finishSpan(ctx context.Context, span trace.Span, err error) {

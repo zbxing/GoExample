@@ -638,8 +638,14 @@ func validSHA256Hex(value string) bool {
 	if len(value) != sha256.Size*2 {
 		return false
 	}
-	decoded, err := hex.DecodeString(value)
-	return err == nil && len(decoded) == sha256.Size && hex.EncodeToString(decoded) == value
+	for index := 0; index < len(value); index++ {
+		character := value[index]
+		if character >= '0' && character <= '9' || character >= 'a' && character <= 'f' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func validBrowserSessionPublicID(value string) bool {

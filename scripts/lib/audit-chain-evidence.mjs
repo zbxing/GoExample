@@ -18,6 +18,7 @@ export const auditChainTests = Object.freeze([
 ]);
 export const auditChainGoArguments = Object.freeze([
   'test',
+  '-p=1',
   '-v',
   '-count=1',
   '-timeout=90s',

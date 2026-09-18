@@ -285,18 +285,30 @@ func validIDTokenAssurance(actualACR string, actualAMR []string, requiredACR str
 	if len(actualAMR) > maxOIDCAssuranceValues {
 		return false
 	}
-	seen := make(map[string]struct{}, len(actualAMR))
-	for _, method := range actualAMR {
+	// The claim is bounded to 16 values. A stack-backed exact-string index
+	// preserves duplicate rejection and required-value checks without creating
+	// a map bucket on every verified ID token.
+	var seen [maxOIDCAssuranceValues]string
+	for index, method := range actualAMR {
 		if !validOIDCAssuranceValue(method) {
 			return false
 		}
-		if _, exists := seen[method]; exists {
-			return false
+		for _, previous := range seen[:index] {
+			if previous == method {
+				return false
+			}
 		}
-		seen[method] = struct{}{}
+		seen[index] = method
 	}
 	for _, method := range requiredAMR {
-		if _, exists := seen[method]; !exists {
+		found := false
+		for _, actual := range seen[:len(actualAMR)] {
+			if actual == method {
+				found = true
+				break
+			}
+		}
+		if !found {
 			return false
 		}
 	}

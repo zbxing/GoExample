@@ -65,6 +65,23 @@ func TestMetricsRecordsNormalizedRoute(t *testing.T) {
 	}
 }
 
+func TestMetricsRenderEscapesDynamicLabelsWithoutChangingOrder(t *testing.T) {
+	metrics := NewMetrics()
+	key := metricKey{method: "GET\"", route: "/quoted\\route", status: 418}
+	value := &metricValue{}
+	value.count.Store(1)
+	metrics.requests.Store(key, value)
+
+	output := metrics.Render()
+	wantLabels := `method="GET\"",route="/quoted\\route",status="418"`
+	if !strings.Contains(output, "goexample_http_requests_total{"+wantLabels+"} 1") {
+		t.Fatalf("escaped request labels missing: %s", output)
+	}
+	if !strings.Contains(output, "goexample_http_request_duration_seconds_bucket{"+wantLabels+`,le="+Inf"} 1`) {
+		t.Fatalf("escaped histogram labels missing: %s", output)
+	}
+}
+
 func TestMetricsRecordsBoundedQueueWorkerLifecycle(t *testing.T) {
 	metrics := NewMetrics()
 	metrics.WorkerStarted()

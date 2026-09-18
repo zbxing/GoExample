@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-10T13:47:52.078948+00:00",
+  "generated_at": "2026-09-18T01:27:37.523163+00:00",
   "nodes": {
     "agents_graphify": {
       "code_fingerprint": "92bbfa896e8eb9b372b8ada19bbdd47add5144295a1ea1bf5bf7a05cd9df75f8",
@@ -13,14 +13,14 @@
           "q": "graphify-out中日期文件夹、cache、memory和reflections不上传仓库真的不影响在新设备的使用吗，新设备没有这些文件是否还可以正常使用记忆图谱(包含已更新记录的)"
         }
       ],
-      "score": 0.012284811,
+      "score": 0.010333609,
       "source_file": "AGENTS.md",
       "status": "contested",
       "uses": 1,
       "verdict": "useful"
     },
     "auth_jwksverifier_refresh": {
-      "code_fingerprint": "66b09bf1854d7c06d036222533d966858251354926f715013ef86e31a89eb389",
+      "code_fingerprint": "7b84b862ad20500b878e59c5c768b1e6a74e878444e8a8a23c847df073630085",
       "label": ".refresh()",
       "last": "2026-09-09T08:52:39.195441+00:00",
       "provenance": [
@@ -30,13 +30,13 @@
           "q": "最新的待优化文档全部完成了吗（排除 MSFront，全面非前端复评并继续优化）"
         }
       ],
-      "score": 0.972542359,
+      "score": 0.818073045,
       "source_file": "Framework/auth/jwks.go",
       "status": "tentative",
       "uses": 1
     },
     "auth_oidcclient_exchangecode": {
-      "code_fingerprint": "a6fcb374da8c5b0f62b3dbd579bb400dc68b6aa8668f736e6444e853b9c1f368",
+      "code_fingerprint": "1ce763398f07d2611483fdef224666afae6275251de632db80043d8681d0f22f",
       "label": ".ExchangeCode()",
       "last": "2026-09-09T08:52:39.195441+00:00",
       "provenance": [
@@ -46,13 +46,13 @@
           "q": "最新的待优化文档全部完成了吗（排除 MSFront，全面非前端复评并继续优化）"
         }
       ],
-      "score": 0.972542359,
+      "score": 0.818073045,
       "source_file": "Framework/auth/oidc_client.go",
       "status": "tentative",
       "uses": 1
     },
     "docs_assessment_project_architecture_performance_assessment": {
-      "code_fingerprint": "af06a35304aca2c228d9f82e8ba6387403fc5c15d9dcef2384edda016dd78aa2",
+      "code_fingerprint": "41c3e5faf2fcaf19a953acb002c9a4310407eb279f59bb16787d91da2ba20c3d",
       "label": "GoExample Project Architecture and Performance Assessment",
       "last": "2026-09-09T07:39:37.163843+00:00",
       "provenance": [
@@ -82,7 +82,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 4.571324996,
+      "score": 3.845259516,
       "source_file": "docs/评估/项目架构与性能评估.md",
       "status": "preferred",
       "uses": 5
@@ -98,7 +98,7 @@
           "q": "V52 完成后 V53 应实施什么仓库内优化？"
         }
       ],
-      "score": 0.895346032,
+      "score": 0.753137844,
       "source_file": "docs/待优化/待优化V53.md",
       "status": "tentative",
       "uses": 1
@@ -114,7 +114,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.898981885,
+      "score": 0.756196212,
       "source_file": "docs/待优化/待优化V57.md",
       "status": "tentative",
       "uses": 1
@@ -130,7 +130,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.898981885,
+      "score": 0.756196212,
       "source_file": "docs/待优化/待优化V57.md",
       "status": "tentative",
       "uses": 1
@@ -146,7 +146,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.898981885,
+      "score": 0.756196212,
       "source_file": "docs/待优化/待优化V57.md",
       "status": "tentative",
       "uses": 1
@@ -162,7 +162,7 @@
           "q": "Prometheus 告警行为门禁如何覆盖全部服务端规则并提高综合评分，排除 MSFront"
         }
       ],
-      "score": 0.776073673,
+      "score": 0.652809564,
       "source_file": "docs/observability/SLO-and-alerts.md",
       "status": "tentative",
       "uses": 1
@@ -188,7 +188,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 2.168899341,
+      "score": 1.824412143,
       "source_file": "docs/observability/SLO-and-alerts.md",
       "status": "preferred",
       "uses": 3
@@ -204,7 +204,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.77570167,
+      "score": 0.652496646,
       "source_file": "docs/openapi/compatibility-policy.md",
       "status": "tentative",
       "uses": 1
@@ -220,7 +220,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.772855245,
+      "score": 0.65010232,
       "source_file": "docs/待优化/待优化V13.md",
       "status": "tentative",
       "uses": 1
@@ -251,13 +251,13 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 3.206311266,
+      "score": 2.697051493,
       "source_file": "docs/待优化/待优化V13.md",
       "status": "preferred",
       "uses": 4
     },
     "docs_评估_项目架构与性能评估_goexample_项目架构与性能评估": {
-      "code_fingerprint": "af06a35304aca2c228d9f82e8ba6387403fc5c15d9dcef2384edda016dd78aa2",
+      "code_fingerprint": "41c3e5faf2fcaf19a953acb002c9a4310407eb279f59bb16787d91da2ba20c3d",
       "label": "GoExample 项目架构与性能评估",
       "last": "2026-09-04T05:10:49.842172+00:00",
       "provenance": [
@@ -267,13 +267,13 @@
           "q": "排除 MSFront 后，V20 仓库内工作是否完成，以及 V21 还能诚实推进什么优化？"
         }
       ],
-      "score": 0.863358436,
+      "score": 0.726230851,
       "source_file": "docs/评估/项目架构与性能评估.md",
       "status": "tentative",
       "uses": 1
     },
     "framework_auth_jwks_newjwksverifier": {
-      "code_fingerprint": "66b09bf1854d7c06d036222533d966858251354926f715013ef86e31a89eb389",
+      "code_fingerprint": "7b84b862ad20500b878e59c5c768b1e6a74e878444e8a8a23c847df073630085",
       "label": "NewJWKSVerifier()",
       "last": "2026-09-09T08:52:39.195441+00:00",
       "provenance": [
@@ -283,13 +283,13 @@
           "q": "最新的待优化文档全部完成了吗（排除 MSFront，全面非前端复评并继续优化）"
         }
       ],
-      "score": 0.972542359,
+      "score": 0.818073045,
       "source_file": "Framework/auth/jwks.go",
       "status": "tentative",
       "uses": 1
     },
     "framework_auth_oidc_client_newoidcclient": {
-      "code_fingerprint": "a6fcb374da8c5b0f62b3dbd579bb400dc68b6aa8668f736e6444e853b9c1f368",
+      "code_fingerprint": "1ce763398f07d2611483fdef224666afae6275251de632db80043d8681d0f22f",
       "label": "NewOIDCClient()",
       "last": "2026-09-09T08:52:39.195441+00:00",
       "provenance": [
@@ -299,13 +299,13 @@
           "q": "最新的待优化文档全部完成了吗（排除 MSFront，全面非前端复评并继续优化）"
         }
       ],
-      "score": 0.972542359,
+      "score": 0.818073045,
       "source_file": "Framework/auth/oidc_client.go",
       "status": "tentative",
       "uses": 1
     },
     "framework_httpapi_app_test_testapivaryheaderspreservecorsandcompressioncontracts": {
-      "code_fingerprint": "797e2fc9950d5bf80b931038c6858d9bd79f0b0b4196e3acd16375010daa8513",
+      "code_fingerprint": "4824409af32d0b443fa28d97a8e63e4ca6890df89da700dc88cb03a98fa76c53",
       "label": "TestAPIVaryHeadersPreserveCORSAndCompressionContracts()",
       "last": "2026-09-01T07:15:43.530514+00:00",
       "provenance": [
@@ -315,7 +315,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.807157785,
+      "score": 0.678956573,
       "source_file": "Framework/httpapi/app_test.go",
       "status": "tentative",
       "uses": 1
@@ -351,7 +351,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 8.844120631,
+      "score": 7.439405216,
       "source_file": "Framework/httpapi/benchmark_test.go",
       "status": "preferred",
       "uses": 11
@@ -367,7 +367,7 @@
           "q": "最新的待优化文档全部完成了吗；没有请继续，否则重新评估并生成新的待优化文档，MSFront除外，目标提高综合评分"
         }
       ],
-      "score": 0.807946504,
+      "score": 0.679620019,
       "source_file": "Framework/httpapi/benchmark_test.go",
       "status": "tentative",
       "uses": 1
@@ -383,7 +383,7 @@
           "q": "如何要升级到A，那么本项目需要做哪些优化呢，请写入待优化V14中，并且将待优化V13中甚于未完成的优化也迁移到V14文档，然后设置V13完结；最后根据最新的待优化文档对项目进行优化修改"
         }
       ],
-      "score": 0.809757293,
+      "score": 0.6811432,
       "source_file": "Framework/httpapi/benchmark_test.go",
       "status": "tentative",
       "uses": 1
@@ -399,7 +399,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.809868553,
+      "score": 0.681236789,
       "source_file": "Framework/httpapi/benchmark_test.go",
       "status": "tentative",
       "uses": 1
@@ -415,7 +415,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.810459806,
+      "score": 0.681734133,
       "source_file": "Framework/httpapi/benchmark_test.go",
       "status": "tentative",
       "uses": 1
@@ -436,7 +436,7 @@
           "q": "如何要升级到A，那么本项目需要做哪些优化呢，请写入待优化V14中，并且将待优化V13中甚于未完成的优化也迁移到V14文档，然后设置V13完结；最后根据最新的待优化文档对项目进行优化修改"
         }
       ],
-      "score": 1.619625846,
+      "score": 1.362379989,
       "source_file": "Framework/httpapi/benchmark_test.go",
       "status": "preferred",
       "uses": 2
@@ -452,7 +452,7 @@
           "q": "请继续"
         }
       ],
-      "score": 0.786500003,
+      "score": 0.661579875,
       "source_file": "Framework/httpapi/event_stream.go",
       "status": "tentative",
       "uses": 1
@@ -473,13 +473,13 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.578028031,
+      "score": 1.327389173,
       "source_file": "Framework/httpapi/event_stream.go",
       "status": "preferred",
       "uses": 2
     },
     "framework_httpapi_idempotency_fingerprint_idempotencyrequestfingerprint": {
-      "code_fingerprint": "8a2dd3054fc29d133f26e30769a9737d4dc5ee0afef29f543782baf73192cfc7",
+      "code_fingerprint": "e39bfd1b71344c04b3c2ae76c78774d678266c4a699bf485c77e285d3ac6226e",
       "label": "idempotencyRequestFingerprint()",
       "last": "2026-09-01T11:30:10.193186+00:00",
       "provenance": [
@@ -489,13 +489,13 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.810459806,
+      "score": 0.681734133,
       "source_file": "Framework/httpapi/idempotency_fingerprint.go",
       "status": "tentative",
       "uses": 1
     },
     "framework_httpapi_idempotency_fingerprint_writefingerprintpart": {
-      "code_fingerprint": "8a2dd3054fc29d133f26e30769a9737d4dc5ee0afef29f543782baf73192cfc7",
+      "code_fingerprint": "e39bfd1b71344c04b3c2ae76c78774d678266c4a699bf485c77e285d3ac6226e",
       "label": "writeFingerprintPart()",
       "last": "2026-09-01T11:30:10.193186+00:00",
       "provenance": [
@@ -505,7 +505,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.810459806,
+      "score": 0.681734133,
       "source_file": "Framework/httpapi/idempotency_fingerprint.go",
       "status": "tentative",
       "uses": 1
@@ -521,7 +521,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.790317916,
+      "score": 0.664791388,
       "source_file": "Framework/httpapi/lifecycle_contract_test.go",
       "status": "tentative",
       "uses": 1
@@ -537,7 +537,7 @@
           "q": "How does the default NewHTTPHandler and RunHTTP path preserve incremental streaming through standard middleware?"
         }
       ],
-      "score": 0.784420567,
+      "score": 0.659830717,
       "source_file": "Framework/httpapi/lifecycle_contract_test.go",
       "status": "tentative",
       "uses": 1
@@ -553,7 +553,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.807157785,
+      "score": 0.678956573,
       "source_file": "Framework/httpapi/middleware.go",
       "status": "tentative",
       "uses": 1
@@ -574,7 +574,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 1.610197766,
+      "score": 1.354449375,
       "source_file": "Framework/httpapi/middleware_etag_test.go",
       "status": "preferred",
       "uses": 2
@@ -590,7 +590,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.810459806,
+      "score": 0.681734133,
       "source_file": "Framework/httpapi/middleware.go",
       "status": "tentative",
       "uses": 1
@@ -606,7 +606,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.809868553,
+      "score": 0.681236789,
       "source_file": "Framework/httpapi/middleware.go",
       "status": "tentative",
       "uses": 1
@@ -622,7 +622,7 @@
           "q": "最新的待优化文档全部完成了吗；没有请继续优化，排除 MSFront，目标提高综合评分"
         }
       ],
-      "score": 0.791456723,
+      "score": 0.665749317,
       "source_file": "Framework/httpapi/middleware.go",
       "status": "tentative",
       "uses": 1
@@ -638,7 +638,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.806184412,
+      "score": 0.678137801,
       "source_file": "Framework/httpapi/response.go",
       "status": "tentative",
       "uses": 1
@@ -654,7 +654,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.806184412,
+      "score": 0.678137801,
       "source_file": "Framework/httpapi/routes_example.go",
       "status": "tentative",
       "uses": 1
@@ -675,7 +675,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 1.611913816,
+      "score": 1.355892864,
       "source_file": "Framework/httpapi/routes_example.go",
       "status": "preferred",
       "uses": 2
@@ -691,7 +691,7 @@
           "q": "V13 尚未完成时，下一项不涉及 MSFront 且能提升综合评分的仓库内优化是什么"
         }
       ],
-      "score": 0.727184744,
+      "score": 0.611685684,
       "source_file": "Framework/httpapi/security_audit_chain_test.go",
       "status": "tentative",
       "uses": 1
@@ -727,7 +727,7 @@
           "q": "如何继续 V13 并提高综合评分，重点检查默认 Framework 标准 HTTP 适配器是否进入 transport 容量证据？"
         }
       ],
-      "score": 5.591113485,
+      "score": 4.703074569,
       "source_file": "Framework/httpapi/standard_handler.go",
       "status": "preferred",
       "uses": 7
@@ -748,7 +748,7 @@
           "q": "How does the default NewHTTPHandler and RunHTTP path preserve incremental streaming through standard middleware?"
         }
       ],
-      "score": 1.594289121,
+      "score": 1.341067506,
       "source_file": "Framework/httpapi/standard_handler_test.go",
       "status": "preferred",
       "uses": 2
@@ -764,7 +764,7 @@
           "q": "如何要升级到A，那么本项目需要做哪些优化呢，请写入待优化V14中，并且将待优化V13中甚于未完成的优化也迁移到V14文档，然后设置V13完结；最后根据最新的待优化文档对项目进行优化修改"
         }
       ],
-      "score": 0.809757293,
+      "score": 0.6811432,
       "source_file": "Framework/httpapi/standard_handler_test.go",
       "status": "tentative",
       "uses": 1
@@ -780,13 +780,13 @@
           "q": "Does NewHTTPHandler preserve incremental Fiber streaming over real TLS and HTTP/2 while reporting the application protocol, and does its response-writer bridge avoid false Flusher capability?"
         }
       ],
-      "score": 0.784819055,
+      "score": 0.660165913,
       "source_file": "Framework/httpapi/standard_handler_test.go",
       "status": "tentative",
       "uses": 1
     },
     "framework_httpclient_client_authoritativehttpresult": {
-      "code_fingerprint": "223f2e2f8cde2b18d6a3c45bb3a89d566c64cf97745b6b43b019e7e90020c229",
+      "code_fingerprint": "6deafeede00a1ce815a7e0eae38c58ed52f4aa661d857e68eb1968d7e442c3f0",
       "label": "authoritativeHTTPResult()",
       "last": "2026-09-09T08:37:38.258161+00:00",
       "provenance": [
@@ -796,13 +796,13 @@
           "q": "How do completedHTTPContextError and authoritativeHTTPResult enforce outbound HTTP context and body ownership?"
         }
       ],
-      "score": 0.972308075,
+      "score": 0.817875973,
       "source_file": "Framework/httpclient/client.go",
       "status": "tentative",
       "uses": 1
     },
     "framework_httpclient_client_completedhttpcontexterror": {
-      "code_fingerprint": "223f2e2f8cde2b18d6a3c45bb3a89d566c64cf97745b6b43b019e7e90020c229",
+      "code_fingerprint": "6deafeede00a1ce815a7e0eae38c58ed52f4aa661d857e68eb1968d7e442c3f0",
       "label": "completedHTTPContextError()",
       "last": "2026-09-09T08:52:39.195441+00:00",
       "provenance": [
@@ -817,7 +817,7 @@
           "q": "How do completedHTTPContextError and authoritativeHTTPResult enforce outbound HTTP context and body ownership?"
         }
       ],
-      "score": 1.944850434,
+      "score": 1.635949018,
       "source_file": "Framework/httpclient/client.go",
       "status": "preferred",
       "uses": 2
@@ -833,7 +833,7 @@
           "q": "最新的待优化文档全部完成了吗；未完成则继续，排除 MSFront，并在每次优化后更新评分"
         }
       ],
-      "score": 0.840142807,
+      "score": 0.70670257,
       "source_file": "Framework/httpclient/response_body.go",
       "status": "tentative",
       "uses": 1
@@ -849,7 +849,7 @@
           "q": "最新的待优化文档全部完成了吗；未完成则继续，排除 MSFront，并在每次优化后更新评分"
         }
       ],
-      "score": 0.840142807,
+      "score": 0.70670257,
       "source_file": "Framework/httpclient/response_body_test.go",
       "status": "tentative",
       "uses": 1
@@ -865,7 +865,7 @@
           "q": "最新的待优化文档全部完成了吗；未完成则继续，排除 MSFront，并在每次优化后更新评分"
         }
       ],
-      "score": 0.840142807,
+      "score": 0.70670257,
       "source_file": "Framework/httpclient/response_body_test.go",
       "status": "tentative",
       "uses": 1
@@ -881,7 +881,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.900198367,
+      "score": 0.75721948,
       "source_file": "Framework/httpclient/retry_test.go",
       "status": "tentative",
       "uses": 1
@@ -897,7 +897,7 @@
           "q": "最新的待优化文档全部完成了吗；没有请继续优化，排除 MSFront，目标提高综合评分"
         }
       ],
-      "score": 0.791456723,
+      "score": 0.665749317,
       "source_file": "Framework/observability/logger.go",
       "status": "tentative",
       "uses": 1
@@ -913,7 +913,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.810459806,
+      "score": 0.681734133,
       "source_file": "Framework/observability/tracing.go",
       "status": "tentative",
       "uses": 1
@@ -929,7 +929,7 @@
           "q": "最新的待优化文档全部完成了吗；没有请继续，否则重新评估并生成新的待优化文档，MSFront除外，目标提高综合评分"
         }
       ],
-      "score": 0.807946504,
+      "score": 0.679620019,
       "source_file": "Framework/observability/tracing.go",
       "status": "tentative",
       "uses": 1
@@ -945,7 +945,7 @@
           "q": "最新的待优化文档全部完成了吗；没有请继续，否则重新评估并生成新的待优化文档，MSFront除外，目标提高综合评分"
         }
       ],
-      "score": 0.807946504,
+      "score": 0.679620019,
       "source_file": "Framework/observability/tracing_test.go",
       "status": "tentative",
       "uses": 1
@@ -966,13 +966,119 @@
           "q": "最新的待优化文档全部完成了吗；没有请继续优化，排除 MSFront，目标提高综合评分"
         }
       ],
-      "score": 1.599403226,
+      "score": 1.345369336,
       "source_file": "Framework/observability/tracing.go",
       "status": "preferred",
       "uses": 2
     },
+    "framework_queueclient_client": {
+      "code_fingerprint": "d0ed5c5239426a692077cdd5dbf6cb033de3c66e61671eeee58324fb2f91ba15",
+      "label": "queueclient/client.go",
+      "last": "2026-09-17T07:55:48.361957+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-17T07:55:48.361957+00:00",
+          "outcome": "useful",
+          "q": "继续完成最新待优化文档并更新评分（MSFront除外）"
+        }
+      ],
+      "score": 0.983265092,
+      "source_file": "Framework/queueclient/client.go",
+      "status": "tentative",
+      "uses": 1
+    },
+    "framework_queueclient_client_foldedheadernamehash": {
+      "code_fingerprint": "d0ed5c5239426a692077cdd5dbf6cb033de3c66e61671eeee58324fb2f91ba15",
+      "label": "foldedHeaderNameHash()",
+      "last": "2026-09-17T11:07:18.311787+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-17T11:07:18.311787+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外，评分维度全面)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
+        }
+      ],
+      "score": 0.986290936,
+      "source_file": "Framework/queueclient/client.go",
+      "status": "tentative",
+      "uses": 1
+    },
+    "framework_queueclient_client_insertfoldedheadername": {
+      "code_fingerprint": "d0ed5c5239426a692077cdd5dbf6cb033de3c66e61671eeee58324fb2f91ba15",
+      "label": "insertFoldedHeaderName()",
+      "last": "2026-09-17T11:07:18.311787+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-17T11:07:18.311787+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外，评分维度全面)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
+        }
+      ],
+      "score": 0.986290936,
+      "source_file": "Framework/queueclient/client.go",
+      "status": "tentative",
+      "uses": 1
+    },
+    "framework_queueclient_client_test_benchmarkvalidateheaders": {
+      "code_fingerprint": "c2e40bd859e226ae0107e0da4d857744115b0553e0da1a63a172cc6d2fc00450",
+      "label": "BenchmarkValidateHeaders()",
+      "last": "2026-09-17T11:07:18.311787+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-17T11:07:18.311787+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外，评分维度全面)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
+        },
+        {
+          "date": "2026-09-17T07:55:48.361957+00:00",
+          "outcome": "useful",
+          "q": "继续完成最新待优化文档并更新评分（MSFront除外）"
+        }
+      ],
+      "score": 1.969556028,
+      "source_file": "Framework/queueclient/client_test.go",
+      "status": "preferred",
+      "uses": 2
+    },
+    "framework_queueclient_client_validateboundedheaders": {
+      "code_fingerprint": "d0ed5c5239426a692077cdd5dbf6cb033de3c66e61671eeee58324fb2f91ba15",
+      "label": "validateBoundedHeaders()",
+      "last": "2026-09-17T11:07:18.311787+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-17T11:07:18.311787+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外，评分维度全面)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
+        }
+      ],
+      "score": 0.986290936,
+      "source_file": "Framework/queueclient/client.go",
+      "status": "tentative",
+      "uses": 1
+    },
+    "framework_queueclient_client_validateheaders": {
+      "code_fingerprint": "d0ed5c5239426a692077cdd5dbf6cb033de3c66e61671eeee58324fb2f91ba15",
+      "label": "validateHeaders()",
+      "last": "2026-09-17T11:07:18.311787+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-17T11:07:18.311787+00:00",
+          "outcome": "useful",
+          "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外，评分维度全面)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
+        },
+        {
+          "date": "2026-09-17T07:55:48.361957+00:00",
+          "outcome": "useful",
+          "q": "继续完成最新待优化文档并更新评分（MSFront除外）"
+        }
+      ],
+      "score": 1.969556028,
+      "source_file": "Framework/queueclient/client.go",
+      "status": "preferred",
+      "uses": 2
+    },
     "framework_queueclient_natsjetstream_adapter_preflightconsumer": {
-      "code_fingerprint": "c51d4ad227a8b245871a43d8ffa964d02fa3368710b8d49544e3423d3ba43404",
+      "code_fingerprint": "7be0853b9d48137f052ba1ec60bfd3670b018f722dccedda3031762d83a70305",
       "label": "PreflightConsumer()",
       "last": "2026-09-06T01:36:11.856562+00:00",
       "provenance": [
@@ -987,7 +1093,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 1.800741376,
+      "score": 1.514728863,
       "source_file": "Framework/queueclient/natsjetstream/adapter.go",
       "status": "preferred",
       "uses": 2
@@ -1003,7 +1109,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.725806362,
+      "score": 0.610526231,
       "source_file": "Framework/queueclient/natsjetstream/cluster_integration_test.go",
       "status": "tentative",
       "uses": 1
@@ -1019,7 +1125,7 @@
           "q": "How is NATS cluster outer evidence connected to the workflow and generic evidence chain?"
         }
       ],
-      "score": 0.726191398,
+      "score": 0.610850111,
       "source_file": "Framework/queueclient/natsjetstream/cluster_integration_test.go",
       "status": "tentative",
       "uses": 1
@@ -1035,7 +1141,7 @@
           "q": "最新待优化文档是否完成；若未完成继续 V13，并核验 NATS JetStream delivery/lease 证据链，MSFront 除外"
         }
       ],
-      "score": 0.727108165,
+      "score": 0.611621268,
       "source_file": "Framework/queueclient/worker.go",
       "status": "tentative",
       "uses": 1
@@ -1071,7 +1177,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 7.228608812,
+      "score": 6.080485822,
       "source_file": "Framework/README.md",
       "status": "preferred",
       "uses": 9
@@ -1107,13 +1213,13 @@
           "q": "How does the default NewHTTPHandler and RunHTTP path preserve incremental streaming through standard middleware?"
         }
       ],
-      "score": 3.996995096,
+      "score": 3.362150677,
       "source_file": "Framework/server/http.go",
       "status": "preferred",
       "uses": 5
     },
     "framework_server_http_test": {
-      "code_fingerprint": "3f581b79da4dbfbac3a3b3dffcaccaff9b12bd13a14c73007f5835468ae3243a",
+      "code_fingerprint": "2d47a3a50af57467a7d46989af5c193a6b3182161691753da9b12448476422a7",
       "label": "http_test.go",
       "last": "2026-08-30T15:24:50.771372+00:00",
       "provenance": [
@@ -1123,13 +1229,13 @@
           "q": "Which remaining repository lifecycle gap can improve the V13 weighted score without changing MSFront? Focus on standard HTTP shutdown, hijacked upgraded connections, and reproducible failure gates."
         }
       ],
-      "score": 0.776780128,
+      "score": 0.653403813,
       "source_file": "Framework/server/http_test.go",
       "status": "tentative",
       "uses": 1
     },
     "framework_server_http_test_testrunhttpservestls12andhttp2": {
-      "code_fingerprint": "3f581b79da4dbfbac3a3b3dffcaccaff9b12bd13a14c73007f5835468ae3243a",
+      "code_fingerprint": "2d47a3a50af57467a7d46989af5c193a6b3182161691753da9b12448476422a7",
       "label": "TestRunHTTPServesTLS12AndHTTP2()",
       "last": "2026-08-31T02:06:31.759956+00:00",
       "provenance": [
@@ -1139,7 +1245,7 @@
           "q": "Does NewHTTPHandler preserve incremental Fiber streaming over real TLS and HTTP/2 while reporting the application protocol, and does its response-writer bridge avoid false Flusher capability?"
         }
       ],
-      "score": 0.784819055,
+      "score": 0.660165913,
       "source_file": "Framework/server/http_test.go",
       "status": "tentative",
       "uses": 1
@@ -1155,7 +1261,7 @@
           "q": "V13 尚未完成时，下一项不涉及 MSFront 且能提升综合评分的仓库内优化是什么"
         }
       ],
-      "score": 0.727184744,
+      "score": 0.611685684,
       "source_file": "Framework/httpapi/security_audit_chain.go",
       "status": "tentative",
       "uses": 1
@@ -1171,7 +1277,7 @@
           "q": "V13 尚未完成时，下一项不涉及 MSFront 且能提升综合评分的仓库内优化是什么"
         }
       ],
-      "score": 0.727184744,
+      "score": 0.611685684,
       "source_file": "Framework/httpapi/security_audit_chain.go",
       "status": "tentative",
       "uses": 1
@@ -1187,7 +1293,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分"
         }
       ],
-      "score": 0.805729404,
+      "score": 0.677755063,
       "source_file": "Framework/httpapi/routes_example.go",
       "status": "tentative",
       "uses": 1
@@ -1203,7 +1309,7 @@
           "q": "Explain HTTPApplication after V15-05"
         }
       ],
-      "score": 0.841076033,
+      "score": 0.707487571,
       "source_file": "Framework/httpapi/standard_application.go",
       "status": "tentative",
       "uses": 1
@@ -1224,7 +1330,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请重新评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.578028031,
+      "score": 1.327389173,
       "source_file": "Framework/httpapi/event_stream.go",
       "status": "preferred",
       "uses": 2
@@ -1240,7 +1346,7 @@
           "q": "Does NewHTTPHandler preserve incremental Fiber streaming over real TLS and HTTP/2 while reporting the application protocol, and does its response-writer bridge avoid false Flusher capability?"
         }
       ],
-      "score": 0.784819055,
+      "score": 0.660165913,
       "source_file": "Framework/httpapi/standard_handler.go",
       "status": "tentative",
       "uses": 1
@@ -1256,7 +1362,7 @@
           "q": "最新的待优化文档全部完成了吗；若已完成则重新评估并生成新清单，排除 MSFront，继续提高综合评分"
         }
       ],
-      "score": 0.841563389,
+      "score": 0.70789752,
       "source_file": "Framework/httpclient/circuit_breaker.go",
       "status": "tentative",
       "uses": 1
@@ -1277,7 +1383,7 @@
           "q": "Explain CircuitBreakerObservation after V16-02"
         }
       ],
-      "score": 1.684184733,
+      "score": 1.416684961,
       "source_file": "Framework/httpclient/circuit_breaker.go",
       "status": "preferred",
       "uses": 2
@@ -1293,7 +1399,7 @@
           "q": "How do completedHTTPContextError and authoritativeHTTPResult enforce outbound HTTP context and body ownership?"
         }
       ],
-      "score": 0.972308075,
+      "score": 0.817875973,
       "source_file": "Framework/httpclient/circuit_breaker.go",
       "status": "tentative",
       "uses": 1
@@ -1309,7 +1415,7 @@
           "q": "最新的待优化文档全部完成了吗；未完成则继续，排除 MSFront，并在每次优化后更新评分"
         }
       ],
-      "score": 0.840142807,
+      "score": 0.70670257,
       "source_file": "Framework/httpclient/response_body.go",
       "status": "tentative",
       "uses": 1
@@ -1325,7 +1431,7 @@
           "q": "最新的待优化文档全部完成了吗；没有请继续，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.840604258,
+      "score": 0.707090729,
       "source_file": "Framework/httpclient/retry.go",
       "status": "tentative",
       "uses": 1
@@ -1356,7 +1462,7 @@
           "q": "最新的待优化文档全部完成了吗；没有请继续，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 3.554674089,
+      "score": 2.990083702,
       "source_file": "Framework/httpclient/retry.go",
       "status": "preferred",
       "uses": 4
@@ -1377,13 +1483,13 @@
           "q": "请根据项目修改提示词内容文档，该文档是我从其它项目拷贝的"
         }
       ],
-      "score": 1.76022183,
+      "score": 1.480645053,
       "source_file": "MSFront/README.md",
       "status": "preferred",
       "uses": 2
     },
     "natsjetstream_consumer": {
-      "code_fingerprint": "c51d4ad227a8b245871a43d8ffa964d02fa3368710b8d49544e3423d3ba43404",
+      "code_fingerprint": "7be0853b9d48137f052ba1ec60bfd3670b018f722dccedda3031762d83a70305",
       "label": "Consumer",
       "last": "2026-09-06T01:36:11.856562+00:00",
       "provenance": [
@@ -1398,7 +1504,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 1.800741376,
+      "score": 1.514728863,
       "source_file": "Framework/queueclient/natsjetstream/adapter.go",
       "status": "preferred",
       "uses": 2
@@ -1414,7 +1520,7 @@
           "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
         }
       ],
-      "score": 0.727139741,
+      "score": 0.611647828,
       "source_file": "package.json",
       "status": "tentative",
       "uses": 1
@@ -1430,7 +1536,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.786084825,
+      "score": 0.66123064,
       "source_file": "package.json",
       "status": "tentative",
       "uses": 1
@@ -1446,7 +1552,7 @@
           "q": "What repository-local V38 optimization can improve GoExample while excluding MSFront?"
         }
       ],
-      "score": 0.875697168,
+      "score": 0.736609817,
       "source_file": "package.json",
       "status": "tentative",
       "uses": 1
@@ -1462,7 +1568,7 @@
           "q": "What repository-local V38 optimization can improve GoExample while excluding MSFront?"
         }
       ],
-      "score": 0.875697168,
+      "score": 0.736609817,
       "source_file": "package.json",
       "status": "tentative",
       "uses": 1
@@ -1478,7 +1584,7 @@
           "q": "请根据项目修改提示词内容文档，该文档是我从其它项目拷贝的"
         }
       ],
-      "score": 0.788818462,
+      "score": 0.663530092,
       "source_file": "README.md",
       "status": "tentative",
       "uses": 1
@@ -1499,7 +1605,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.564520132,
+      "score": 1.316026738,
       "source_file": "support/api-contracts/package.json",
       "status": "preferred",
       "uses": 2
@@ -1515,7 +1621,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.727564316,
+      "score": 0.612004969,
       "source_file": "scripts/audit-chain-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -1531,7 +1637,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.728275148,
+      "score": 0.612602899,
       "source_file": "scripts/authorization-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -1567,7 +1673,7 @@
           "q": "V24 的共享证据命令超时如何连接 manifest、verifier 与守卫？"
         }
       ],
-      "score": 21.537736488,
+      "score": 18.116888705,
       "source_file": "scripts/evidence-manifest.mjs",
       "status": "preferred",
       "uses": 28
@@ -1603,7 +1709,7 @@
           "q": "如何要升级到A，那么本项目需要做哪些优化呢，请写入待优化V14中，并且将待优化V13中甚于未完成的优化也迁移到V14文档，然后设置V13完结；最后根据最新的待优化文档对项目进行优化修改"
         }
       ],
-      "score": 11.696133006,
+      "score": 9.838431261,
       "source_file": "scripts/evidence-manifest.mjs",
       "status": "preferred",
       "uses": 15
@@ -1639,7 +1745,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 9.057436338,
+      "score": 7.618839899,
       "source_file": "scripts/evidence-manifest.mjs",
       "status": "preferred",
       "uses": 12
@@ -1655,7 +1761,7 @@
           "q": "How is NATS cluster outer evidence connected to the workflow and generic evidence chain?"
         }
       ],
-      "score": 0.726191398,
+      "score": 0.610850111,
       "source_file": "scripts/evidence-manifest.mjs",
       "status": "tentative",
       "uses": 1
@@ -1676,7 +1782,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.451498933,
+      "score": 1.220956745,
       "source_file": "scripts/evidence-manifest.mjs",
       "status": "preferred",
       "uses": 2
@@ -1712,7 +1818,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 14.994194408,
+      "score": 12.612660177,
       "source_file": "scripts/evidence-verify.mjs",
       "status": "preferred",
       "uses": 20
@@ -1738,7 +1844,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 2.299864542,
+      "score": 1.934576085,
       "source_file": "scripts/evidence-verify.mjs",
       "status": "preferred",
       "uses": 3
@@ -1764,7 +1870,7 @@
           "q": "What repository-local V38 optimization can improve GoExample while excluding MSFront?"
         }
       ],
-      "score": 2.64187998,
+      "score": 2.222269067,
       "source_file": "scripts/go-project.mjs",
       "status": "preferred",
       "uses": 3
@@ -1780,7 +1886,7 @@
           "q": "How do the V27 short metadata probes use runBoundedCommand after the migration?"
         }
       ],
-      "score": 0.870675933,
+      "score": 0.732386107,
       "source_file": "scripts/go-project.mjs",
       "status": "tentative",
       "uses": 1
@@ -1796,7 +1902,7 @@
           "q": "V38 go-project finite task lifecycle budget timeout spawn runner"
         }
       ],
-      "score": 0.883082395,
+      "score": 0.742822045,
       "source_file": "scripts/go-project.mjs",
       "status": "tentative",
       "uses": 1
@@ -1817,13 +1923,13 @@
           "q": "What repository-local V38 optimization can improve GoExample while excluding MSFront?"
         }
       ],
-      "score": 1.758779563,
+      "score": 1.479431862,
       "source_file": "scripts/go-project.mjs",
       "status": "preferred",
       "uses": 2
     },
     "scripts_go_sdk": {
-      "code_fingerprint": "de34f1182618f263aa1a7f5660189d5c6c60af1084dabf5a6a96724b1b024869",
+      "code_fingerprint": "1f5d2ebe81ef7a13c4054748176cdd7cf2d37ee77e93bd2fc166204bf4e6f0b3",
       "label": "go-sdk.mjs",
       "last": "2026-09-10T13:25:05.740120+00:00",
       "provenance": [
@@ -1838,13 +1944,13 @@
           "q": "V34 Go SDK generation atomic publication and cleanup"
         }
       ],
-      "score": 1.873463872,
+      "score": 1.575900814,
       "source_file": "scripts/go-sdk.mjs",
       "status": "preferred",
       "uses": 2
     },
     "scripts_go_sdk_gofmt": {
-      "code_fingerprint": "de34f1182618f263aa1a7f5660189d5c6c60af1084dabf5a6a96724b1b024869",
+      "code_fingerprint": "1f5d2ebe81ef7a13c4054748176cdd7cf2d37ee77e93bd2fc166204bf4e6f0b3",
       "label": "gofmt()",
       "last": "2026-09-04T18:14:28.025716+00:00",
       "provenance": [
@@ -1854,7 +1960,7 @@
           "q": "最新的待优化文档全部完成了吗（不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化），没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档（MSFront除外），然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.874282408,
+      "score": 0.735419764,
       "source_file": "scripts/go-sdk.mjs",
       "status": "tentative",
       "uses": 1
@@ -1870,7 +1976,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.723795792,
+      "score": 0.608835001,
       "source_file": "scripts/kubernetes-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -1906,7 +2012,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 11.508418109,
+      "score": 9.680531201,
       "source_file": "scripts/kubernetes-manifest.mjs",
       "status": "preferred",
       "uses": 15
@@ -1922,7 +2028,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.77307899,
+      "score": 0.650290527,
       "source_file": "scripts/kubernetes-manifest.mjs",
       "status": "tentative",
       "uses": 1
@@ -1938,7 +2044,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.771878771,
+      "score": 0.649280939,
       "source_file": "scripts/kubernetes-manifest.mjs",
       "status": "tentative",
       "uses": 1
@@ -1954,7 +2060,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.77307899,
+      "score": 0.650290527,
       "source_file": "scripts/kubernetes-manifest.mjs",
       "status": "tentative",
       "uses": 1
@@ -1970,7 +2076,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.775331766,
+      "score": 0.652185494,
       "source_file": "scripts/kubernetes-manifest.mjs",
       "status": "tentative",
       "uses": 1
@@ -2006,7 +2112,7 @@
           "q": "Continue the latest incomplete optimization document, excluding MSFront, to improve the aggregate score"
         }
       ],
-      "score": 4.577018667,
+      "score": 3.850048859,
       "source_file": "scripts/kubernetes-manifest.mjs",
       "status": "preferred",
       "uses": 6
@@ -2022,7 +2128,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.772564671,
+      "score": 0.649857898,
       "source_file": "scripts/kubernetes-manifest.mjs",
       "status": "tentative",
       "uses": 1
@@ -2058,7 +2164,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 9.262105916,
+      "score": 7.791001722,
       "source_file": "scripts/kubernetes-manifest.mjs",
       "status": "preferred",
       "uses": 12
@@ -2074,7 +2180,7 @@
           "q": "最新的待优化文档全部完成了吗；若完成则重新全面评估、生成新待优化文档并优化（MSFront 除外）"
         }
       ],
-      "score": 0.872975864,
+      "score": 0.734320739,
       "source_file": "scripts/lib/atomic-output.mjs",
       "status": "tentative",
       "uses": 1
@@ -2101,14 +2207,14 @@
           "q": "V31 aggregate evidence manifest atomic publication, excluding MSFront"
         }
       ],
-      "score": 1.746340557,
+      "score": 1.468968548,
       "source_file": "scripts/lib/atomic-output.mjs",
       "status": "contested",
       "uses": 3,
       "verdict": "useful"
     },
     "scripts_lib_audit_chain_evidence": {
-      "code_fingerprint": "f1ca5d912e4eb733c463749fd2787430367438079e0f3ab5f764720ce983ae0e",
+      "code_fingerprint": "bb17e645879a8b0f916f9a88c5d062cbdf2eeb658ddaee43cc9c2a5792d61175",
       "label": "lib/audit-chain-evidence.mjs",
       "last": "2026-09-04T07:42:50.546666+00:00",
       "provenance": [
@@ -2118,13 +2224,13 @@
           "q": "How does V25 bound domain evidence Go and Git identity probes?"
         }
       ],
-      "score": 0.865466771,
+      "score": 0.728004318,
       "source_file": "scripts/lib/audit-chain-evidence.mjs",
       "status": "tentative",
       "uses": 1
     },
     "scripts_lib_audit_chain_evidence_verifyauditchainevidence": {
-      "code_fingerprint": "f1ca5d912e4eb733c463749fd2787430367438079e0f3ab5f764720ce983ae0e",
+      "code_fingerprint": "bb17e645879a8b0f916f9a88c5d062cbdf2eeb658ddaee43cc9c2a5792d61175",
       "label": "verifyAuditChainEvidence()",
       "last": "2026-08-27T19:25:24.304303+00:00",
       "provenance": [
@@ -2134,7 +2240,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.727564316,
+      "score": 0.612004969,
       "source_file": "scripts/lib/audit-chain-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2150,7 +2256,7 @@
           "q": "How does V25 bound domain evidence Go and Git identity probes?"
         }
       ],
-      "score": 0.865466771,
+      "score": 0.728004318,
       "source_file": "scripts/lib/authorization-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2166,7 +2272,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.728275148,
+      "score": 0.612602899,
       "source_file": "scripts/lib/authorization-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2182,7 +2288,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.728275148,
+      "score": 0.612602899,
       "source_file": "scripts/lib/authorization-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2203,7 +2309,7 @@
           "q": "最新的待优化文档全部完成了吗；若已完成则重新全面评估并生成、实施新的待优化文档，排除 MSFront"
         }
       ],
-      "score": 1.741948791,
+      "score": 1.465274329,
       "source_file": "scripts/lib/bounded-command.mjs",
       "status": "preferred",
       "uses": 2
@@ -2224,7 +2330,7 @@
           "q": "How does V28 preserve Windows command identity across bounded evidence probes?"
         }
       ],
-      "score": 1.742855707,
+      "score": 1.466037199,
       "source_file": "scripts/lib/bounded-command.mjs",
       "status": "preferred",
       "uses": 2
@@ -2240,7 +2346,7 @@
           "q": "V24 的共享证据命令超时如何连接 manifest、verifier 与守卫？"
         }
       ],
-      "score": 0.864832715,
+      "score": 0.727470969,
       "source_file": "scripts/lib/bounded-command.mjs",
       "status": "tentative",
       "uses": 1
@@ -2256,7 +2362,7 @@
           "q": "How does V25 bound domain evidence Go and Git identity probes?"
         }
       ],
-      "score": 0.865466771,
+      "score": 0.728004318,
       "source_file": "scripts/lib/bounded-command.mjs",
       "status": "tentative",
       "uses": 1
@@ -2277,7 +2383,7 @@
           "q": "How does V25 bound domain evidence Go and Git identity probes?"
         }
       ],
-      "score": 1.736639035,
+      "score": 1.460807923,
       "source_file": "scripts/lib/bounded-command.mjs",
       "status": "preferred",
       "uses": 2
@@ -2293,7 +2399,7 @@
           "q": "最新的待优化文档全部完成了吗（不可抗因素除外）；若已完成则全面复评并生成新待优化文档，随后按文档优化，排除 MSFront，每次更新评分。"
         }
       ],
-      "score": 0.871683444,
+      "score": 0.733233594,
       "source_file": "scripts/lib/bounded-command.mjs",
       "status": "tentative",
       "uses": 1
@@ -2309,7 +2415,7 @@
           "q": "最新的待优化文档全部完成了吗（不可抗因素除外）；若已完成则全面复评并生成新待优化文档，随后按文档优化，排除 MSFront，每次更新评分。"
         }
       ],
-      "score": 0.871683444,
+      "score": 0.733233594,
       "source_file": "scripts/lib/bounded-command.mjs",
       "status": "tentative",
       "uses": 1
@@ -2345,7 +2451,7 @@
           "q": "How does V28 preserve Windows command identity across bounded evidence probes?"
         }
       ],
-      "score": 7.847176467,
+      "score": 6.600806115,
       "source_file": "scripts/lib/bounded-command.mjs",
       "status": "preferred",
       "uses": 9
@@ -2366,13 +2472,13 @@
           "q": "最新的待优化文档全部完成了吗；若已完成则重新全面评估并生成、实施新的待优化文档，排除 MSFront"
         }
       ],
-      "score": 1.74143761,
+      "score": 1.464844339,
       "source_file": "scripts/lib/bounded-command.mjs",
       "status": "preferred",
       "uses": 2
     },
     "scripts_lib_evidence_manifest_contract_evidenceinputpaths": {
-      "code_fingerprint": "889d482cf837d990b9a4e52c50abf1103383bd9f8ca96650908c9f9234db04f9",
+      "code_fingerprint": "34c6e25e8d28660cc2b606a00ca596fd7b8b980abb8d92577660c7ab068f0669",
       "label": "evidenceInputPaths",
       "last": "2026-08-31T04:19:52.486001+00:00",
       "provenance": [
@@ -2382,7 +2488,7 @@
           "q": "请继续"
         }
       ],
-      "score": 0.786500003,
+      "score": 0.661579875,
       "source_file": "scripts/lib/evidence-manifest-contract.mjs",
       "status": "tentative",
       "uses": 1
@@ -2398,7 +2504,7 @@
           "q": "How do explicit GO_BINARY, repository-managed Go candidates, GOROOT isolation, evidence runners, and server recovery connect after V23?"
         }
       ],
-      "score": 0.86417732,
+      "score": 0.726919671,
       "source_file": "scripts/lib/go-toolchain-environment.mjs",
       "status": "tentative",
       "uses": 1
@@ -2419,7 +2525,7 @@
           "q": "排除 MSFront 后，V20 仓库内工作是否完成，以及 V21 还能诚实推进什么优化？"
         }
       ],
-      "score": 1.727535755,
+      "score": 1.453150522,
       "source_file": "scripts/lib/go-toolchain-environment.mjs",
       "status": "preferred",
       "uses": 2
@@ -2440,7 +2546,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.54442256,
+      "score": 1.299121273,
       "source_file": "scripts/lib/kubernetes-evidence.mjs",
       "status": "preferred",
       "uses": 2
@@ -2456,7 +2562,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.723795792,
+      "score": 0.608835001,
       "source_file": "scripts/lib/kubernetes-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2477,7 +2583,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.499127558,
+      "score": 1.261020495,
       "source_file": "scripts/lib/kubernetes-evidence.mjs",
       "status": "preferred",
       "uses": 2
@@ -2493,7 +2599,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.768406288,
+      "score": 0.646359993,
       "source_file": "scripts/lib/kubernetes-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2524,7 +2630,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 3.029541972,
+      "score": 2.548358541,
       "source_file": "scripts/lib/kubernetes-evidence.mjs",
       "status": "preferred",
       "uses": 4
@@ -2540,7 +2646,7 @@
           "q": "How is NATS cluster outer evidence connected to the workflow and generic evidence chain?"
         }
       ],
-      "score": 0.726191398,
+      "score": 0.610850111,
       "source_file": "scripts/lib/nats-cluster-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2556,7 +2662,7 @@
           "q": "How is NATS cluster outer evidence connected to the workflow and generic evidence chain?"
         }
       ],
-      "score": 0.726191398,
+      "score": 0.610850111,
       "source_file": "scripts/lib/nats-cluster-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2577,7 +2683,7 @@
           "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
         }
       ],
-      "score": 1.628221458,
+      "score": 1.369610356,
       "source_file": "scripts/lib/nats-delivery-evidence.mjs",
       "status": "preferred",
       "uses": 2
@@ -2593,7 +2699,7 @@
           "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
         }
       ],
-      "score": 0.727139741,
+      "score": 0.611647828,
       "source_file": "scripts/lib/nats-delivery-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2609,7 +2715,7 @@
           "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
         }
       ],
-      "score": 0.727139741,
+      "score": 0.611647828,
       "source_file": "scripts/lib/nats-delivery-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2625,7 +2731,7 @@
           "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
         }
       ],
-      "score": 0.727139741,
+      "score": 0.611647828,
       "source_file": "scripts/lib/nats-delivery-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2646,7 +2752,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.451498933,
+      "score": 1.220956745,
       "source_file": "scripts/lib/nats-restart-evidence.mjs",
       "status": "preferred",
       "uses": 2
@@ -2672,7 +2778,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 2.177305295,
+      "score": 1.831482976,
       "source_file": "scripts/lib/nats-restart-evidence.mjs",
       "status": "preferred",
       "uses": 3
@@ -2688,7 +2794,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.725806362,
+      "score": 0.610526231,
       "source_file": "scripts/lib/nats-snapshot-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2704,7 +2810,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.724181018,
+      "score": 0.609159041,
       "source_file": "scripts/lib/nginx-edge-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2720,7 +2826,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.724181018,
+      "score": 0.609159041,
       "source_file": "scripts/lib/nginx-edge-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2736,13 +2842,13 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.724181018,
+      "score": 0.609159041,
       "source_file": "scripts/lib/nginx-edge-evidence.mjs",
       "status": "tentative",
       "uses": 1
     },
     "scripts_lib_oidc_browser_evidence": {
-      "code_fingerprint": "238606b98e9a5a6a4eb5a20e29c34552862b7d0b2fdc466f02c1a2bdb5b533cb",
+      "code_fingerprint": "dc1072d22a11663d8a1d6dbe5b2af9b00f2ac9b19d709154df086b819b9a11ac",
       "label": "lib/oidc-browser-evidence.mjs",
       "last": "2026-09-04T07:42:50.546666+00:00",
       "provenance": [
@@ -2752,13 +2858,13 @@
           "q": "How does V25 bound domain evidence Go and Git identity probes?"
         }
       ],
-      "score": 0.865466771,
+      "score": 0.728004318,
       "source_file": "scripts/lib/oidc-browser-evidence.mjs",
       "status": "tentative",
       "uses": 1
     },
     "scripts_lib_oidc_browser_evidence_buildoidcbrowserevidencereport": {
-      "code_fingerprint": "238606b98e9a5a6a4eb5a20e29c34552862b7d0b2fdc466f02c1a2bdb5b533cb",
+      "code_fingerprint": "dc1072d22a11663d8a1d6dbe5b2af9b00f2ac9b19d709154df086b819b9a11ac",
       "label": "buildOIDCBrowserEvidenceReport()",
       "last": "2026-08-27T19:57:17.947135+00:00",
       "provenance": [
@@ -2768,13 +2874,13 @@
           "q": "OIDC evidence runner verifier manifest workflow checksum integration"
         }
       ],
-      "score": 0.727936737,
+      "score": 0.612318238,
       "source_file": "scripts/lib/oidc-browser-evidence.mjs",
       "status": "tentative",
       "uses": 1
     },
     "scripts_lib_oidc_browser_evidence_verifyoidcbrowserevidence": {
-      "code_fingerprint": "238606b98e9a5a6a4eb5a20e29c34552862b7d0b2fdc466f02c1a2bdb5b533cb",
+      "code_fingerprint": "dc1072d22a11663d8a1d6dbe5b2af9b00f2ac9b19d709154df086b819b9a11ac",
       "label": "verifyOIDCBrowserEvidence()",
       "last": "2026-08-27T19:57:17.947135+00:00",
       "provenance": [
@@ -2784,7 +2890,7 @@
           "q": "OIDC evidence runner verifier manifest workflow checksum integration"
         }
       ],
-      "score": 0.727936737,
+      "score": 0.612318238,
       "source_file": "scripts/lib/oidc-browser-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2800,7 +2906,7 @@
           "q": "最新待优化文档未完成则继续实施，否则评估并生成新文档后实施，MSFront除外，目标提高综合评分"
         }
       ],
-      "score": 0.786562059,
+      "score": 0.661632075,
       "source_file": "scripts/lib/postgres-recovery-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2816,7 +2922,7 @@
           "q": "V34 Go SDK generation atomic publication and cleanup"
         }
       ],
-      "score": 0.873829189,
+      "score": 0.73503853,
       "source_file": "scripts/lib/project-contracts.mjs",
       "status": "tentative",
       "uses": 1
@@ -2832,7 +2938,7 @@
           "q": "How do project contract and OpenAPI compatibility Git operations share timeout, output, and credential-safety boundaries after V30?"
         }
       ],
-      "score": 0.872192163,
+      "score": 0.733661514,
       "source_file": "scripts/lib/project-contracts.mjs",
       "status": "tentative",
       "uses": 1
@@ -2848,7 +2954,7 @@
           "q": "最新的待优化文档全部完成了吗；若完成则重新全面评估、生成新待优化文档并优化（MSFront 除外）"
         }
       ],
-      "score": 0.872975864,
+      "score": 0.734320739,
       "source_file": "scripts/lib/project-contracts.mjs",
       "status": "tentative",
       "uses": 1
@@ -2864,7 +2970,7 @@
           "q": "最新的待优化文档全部完成了吗；若完成则重新全面评估、生成新待优化文档并优化（MSFront 除外）"
         }
       ],
-      "score": 0.872975864,
+      "score": 0.734320739,
       "source_file": "scripts/lib/project-contracts.mjs",
       "status": "tentative",
       "uses": 1
@@ -2890,7 +2996,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 2.222419563,
+      "score": 1.869431725,
       "source_file": "scripts/lib/prometheus-rules.mjs",
       "status": "preferred",
       "uses": 3
@@ -2911,7 +3017,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.442664938,
+      "score": 1.213525857,
       "source_file": "scripts/lib/release-provenance.mjs",
       "status": "preferred",
       "uses": 2
@@ -2932,7 +3038,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.441816801,
+      "score": 1.21281243,
       "source_file": "scripts/lib/release-provenance.mjs",
       "status": "preferred",
       "uses": 2
@@ -2948,7 +3054,7 @@
           "q": "How does V25 bound domain evidence Go and Git identity probes?"
         }
       ],
-      "score": 0.865466771,
+      "score": 0.728004318,
       "source_file": "scripts/lib/sdk-consumer-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2964,7 +3070,7 @@
           "q": "How does V25 bound domain evidence Go and Git identity probes?"
         }
       ],
-      "score": 0.865466771,
+      "score": 0.728004318,
       "source_file": "scripts/lib/sdk-consumer-matrix-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -2985,7 +3091,7 @@
           "q": "V34 Go SDK generation atomic publication and cleanup"
         }
       ],
-      "score": 1.748111597,
+      "score": 1.470458294,
       "source_file": "scripts/lib/sdk-generation.mjs",
       "status": "preferred",
       "uses": 2
@@ -3001,7 +3107,7 @@
           "q": "V34 Go SDK generation atomic publication and cleanup"
         }
       ],
-      "score": 0.873829189,
+      "score": 0.73503853,
       "source_file": "scripts/lib/sdk-generation.mjs",
       "status": "tentative",
       "uses": 1
@@ -3017,7 +3123,7 @@
           "q": "最新的待优化文档全部完成了吗（不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化），没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档（MSFront除外），然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.874282408,
+      "score": 0.735419764,
       "source_file": "scripts/lib/sdk-generation.mjs",
       "status": "tentative",
       "uses": 1
@@ -3033,7 +3139,7 @@
           "q": "V34 Go SDK generation atomic publication and cleanup"
         }
       ],
-      "score": 0.873829189,
+      "score": 0.73503853,
       "source_file": "scripts/lib/sdk-generation.mjs",
       "status": "tentative",
       "uses": 1
@@ -3049,7 +3155,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.874810911,
+      "score": 0.735864325,
       "source_file": "scripts/lib/sdk-release.mjs",
       "status": "tentative",
       "uses": 1
@@ -3070,7 +3176,7 @@
           "q": "How does V25 bound domain evidence Go and Git identity probes?"
         }
       ],
-      "score": 1.73929596,
+      "score": 1.463042848,
       "source_file": "scripts/lib/sdk-release-evidence.mjs",
       "status": "preferred",
       "uses": 2
@@ -3086,7 +3192,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.87336507,
+      "score": 0.734648127,
       "source_file": "scripts/lib/sdk-release.mjs",
       "status": "tentative",
       "uses": 1
@@ -3102,7 +3208,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.87336507,
+      "score": 0.734648127,
       "source_file": "scripts/lib/sdk-release.mjs",
       "status": "tentative",
       "uses": 1
@@ -3118,7 +3224,7 @@
           "q": "How does V25 bound domain evidence Go and Git identity probes?"
         }
       ],
-      "score": 0.865466771,
+      "score": 0.728004318,
       "source_file": "scripts/lib/server-recovery-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -3134,7 +3240,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.726598539,
+      "score": 0.611192586,
       "source_file": "scripts/lib/server-recovery-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -3150,7 +3256,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.726598539,
+      "score": 0.611192586,
       "source_file": "scripts/lib/server-recovery-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -3166,7 +3272,7 @@
           "q": "How does V37 bound server-release command execution and attest the new helper?"
         }
       ],
-      "score": 0.87542071,
+      "score": 0.736377269,
       "source_file": "scripts/lib/server-release-command.mjs",
       "status": "tentative",
       "uses": 1
@@ -3182,7 +3288,7 @@
           "q": "How does V37 bound server-release command execution and attest the new helper?"
         }
       ],
-      "score": 0.87542071,
+      "score": 0.736377269,
       "source_file": "scripts/lib/server-release-command.mjs",
       "status": "tentative",
       "uses": 1
@@ -3198,7 +3304,7 @@
           "q": "How does V37 bound server-release command execution and attest the new helper?"
         }
       ],
-      "score": 0.87542071,
+      "score": 0.736377269,
       "source_file": "scripts/lib/server-release-command.mjs",
       "status": "tentative",
       "uses": 1
@@ -3214,7 +3320,7 @@
           "q": "How do the V27 short metadata probes use runBoundedCommand after the migration?"
         }
       ],
-      "score": 0.870675933,
+      "score": 0.732386107,
       "source_file": "scripts/lib/transport-benchmark-environment.mjs",
       "status": "tentative",
       "uses": 1
@@ -3230,7 +3336,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.722553451,
+      "score": 0.607789981,
       "source_file": "scripts/lib/workflow-lint.mjs",
       "status": "tentative",
       "uses": 1
@@ -3246,7 +3352,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.724181018,
+      "score": 0.609159041,
       "source_file": "scripts/nginx-edge-contract.mjs",
       "status": "tentative",
       "uses": 1
@@ -3262,7 +3368,7 @@
           "q": "OIDC evidence runner verifier manifest workflow checksum integration"
         }
       ],
-      "score": 0.727936737,
+      "score": 0.612318238,
       "source_file": "scripts/oidc-browser-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -3278,7 +3384,7 @@
           "q": "请继续，而且综合评分权重不要除以0.94了，而且前端维度不再参与评分，所以评分维度尽可能全面一点，除了前端"
         }
       ],
-      "score": 0.971403368,
+      "score": 0.817114961,
       "source_file": "scripts/postgres-recovery-contract.mjs",
       "status": "tentative",
       "uses": 1
@@ -3294,7 +3400,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.722970119,
+      "score": 0.60814047,
       "source_file": "scripts/prometheus-rules.mjs",
       "status": "tentative",
       "uses": 1
@@ -3315,7 +3421,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 1.748175981,
+      "score": 1.470512452,
       "source_file": "scripts/sdk-release.mjs",
       "status": "preferred",
       "uses": 2
@@ -3331,7 +3437,7 @@
           "q": "How do explicit GO_BINARY, repository-managed Go candidates, GOROOT isolation, evidence runners, and server recovery connect after V23?"
         }
       ],
-      "score": 0.86417732,
+      "score": 0.726919671,
       "source_file": "scripts/server-recovery-drill.mjs",
       "status": "tentative",
       "uses": 1
@@ -3347,7 +3453,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.726598539,
+      "score": 0.611192586,
       "source_file": "scripts/server-recovery-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -3383,7 +3489,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 4.185722973,
+      "score": 3.520902825,
       "source_file": "scripts/server-release.mjs",
       "status": "preferred",
       "uses": 5
@@ -3399,7 +3505,7 @@
           "q": "How does V37 bound server-release command execution and attest the new helper?"
         }
       ],
-      "score": 0.87542071,
+      "score": 0.736377269,
       "source_file": "scripts/server-release.mjs",
       "status": "tentative",
       "uses": 1
@@ -3415,7 +3521,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.863019402,
+      "score": 0.725945666,
       "source_file": "scripts/server-release.mjs",
       "status": "tentative",
       "uses": 1
@@ -3431,7 +3537,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.719747106,
+      "score": 0.605429369,
       "source_file": "scripts/server-release.mjs",
       "status": "tentative",
       "uses": 1
@@ -3447,7 +3553,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.720332826,
+      "score": 0.605922059,
       "source_file": "scripts/server-release.mjs",
       "status": "tentative",
       "uses": 1
@@ -3473,7 +3579,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 2.169741662,
+      "score": 1.825120677,
       "source_file": "scripts/transport-benchmark-baseline.mjs",
       "status": "preferred",
       "uses": 3
@@ -3489,7 +3595,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.692540873,
+      "score": 0.582544314,
       "source_file": "scripts/transport-benchmark-baseline.mjs",
       "status": "tentative",
       "uses": 1
@@ -3525,7 +3631,7 @@
           "q": "如何继续 V13 并提高综合评分，重点检查默认 Framework 标准 HTTP 适配器是否进入 transport 容量证据？"
         }
       ],
-      "score": 5.359134948,
+      "score": 4.507941281,
       "source_file": "scripts/transport-benchmark-report.mjs",
       "status": "preferred",
       "uses": 7
@@ -3541,7 +3647,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.692540873,
+      "score": 0.582544314,
       "source_file": "scripts/transport-benchmark-report.mjs",
       "status": "tentative",
       "uses": 1
@@ -3557,7 +3663,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.692540873,
+      "score": 0.582544314,
       "source_file": "scripts/transport-benchmark-report.mjs",
       "status": "tentative",
       "uses": 1
@@ -3573,7 +3679,7 @@
           "q": "Which remaining repository lifecycle gap can improve the V13 weighted score without changing MSFront? Focus on standard HTTP shutdown, hijacked upgraded connections, and reproducible failure gates."
         }
       ],
-      "score": 0.776780128,
+      "score": 0.653403813,
       "source_file": "scripts/v13-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -3589,7 +3695,7 @@
           "q": "How do the V27 short metadata probes use runBoundedCommand after the migration?"
         }
       ],
-      "score": 0.870675933,
+      "score": 0.732386107,
       "source_file": "scripts/v13-evidence.mjs",
       "status": "tentative",
       "uses": 1
@@ -3605,7 +3711,7 @@
           "q": "How can the latest V13 optimization backlog be advanced without MSFront to improve the aggregate score?"
         }
       ],
-      "score": 0.784082714,
+      "score": 0.659546526,
       "source_file": "Framework/server/http.go",
       "status": "tentative",
       "uses": 1
@@ -3621,7 +3727,7 @@
           "q": "Fiber在本项目扮演什么角色，有什么作用，其高性能是否有利用到；当前项目的服务器性能有多高，和主流服务器框架详细比较，并列出表格给我"
         }
       ],
-      "score": 0.808354336,
+      "score": 0.679963076,
       "source_file": "Solutions/Example/internal/projectapi/transport_benchmark_test.go",
       "status": "tentative",
       "uses": 1
@@ -3637,7 +3743,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.721089767,
+      "score": 0.606558774,
       "source_file": "support/api-contracts/README.md",
       "status": "tentative",
       "uses": 1
@@ -3653,7 +3759,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.727564316,
+      "score": 0.612004969,
       "source_file": "__test__/node/audit-chain-evidence.test.mjs",
       "status": "tentative",
       "uses": 1
@@ -3669,7 +3775,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.728275148,
+      "score": 0.612602899,
       "source_file": "__test__/node/authorization-evidence.test.mjs",
       "status": "tentative",
       "uses": 1
@@ -3705,7 +3811,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 9.19603723,
+      "score": 7.735426753,
       "source_file": "__test__/node/kubernetes-evidence.test.mjs",
       "status": "preferred",
       "uses": 12
@@ -3721,7 +3827,7 @@
           "q": "How is NATS cluster outer evidence connected to the workflow and generic evidence chain?"
         }
       ],
-      "score": 0.726191398,
+      "score": 0.610850111,
       "source_file": "__test__/node/nats-cluster-evidence.test.mjs",
       "status": "tentative",
       "uses": 1
@@ -3737,7 +3843,7 @@
           "q": "V13 本轮 NATS JetStream delivery/lease 证据链是否已进入更新后的图谱并由 manifest/workflow/checksum/verifier 串联"
         }
       ],
-      "score": 0.727139741,
+      "score": 0.611647828,
       "source_file": "__test__/node/nats-delivery-evidence.test.mjs",
       "status": "tentative",
       "uses": 1
@@ -3758,7 +3864,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 1.451498933,
+      "score": 1.220956745,
       "source_file": "__test__/node/nats-restart-evidence.test.mjs",
       "status": "preferred",
       "uses": 2
@@ -3774,7 +3880,7 @@
           "q": "OIDC evidence runner verifier manifest workflow checksum integration"
         }
       ],
-      "score": 0.727936737,
+      "score": 0.612318238,
       "source_file": "__test__/node/oidc-browser-evidence.test.mjs",
       "status": "tentative",
       "uses": 1
@@ -3800,13 +3906,13 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 2.222419563,
+      "score": 1.869431725,
       "source_file": "__test__/node/prometheus-rules.test.mjs",
       "status": "preferred",
       "uses": 3
     },
     "test_node_script_guards_test": {
-      "code_fingerprint": "cb8c04c8e40ad2028bc9cdb2277baf0acdc92306c716c4f46b622caedc75668f",
+      "code_fingerprint": "fbfceca19937022f5584ea3a264d677a357996717c4d2b4acd22936b32917313",
       "label": "script-guards.test.mjs",
       "last": "2026-09-04T16:15:46.649285+00:00",
       "provenance": [
@@ -3836,7 +3942,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 4.152674299,
+      "score": 3.493103287,
       "source_file": "__test__/node/script-guards.test.mjs",
       "status": "preferred",
       "uses": 5
@@ -3852,7 +3958,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.874810911,
+      "score": 0.735864325,
       "source_file": "__test__/node/sdk-release.test.mjs",
       "status": "tentative",
       "uses": 1
@@ -3868,7 +3974,7 @@
           "q": "最新的待优化文档全部完成了吗，没有请继续；否则请继续评估并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的；目标是提高综合评分"
         }
       ],
-      "score": 0.726598539,
+      "score": 0.611192586,
       "source_file": "__test__/node/server-recovery-evidence.test.mjs",
       "status": "tentative",
       "uses": 1
@@ -3884,7 +3990,7 @@
           "q": "最新的待优化文档全部完成了吗(不可抗因素除外，例如真实硬件或设备等等，可诚实推进的优化)，没有请继续；否则请重新详细全面评估覆盖写入项目架构与性能评估文档并生成新的待优化文档(MSFront除外)，然后按照该文档对项目进行优化修改；两个步骤是互斥的，目标是提高综合评分，每次优化完更新分数"
         }
       ],
-      "score": 0.863019402,
+      "score": 0.725945666,
       "source_file": "__test__/node/server-release.test.mjs",
       "status": "tentative",
       "uses": 1
@@ -3900,7 +4006,7 @@
           "q": "最新待优化文档是否完成；若未完成继续 V13，并核验 NATS JetStream delivery/lease 证据链，MSFront 除外"
         }
       ],
-      "score": 0.727108165,
+      "score": 0.611621268,
       "source_file": "__test__/node/workflow-lint.test.mjs",
       "status": "tentative",
       "uses": 1

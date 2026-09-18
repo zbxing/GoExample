@@ -2679,6 +2679,7 @@ test('encrypted audit chain evidence stays checksum-bound and explicitly local-o
   assert.equal(packageScripts['audit:chain:verify'], 'node scripts/audit-chain-evidence.mjs verify');
   assert.match(packageScripts['test:node'], /audit-chain-evidence\.test\.mjs/);
   assert.match(runner, /auditChainGoArguments/);
+	assert.match(verifier, /'\-p=1'/);
   assert.match(runner, /GOCACHE/);
   assert.match(runner, /GOTMPDIR/);
   assert.match(verifier, /local_audit_chain_contract/);
@@ -2720,6 +2721,7 @@ test('OIDC browser evidence stays checksum-bound and explicitly local-only', asy
   assert.match(runner, /GOTMPDIR/);
   assert.match(verifier, /local_oidc_browser_contract/);
 	assert.match(verifier, /oidcBrowserEvidenceSchemaVersion = 3/);
+	assert.match(verifier, /'\-p=1'/);
 	assert.match(verifier, /'\.\/auth',\s*'\.\/httpapi'/);
 	assert.match(verifier, /accessTokenHashBound/);
 	assert.match(verifier, /tokenEndpointAuthenticationNegotiated/);
@@ -2924,7 +2926,7 @@ test('SDK consumer matrix evidence stays repository-only, complete, and checksum
   assert.match(independentVerifier, /SDK consumer matrix evidence artifact is missing from the manifest/);
 });
 
-test('V93 repository work and target-environment boundaries match the weighted evaluation', async () => {
+test('V126 repository work and target-environment boundaries match the weighted evaluation', async () => {
   const [evaluation, v12Backlog, backlog, nextBacklog, currentBacklog, v16Backlog, v17Backlog, v18Backlog, v19Backlog, v20Backlog, v21Backlog, v22Backlog, lifecycleADR, publicAPIBoundaryADR, benchmark, app, appTests, fingerprint, middleware, tracing, tracingTests, httpClient, httpClientTests, responseBody, responseBodyTests, retry, retryTests, circuitBreaker, circuitBreakerTests, standardApplication, standardApplicationTests, exampleEntrypoint, billingEntrypoint, applicationEventStream, applicationEventStreamTests, applicationRoute, applicationRouteTests, sqlClient, sqlClientTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'docs', '评估', '项目架构与性能评估.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V12.md'), 'utf8'),
@@ -3248,9 +3250,12 @@ test('V93 repository work and target-environment boundaries match the weighted e
 		readFile(path.join(repositoryRoot, 'SDK', 'GoExample', 'client_test.go'), 'utf8'),
 		readFile(path.join(repositoryRoot, 'SDK', 'Billing', 'client_test.go'), 'utf8'),
 	]);
-	const [natsAdapter, natsContextTests] = await Promise.all([
+	const [queueClient, queueClientTests, natsAdapter, natsContextTests, natsAdapterTests] = await Promise.all([
+		readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'client.go'), 'utf8'),
+		readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'client_test.go'), 'utf8'),
 		readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'natsjetstream', 'adapter.go'), 'utf8'),
 		readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'natsjetstream', 'context_boundary_test.go'), 'utf8'),
+		readFile(path.join(repositoryRoot, 'Framework', 'queueclient', 'natsjetstream', 'adapter_test.go'), 'utf8'),
 	]);
   const [authContext, authContextTests, oidcClient, jwks, authTransport, authTransportTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'Framework', 'auth', 'context.go'), 'utf8'),
@@ -3307,9 +3312,10 @@ test('V93 repository work and target-environment boundaries match the weighted e
     path.join(repositoryRoot, '__test__', 'node', 'sdk-release.test.mjs'),
     'utf8',
   );
-  const rows = [
-    ...evaluation.matchAll(/^\| (?!\*\*综合评分)([^|]+) \| (\d+)% \| ([\d.]+) \| ([\d.]+) \| ([\d.]+) \| ([\d.]+) \|/gm),
-  ];
+	const scoreSection = evaluation.split('## 6. 20 个非前端评分维度与加权分数')[1]?.split('## 7.')[0] ?? '';
+	const rows = [
+		...scoreSection.matchAll(/^\| (?!\*\*综合评分)([^|]+) \| (\d+)% \| ([\d.]+) \| ([\d.]+) \| ([^|]+) \|/gm),
+	];
 
   assert.equal(rows.length, 20, 'current score table must contain 20 non-frontend weighted dimensions');
   const weightTotal = rows.reduce((total, row) => total + Number(row[2]), 0);
@@ -3317,25 +3323,21 @@ test('V93 repository work and target-environment boundaries match the weighted e
 
   let calculatedBaseline = 0;
   let calculatedCompleted = 0;
-  for (const row of rows) {
-    const expectedContribution = (Number(row[2]) * Number(row[5])) / 100;
-    const documentedContribution = Number(row[6]);
-    assert.ok(
-      Math.abs(expectedContribution - documentedContribution) <= 0.0005 + Number.EPSILON,
-      `${row[1].trim()} weighted score is inconsistent`,
-    );
-    calculatedBaseline += (Number(row[2]) * Number(row[4])) / 100;
-    calculatedCompleted += expectedContribution;
-  }
-	assert.equal(calculatedBaseline.toFixed(5), '9.92293');
-	assert.equal(calculatedCompleted.toFixed(5), '9.92368');
-	assert.match(evaluation, /评估版本：V93（已完成）/);
-	assert.match(evaluation, /V90-01.*已完成/s);
-	assert.match(evaluation, /协议与网络能力 \| 5% \| 8\.6400 \| 8\.6400 \| 8\.6400/);
-	assert.match(evaluation, /身份、会话与认证治理 \| 6% \| 9\.9725 \| 9\.9725 \| 9\.9725/);
-	assert.match(evaluation, /V92 完成评分：9\.92293\/10（A-）/);
-	assert.match(evaluation, /数据一致性与持久化 \| 6% \| 9\.9325 \| 9\.9325 \| 9\.9450/);
-	assert.match(evaluation, /V93 完成评分：\*\*9\.92368\/10（A-）\*\*/);
+	for (const row of rows) {
+		calculatedBaseline += (Number(row[2]) * Number(row[3])) / 100;
+		calculatedCompleted += (Number(row[2]) * Number(row[4])) / 100;
+	}
+	assert.ok(Math.abs(calculatedBaseline - 9.931026) < 1e-9);
+	assert.ok(Math.abs(calculatedCompleted - 9.931032) < 1e-9);
+	assert.match(evaluation, /评估版本：V126.*V125-01、V126-01 已完成/s);
+	assert.match(evaluation, /V126-01.*validSHA256Hex.*hex/s);
+	assert.match(evaluation, /协议与网络能力 \| 5% \| 8\.6582 \| 8\.6582/);
+	assert.match(evaluation, /可观测性、告警与 SRE \| 5% \| 10\.0001 \| 10\.0001/);
+	assert.match(evaluation, /身份、会话与认证治理 \| 6% \| 9\.9726 \| 9\.9726/);
+	assert.match(evaluation, /JetStream.*(?:publish-confirmed ack|确认 publish\/ack)/s);
+	assert.match(evaluation, /测试、race 与静态质量 \| 6% \| 10\.0000 \| 10\.0000/);
+	assert.match(evaluation, /数据一致性与持久化 \| 6% \| 9\.9960 \| 9\.9961/);
+	assert.match(evaluation, /消息交付、重试与背压 \| 5% \| 9\.9999 \| 9\.9999/);
   assert.match(v69Backlog, /V69-01 已完成/);
   assert.match(v69Backlog, /9\.8880\/10/);
   assert.match(v70Backlog, /状态：V70-01 已完成并计分/);
@@ -3481,6 +3483,447 @@ test('V93 repository work and target-environment boundaries match the weighted e
 	assert.match(v93Backlog, /9\.92368\/10/);
 	assert.match(v93Backlog, /V93-02\/V93-03.*`not_recorded`/s);
 	assertEvidenceInput('docs/待优化/待优化V93.md');
+	const v94Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V94.md'),
+		'utf8',
+	);
+	assert.match(v94Backlog, /状态：V94-01 已完成并完成仓库内验收/);
+	assert.match(v94Backlog, /traceCarrier|零分配|0 B\/op、0 allocs\/op/);
+	assert.match(v94Backlog, /9\.924300\/10/);
+	assert.match(v94Backlog, /V94-02\/V94-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V94.md');
+	const v95Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V95.md'),
+		'utf8',
+	);
+	assert.match(v95Backlog, /状态：V95-01 已完成并完成仓库内验收/);
+	assert.match(v95Backlog, /deadLetterID|栈缓冲|80 B\/op、1 allocs\/op/);
+	assert.match(v95Backlog, /9\.924925\/10/);
+	assert.match(v95Backlog, /V95-02\/V95-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V95.md');
+	const v96Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V96.md'),
+		'utf8',
+	);
+	assert.match(v96Backlog, /状态：V96-01 已完成并完成仓库内验收/);
+	assert.match(v96Backlog, /idempotencyRequestFingerprint|digest\.Sum\(result\[:0\]\)|14 allocs\/op/);
+	assert.match(v96Backlog, /9\.925675\/10/);
+	assert.match(v96Backlog, /V96-02\/V96-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V96.md');
+	const v97Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V97.md'),
+		'utf8',
+	);
+	assert.match(v97Backlog, /状态：V97-01 已实施并完成仓库内验收/);
+	assert.match(v97Backlog, /normalizedMediaType|MIME.*fast path|0 B\/op、0 allocs\/op/);
+	assert.match(v97Backlog, /9\.926425\/10/);
+	assert.match(v97Backlog, /V97-02\/V97-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V97.md');
+	const v98Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V98.md'),
+		'utf8',
+	);
+	assert.match(v98Backlog, /状态：V98-01 已实施并完成仓库内验收/);
+	assert.match(v98Backlog, /normalizedFingerprintHeaderName|If-Match.*canonical.*fast path|216 B\/op、8 allocs\/op/);
+	assert.match(v98Backlog, /9\.927175\/10/);
+	assert.match(v98Backlog, /V98-02\/V98-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V98.md');
+	const v99Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V99.md'),
+		'utf8',
+	);
+	assert.match(v99Backlog, /状态：V99-01 已实施并完成仓库内验收/);
+	assert.match(v99Backlog, /inlineFingerprintCapacity|0 B\/op、0 allocs\/op/);
+	assert.match(v99Backlog, /9\.927925\/10/);
+	assert.match(v99Backlog, /V99-02\/V99-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V99.md');
+	const v100Backlog = await readFile(
+		path.join(repositoryRoot, 'docs', '待优化', '待优化V100.md'),
+		'utf8',
+	);
+	assert.match(v100Backlog, /状态：V100-01 已实施并完成仓库内验收/);
+	assert.match(v100Backlog, /fromJetStreamMessage|空 header|8 B\/op、1 alloc\/op/);
+	assert.match(v100Backlog, /9\.928675\/10/);
+	assert.match(v100Backlog, /V100-02\/V100-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V100.md');
+	const v101Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V101.md'),
+	  'utf8',
+	);
+	assert.match(v101Backlog, /状态：V101-01 已按本清单实施并完成仓库内验收/);
+	assert.match(v101Backlog, /单 header|单控制 header/);
+	assert.match(v101Backlog, /9\.929300\/10/);
+	assert.match(v101Backlog, /V101-02\/V101-03.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V101.md');
+	const v102Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V102.md'),
+	  'utf8',
+	);
+	assert.match(v102Backlog, /状态：V101-01 已完成/);
+	assert.match(v102Backlog, /V102-01.*已闭合（无需代码变更）/s);
+	assert.match(v102Backlog, /9\.929300\/10/);
+	assert.match(v102Backlog, /V102-02.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V102.md');
+	const v103Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V103.md'),
+	  'utf8',
+	);
+	assert.match(v103Backlog, /状态：V102-01 已闭合/);
+	assert.match(v103Backlog, /V103-01.*已闭合（无需代码变更）/s);
+	assert.match(v103Backlog, /9\.929300\/10/);
+	assert.match(v103Backlog, /V103-02.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V103.md');
+	const v104Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V104.md'),
+	  'utf8',
+	);
+	assert.match(v104Backlog, /状态：V103-01 已闭合/);
+	assert.match(v104Backlog, /V104-01.*已闭合（无需代码变更）/s);
+	assert.match(v104Backlog, /9\.929300\/10/);
+	assert.match(v104Backlog, /V104-02.*`not_recorded`/s);
+	assertEvidenceInput('docs/待优化/待优化V104.md');
+	const v105Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V105.md'),
+	  'utf8',
+	);
+	assert.match(v105Backlog, /状态：V104-01 已闭合/);
+	assert.match(v105Backlog, /V105-01.*已闭合（无需代码变更）/s);
+	assert.match(v105Backlog, /9\.929300\/10/);
+	assert.match(v105Backlog, /V105-02.*`not_recorded`/s);
+	assert.match(v105Backlog, /V105-03.*`not_recorded`/s);
+	assert.match(v105Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V105.md');
+	const v106Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V106.md'),
+	  'utf8',
+	);
+	assert.match(v106Backlog, /状态：V105-01 已闭合/);
+	assert.match(v106Backlog, /V106-01.*已闭合（无需代码变更）/s);
+	assert.match(v106Backlog, /9\.929300\/10/);
+	assert.match(v106Backlog, /V106-02.*`not_recorded`/s);
+	assert.match(v106Backlog, /V106-03.*`not_recorded`/s);
+	assert.match(v106Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V106.md');
+	const v107Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V107.md'),
+	  'utf8',
+	);
+	assert.match(v107Backlog, /状态：V106-01 已闭合/);
+	assert.match(v107Backlog, /V107-01.*已闭合（无需代码变更）/s);
+	assert.match(v107Backlog, /9\.929300\/10/);
+	assert.match(v107Backlog, /V107-02.*`not_recorded`/s);
+	assert.match(v107Backlog, /V107-03.*`not_recorded`/s);
+	assert.match(v107Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V107.md');
+	const v108Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V108.md'),
+	  'utf8',
+	);
+	assert.match(v108Backlog, /状态：V107-01 已闭合/);
+	assert.match(v108Backlog, /V108-01.*已闭合/s);
+	assert.match(v108Backlog, /Framework\/server\/http_test\.go/);
+	assert.match(v108Backlog, /Services\/Billing\/internal\/billingapi\/openapi_contract_test\.go/);
+	assert.match(v108Backlog, /Solutions\/Example\/internal\/projectapi\/openapi_contract_test\.go/);
+	assert.match(v108Backlog, /V108-02.*`not_recorded`/s);
+	assert.match(v108Backlog, /V108-03.*`not_recorded`/s);
+	assert.match(v108Backlog, /9\.926300\/10/);
+	assert.match(v108Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V108.md');
+	const v109Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V109.md'),
+	  'utf8',
+	);
+	assert.match(v109Backlog, /状态：V108-01 已闭合/);
+	assert.match(v109Backlog, /V109-01.*已实施/s);
+	assert.match(v109Backlog, /多控制 header|2–11 个全控制 header/);
+	assert.match(v109Backlog, /9\.929925\/10/);
+	assert.match(v109Backlog, /V109-02.*`not_recorded`/s);
+	assert.match(v109Backlog, /V109-03.*`not_recorded`/s);
+	assert.match(v109Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V109.md');
+	const v110Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V110.md'),
+	  'utf8',
+	);
+	assert.match(v110Backlog, /状态：V109-01 已闭合/);
+	assert.match(v110Backlog, /V110-01.*已按本清单实施并完成验收/s);
+	assert.match(v110Backlog, /惰性 Header 复制|无有效 SpanContext/);
+	assert.match(v110Backlog, /9\.930550\/10/);
+	assert.match(v110Backlog, /V110-02.*`not_recorded`/s);
+	assert.match(v110Backlog, /V110-03.*`not_recorded`/s);
+	assert.match(v110Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V110.md');
+	const v111Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V111.md'),
+	  'utf8',
+	);
+	assert.match(v111Backlog, /状态：V110-01 已完成/);
+	assert.match(v111Backlog, /V111-01.*nil.*propagator.*fail-closed/s);
+	assert.match(v111Backlog, /9\.930675\/10/);
+	assert.match(v111Backlog, /V111-02.*`not_recorded`/s);
+	assert.match(v111Backlog, /V111-03.*`not_recorded`/s);
+	assert.match(v111Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V111.md');
+	const v112Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V112.md'),
+	  'utf8',
+	);
+	assert.match(v112Backlog, /状态：V111-01 已完成/);
+	assert.match(v112Backlog, /V112-01.*typed-nil.*propagator.*fail-closed/s);
+	assert.match(v112Backlog, /9\.930800\/10/);
+	assert.match(v112Backlog, /V112-02.*`not_recorded`/s);
+	assert.match(v112Backlog, /V112-03.*`not_recorded`/s);
+	assert.match(v112Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V112.md');
+	const v113Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V113.md'),
+	  'utf8',
+	);
+	assert.match(v113Backlog, /状态：V112-01 已完成/);
+	assert.match(v113Backlog, /V113-01.*SpanContextFromContext.*TraceContext/s);
+	assert.match(v113Backlog, /9\.930825\/10/);
+	assert.match(v113Backlog, /V113-02.*`not_recorded`/s);
+	assert.match(v113Backlog, /V113-03.*`not_recorded`/s);
+	assert.match(v113Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V113.md');
+	const v114Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V114.md'),
+	  'utf8',
+	);
+	assert.match(v114Backlog, /状态：V113-01 已完成/);
+	assert.match(v114Backlog, /V114-01.*postgresOperationName.*词表映射/s);
+	assert.match(v114Backlog, /9\.930855\/10/);
+	assert.match(v114Backlog, /V114-02.*`not_recorded`/s);
+	assert.match(v114Backlog, /V114-03.*`not_recorded`/s);
+	assert.match(v114Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V114.md');
+	const v115Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V115.md'),
+	  'utf8',
+	);
+	assert.match(v115Backlog, /状态：V114-01 已完成；V115-01 已实施并完成验收/);
+	assert.match(v115Backlog, /V115-01.*Redis command span.*operation 词表/s);
+	assert.match(v115Backlog, /9\.930885\/10/);
+	assert.match(v115Backlog, /V115-02.*`not_recorded`/s);
+	assert.match(v115Backlog, /V115-03.*`not_recorded`/s);
+	assert.match(v115Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V115.md');
+	const v116Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V116.md'),
+	  'utf8',
+	);
+	assert.match(v116Backlog, /状态：V115-01 已完成；V116-01 已实施并完成验收/);
+	assert.match(v116Backlog, /V116-01.*message header 5-8 项零分配重复检测/s);
+	assert.match(v116Backlog, /9\.930910\/10/);
+	assert.match(v116Backlog, /V116-02.*`not_recorded`/s);
+	assert.match(v116Backlog, /V116-03.*`not_recorded`/s);
+	assert.match(v116Backlog, /20 个非前端加权维度/);
+	assert.match(v116Backlog, /284\.2–306\.2 ns\/op/);
+	assert.match(v116Backlog, /1068–1097 ns\/op/);
+	assertEvidenceInput('docs/待优化/待优化V116.md');
+	const v117Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V117.md'),
+	  'utf8',
+	);
+	assert.match(v117Backlog, /状态：V116-01 已完成；V117-01/);
+	assert.match(v117Backlog, /V117-01.*开放寻址/s);
+	assert.match(v117Backlog, /9\.930935/);
+	assert.match(v117Backlog, /V117-02.*`not_recorded`/s);
+	assert.match(v117Backlog, /V117-03.*`not_recorded`/s);
+	assert.match(v117Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V117.md');
+	const v118Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V118.md'),
+	  'utf8',
+	);
+	assert.match(v118Backlog, /状态：V117-01 已完成并通过独立复验；V118-01 已实施并完成验收/);
+	assert.match(v118Backlog, /V118-01.*有界字节扫描.*长值标准库回退/s);
+	assert.match(v118Backlog, /9\.930960/);
+	assert.match(v118Backlog, /V118-02.*`not_recorded`/s);
+	assert.match(v118Backlog, /V118-03.*`not_recorded`/s);
+	assert.match(v118Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V118.md');
+	const v119Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V119.md'),
+	  'utf8',
+	);
+	assert.match(v119Backlog, /状态：V118-01 已完成并通过独立复验；V119-01 已实施并完成验收/);
+	assert.match(v119Backlog, /V119-01.*直接相等 fast path/s);
+	assert.match(v119Backlog, /9\.930985/);
+	assert.match(v119Backlog, /V119-02.*`not_recorded`/s);
+	assert.match(v119Backlog, /V119-03.*`not_recorded`/s);
+	assert.match(v119Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V119.md');
+	const v120Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V120.md'),
+	  'utf8',
+	);
+	assert.match(v120Backlog, /状态：V119-01 已完成并通过独立复验；V120-01 已实施并完成验收/s);
+	assert.match(v120Backlog, /V120-01.*FetchMaxWait/s);
+	assert.match(v120Backlog, /9\.931000/);
+	assert.match(v120Backlog, /V120-02.*`not_recorded`/s);
+	assert.match(v120Backlog, /V120-03.*`not_recorded`/s);
+	assert.match(v120Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V120.md');
+	const v121Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V121.md'),
+	  'utf8',
+	);
+	assert.match(v121Backlog, /状态：V120-01 已完成并通过独立复验；V121-01 已实施并完成验收/s);
+	assert.match(v121Backlog, /V121-01.*非法消息延后 body clone/s);
+	assert.match(v121Backlog, /9\.931005/);
+	assert.match(v121Backlog, /V121-02.*`not_recorded`/s);
+	assert.match(v121Backlog, /V121-03.*`not_recorded`/s);
+	assert.match(v121Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V121.md');
+	const v122Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V122.md'),
+	  'utf8',
+	);
+	assert.match(v122Backlog, /状态：V121-01 已完成并通过独立复验；V122-01 已实施并完成验收/s);
+	assert.match(v122Backlog, /V122-01.*单次 rune 扫描/s);
+	assert.match(v122Backlog, /9\.931010/);
+	assert.match(v122Backlog, /V122-02.*`not_recorded`/s);
+	assert.match(v122Backlog, /V122-03.*`not_recorded`/s);
+	assert.match(v122Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V122.md');
+	const v123Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V123.md'),
+	  'utf8',
+	);
+	assert.match(v123Backlog, /状态：V122 仓库内事项已全部完成；V123-01 已实施并完成验收/s);
+	assert.match(v123Backlog, /V123-01.*通配符.*rune 扫描/s);
+	assert.match(v123Backlog, /9\.931015/);
+	assert.match(v123Backlog, /V123-02.*`not_recorded`/s);
+	assert.match(v123Backlog, /V123-03.*`not_recorded`/s);
+	assert.match(v123Backlog, /20 个非前端加权维度/);
+	assertEvidenceInput('docs/待优化/待优化V123.md');
+	const v124Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V124.md'),
+	  'utf8',
+	);
+	assert.match(v124Backlog, /状态：V123-01 已完成并验收；V124-01 已完成并通过全量门禁与证据验收/s);
+	assert.match(v124Backlog, /V124-01.*Metrics\.Render.*scratch buffer/s);
+	assert.match(v124Backlog, /9\.931020/);
+	assert.match(v124Backlog, /V124-02.*`not_recorded`/s);
+	assert.match(v124Backlog, /V124-03.*`not_recorded`/s);
+	assert.match(v124Backlog, /20 个非前端评分维度/);
+	assertEvidenceInput('docs/待优化/待优化V124.md');
+	const v125Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V125.md'),
+	  'utf8',
+	);
+	assert.match(v125Backlog, /状态：V124-01 已完成并验收；V125-01 已完成代码实施/s);
+	assert.match(v125Backlog, /V125-01.*bounded AMR.*已实施/s);
+	assert.match(v125Backlog, /9\.931026/);
+	assert.match(v125Backlog, /V125-02.*`not_recorded`/s);
+	assert.match(v125Backlog, /V125-03.*`not_recorded`/s);
+	assert.match(v125Backlog, /20 个非前端评分维度/);
+	assertEvidenceInput('docs/待优化/待优化V125.md');
+	const v126Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V126.md'),
+	  'utf8',
+	);
+	assert.match(v126Backlog, /状态：V125-01、V126-01 已完成并验收/s);
+	assert.match(v126Backlog, /V126-01.*SHA-256.*hex.*fast path/s);
+	assert.match(v126Backlog, /9\.931032/);
+	assert.match(v126Backlog, /V126-02.*`not_recorded`/s);
+	assert.match(v126Backlog, /V126-03.*`not_recorded`/s);
+	assert.match(v126Backlog, /20 个非前端评分维度/);
+	assertEvidenceInput('docs/待优化/待优化V126.md');
+	assert.match(queueClient, /if len\(headers\) > 2 && len\(headers\) <= 8/);
+	assert.match(queueClient, /var names \[8\]string/);
+	assert.match(queueClient, /headerNameIndexSlots\s+= defaultMaxHeaders \* 2/);
+	assert.match(queueClient, /if len\(headers\) > 8 && len\(headers\) <= defaultMaxHeaders/);
+	assert.match(queueClient, /func validateBoundedHeaders\(/);
+	assert.match(queueClient, /func insertFoldedHeaderName\(/);
+	assert.match(queueClient, /func foldedHeaderNameHash\(/);
+	assert.match(queueClient, /strings\.EqualFold\(previous, name\)/);
+	assert.match(queueClient, /normalizedName := strings\.ToLower\(name\)/);
+	assert.match(queueClientTests, /validateHeaders with five headers allocations/);
+	assert.match(queueClientTests, /validateHeaders with eight headers allocations/);
+	assert.match(queueClientTests, /func TestValidateHeadersLargeSetCollisionAndConfiguredFallback/);
+	assert.match(queueClientTests, /func TestValidateHeadersLargeSetErrorContracts/);
+	assert.match(queueClientTests, /for _, count := range \[\]int\{9, 16, 64\}/);
+	assert.match(queueClientTests, /func validateHeadersLegacyMap\(/);
+	assert.match(queueClientTests, /"legacy-five"/);
+	assert.match(queueClientTests, /"legacy-eight"/);
+	assert.match(queueClientTests, /"legacy-nine"/);
+	assert.match(queueClientTests, /"legacy-sixteen"/);
+	assert.match(queueClientTests, /"legacy-sixty-four"/);
+	assert.match(queueClient, /headerValueScanLimit\s+= 64/);
+	assert.match(queueClient, /var invalidHeaderValueBytes = \[256\]bool/);
+	assert.match(queueClient, /func validHeaderValue\(/);
+	assert.match(queueClient, /if len\(value\) > headerValueScanLimit/);
+	assert.match(queueClient, /name == traceparentHeader/);
+	assert.match(queueClient, /name == tracestateHeader/);
+	assert.match(queueClientTests, /func TestValidHeaderValueMatchesLegacyAndAllValidationBranches/);
+	assert.match(queueClientTests, /func TestCanonicalTraceHeaderMatchesLegacy/);
+	assert.match(queueClientTests, /func canonicalTraceHeaderLegacy\(/);
+	assert.match(queueClientTests, /func BenchmarkCanonicalTraceHeader/);
+	assert.match(queueClientTests, /with-trace-legacy/);
+	assert.match(queueClientTests, /for value := 0; value <= 255; value\+\+/);
+	assert.match(queueClientTests, /func BenchmarkValidHeaderValue/);
+	assert.match(natsAdapter, /ctx\.Done\(\) == nil/);
+	assert.match(natsAdapter, /jetstream\.FetchMaxWait\(maximumWait\)/);
+	assert.match(natsAdapter, /time\.Since\(startedAt\) >= maximumWait/);
+	assert.match(natsAdapterTests, /func TestReceiveNextUsesFetchMaxWaitOnlyForNonCancelableContext/);
+	assert.match(natsAdapterTests, /context-cancellable/);
+	assert.match(natsAdapterTests, /legacy-max-wait/);
+	assertEvidenceInput('Framework/queueclient/client.go');
+	assertEvidenceInput('Framework/queueclient/client_test.go');
+	assert.match(httpClient, /func prepareRequestForPropagation\(/);
+	assert.match(httpClient, /func propagationNeedsInjection\(/);
+	assert.match(httpClient, /case propagation\.TraceContext:/);
+	assert.match(httpClient, /case \*propagation\.TraceContext:/);
+	assert.match(httpClient, /if propagator == nil/);
+	assert.match(httpClient, /return value != nil && trace\.SpanContextFromContext\(ctx\)\.IsValid\(\)/);
+	assert.doesNotMatch(httpClient, /valid := trace\.SpanContextFromContext\(ctx\)\.IsValid\(\)/);
+	assert.match(httpClient, /reflect\.ValueOf\(propagator\)/);
+  assert.match(httpClient, /reflected\.IsNil\(\)/);
+  assert.match(sqlClient, /func postgresOperationName\(operation string\) string/);
+  assert.match(sqlClient, /case "QUERY":\s*return "query"/s);
+	assert.match(redisTracing, /func redisDatabaseOperationName\(operation string\) string/);
+	assert.match(redisTracing, /case "get":\s*return "GET"/s);
+	assert.match(redisTracing, /strings\.EqualFold\(name, "get"\)/);
+	assert.doesNotMatch(redisTracing, /strings\.ToUpper\(operation\)/);
+	assert.doesNotMatch(redisTracing, /switch strings\.ToLower\(name\)/);
+	assert.match(redisTests, /TestRedisSpanOperationUsesStableVocabulary/);
+	assert.match(redisTests, /BenchmarkRedisSpanOperation/);
+  assert.match(sqlClient, /return lowerASCII\(operation\)/);
+  assert.doesNotMatch(sqlClient, /strings\.ToLower\(operation\)/);
+	assert.match(httpClient, /if inject \{\s*transport\.propagator\.Inject/s);
+	assert.match(httpClientTests, /func TestPrepareRequestForPropagationSkipsNoopTraceContext/);
+	assert.match(httpClientTests, /func TestPrepareRequestForPropagationKeepsCustomPropagatorIsolation/);
+	assert.match(httpClientTests, /func TestPropagationNeedsInjectionDoesNotReadSpanContextForCustomPropagator/);
+	assert.match(httpClientTests, /func TestPrepareRequestForPropagationTreatsNilPropagatorAsNoop/);
+	assert.match(httpClientTests, /type typedNilHTTPPropagator struct/);
+	assert.match(httpClientTests, /typed-nil-custom/);
+	assert.match(httpClientTests, /func BenchmarkCloneRequestForPropagation/);
+	assertEvidenceInput('Framework/httpclient/client.go');
+	assertEvidenceInput('Framework/httpclient/client_test.go');
+	assert.match(fingerprint, /inlineFingerprintCapacity/);
+	assert.match(appTests, /func TestIdempotencyFingerprintInlineEncodingPreservesDigestBytes/);
+	assert.match(fingerprint, /digest\.Sum\(result\[:0\]\)/);
+	assert.match(fingerprint, /fiber\.MIMEApplicationJSONCharsetUTF8/);
+	assert.match(fingerprint, /normalizedFingerprintHeaderName/);
+	assert.match(appTests, /func TestIdempotencyRequestFingerprintUsesResultBuffer/);
+	assert.match(appTests, /func BenchmarkIdempotencyRequestFingerprint/);
+	assert.match(appTests, /func TestNormalizedFingerprintHeaderNamePreservesCanonicalBytes/);
+	assert.match(appTests, /func TestIdempotencyFingerprintHeaderFastPathPreservesDigestBytes/);
+	assert.match(appTests, /func TestNormalizedMediaTypeFastPathPreservesCanonicalBytes/);
+	assert.match(appTests, /func BenchmarkNormalizedMediaType/);
+	assert.match(natsAdapter, /func deadLetterID\(metadata \*jetstream\.MsgMetadata\) string/);
+	assert.match(natsAdapter, /var input \[256\]byte/);
+	assert.match(natsAdapter, /digest := sha256\.Sum256\(encoded\)/);
+	assert.match(natsAdapter, /var encodedDigest \[sha256\.Size \* 2\]byte/);
+	assert.match(natsAdapter, /result\.Grow\(len\("goexample-dlq-"\) \+ len\(encodedDigest\)\)/);
+	assert.match(natsAdapter, /if len\(headers\) == 0 \{\s*return queueclient\.Message\{Body: bytes\.Clone\(message\.Data\(\)\)\}, nil/s);
+	assert.match(natsAdapter, /if len\(headers\) <= len\(jetStreamControlHeaders\)/);
+	assert.match(natsAdapter, /controlOnly := true/);
+	assert.match(natsAdapter, /result := queueclient\.Message\{Headers: clonedHeaders\}[\s\S]*result\.Body = bytes\.Clone\(message\.Data\(\)\)/);
+	assert.match(natsAdapterTests, /func TestFromJetStreamMessageMultipleControlHeadersRemainNil/);
+	assert.match(natsAdapterTests, /func TestFromJetStreamMessageRejectsMultiValueBeforeBodyClone/);
 	for (const client of [exampleSDKClient, billingSDKClient]) {
 		assert.match(client, /const defaultSDKHTTPTimeout = 30 \* time\.Second/);
 		assert.match(client, /Timeout:\s+defaultSDKHTTPTimeout/);

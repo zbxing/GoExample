@@ -747,14 +747,14 @@ func testHTTPServerTLS(t *testing.T) (*tls.Config, *tls.Config) {
 	roots := x509.NewCertPool()
 	roots.AddCert(certificate)
 	return &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			Certificates: []tls.Certificate{{
-				Certificate: [][]byte{der},
-				PrivateKey:  privateKey,
-			}},
-		}, &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			RootCAs:    roots,
-			ServerName: "localhost",
-		}
+		MinVersion: tls.VersionTLS12,
+		Certificates: []tls.Certificate{{
+			Certificate: [][]byte{der},
+			PrivateKey:  privateKey,
+		}},
+	}, &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		RootCAs:    roots,
+		ServerName: "localhost",
+	}
 }

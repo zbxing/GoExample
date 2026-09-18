@@ -106,7 +106,7 @@ func (hook redisTracingHook) start(ctx context.Context, operation string) (conte
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
 			semconv.DBSystemNameRedis,
-			semconv.DBOperationName(strings.ToUpper(operation)),
+			semconv.DBOperationName(redisDatabaseOperationName(operation)),
 		),
 	)
 }
@@ -139,11 +139,102 @@ func classifyRedisTraceResult(ctx context.Context, err error) (string, string) {
 }
 
 func redisSpanOperation(name string) string {
-	switch strings.ToLower(name) {
-	case "auth", "client", "del", "eval", "evalsha", "get", "hello", "ping", "scan", "select", "set":
-		return strings.ToLower(name)
+	switch name {
+	case "auth":
+		return "auth"
+	case "client":
+		return "client"
+	case "del":
+		return "del"
+	case "eval":
+		return "eval"
+	case "evalsha":
+		return "evalsha"
+	case "get":
+		return "get"
+	case "hello":
+		return "hello"
+	case "ping":
+		return "ping"
+	case "scan":
+		return "scan"
+	case "select":
+		return "select"
+	case "set":
+		return "set"
+	}
+
+	// go-redis supplies lowercase command names. EqualFold retains the prior
+	// compatibility for custom Cmder implementations without allocating a
+	// normalized copy on either path.
+	switch len(name) {
+	case 3:
+		switch {
+		case strings.EqualFold(name, "del"):
+			return "del"
+		case strings.EqualFold(name, "get"):
+			return "get"
+		case strings.EqualFold(name, "set"):
+			return "set"
+		}
+	case 4:
+		switch {
+		case strings.EqualFold(name, "auth"):
+			return "auth"
+		case strings.EqualFold(name, "eval"):
+			return "eval"
+		case strings.EqualFold(name, "ping"):
+			return "ping"
+		case strings.EqualFold(name, "scan"):
+			return "scan"
+		}
+	case 5:
+		if strings.EqualFold(name, "hello") {
+			return "hello"
+		}
+	case 6:
+		switch {
+		case strings.EqualFold(name, "client"):
+			return "client"
+		case strings.EqualFold(name, "select"):
+			return "select"
+		}
+	case 7:
+		if strings.EqualFold(name, "evalsha") {
+			return "evalsha"
+		}
+	}
+	return "_other"
+}
+
+func redisDatabaseOperationName(operation string) string {
+	switch operation {
+	case "auth":
+		return "AUTH"
+	case "client":
+		return "CLIENT"
+	case "connect":
+		return "CONNECT"
+	case "del":
+		return "DEL"
+	case "eval":
+		return "EVAL"
+	case "evalsha":
+		return "EVALSHA"
+	case "get":
+		return "GET"
+	case "hello":
+		return "HELLO"
+	case "ping":
+		return "PING"
+	case "scan":
+		return "SCAN"
+	case "select":
+		return "SELECT"
+	case "set":
+		return "SET"
 	default:
-		return "_other"
+		return "_OTHER"
 	}
 }
 
