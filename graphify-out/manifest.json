@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "Framework/go.mod": {
-    "mtime": 1787497885.3895257,
-    "seen": 1787581915.2016287,
-    "ast_hash": "b6dc653ebc02699e50c23a7f404d7c87",
+    "mtime": 1789786582.022883,
+    "seen": 1789789718.7776334,
+    "ast_hash": "f00aa331a53c9d095dd52684cde079fc",
     "semantic_hash": ""
   },
   "Framework/health/benchmark_test.go": {
@@ -3012,9 +3012,9 @@
     "semantic_hash": ""
   },
   "__test__/node/script-guards.test.mjs": {
-    "mtime": 1789710990.0403152,
-    "seen": 1789711075.9012551,
-    "ast_hash": "18d7d5ab4a4911b72a8d1d4aeaca6aaa",
+    "mtime": 1789788671.1089544,
+    "seen": 1789789718.7796278,
+    "ast_hash": "ee6552fa6f377e55a005193426f9dbf1",
     "semantic_hash": ""
   },
   "__test__/node/server-release.test.mjs": {
@@ -3222,9 +3222,9 @@
     "semantic_hash": ""
   },
   "support/consumer/HealthProbe/go.mod": {
-    "mtime": 1787580551.3318627,
-    "seen": 1787581915.2026258,
-    "ast_hash": "701117571351549be3f56534fd1c74fe",
+    "mtime": 1789786582.0251517,
+    "seen": 1789789718.7796278,
+    "ast_hash": "2fc0d0829805f130dffcb755509e5fe1",
     "semantic_hash": ""
   },
   "support/deploy/edge/goexample-nginx.contract.json": {
@@ -3354,9 +3354,9 @@
     "semantic_hash": ""
   },
   "Framework/CHANGELOG.md": {
-    "mtime": 1789709414.8916674,
-    "seen": 1789709481.7604344,
-    "ast_hash": "d3d6b5eb3a693542e26f94c9632c9937",
+    "mtime": 1789788671.1029663,
+    "seen": 1789789718.7796278,
+    "ast_hash": "56488128d29049eabb6609fc75e81a11",
     "semantic_hash": ""
   },
   "Framework/COMPATIBILITY.md": {
@@ -3552,9 +3552,9 @@
     "semantic_hash": ""
   },
   "docs/\u8bc4\u4f30/\u9879\u76ee\u67b6\u6784\u4e0e\u6027\u80fd\u8bc4\u4f30.md": {
-    "mtime": 1789710357.010448,
-    "seen": 1789710438.5294955,
-    "ast_hash": "d30d1dbe5835db281d5de7bde36e177c",
+    "mtime": 1789788924.218779,
+    "seen": 1789789718.7986097,
+    "ast_hash": "21a03a3ed3839abbd2f0d7dec1faf9d1",
     "semantic_hash": ""
   },
   "support/api-contracts/.github/workflows/contract.yml": {
@@ -3756,9 +3756,9 @@
     "semantic_hash": ""
   },
   "Solutions/Example/go.mod": {
-    "mtime": 1787732872.7747543,
-    "seen": 1787733980.044493,
-    "ast_hash": "03273a686831a6a1d595fd38f2c7cd57",
+    "mtime": 1789786693.0016756,
+    "seen": 1789789718.778631,
+    "ast_hash": "4df73108fbf3bdb95325f83e08acfa71",
     "semantic_hash": ""
   },
   "Solutions/Example/internal/projectapi/architecture_test.go": {
@@ -4512,9 +4512,9 @@
     "semantic_hash": ""
   },
   "scripts/lib/evidence-manifest-contract.mjs": {
-    "mtime": 1789708494.074359,
-    "seen": 1789709481.7604344,
-    "ast_hash": "a11ac322bd1ae3450c94330bcff52356",
+    "mtime": 1789788671.103966,
+    "seen": 1789789718.7796278,
+    "ast_hash": "847e79b92b821929f1bfa121b7912fed",
     "semantic_hash": ""
   },
   "graphify-out/memory/query_20260830_011042_\u6700\u65b0\u7684\u5f85\u4f18\u5316\u6587\u6863\u5168\u90e8\u5b8c\u6210\u4e86\u5417_\u6ca1\u6709\u8bf7\u7ee7\u7eed_\u5426\u5219\u8bf7\u7ee7\u7eed\u8bc4\u4f30\u5e76\u751f\u6210\u65b0\u7684\u5f85\u4f18\u5316\u6587\u6863_msfront\u9664\u5916.md": {
@@ -6180,9 +6180,21 @@
     "semantic_hash": ""
   },
   "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V126.md": {
-    "mtime": 1789710357.0114448,
-    "seen": 1789710438.5294955,
-    "ast_hash": "df0ce9bbc44aadad0a8a994010ece4a3",
+    "mtime": 1789712179.6902795,
+    "seen": 1789789718.7986097,
+    "ast_hash": "b0a87f633f267915c3f1fe6b8dd2e7fd",
+    "semantic_hash": ""
+  },
+  "docs/\u5f85\u4f18\u5316/\u5f85\u4f18\u5316V127.md": {
+    "mtime": 1789788924.2197773,
+    "seen": 1789789718.7986097,
+    "ast_hash": "721e7a424a33b68a705ac2a6f5daed28",
+    "semantic_hash": ""
+  },
+  "docs/\u8bc4\u4f30/\u6d4b\u8bd5\u73af\u5883.md": {
+    "mtime": 1789738004.108174,
+    "seen": 1789789718.7986097,
+    "ast_hash": "377f296da2ac71e76c37876206f5ffb9",
     "semantic_hash": ""
   }
 }

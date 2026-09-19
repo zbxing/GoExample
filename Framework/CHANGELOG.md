@@ -4,6 +4,10 @@ All notable Framework changes are recorded here. Versions follow Semantic Versio
 
 ## Unreleased
 
+### Security
+
+- Updated the indirect `google.golang.org/grpc` dependency from `v1.83.0` to `v1.83.1` across Framework and its executable workspace consumers to remediate `GO-2026-6348`. The repository vulnerability gate now reports no vulnerabilities affecting project code; public APIs and generated contracts are unchanged.
+
 ### Added
 
 - Browser-session and authorization-state SHA-256 hex validation now scans the required 64 lowercase hexadecimal bytes directly instead of allocating decode and canonical re-encode buffers. Invalid length, uppercase, non-hex, Unicode, payload/index, TTL, Redis Lua, fail-closed, and public API behavior remain unchanged; the permanent benchmark improved from `133.1–136.8 ns/op, 160 B/op, 3 allocs/op` to `30.21–31.83 ns/op, 0 B/op, 0 allocs/op`.

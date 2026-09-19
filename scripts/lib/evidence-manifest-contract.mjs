@@ -280,6 +280,7 @@ export const evidenceInputPaths = Object.freeze([
 	'docs/待优化/待优化V124.md',
 	'docs/待优化/待优化V125.md',
 	'docs/待优化/待优化V126.md',
+	'docs/待优化/待优化V127.md',
 	'docs/评估/项目架构与性能评估.md',
   'scripts/evidence-manifest.mjs',
   'scripts/evidence-verify.mjs',

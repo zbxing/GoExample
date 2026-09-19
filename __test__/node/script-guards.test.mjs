@@ -2926,7 +2926,7 @@ test('SDK consumer matrix evidence stays repository-only, complete, and checksum
   assert.match(independentVerifier, /SDK consumer matrix evidence artifact is missing from the manifest/);
 });
 
-test('V126 repository work and target-environment boundaries match the weighted evaluation', async () => {
+test('V127 repository work and target-environment boundaries match the weighted evaluation', async () => {
   const [evaluation, v12Backlog, backlog, nextBacklog, currentBacklog, v16Backlog, v17Backlog, v18Backlog, v19Backlog, v20Backlog, v21Backlog, v22Backlog, lifecycleADR, publicAPIBoundaryADR, benchmark, app, appTests, fingerprint, middleware, tracing, tracingTests, httpClient, httpClientTests, responseBody, responseBodyTests, retry, retryTests, circuitBreaker, circuitBreakerTests, standardApplication, standardApplicationTests, exampleEntrypoint, billingEntrypoint, applicationEventStream, applicationEventStreamTests, applicationRoute, applicationRouteTests, sqlClient, sqlClientTests] = await Promise.all([
     readFile(path.join(repositoryRoot, 'docs', '评估', '项目架构与性能评估.md'), 'utf8'),
     readFile(path.join(repositoryRoot, 'docs', '待优化', '待优化V12.md'), 'utf8'),
@@ -3327,17 +3327,19 @@ test('V126 repository work and target-environment boundaries match the weighted 
 		calculatedBaseline += (Number(row[2]) * Number(row[3])) / 100;
 		calculatedCompleted += (Number(row[2]) * Number(row[4])) / 100;
 	}
-	assert.ok(Math.abs(calculatedBaseline - 9.931026) < 1e-9);
-	assert.ok(Math.abs(calculatedCompleted - 9.931032) < 1e-9);
-	assert.match(evaluation, /评估版本：V126.*V125-01、V126-01 已完成/s);
-	assert.match(evaluation, /V126-01.*validSHA256Hex.*hex/s);
+	assert.ok(Math.abs(calculatedBaseline - 9.931032) < 1e-9);
+	assert.ok(Math.abs(calculatedCompleted - 9.931037) < 1e-9);
+	assert.match(evaluation, /评估版本：V127.*V126-01、V127-01 已完成/s);
+	assert.match(evaluation, /V127-01.*GO-2026-6348.*v1\.83\.1/s);
 	assert.match(evaluation, /协议与网络能力 \| 5% \| 8\.6582 \| 8\.6582/);
 	assert.match(evaluation, /可观测性、告警与 SRE \| 5% \| 10\.0001 \| 10\.0001/);
 	assert.match(evaluation, /身份、会话与认证治理 \| 6% \| 9\.9726 \| 9\.9726/);
 	assert.match(evaluation, /JetStream.*(?:publish-confirmed ack|确认 publish\/ack)/s);
 	assert.match(evaluation, /测试、race 与静态质量 \| 6% \| 10\.0000 \| 10\.0000/);
-	assert.match(evaluation, /数据一致性与持久化 \| 6% \| 9\.9960 \| 9\.9961/);
+	assert.match(evaluation, /数据一致性与持久化 \| 6% \| 9\.9961 \| 9\.9961/);
 	assert.match(evaluation, /消息交付、重试与背压 \| 5% \| 9\.9999 \| 9\.9999/);
+	assert.match(evaluation, /CI、供应链与依赖治理 \| 5% \| 10\.0000 \| 10\.0001/);
+	assert.match(evaluation, /nats-server v2\.14\.5.*local_contract_only/s);
   assert.match(v69Backlog, /V69-01 已完成/);
   assert.match(v69Backlog, /9\.8880\/10/);
   assert.match(v70Backlog, /状态：V70-01 已完成并计分/);
@@ -3831,6 +3833,17 @@ test('V126 repository work and target-environment boundaries match the weighted 
 	assert.match(v126Backlog, /V126-03.*`not_recorded`/s);
 	assert.match(v126Backlog, /20 个非前端评分维度/);
 	assertEvidenceInput('docs/待优化/待优化V126.md');
+	const v127Backlog = await readFile(
+	  path.join(repositoryRoot, 'docs', '待优化', '待优化V127.md'),
+	  'utf8',
+	);
+	assert.match(v127Backlog, /状态：V126-01 已完成并验收；V127-01 已完成并通过全量门禁/s);
+	assert.match(v127Backlog, /V127-01.*GO-2026-6348.*v1\.83\.1/s);
+	assert.match(v127Backlog, /9\.931037/);
+	assert.match(v127Backlog, /V127-02.*`not_recorded`/s);
+	assert.match(v127Backlog, /V127-03.*`not_recorded`/s);
+	assert.match(v127Backlog, /20 个非前端评分维度/);
+	assertEvidenceInput('docs/待优化/待优化V127.md');
 	assert.match(queueClient, /if len\(headers\) > 2 && len\(headers\) <= 8/);
 	assert.match(queueClient, /var names \[8\]string/);
 	assert.match(queueClient, /headerNameIndexSlots\s+= defaultMaxHeaders \* 2/);
